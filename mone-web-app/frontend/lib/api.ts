@@ -50,6 +50,10 @@ export interface QuantShadowStatus {
     topSleeveReturnPct: number | null;
     topSleeveProfitFactor: number | null;
     independentDecisions: number | null;
+    challengerPromotionDecision?: string | null;
+    challengerBlockingReasons?: string[];
+    completedComparisonDates?: number | null;
+    walkForwardPromotionGrade?: boolean;
   };
   sources: Record<string, string>;
   missingReports: string[];

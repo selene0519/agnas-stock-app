@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import csv
 import glob
+import hashlib
 import json
 import math
 from collections import defaultdict
@@ -32,6 +33,37 @@ MIN_DISTINCT_SIGNAL_DATES = 30
 MIN_RISK_REWARD = 1.5
 MAX_TAKE = 3
 PROBABILITY_BINS = ((0, 50), (50, 60), (60, 70), (70, 80), (80, 101))
+POLICY_VERSION = "shadow-meta-v1.0.0"
+
+
+def _policy() -> dict[str, Any]:
+    return {
+        "version": POLICY_VERSION,
+        "maxTake": MAX_TAKE,
+        "minIndependentDecisions": MIN_INDEPENDENT_DECISIONS,
+        "minDistinctSignalDates": MIN_DISTINCT_SIGNAL_DATES,
+        "minRiskRewardRatio": MIN_RISK_REWARD,
+        "requiresPositiveAfterCostExpectancy": True,
+        "requiresProfitFactorAboveOne": True,
+        "uncalibratedProbabilityCanTriggerTake": False,
+    }
+
+
+def _policy_fingerprint() -> str:
+    raw = json.dumps(_policy(), ensure_ascii=True, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:20]
+
+
+def _decision_id(row: dict[str, Any], signal_date: str) -> str:
+    identity = "|".join([
+        _policy_fingerprint(),
+        signal_date,
+        _text(row.get("market")).lower(),
+        _text(row.get("mode")).lower(),
+        _text(row.get("horizon")).lower(),
+        _text(row.get("symbol")).upper(),
+    ])
+    return hashlib.sha256(identity.encode("utf-8")).hexdigest()[:24]
 
 
 def _read_csv(path: Path) -> list[dict[str, str]]:
@@ -225,7 +257,14 @@ def build() -> dict[str, Any]:
         horizon = _text(row.get("horizon")).lower()
         cell_key = f"{market}|{mode}|{horizon}"
         decision, reasons = _candidate_decision(row, cells.get(cell_key))
+        generated_at = _text(row.get("generatedAt") or row.get("generated_at"))
+        signal_date = _text(row.get("asOfDate") or row.get("as_of_date"))[:10] or generated_at[:10]
         decisions.append({
+            "decisionId": _decision_id(row, signal_date),
+            "policyVersion": POLICY_VERSION,
+            "policyFingerprint": _policy_fingerprint(),
+            "signalDate": signal_date,
+            "generatedAt": generated_at,
             "market": market,
             "mode": mode,
             "horizon": horizon,
@@ -248,15 +287,7 @@ def build() -> dict[str, Any]:
     return {
         "status": "SHADOW_ONLY",
         "generatedAt": datetime.now(timezone.utc).isoformat(),
-        "policy": {
-            "maxTake": MAX_TAKE,
-            "minIndependentDecisions": MIN_INDEPENDENT_DECISIONS,
-            "minDistinctSignalDates": MIN_DISTINCT_SIGNAL_DATES,
-            "minRiskRewardRatio": MIN_RISK_REWARD,
-            "requiresPositiveAfterCostExpectancy": True,
-            "requiresProfitFactorAboveOne": True,
-            "uncalibratedProbabilityCanTriggerTake": False,
-        },
+        "policy": {**_policy(), "fingerprint": _policy_fingerprint()},
         "summary": {
             "candidates": len(decisions),
             "take": len(take),

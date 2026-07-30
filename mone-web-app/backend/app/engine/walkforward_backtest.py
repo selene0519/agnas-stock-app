@@ -19,7 +19,7 @@ import logging
 import math
 import os
 import re
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -752,6 +752,21 @@ def _diff_stats(baseline: dict, corrected: dict) -> dict[str, Any]:
     return diff
 
 
+def _resolved_before_window(results: list[dict[str, Any]], window_start: str) -> list[dict[str, Any]]:
+    """Return only outcomes observable before a training cutoff.
+
+    Missing resolution dates are deliberately excluded. Outcomes resolved on
+    the window start date are embargoed because the record has no trustworthy
+    intraday event ordering.
+    """
+    usable: list[dict[str, Any]] = []
+    for row in results:
+        exit_date = str(row.get("exitDate") or "").strip()[:10]
+        if exit_date and exit_date < window_start:
+            usable.append(row)
+    return usable
+
+
 # ─── Walk-Forward 메인 루프 ───────────────────────────────────────────────────
 
 def run_walkforward(
@@ -809,7 +824,10 @@ def run_walkforward(
 
     for i, w_start in enumerate(windows):
         # 보정 파라미터: 이 창 이전 누적 결과만 사용 (walk-forward 전용 — 미래 누출 없음)
-        combo_params: dict | None = _build_wf_correction(past_outcomes, market, mode, horizon)
+        # A previous window may still be holding a trade when this window
+        # starts. Purge it from the learning pool until its exit was observable.
+        available_outcomes = _resolved_before_window(past_outcomes, w_start)
+        combo_params: dict | None = _build_wf_correction(available_outcomes, market, mode, horizon)
 
         # Baseline 추천 생성 (보정 없음)
         baseline_recs = _generate_recs_at_date(
@@ -833,7 +851,8 @@ def run_walkforward(
             "window":               w_start,
             "windowIndex":          i,
             "correctionParamsUsed": combo_params is not None,
-            "pastSampleCount":      len(past_outcomes),
+            "pastSampleCount":      len(available_outcomes),
+            "embargoedSampleCount": len(past_outcomes) - len(available_outcomes),
             "baseline":             b_stats,
             "corrected":            c_stats,
             "diff":                 _diff_stats(b_stats, c_stats),
@@ -873,12 +892,14 @@ def run_walkforward(
         "dataQuality": {
             "futureRowsExcluded": excluded_future_rows,
             "lookAheadControlled": True,   # cutoff_date 기준 과거 OHLCV만 사용
+            "trainingOutcomesResolvedBeforeWindow": True,
+            "sameDayOutcomeEmbargo": True,
             "survivorshipBias": True,       # universe = 현재 상장 심볼만 (상폐 부재)
             "pointInTimeListingFilter": False,
             "universeSource": "OHLCV_glob(market_*_daily.csv)",
             "note": "backtest winRate는 생존편향으로 낙관. 실측 신뢰는 live_calibration 참조.",
         },
-        "generatedAt":    datetime.utcnow().isoformat(),
+        "generatedAt":    datetime.now(timezone.utc).isoformat(),
         "tradeRecords":   past_outcomes,   # 앙상블 모델 학습용 개별 거래 기록
     }
 
@@ -1099,6 +1120,7 @@ def run_all(market: str = "kr", window_months: int = 1) -> dict[str, Any]:
                     "windowIndex":          w.get("windowIndex"),
                     "correctionParamsUsed": w.get("correctionParamsUsed"),
                     "pastSampleCount":      w.get("pastSampleCount"),
+                    "embargoedSampleCount": w.get("embargoedSampleCount"),
                     **{k: s.get(k) for k in (
                         "recommendationCount", "executionCount", "executionRate",
                         "winCount", "winRate", "stopCount", "stopHitRate",
@@ -1120,7 +1142,7 @@ def run_all(market: str = "kr", window_months: int = 1) -> dict[str, Any]:
             w.writerows(all_csv_rows)
 
     summary = {
-        "generatedAt": datetime.utcnow().isoformat(),
+        "generatedAt": datetime.now(timezone.utc).isoformat(),
         "market":      market,
         "asOf":        date.today().isoformat(),
         "windowMonths": window_months,

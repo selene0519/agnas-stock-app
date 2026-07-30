@@ -109,6 +109,10 @@ jobs:
           echo "build_shadow_meta_gate: exit $?"
           python scripts/build_shadow_risk_budget.py
           echo "build_shadow_risk_budget: exit $?"
+          # Persist immutable daily decisions and compare the challenger with
+          # the top-3 raw-candidate champion. This report never auto-promotes.
+          python scripts/update_champion_challenger.py
+          echo "update_champion_challenger: exit $?"
           set -e
 
       - name: 데이터 신선도 헬스게이트 + 알람 (조용한 실패 탐지)
@@ -153,6 +157,7 @@ jobs:
             git add reports/strategy_cohort_audit.json 2>/dev/null || true
             git add reports/shadow_meta_gate.json 2>/dev/null || true
             git add reports/shadow_risk_budget.json 2>/dev/null || true
+            git add data/shadow_challenger_journal.csv reports/champion_challenger.json 2>/dev/null || true
 
             if git diff --cached --quiet; then
               echo "변경 없음 — 커밋 건너뜀"

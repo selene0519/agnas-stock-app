@@ -29,6 +29,12 @@ def test_shadow_status_fails_closed_when_evidence_is_not_positive(tmp_path: Path
     })
     _write(tmp_path, "metaGate", {"status": "SHADOW_ONLY", "summary": {"candidates": 20, "take": 0, "wait": 0, "reject": 20, "abstain": True}})
     _write(tmp_path, "riskBudget", {"status": "SHADOW_ONLY", "grossExposurePct": 0, "cashWeightPct": 100, "portfolioBeta": 0})
+    _write(tmp_path, "championChallenger", {
+        "status": "SHADOW_ONLY",
+        "comparison": {"completedSignalDates": 0},
+        "promotion": {"promotionEligible": False, "decision": "KEEP_CHALLENGER_SHADOW", "blockingReasons": ["LOW_COMPLETE_SIGNAL_DATES"]},
+    })
+    _write(tmp_path, "walkForward", {"status": "WARN", "promotionGrade": False})
 
     result = status.shadow_status()
 

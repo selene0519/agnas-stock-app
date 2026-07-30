@@ -56,3 +56,16 @@ def test_run_all_prepares_ohlcv_once(monkeypatch, tmp_path: Path) -> None:
     assert result["results"]
     assert loads == ["us"]
     assert received == [({"TEST": []}, 0)] * 9
+
+
+def test_learning_pool_purges_unresolved_and_same_day_outcomes() -> None:
+    rows = [
+        {"symbol": "A", "exitDate": "2026-06-29"},
+        {"symbol": "B", "exitDate": "2026-07-01"},
+        {"symbol": "C", "exitDate": "2026-07-02"},
+        {"symbol": "D", "exitDate": None},
+    ]
+
+    usable = walkforward._resolved_before_window(rows, "2026-07-01")
+
+    assert [row["symbol"] for row in usable] == ["A"]

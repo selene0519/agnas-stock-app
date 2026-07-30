@@ -62,3 +62,11 @@ def test_probability_calibration_exposes_overconfidence() -> None:
     assert bins[0]["actualWinRate"] == 0.25
     assert bins[0]["calibrationGap"] == 0.55
     assert brier is not None and brier > 0.4
+
+
+def test_policy_fingerprint_and_decision_id_are_stable() -> None:
+    row = {"market": "kr", "mode": "balanced", "horizon": "short", "symbol": "005930"}
+
+    assert gate._policy_fingerprint() == gate._policy_fingerprint()
+    assert gate._decision_id(row, "2026-07-30") == gate._decision_id(row, "2026-07-30")
+    assert gate._decision_id(row, "2026-07-30") != gate._decision_id(row, "2026-07-31")

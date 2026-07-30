@@ -1,14 +1,16 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-07-30T06:50:18.315992+00:00",
+  "generatedAt": "2026-07-30T07:30:47.280160+00:00",
   "policy": {
+    "version": "shadow-meta-v1.0.0",
     "maxTake": 3,
     "minIndependentDecisions": 100,
     "minDistinctSignalDates": 30,
     "minRiskRewardRatio": 1.5,
     "requiresPositiveAfterCostExpectancy": true,
     "requiresProfitFactorAboveOne": true,
-    "uncalibratedProbabilityCanTriggerTake": false
+    "uncalibratedProbabilityCanTriggerTake": false,
+    "fingerprint": "75c438aa61fe2f33042b"
   },
   "summary": {
     "candidates": 20,
@@ -20,6 +22,11 @@
   "take": [],
   "decisions": [
     {
+      "decisionId": "a83c0265b8cfa7d8033a9876",
+      "policyVersion": "shadow-meta-v1.0.0",
+      "policyFingerprint": "75c438aa61fe2f33042b",
+      "signalDate": "2026-07-29",
+      "generatedAt": "2026-07-29 21:49:37",
       "market": "us",
       "mode": "conservative",
       "horizon": "mid",
@@ -43,6 +50,11 @@
       "recommendationSource": "mone_v36_final_recommendations_us_conservative_mid.csv"
     },
     {
+      "decisionId": "ef2f92e2beeb27acbc280882",
+      "policyVersion": "shadow-meta-v1.0.0",
+      "policyFingerprint": "75c438aa61fe2f33042b",
+      "signalDate": "2026-07-29",
+      "generatedAt": "2026-07-29 21:49:37",
       "market": "us",
       "mode": "conservative",
       "horizon": "mid",
@@ -66,6 +78,11 @@
       "recommendationSource": "mone_v36_final_recommendations_us_conservative_mid.csv"
     },
     {
+      "decisionId": "1a19d9eb3073c09cf0f88f54",
+      "policyVersion": "shadow-meta-v1.0.0",
+      "policyFingerprint": "75c438aa61fe2f33042b",
+      "signalDate": "2026-07-29",
+      "generatedAt": "2026-07-29 21:49:37",
       "market": "us",
       "mode": "aggressive",
       "horizon": "mid",
@@ -91,6 +108,11 @@
       "recommendationSource": "mone_v36_final_recommendations_us_aggressive_mid.csv"
     },
     {
+      "decisionId": "f76c06a3dfa86f1c228f972e",
+      "policyVersion": "shadow-meta-v1.0.0",
+      "policyFingerprint": "75c438aa61fe2f33042b",
+      "signalDate": "2026-07-29",
+      "generatedAt": "2026-07-29 21:49:37",
       "market": "us",
       "mode": "conservative",
       "horizon": "swing",
@@ -114,6 +136,11 @@
       "recommendationSource": "mone_v36_final_recommendations_us_conservative_swing.csv"
     },
     {
+      "decisionId": "e21f9f52fa9275a6f4814666",
+      "policyVersion": "shadow-meta-v1.0.0",
+      "policyFingerprint": "75c438aa61fe2f33042b",
+      "signalDate": "2026-07-29",
+      "generatedAt": "2026-07-29 21:49:37",
       "market": "us",
       "mode": "aggressive",
       "horizon": "mid",
@@ -138,6 +165,11 @@
       "recommendationSource": "mone_v36_final_recommendations_us_aggressive_mid.csv"
     },
     {
+      "decisionId": "bdc8b15880dc50e861d0ee28",
+      "policyVersion": "shadow-meta-v1.0.0",
+      "policyFingerprint": "75c438aa61fe2f33042b",
+      "signalDate": "2026-07-29",
+      "generatedAt": "2026-07-29 21:49:37",
       "market": "us",
       "mode": "aggressive",
       "horizon": "mid",
@@ -162,6 +194,11 @@
       "recommendationSource": "mone_v36_final_recommendations_us_aggressive_mid.csv"
     },
     {
+      "decisionId": "786a1dee5e17567026247627",
+      "policyVersion": "shadow-meta-v1.0.0",
+      "policyFingerprint": "75c438aa61fe2f33042b",
+      "signalDate": "2026-07-29",
+      "generatedAt": "2026-07-29 21:49:37",
       "market": "us",
       "mode": "aggressive",
       "horizon": "mid",
@@ -187,6 +224,11 @@
       "recommendationSource": "mone_v36_final_recommendations_us_aggressive_mid.csv"
     },
     {
+      "decisionId": "defea096b8bcfe5d09b17088",
+      "policyVersion": "shadow-meta-v1.0.0",
+      "policyFingerprint": "75c438aa61fe2f33042b",
+      "signalDate": "2026-07-29",
+      "generatedAt": "2026-07-29 21:49:37",
       "market": "us",
       "mode": "conservative",
       "horizon": "swing",
@@ -210,6 +252,11 @@
       "recommendationSource": "mone_v36_final_recommendations_us_conservative_swing.csv"
     },
     {
+      "decisionId": "f7541373bf9bd206940ff367",
+      "policyVersion": "shadow-meta-v1.0.0",
+      "policyFingerprint": "75c438aa61fe2f33042b",
+      "signalDate": "2026-07-29",
+      "generatedAt": "2026-07-29 21:49:37",
       "market": "us",
       "mode": "aggressive",
       "horizon": "mid",
@@ -235,6 +282,11 @@
       "recommendationSource": "mone_v36_final_recommendations_us_aggressive_mid.csv"
     },
     {
+      "decisionId": "0bf43c5994ba0181f227aac4",
+      "policyVersion": "shadow-meta-v1.0.0",
+      "policyFingerprint": "75c438aa61fe2f33042b",
+      "signalDate": "2026-07-29",
+      "generatedAt": "2026-07-29 21:49:37",
       "market": "us",
       "mode": "balanced",
       "horizon": "mid",
@@ -260,6 +312,11 @@
       "recommendationSource": "mone_v36_final_recommendations_us_balanced_mid.csv"
     },
     {
+      "decisionId": "3892925f5a379f20a81fc3b5",
+      "policyVersion": "shadow-meta-v1.0.0",
+      "policyFingerprint": "75c438aa61fe2f33042b",
+      "signalDate": "2026-07-29",
+      "generatedAt": "2026-07-29 21:49:37",
       "market": "us",
       "mode": "aggressive",
       "horizon": "mid",
@@ -284,6 +341,11 @@
       "recommendationSource": "mone_v36_final_recommendations_us_aggressive_mid.csv"
     },
     {
+      "decisionId": "03ff0586148b0b6e21012e35",
+      "policyVersion": "shadow-meta-v1.0.0",
+      "policyFingerprint": "75c438aa61fe2f33042b",
+      "signalDate": "2026-07-29",
+      "generatedAt": "2026-07-29 21:49:37",
       "market": "us",
       "mode": "aggressive",
       "horizon": "mid",
@@ -309,6 +371,11 @@
       "recommendationSource": "mone_v36_final_recommendations_us_aggressive_mid.csv"
     },
     {
+      "decisionId": "961d82ac60c0f50733454464",
+      "policyVersion": "shadow-meta-v1.0.0",
+      "policyFingerprint": "75c438aa61fe2f33042b",
+      "signalDate": "2026-07-29",
+      "generatedAt": "2026-07-29 21:49:37",
       "market": "us",
       "mode": "aggressive",
       "horizon": "mid",
@@ -334,6 +401,11 @@
       "recommendationSource": "mone_v36_final_recommendations_us_aggressive_mid.csv"
     },
     {
+      "decisionId": "d2f5abf4ea29cf0ad3f127eb",
+      "policyVersion": "shadow-meta-v1.0.0",
+      "policyFingerprint": "75c438aa61fe2f33042b",
+      "signalDate": "2026-07-29",
+      "generatedAt": "2026-07-29 21:49:37",
       "market": "us",
       "mode": "aggressive",
       "horizon": "mid",
@@ -359,6 +431,11 @@
       "recommendationSource": "mone_v36_final_recommendations_us_aggressive_mid.csv"
     },
     {
+      "decisionId": "bf72c1c9a718a562cf90fa66",
+      "policyVersion": "shadow-meta-v1.0.0",
+      "policyFingerprint": "75c438aa61fe2f33042b",
+      "signalDate": "2026-07-29",
+      "generatedAt": "2026-07-29 21:49:37",
       "market": "us",
       "mode": "balanced",
       "horizon": "mid",
@@ -384,6 +461,11 @@
       "recommendationSource": "mone_v36_final_recommendations_us_balanced_mid.csv"
     },
     {
+      "decisionId": "77247d1f79a6d2159cab48ce",
+      "policyVersion": "shadow-meta-v1.0.0",
+      "policyFingerprint": "75c438aa61fe2f33042b",
+      "signalDate": "2026-07-29",
+      "generatedAt": "2026-07-29 21:49:37",
       "market": "us",
       "mode": "aggressive",
       "horizon": "mid",
@@ -409,6 +491,11 @@
       "recommendationSource": "mone_v36_final_recommendations_us_aggressive_mid.csv"
     },
     {
+      "decisionId": "591ef0b4aedf44186a620cff",
+      "policyVersion": "shadow-meta-v1.0.0",
+      "policyFingerprint": "75c438aa61fe2f33042b",
+      "signalDate": "2026-07-29",
+      "generatedAt": "2026-07-29 21:49:37",
       "market": "us",
       "mode": "balanced",
       "horizon": "mid",
@@ -434,6 +521,11 @@
       "recommendationSource": "mone_v36_final_recommendations_us_balanced_mid.csv"
     },
     {
+      "decisionId": "a6d77cdae04d85793ad7b561",
+      "policyVersion": "shadow-meta-v1.0.0",
+      "policyFingerprint": "75c438aa61fe2f33042b",
+      "signalDate": "2026-07-29",
+      "generatedAt": "2026-07-29 21:49:37",
       "market": "us",
       "mode": "aggressive",
       "horizon": "short",
@@ -459,6 +551,11 @@
       "recommendationSource": "mone_v36_final_recommendations_us_aggressive_short.csv"
     },
     {
+      "decisionId": "ba82180d0f0fab72eff922be",
+      "policyVersion": "shadow-meta-v1.0.0",
+      "policyFingerprint": "75c438aa61fe2f33042b",
+      "signalDate": "2026-07-29",
+      "generatedAt": "2026-07-29 21:49:37",
       "market": "us",
       "mode": "aggressive",
       "horizon": "mid",
@@ -484,6 +581,11 @@
       "recommendationSource": "mone_v36_final_recommendations_us_aggressive_mid.csv"
     },
     {
+      "decisionId": "d42e8ff2d6b3007bff17ff2c",
+      "policyVersion": "shadow-meta-v1.0.0",
+      "policyFingerprint": "75c438aa61fe2f33042b",
+      "signalDate": "2026-07-29",
+      "generatedAt": "2026-07-29 21:49:37",
       "market": "us",
       "mode": "aggressive",
       "horizon": "short",

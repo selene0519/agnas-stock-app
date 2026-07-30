@@ -14,6 +14,8 @@ REPORT_FILES = {
     "sleeve": "strategy_sleeve_nav_v2.json",
     "metaGate": "shadow_meta_gate.json",
     "riskBudget": "shadow_risk_budget.json",
+    "championChallenger": "champion_challenger.json",
+    "walkForward": "walkforward_integrity.json",
 }
 
 
@@ -35,6 +37,8 @@ def shadow_status() -> dict[str, Any]:
     alpha = reports["alpha"]
     sleeve = reports["sleeve"]
     cohort = reports["cohort"]
+    champion_challenger = reports["championChallenger"]
+    walk_forward = reports["walkForward"]
 
     missing = [name for name, report in reports.items() if report.get("status") == "MISSING"]
     summary = meta.get("summary") if isinstance(meta.get("summary"), dict) else {}
@@ -56,6 +60,12 @@ def shadow_status() -> dict[str, Any]:
         reasons.append("NO_POSITIVE_SLEEVE")
     if float(risk.get("grossExposurePct") or 0.0) <= 0:
         reasons.append("NO_APPROVED_RISK_EXPOSURE")
+    promotion = champion_challenger.get("promotion") if isinstance(champion_challenger.get("promotion"), dict) else {}
+    comparison = champion_challenger.get("comparison") if isinstance(champion_challenger.get("comparison"), dict) else {}
+    if not bool(promotion.get("promotionEligible")):
+        reasons.append("CHALLENGER_NOT_PROMOTABLE")
+    if not bool(walk_forward.get("promotionGrade")):
+        reasons.append("WALKFORWARD_NOT_PROMOTION_GRADE")
 
     return {
         "status": "WARN" if reasons else "OK",
@@ -78,6 +88,10 @@ def shadow_status() -> dict[str, Any]:
             "topSleeveReturnPct": top_sleeve.get("totalReturnPct") if top_sleeve else None,
             "topSleeveProfitFactor": top_sleeve.get("profitFactor") if top_sleeve else None,
             "independentDecisions": (cohort.get("summary") or {}).get("independentDecisions"),
+            "challengerPromotionDecision": promotion.get("decision"),
+            "challengerBlockingReasons": promotion.get("blockingReasons") or [],
+            "completedComparisonDates": comparison.get("completedSignalDates"),
+            "walkForwardPromotionGrade": bool(walk_forward.get("promotionGrade")),
         },
         "sources": {name: report.get("_source") for name, report in reports.items()},
         "missingReports": missing,

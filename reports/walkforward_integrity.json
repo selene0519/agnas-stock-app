@@ -1,0 +1,54 @@
+{
+  "status": "WARN",
+  "generatedAt": "2026-07-30T07:36:48.393901+00:00",
+  "promotionGrade": false,
+  "policy": {
+    "futureWindowsForbidden": true,
+    "trainingOutcomesMustResolveBeforeWindow": true,
+    "sameDayOutcomesEmbargoed": true,
+    "pointInTimeUniverseRequiredForPromotion": true
+  },
+  "markets": {
+    "kr": {
+      "market": "kr",
+      "asOf": "2026-07-30",
+      "status": "WARN",
+      "promotionGrade": false,
+      "blockingReasons": [
+        "RERUN_REQUIRED_FOR_OUTCOME_EMBARGO_PROOF",
+        "SURVIVORSHIP_BIAS_RESEARCH_ONLY"
+      ],
+      "csv": {
+        "status": "OK",
+        "totalRows": 414,
+        "futureWindowCount": 0,
+        "invalidWindowCount": 0
+      },
+      "comboCount": 9,
+      "outcomeEmbargoProven": false,
+      "survivorshipBias": true,
+      "pointInTimeUniverse": false
+    },
+    "us": {
+      "market": "us",
+      "asOf": "2026-07-30",
+      "status": "WARN",
+      "promotionGrade": false,
+      "blockingReasons": [
+        "CSV_TEMPORAL_INTEGRITY_FAILED",
+        "RERUN_REQUIRED_FOR_OUTCOME_EMBARGO_PROOF",
+        "SURVIVORSHIP_BIAS_RESEARCH_ONLY"
+      ],
+      "csv": {
+        "status": "INVALID_TEMPORAL_DATA",
+        "totalRows": 504,
+        "futureWindowCount": 90,
+        "invalidWindowCount": 0
+      },
+      "comboCount": 9,
+      "outcomeEmbargoProven": false,
+      "survivorshipBias": true,
+      "pointInTimeUniverse": false
+    }
+  }
+}

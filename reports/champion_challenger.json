@@ -1,0 +1,88 @@
+{
+  "status": "SHADOW_ONLY",
+  "generatedAt": "2026-07-30T07:31:37.916294+00:00",
+  "policy": {
+    "version": "champion-challenger-v1.0.0",
+    "champion": "TOP_3_RAW_CANDIDATES",
+    "challenger": "SHADOW_META_GATE_TAKE_ONLY",
+    "positionWeight": 0.1,
+    "maxPositions": 3,
+    "removedExposureStaysCash": true,
+    "sameSignalDatePairedComparison": true,
+    "minCompleteSignalDates": 60,
+    "minEvaluatedChallengerTrades": 120,
+    "requiresPositiveAfterCostReturn": true,
+    "requiresProfitFactorAboveOne": true,
+    "requiresPairedUpliftBootstrapLowerAboveZero": true,
+    "requiresD20ResidualAlphaLowerCiAboveZero": true,
+    "requiresChallengerDrawdownNoWorseThanChampion": true,
+    "requiresTimeIntegrity": true,
+    "autoPromotionAllowed": false,
+    "humanApprovalRequired": true,
+    "fingerprint": "bcc7c81eab9eb14abdea"
+  },
+  "recording": {
+    "appended": 0,
+    "conflicts": 0,
+    "skipped": 0,
+    "total": 20
+  },
+  "integrity": {
+    "immutableConflicts": 0,
+    "timeIntegrityViolations": 0,
+    "fingerprintCoverage": 1.0,
+    "violations": []
+  },
+  "alphaGate": {
+    "passed": false,
+    "blockMeanCarPct": -3.4441,
+    "bootstrapCi95": [
+      -7.7405,
+      0.6295
+    ],
+    "independentMarketDateBlocks": 13,
+    "significanceUsable": false
+  },
+  "comparison": {
+    "completedSignalDates": 0,
+    "incompleteSignalDates": 1,
+    "champion": {
+      "completeSignalDates": 0,
+      "selectedEvaluatedTrades": 0,
+      "avgDailyReturnPct": null,
+      "totalReturnPct": null,
+      "profitFactor": null,
+      "maxDrawdownPct": null
+    },
+    "challenger": {
+      "completeSignalDates": 0,
+      "selectedEvaluatedTrades": 0,
+      "avgDailyReturnPct": null,
+      "totalReturnPct": null,
+      "profitFactor": null,
+      "maxDrawdownPct": null
+    },
+    "pairedUplift": {
+      "meanPct": null,
+      "bootstrapCi95": null,
+      "bootstrapUnit": "SIGNAL_DATE",
+      "bootstrapSamples": 10000
+    },
+    "daily": []
+  },
+  "promotion": {
+    "promotionEligible": false,
+    "decision": "KEEP_CHALLENGER_SHADOW",
+    "blockingReasons": [
+      "LOW_COMPLETE_SIGNAL_DATES",
+      "LOW_EVALUATED_CHALLENGER_TRADES",
+      "NON_POSITIVE_CHALLENGER_RETURN",
+      "CHALLENGER_PROFIT_FACTOR_NOT_ABOVE_ONE",
+      "PAIRED_UPLIFT_NOT_PROVEN",
+      "DRAWDOWN_COMPARISON_NOT_READY",
+      "RESIDUAL_ALPHA_NOT_PROVEN"
+    ],
+    "autoPromotionAllowed": false,
+    "humanApprovalRequired": true
+  }
+}

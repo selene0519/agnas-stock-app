@@ -9,6 +9,8 @@ const REASON_LABELS: Record<string, string> = {
   ALPHA_NOT_PROVEN: "시장 대비 잔차 알파가 아직 입증되지 않음",
   NO_POSITIVE_SLEEVE: "양의 자본곡선을 만든 전략 셀이 없음",
   NO_APPROVED_RISK_EXPOSURE: "위험 한도를 통과한 포지션이 없음",
+  CHALLENGER_NOT_PROMOTABLE: "새 전략이 기존 전략 대비 우월성을 아직 입증하지 못함",
+  WALKFORWARD_NOT_PROMOTION_GRADE: "walk-forward가 생존편향 없는 승격 기준을 아직 충족하지 못함",
 };
 
 function number(value: number | null | undefined, digits = 1) {

@@ -110,6 +110,9 @@ jobs:
               print(f"[pattern-walkforward] 오류: {e}")
           PY
           echo "pattern-walkforward: exit $?"
+          cd ../..
+          python scripts/audit_walkforward_integrity.py
+          echo "walkforward-integrity-audit: exit $?"
           set -e
 
       - name: Commit backtest results
@@ -121,6 +124,7 @@ jobs:
           git add reports/walkforward_results_us.csv reports/walkforward_summary_us.json 2>/dev/null || true
           git add reports/ensemble_calibration_*.json 2>/dev/null || true
           git add reports/pattern_walkforward_kr.json reports/pattern_walkforward_us.json 2>/dev/null || true
+          git add reports/walkforward_integrity.json 2>/dev/null || true
 
           if git diff --cached --quiet; then
             echo "No backtest changes to commit."
