@@ -1,52 +1,86 @@
 {
-  "generatedAt": "2026-07-29T23:52:48.636825+00:00",
+  "generatedAt": "2026-07-30T10:27:50.235119+00:00",
   "since": null,
   "method": "시장모형 이벤트 스터디. 추정창 [-250,-11] 거래일에서 R_stock = alpha + beta*R_KOSPI 를 OLS 적합 후, 이벤트창의 초과수익을 누적(CAR). 추정창이 이벤트 이전에서 끝나 룩어헤드 없음.",
   "reference": "virattt/ai-hedge-fund v2/event_study (실적발표 대신 추천일을 이벤트로 사용)",
-  "events": 150,
+  "events": 219,
   "skipped": {
     "noOhlcv": 0,
     "shortEstimation": 17,
     "noBenchmarkDate": 0,
-    "shortEventWindow": 69,
+    "shortEventWindow": 0,
     "replaySource": 1298,
-    "beforeSince": 0
+    "beforeSince": 0,
+    "shortWindow_D+20": 69,
+    "shortWindow_D+5": 1
   },
   "windows": {
     "D+1": {
-      "events": 150,
-      "meanCarPct": 0.9091,
-      "meanRawReturnPct": -1.2994,
-      "marketComponentPct": -2.2085,
-      "positiveShare": 0.5533,
-      "tStat": 2.133,
-      "pValue": 0.03295,
-      "significant": true,
+      "events": 219,
+      "dateRange": {
+        "min": "2026-06-19",
+        "max": "2026-07-23"
+      },
+      "distinctEventDates": 16,
+      "eventsPerDate": 13.7,
+      "isClustered": true,
+      "eventsByMonth": {
+        "2026-06": 150,
+        "2026-07": 69
+      },
+      "meanCarPct": 0.5881,
+      "meanRawReturnPct": -1.2178,
+      "marketComponentPct": -1.806,
+      "positiveShare": 0.5342,
+      "tStat": 1.758,
+      "pValue": 0.07879,
+      "significant": false,
       "bootstrapCi95": [
-        0.0769,
-        1.7624
+        -0.0812,
+        1.2457
       ],
       "sampleWarning": null,
       "significanceUsable": false
     },
     "D+5": {
-      "events": 150,
-      "meanCarPct": 2.7117,
-      "meanRawReturnPct": -2.2281,
-      "marketComponentPct": -4.9399,
-      "positiveShare": 0.5733,
-      "tStat": 3.263,
-      "pValue": 0.0011,
+      "events": 218,
+      "dateRange": {
+        "min": "2026-06-19",
+        "max": "2026-07-23"
+      },
+      "distinctEventDates": 15,
+      "eventsPerDate": 14.5,
+      "isClustered": true,
+      "eventsByMonth": {
+        "2026-06": 150,
+        "2026-07": 68
+      },
+      "meanCarPct": 2.5812,
+      "meanRawReturnPct": -1.6372,
+      "marketComponentPct": -4.2184,
+      "positiveShare": 0.5963,
+      "tStat": 4.208,
+      "pValue": 3e-05,
       "significant": true,
       "bootstrapCi95": [
-        1.0978,
-        4.3748
+        1.3431,
+        3.7926
       ],
       "sampleWarning": null,
       "significanceUsable": false
     },
     "D+20": {
       "events": 150,
+      "dateRange": {
+        "min": "2026-06-19",
+        "max": "2026-06-26"
+      },
+      "distinctEventDates": 6,
+      "eventsPerDate": 25.0,
+      "isClustered": true,
+      "eventsByMonth": {
+        "2026-06": 150
+      },
       "meanCarPct": 5.6528,
       "meanRawReturnPct": -14.5874,
       "marketComponentPct": -20.2402,
@@ -63,13 +97,14 @@
     }
   },
   "status": "OK",
-  "avgBeta": 0.821,
+  "avgBeta": 0.692,
   "eventDateRange": {
     "min": "2026-06-19",
-    "max": "2026-06-26"
+    "max": "2026-07-23"
   },
   "eventsByMonth": {
-    "2026-06": 150
+    "2026-06": 150,
+    "2026-07": 69
   },
   "caveats": [
     "긴 이벤트창일수록 최근 시그널이 제외되어(앞으로의 봉 부족) 표본이 과거로 편향된다. windows별 events 수와 eventsByMonth를 같이 볼 것.",
@@ -77,9 +112,9 @@
     "알파가 (+)라는 것은 '시장보다 덜 빠졌다'는 뜻이지 '돈을 벌었다'가 아니다. 원시수익(meanRawReturnPct)이 (-)면 실제 계좌는 줄어든다."
   ],
   "clustering": {
-    "distinctEventDates": 6,
-    "calendarSpanDays": 8,
-    "eventsPerDate": 25.0,
+    "distinctEventDates": 16,
+    "calendarSpanDays": 35,
+    "eventsPerDate": 13.7,
     "isClustered": true,
     "note": "이벤트가 며칠에 몰려 있으면 t검정의 독립성 가정이 깨진다. 모든 이벤트가 같은 시장 충격을 공유하므로 유효 표본은 '이벤트 수'가 아니라 '서로 다른 날 수'에 가깝다. isClustered=true면 pValue/significant를 근거로 쓰지 말 것."
   }

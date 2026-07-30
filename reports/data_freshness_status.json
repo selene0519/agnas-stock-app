@@ -1,23 +1,30 @@
 {
-  "generatedAt": "2026-07-29T23:52:48.751163+00:00",
+  "generatedAt": "2026-07-30T10:27:50.344411+00:00",
   "overall": "WARN",
   "criticalFailures": 0,
   "hardFailures": 0,
   "maxStaleDays": 3.0,
   "checks": [
     {
+      "name": "measurement_stability",
+      "status": "WARN",
+      "detail": "두 원장 불일치 — 공통 60건 중 일치 0.0833 (기준 0.9), 평균차 -3.0044%p. 원인은 비용·창 설계 차이(사람 결정 필요)",
+      "critical": false,
+      "ageDays": null
+    },
+    {
       "name": "kr_ohlcv",
       "status": "OK",
-      "detail": "1.0d, asOf=2026-07-29",
+      "detail": "0.44d, asOf=2026-07-30",
       "critical": true,
-      "ageDays": 1.0
+      "ageDays": 0.44
     },
     {
       "name": "kr_recommendations",
       "status": "OK",
-      "detail": "-0.37d, asOf=2026-07-30 08:46:27",
+      "detail": "-0.36d, asOf=2026-07-30 19:09:00",
       "critical": true,
-      "ageDays": -0.37
+      "ageDays": -0.36
     },
     {
       "name": "collector_steps",
@@ -29,56 +36,56 @@
     {
       "name": "collector_run",
       "status": "OK",
-      "detail": "1.3d, asOf=2026-07-28T16:40:53.766520",
+      "detail": "1.74d, asOf=2026-07-28T16:40:53.766520",
       "critical": true,
-      "ageDays": 1.3
+      "ageDays": 1.74
     },
     {
       "name": "vtj_journal",
       "status": "OK",
-      "detail": "0.0d, asOf=2026-07-30T08:47:58+09:00",
+      "detail": "0.01d, asOf=2026-07-30T19:10:42+09:00",
       "critical": false,
-      "ageDays": 0.0
+      "ageDays": 0.01
     },
     {
       "name": "live_calibration",
       "status": "OK",
-      "detail": "-0.0d, asOf=2026-07-30",
+      "detail": "0.44d, asOf=2026-07-30",
       "critical": false,
-      "ageDays": -0.0
+      "ageDays": 0.44
     },
     {
       "name": "strategy_win_rates",
       "status": "OK",
-      "detail": "-0.37d, asOf=2026-07-30 08:52:47",
+      "detail": "-0.37d, asOf=2026-07-30 19:27:49",
       "critical": false,
       "ageDays": -0.37
     },
     {
       "name": "prediction_capture",
       "status": "OK",
-      "detail": "1.0d, asOf=2026-07-29",
+      "detail": "0.44d, asOf=2026-07-30",
       "critical": true,
-      "ageDays": 1.0
+      "ageDays": 0.44
     },
     {
       "name": "capture_continuity",
       "status": "OK",
-      "detail": "거래일 1일 중 캡처 1일 (기준일 2026-07-28~, 유예 1일)",
+      "detail": "거래일 2일 중 캡처 2일 (기준일 2026-07-28~, 유예 1일)",
       "critical": true,
       "ageDays": null
     },
     {
       "name": "settlement_backlog",
       "status": "OK",
-      "detail": "만기경과 미정산 0건 / 대기중 64건",
+      "detail": "만기경과 미정산 0건 / 대기중 81건",
       "critical": false,
       "ageDays": null
     },
     {
       "name": "clean_window_samples",
       "status": "WARN",
-      "detail": "clean window(2026-07-10) 정산표본 3건 / 전체 정산 663건 / 원장 887행 — 표본 부족(30건 미만)",
+      "detail": "clean window(2026-07-10) 정산표본 3건 / 전체 정산 663건 / 원장 904행 — 표본 부족(30건 미만)",
       "critical": false,
       "ageDays": null
     },
