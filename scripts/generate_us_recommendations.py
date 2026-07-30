@@ -687,7 +687,13 @@ def generate_us_recommendations() -> dict[str, Any]:
                         "이격도수렴" if ma_conv else "",
                         "52주돌파" if (d52 and -3 <= d52 <= 0 and vr and vr >= 1.5) else "",
                     ])),
-                    "marketRegime": regime_label,
+                    # **정규 코드(BULL/SIDE/BEAR)로 쓴다.** 한글 라벨을 여기 넣으면
+                    # 원장의 같은 컬럼에 두 체계가 섞인다 — 2026-07-29 실측에서
+                    # 저널 880건이 횡보장 424 / BULL 236 / SIDE 150 / 약세장 70으로
+                    # 갈려 있었고, 국면별 집계가 전부 어긋났다.
+                    # 사람이 읽을 라벨은 marketRegimeLabel로 따로 내보낸다.
+                    "marketRegime": regime_type,
+                    "marketRegimeLabel": regime_label,
                     "marketRegimeAdjust": regime_adjust,
                     "executionStatus": "체결" if decision == "오늘 진입" else "대기",
                     "exitStatus": "",
