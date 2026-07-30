@@ -110,6 +110,12 @@ def test_entry_timing_diagnostics_excludes_pending_and_data_quality_rows() -> No
     assert out["summary"]["stopFailureTrades"] == 1
 
 
+def test_pending_status_is_authoritative_even_if_reason_looks_evaluated() -> None:
+    row = {**_journal_row("pending"), **_eval_row("pending", "STOP_TOO_TIGHT", status="PENDING")}
+
+    assert ets._is_evaluated_outcome(row) is False
+
+
 def test_stop_reasons_and_overextension_raise_high_risk_and_wait_pullback_preview() -> None:
     vtj._write_rows(vtj.JOURNAL_CSV, [_journal_row("risk", action="BUY", overextension_risk=90, momentum_score=20)], vtj.JOURNAL_COLS)
     vtj._write_rows(vtj.EVALUATION_CSV, [_eval_row("risk", "STOP_TOO_TIGHT", mfe=1, mae=-9)], vtj.EVALUATION_COLS)

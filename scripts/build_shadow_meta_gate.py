@@ -34,11 +34,11 @@ MIN_DISTINCT_SIGNAL_DATES = 30
 MIN_RISK_REWARD = 1.5
 MAX_TAKE = 3
 PROBABILITY_BINS = ((0, 50), (50, 60), (60, 70), (70, 80), (80, 101))
-POLICY_VERSION = "shadow-meta-v1.2.0"
-RESIDUAL_ALPHA_POLICY_VERSION = "shadow-residual-alpha-v1.1.0"
+POLICY_VERSION = "shadow-meta-v1.2.1"
+RESIDUAL_ALPHA_POLICY_VERSION = "shadow-residual-alpha-v1.1.1"
 
 
-def _policy() -> dict[str, Any]:
+def _policy(residual_model_fingerprint: str = "MISSING") -> dict[str, Any]:
     return {
         "version": POLICY_VERSION,
         "maxTake": MAX_TAKE,
@@ -50,18 +50,19 @@ def _policy() -> dict[str, Any]:
         "requiresValidatedResidualAlphaModel": True,
         "requiresPositiveResidualAlphaLower90": True,
         "residualAlphaPolicyVersion": RESIDUAL_ALPHA_POLICY_VERSION,
+        "residualAlphaModelFingerprint": residual_model_fingerprint or "MISSING",
         "uncalibratedProbabilityCanTriggerTake": False,
     }
 
 
-def _policy_fingerprint() -> str:
-    raw = json.dumps(_policy(), ensure_ascii=True, sort_keys=True, separators=(",", ":"))
+def _policy_fingerprint(residual_model_fingerprint: str = "MISSING") -> str:
+    raw = json.dumps(_policy(residual_model_fingerprint), ensure_ascii=True, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:20]
 
 
-def _decision_id(row: dict[str, Any], signal_date: str) -> str:
+def _decision_id(row: dict[str, Any], signal_date: str, residual_model_fingerprint: str = "MISSING") -> str:
     identity = "|".join([
-        _policy_fingerprint(),
+        _policy_fingerprint(residual_model_fingerprint),
         signal_date,
         _text(row.get("market")).lower(),
         _text(row.get("mode")).lower(),
@@ -292,6 +293,8 @@ def build() -> dict[str, Any]:
         residual_report = {"status": "MISSING", "validation": {"evidenceStatus": "MISSING"}, "predictions": []}
     validation = residual_report.get("validation") if isinstance(residual_report.get("validation"), dict) else {}
     residual_policy = residual_report.get("policy") if isinstance(residual_report.get("policy"), dict) else {}
+    residual_model_fingerprint = _text(residual_policy.get("fingerprint")) or "MISSING"
+    meta_policy_fingerprint = _policy_fingerprint(residual_model_fingerprint)
     residual_version_matches = residual_policy.get("version") == RESIDUAL_ALPHA_POLICY_VERSION
     residual_evidence_status = (
         _text(validation.get("evidenceStatus")).upper() or "MISSING"
@@ -318,9 +321,9 @@ def build() -> dict[str, Any]:
             residual_evidence_status,
         )
         decisions.append({
-            "decisionId": _decision_id(row, signal_date),
+            "decisionId": _decision_id(row, signal_date, residual_model_fingerprint),
             "policyVersion": POLICY_VERSION,
-            "policyFingerprint": _policy_fingerprint(),
+            "policyFingerprint": meta_policy_fingerprint,
             "candidateKey": candidate_key,
             "signalDate": signal_date,
             "generatedAt": generated_at,
@@ -352,11 +355,12 @@ def build() -> dict[str, Any]:
     return {
         "status": "SHADOW_ONLY",
         "generatedAt": datetime.now(timezone.utc).isoformat(),
-        "policy": {**_policy(), "fingerprint": _policy_fingerprint()},
+        "policy": {**_policy(residual_model_fingerprint), "fingerprint": meta_policy_fingerprint},
         "residualAlphaModel": {
             "status": residual_report.get("status"),
             "evidenceStatus": residual_evidence_status,
             "policyVersion": residual_policy.get("version"),
+            "modelFingerprint": residual_model_fingerprint,
             "requiredPolicyVersion": RESIDUAL_ALPHA_POLICY_VERSION,
             "blockingReasons": (
                 validation.get("blockingReasons") or []

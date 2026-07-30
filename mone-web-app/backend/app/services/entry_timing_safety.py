@@ -82,6 +82,11 @@ def _bool_value(row: dict[str, Any], field: str) -> bool | None:
 
 
 def _is_evaluated_outcome(row: dict[str, Any]) -> bool:
+    status = _upper(_first(row, "status", "evaluation_status", "evaluationStatus"))
+    # Status is the authoritative settlement state.  A stale/ambiguous reason
+    # must never make PENDING or DATA_PENDING rows look like evaluated trades.
+    if status and status != "EVALUATED":
+        return False
     reason = _reason(row)
     if reason in PENDING_REASONS or reason in DATA_QUALITY_REASONS:
         return False

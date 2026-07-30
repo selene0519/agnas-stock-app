@@ -160,7 +160,7 @@ jobs:
             git add reports/recommendation_alpha.json 2>/dev/null || true
             git add reports/strategy_cohort_audit.json 2>/dev/null || true
             git add reports/shadow_residual_alpha.json 2>/dev/null || true
-            git add data/shadow_residual_alpha_predictions.csv data/shadow_residual_alpha_settlements.csv 2>/dev/null || true
+            git add data/shadow_residual_alpha_predictions.csv data/shadow_residual_alpha_settlements.csv data/shadow_residual_model_registry.csv 2>/dev/null || true
             git add reports/shadow_meta_gate.json 2>/dev/null || true
             git add reports/shadow_risk_budget.json 2>/dev/null || true
             git add data/shadow_challenger_journal.csv reports/champion_challenger.json 2>/dev/null || true

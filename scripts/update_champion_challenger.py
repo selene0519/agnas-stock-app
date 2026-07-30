@@ -29,8 +29,8 @@ EVALUATIONS = ROOT / "data" / "virtual_trade_evaluations.csv"
 LEDGER = ROOT / "data" / "shadow_challenger_journal.csv"
 OUT = ROOT / "reports" / "champion_challenger.json"
 
-POLICY_VERSION = "champion-challenger-v1.2.0"
-RESIDUAL_ALPHA_POLICY_VERSION = "shadow-residual-alpha-v1.1.0"
+POLICY_VERSION = "champion-challenger-v1.2.1"
+RESIDUAL_ALPHA_POLICY_VERSION = "shadow-residual-alpha-v1.1.1"
 POSITION_WEIGHT = 0.10
 MAX_POSITIONS = 3
 MIN_COMPLETE_SIGNAL_DATES = 60

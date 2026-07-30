@@ -54,6 +54,9 @@ export interface QuantShadowStatus {
     residualAlphaResearchOosPredictions?: number | null;
     residualAlphaResearchOosSignalDates?: number | null;
     residualAlphaForwardModelFingerprint?: string | null;
+    residualAlphaImplementationFingerprint?: string | null;
+    residualAlphaRegisteredModels?: number;
+    residualAlphaModelVersionReuseConflicts?: number;
     residualAlphaForwardIntegrityBlockers?: string[];
     residualAlphaSelectedCi95?: [number, number] | null;
     topSleeve: string | null;

@@ -38,6 +38,33 @@ def test_candidate_key_is_stable_and_policy_independent() -> None:
     assert model.candidate_key(row, "2026-07-30") != model.candidate_key(row, "2026-07-31")
 
 
+def test_model_fingerprint_changes_when_critical_feature_mapping_changes(monkeypatch) -> None:
+    implementation_before = model._model_implementation_fingerprint()
+    policy_before = model._policy_fingerprint()
+
+    monkeypatch.setitem(model.FEATURE_ALIASES, "final_rank_score", ("changedSourceField",))
+
+    assert model._model_implementation_fingerprint() != implementation_before
+    assert model._policy_fingerprint() != policy_before
+
+
+def test_model_registry_is_idempotent_and_blocks_version_reuse(monkeypatch, tmp_path) -> None:
+    registry = tmp_path / "model_registry.csv"
+    now = datetime(2026, 7, 30, 1, 0, tzinfo=timezone.utc)
+
+    first = model.register_model(registry, now)
+    second = model.register_model(registry, now + timedelta(minutes=5))
+    monkeypatch.setitem(model.FEATURE_ALIASES, "final_rank_score", ("differentImplementation",))
+    reused = model.register_model(registry, now + timedelta(minutes=10))
+
+    assert first["appendedRows"] == 1
+    assert second["duplicateRows"] == 1
+    assert second["immutableConflicts"] == 0
+    assert reused["appendedRows"] == 1
+    assert reused["versionReuseConflicts"] == 1
+    assert len(model._read_csv(registry)) == 2
+
+
 def test_same_stock_date_and_label_window_is_one_economic_event() -> None:
     base = {
         "source_type": "FORWARD_PAPER_TRADE",
@@ -301,6 +328,7 @@ def test_recomputed_research_validation_cannot_promote(monkeypatch, tmp_path) ->
         tmp_path / "predictions.csv",
         tmp_path / "settlements.csv",
         datetime(2026, 7, 30, 1, 0, tzinfo=timezone.utc),
+        registry_path=tmp_path / "model_registry.csv",
     )
 
     assert report["researchValidation"]["evidenceStatus"] == "PASS"
@@ -319,9 +347,11 @@ def test_scheduled_pipeline_builds_residual_model_before_meta_gate() -> None:
     assert "reports/shadow_residual_alpha.json" in workflow
     assert "data/shadow_residual_alpha_predictions.csv" in workflow
     assert "data/shadow_residual_alpha_settlements.csv" in workflow
+    assert "data/shadow_residual_model_registry.csv" in workflow
     assert accumulator.index("scripts/generate_us_recommendations.py") < accumulator.index("scripts/build_shadow_residual_alpha.py")
     assert '07) RECORD_MARKET="us"' in accumulator
     assert '16) RECORD_MARKET="kr"' in accumulator
     assert '--record-market "${RECORD_MARKET}"' in accumulator
     assert "data/shadow_residual_alpha_predictions.csv" in commit_script
     assert "data/shadow_residual_alpha_settlements.csv" in commit_script
+    assert "data/shadow_residual_model_registry.csv" in commit_script

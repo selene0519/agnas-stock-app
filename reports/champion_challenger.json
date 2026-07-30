@@ -1,8 +1,8 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-07-30T12:08:18.435057+00:00",
+  "generatedAt": "2026-07-30T12:16:27.603403+00:00",
   "policy": {
-    "version": "champion-challenger-v1.2.0",
+    "version": "champion-challenger-v1.2.1",
     "champion": "TOP_3_RAW_CANDIDATES",
     "challenger": "SHADOW_META_GATE_TAKE_ONLY",
     "positionWeight": 0.1,
@@ -16,24 +16,24 @@
     "requiresPairedUpliftBootstrapLowerAboveZero": true,
     "requiresD20ResidualAlphaLowerCiAboveZero": true,
     "requiresValidatedResidualAlphaPredictionModel": true,
-    "residualAlphaPolicyVersion": "shadow-residual-alpha-v1.1.0",
+    "residualAlphaPolicyVersion": "shadow-residual-alpha-v1.1.1",
     "requiresChallengerDrawdownNoWorseThanChampion": true,
     "requiresTimeIntegrity": true,
     "autoPromotionAllowed": false,
     "humanApprovalRequired": true,
-    "fingerprint": "388b4bbc6b62b003e797"
+    "fingerprint": "85692d149a1985a7a59a"
   },
   "recording": {
-    "appended": 0,
+    "appended": 20,
     "conflicts": 0,
     "skipped": 0,
-    "total": 60
+    "total": 100
   },
   "policyCohort": {
-    "activeFingerprint": "388b4bbc6b62b003e797",
-    "activeMetaPolicyFingerprint": "53f3eeef4f878f6e0ce7",
+    "activeFingerprint": "85692d149a1985a7a59a",
+    "activeMetaPolicyFingerprint": "d30ca18d9413d63a3d40",
     "activeRows": 20,
-    "excludedPriorPolicyRows": 40
+    "excludedPriorPolicyRows": 80
   },
   "integrity": {
     "immutableConflicts": 0,
@@ -54,9 +54,9 @@
   "residualAlphaModelGate": {
     "passed": false,
     "evidenceStatus": "WAIT",
-    "modelFingerprint": "660cc43d4764c87235d6",
-    "policyVersion": "shadow-residual-alpha-v1.1.0",
-    "requiredPolicyVersion": "shadow-residual-alpha-v1.1.0",
+    "modelFingerprint": "a0d088c9cb762bd6febd",
+    "policyVersion": "shadow-residual-alpha-v1.1.1",
+    "requiredPolicyVersion": "shadow-residual-alpha-v1.1.1",
     "oosPredictions": 0,
     "oosSignalDates": 0,
     "selectedBlockBootstrapCi95": null,

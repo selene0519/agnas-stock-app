@@ -13,6 +13,7 @@ import bisect
 import csv
 import glob
 import hashlib
+import inspect
 import json
 import math
 from collections import defaultdict
@@ -32,6 +33,7 @@ REPORTS = ROOT / "reports"
 OUT = REPORTS / "shadow_residual_alpha.json"
 PREDICTION_JOURNAL = ROOT / "data" / "shadow_residual_alpha_predictions.csv"
 SETTLEMENT_JOURNAL = ROOT / "data" / "shadow_residual_alpha_settlements.csv"
+MODEL_REGISTRY = ROOT / "data" / "shadow_residual_model_registry.csv"
 
 FORWARD_SOURCES = {"FORWARD_PAPER_TRADE", "MANUAL_REVIEWED"}
 PLAN_ONLY_SESSIONS = {"PREMARKET_PLAN", "INTRADAY_CHECK"}
@@ -48,7 +50,7 @@ MIN_SELECTED_OOS = 60
 RIDGE_LAMBDA = 10.0
 LOWER_QUANTILE_Z = 1.645
 MAX_RECORDING_DELAY_HOURS = 6.0
-POLICY_VERSION = "shadow-residual-alpha-v1.1.0"
+POLICY_VERSION = "shadow-residual-alpha-v1.1.1"
 
 PREDICTION_FIELDS = [
     "prediction_id", "policy_version", "model_fingerprint", "recorded_at",
@@ -62,6 +64,11 @@ SETTLEMENT_FIELDS = [
     "prediction_id", "model_fingerprint", "settled_at", "signal_date",
     "economic_event_key", "label_available_date",
     "realized_residual_alpha_pct", "beta", "market_model_r2", "record_hash",
+]
+MODEL_REGISTRY_FIELDS = [
+    "model_fingerprint", "policy_version", "implementation_fingerprint",
+    "first_seen_at", "predecessor_model_fingerprint", "lifecycle_status",
+    "record_hash",
 ]
 
 NUMERIC_FEATURES = (
@@ -124,6 +131,9 @@ def _policy() -> dict[str, Any]:
         "maxPredictionRecordingDelayHours": MAX_RECORDING_DELAY_HOURS,
         "modelFingerprintCohortRequired": True,
         "immutablePredictionAndSettlementRows": True,
+        "immutableModelRegistryRequired": True,
+        "policyVersionCannotIdentifyMultipleImplementations": True,
+        "implementationFingerprint": _model_implementation_fingerprint(),
         "numericFeatures": list(NUMERIC_FEATURES),
         "categoryFeatures": [f"{field}={value}" for field, value in CATEGORY_FEATURES],
     }
@@ -132,6 +142,33 @@ def _policy() -> dict[str, Any]:
 def _policy_fingerprint() -> str:
     raw = json.dumps(_policy(), sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:20]
+
+
+def _model_implementation_fingerprint() -> str:
+    critical_functions = (
+        "_event_label",
+        "_feature_matrix",
+        "_fit_predict",
+        "expanding_oos",
+        "current_predictions",
+    )
+    sources: dict[str, str] = {}
+    for name in critical_functions:
+        function = globals().get(name)
+        if function is None:
+            raise RuntimeError(f"model implementation function missing: {name}")
+        try:
+            sources[name] = inspect.getsource(function)
+        except (OSError, TypeError) as exc:
+            raise RuntimeError(f"cannot fingerprint model implementation: {name}") from exc
+    payload = {
+        "functions": sources,
+        "featureAliases": FEATURE_ALIASES,
+        "numericFeatures": NUMERIC_FEATURES,
+        "categoryFeatures": CATEGORY_FEATURES,
+    }
+    raw = json.dumps(payload, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
 def _text(value: Any) -> str:
@@ -234,6 +271,65 @@ def _append_csv_rows(path: Path, fields: list[str], rows: list[dict[str, Any]]) 
             writer.writeheader()
         writer.writerows({field: row.get(field, "") for field in fields} for row in rows)
     return len(rows), None
+
+
+def register_model(
+    path: Path | None = None,
+    seen_at: datetime | None = None,
+) -> dict[str, Any]:
+    registry_path = path or MODEL_REGISTRY
+    existing = _read_csv(registry_path)
+    current_fingerprint = _policy_fingerprint()
+    implementation_fingerprint = _model_implementation_fingerprint()
+    now = (seen_at or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    by_fingerprint = {
+        _text(row.get("model_fingerprint")): row
+        for row in existing if _text(row.get("model_fingerprint"))
+    }
+    hash_violations = sum(
+        _text(row.get("record_hash")) != _row_hash(row, {"first_seen_at"})
+        for row in existing
+    )
+    version_reuse = sum(
+        1 for row in existing
+        if _text(row.get("policy_version")) == POLICY_VERSION
+        and _text(row.get("model_fingerprint")) != current_fingerprint
+    )
+    predecessor = _text(existing[-1].get("model_fingerprint")) if existing else ""
+    row = {
+        "model_fingerprint": current_fingerprint,
+        "policy_version": POLICY_VERSION,
+        "implementation_fingerprint": implementation_fingerprint,
+        "first_seen_at": now.isoformat(),
+        "predecessor_model_fingerprint": predecessor,
+        "lifecycle_status": "SHADOW_EVALUATION",
+    }
+    row["record_hash"] = _row_hash(row, {"first_seen_at"})
+    previous = by_fingerprint.get(current_fingerprint)
+    immutable_conflicts = 0
+    duplicate = 0
+    pending: list[dict[str, Any]] = []
+    if previous:
+        if _same_immutable_row(previous, row, {"first_seen_at", "predecessor_model_fingerprint", "record_hash"}):
+            duplicate = 1
+        else:
+            immutable_conflicts = 1
+    else:
+        pending.append(row)
+    appended, schema_error = _append_csv_rows(registry_path, MODEL_REGISTRY_FIELDS, pending)
+    return {
+        "path": str(registry_path.relative_to(ROOT)) if registry_path.is_relative_to(ROOT) else str(registry_path),
+        "currentModelFingerprint": current_fingerprint,
+        "currentImplementationFingerprint": implementation_fingerprint,
+        "policyVersion": POLICY_VERSION,
+        "existingRows": len(existing),
+        "appendedRows": appended,
+        "duplicateRows": duplicate,
+        "versionReuseConflicts": version_reuse,
+        "immutableConflicts": immutable_conflicts,
+        "recordHashViolations": hash_violations,
+        "schemaError": schema_error,
+    }
 
 
 def _dedupe_forward_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -900,7 +996,9 @@ def build(
     settlement_path: Path | None = None,
     now: datetime | None = None,
     record_market: str = "none",
+    registry_path: Path | None = None,
 ) -> dict[str, Any]:
+    model_registry = register_model(registry_path, now)
     raw = _read_csv(JOURNAL)
     forward = _dedupe_forward_rows(raw)
     labeled, skipped = build_labeled_rows(raw)
@@ -924,6 +1022,12 @@ def build(
         integrity_blockers.append("FUTURE_PREDICTION_TIMESTAMP")
     if prediction_journal["schemaError"] or settlement_journal["schemaError"]:
         integrity_blockers.append("FORWARD_JOURNAL_SCHEMA_MISMATCH")
+    if model_registry["versionReuseConflicts"]:
+        integrity_blockers.append("MODEL_VERSION_REUSED_FOR_DIFFERENT_MODEL")
+    if model_registry["immutableConflicts"] or model_registry["recordHashViolations"]:
+        integrity_blockers.append("MODEL_REGISTRY_INTEGRITY_VIOLATION")
+    if model_registry["schemaError"]:
+        integrity_blockers.append("MODEL_REGISTRY_SCHEMA_MISMATCH")
     journal_integrity = live_source.get("journalIntegrity") or {}
     if any(int(value or 0) > 0 for value in journal_integrity.values()):
         integrity_blockers.append("FORWARD_JOURNAL_INTEGRITY_VIOLATION")
@@ -950,6 +1054,7 @@ def build(
         },
         "forwardEvidence": {
             **live_source,
+            "modelRegistry": model_registry,
             "predictionJournal": prediction_journal,
             "settlementJournal": settlement_journal,
             "integrityBlockingReasons": integrity_blockers,

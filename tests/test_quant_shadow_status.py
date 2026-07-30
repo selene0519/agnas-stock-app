@@ -24,11 +24,17 @@ def test_shadow_status_fails_closed_when_evidence_is_not_positive(tmp_path: Path
     })
     _write(tmp_path, "residualAlpha", {
         "status": "SHADOW_ONLY",
+        "policy": {"implementationFingerprint": "implementation-a"},
         "validation": {
             "evidenceStatus": "WAIT",
             "oosPredictions": 0,
             "oosSignalDates": 0,
             "selectedBlockBootstrapCi95": None,
+        },
+        "forwardEvidence": {
+            "modelFingerprint": "model-a",
+            "modelRegistry": {"existingRows": 1, "appendedRows": 0, "versionReuseConflicts": 0},
+            "integrityBlockingReasons": [],
         },
     })
     _write(tmp_path, "sleeve", {
@@ -51,6 +57,10 @@ def test_shadow_status_fails_closed_when_evidence_is_not_positive(tmp_path: Path
     assert result["decision"] == "ABSTAIN"
     assert result["liveTradingAllowed"] is False
     assert result["summary"]["cashWeightPct"] == 100.0
+    assert result["summary"]["residualAlphaForwardModelFingerprint"] == "model-a"
+    assert result["summary"]["residualAlphaImplementationFingerprint"] == "implementation-a"
+    assert result["summary"]["residualAlphaRegisteredModels"] == 1
+    assert result["summary"]["residualAlphaModelVersionReuseConflicts"] == 0
     assert "ALPHA_NOT_PROVEN" in result["decisionReasons"]
     assert "RESIDUAL_ALPHA_MODEL_NOT_PROVEN" in result["decisionReasons"]
     assert "NO_POSITIVE_SLEEVE" in result["decisionReasons"]

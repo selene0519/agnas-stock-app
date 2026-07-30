@@ -110,3 +110,10 @@ def test_policy_fingerprint_and_decision_id_are_stable() -> None:
     assert gate._policy_fingerprint() == gate._policy_fingerprint()
     assert gate._decision_id(row, "2026-07-30") == gate._decision_id(row, "2026-07-30")
     assert gate._decision_id(row, "2026-07-30") != gate._decision_id(row, "2026-07-31")
+
+
+def test_meta_policy_and_decision_cohort_bind_to_residual_model_fingerprint() -> None:
+    row = {"market": "kr", "mode": "balanced", "horizon": "short", "symbol": "005930"}
+
+    assert gate._policy_fingerprint("model-a") != gate._policy_fingerprint("model-b")
+    assert gate._decision_id(row, "2026-07-30", "model-a") != gate._decision_id(row, "2026-07-30", "model-b")
