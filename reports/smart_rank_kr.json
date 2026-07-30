@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-30T07:16:00.294278+00:00",
+  "generatedAt": "2026-07-30T10:09:40.020811+00:00",
   "asOfDate": "2026-07-30",
   "market": "kr",
   "marketRegime": "BEAR",
@@ -7,41 +7,41 @@
   "featureCount": 14,
   "provenEdge": {
     "split": "2025-09-01",
-    "oosTrades": 22893,
-    "topQuintileNetPct": -0.786,
-    "bottomQuintileNetPct": -0.003,
-    "spreadPct": -0.783,
+    "oosTrades": 22897,
+    "topQuintileNetPct": -0.788,
+    "bottomQuintileNetPct": -0.002,
+    "spreadPct": -0.787,
     "ic": -0.043,
     "topQuintileByRegime": {
       "BULL": -0.851,
-      "SIDE": 0.487,
-      "BEAR": -4.5
+      "SIDE": 0.016,
+      "BEAR": -0.806
     }
   },
   "featureWeights": {
-    "distma60": -0.267,
+    "distma60": -0.266,
     "distma20": 0.176,
     "mom5": -0.123,
     "bull": 0.103,
     "zscore": 0.099,
     "revbar": -0.056,
-    "mdd20": -0.055,
+    "mdd20": -0.054,
     "rsi2": -0.042,
     "atrpct": 0.04,
     "rsi14": 0.025,
     "nearhigh": 0.023,
     "volratio": -0.017,
     "mom20": -0.011,
-    "maalign": -0.005
+    "maalign": -0.006
   },
   "note": "다중신호 ML 순위(선별 두뇌). OOS 검증 통과. 약세장은 상위픽도 (−)라 caution. 가격신호만 사용 — 수급/뉴스/섹터/공시 추가 시 개선 여지.",
   "actionableCount": 0,
-  "candidateCount": 100,
+  "candidateCount": 102,
   "candidates": [
     {
       "symbol": "131970",
       "name": "두산테스나",
-      "modelScore": 1.032,
+      "modelScore": 1.03,
       "close": 51800.0,
       "rsi14": 29.2,
       "entryRef": 51800.0,
@@ -54,7 +54,7 @@
     {
       "symbol": "353200",
       "name": "대덕전자",
-      "modelScore": 0.949,
+      "modelScore": 0.947,
       "close": 74500.0,
       "rsi14": 34.7,
       "entryRef": 74500.0,
@@ -67,7 +67,7 @@
     {
       "symbol": "001440",
       "name": "대한전선",
-      "modelScore": 0.884,
+      "modelScore": 0.882,
       "close": 20800.0,
       "rsi14": 37.3,
       "entryRef": 20800.0,
@@ -80,7 +80,7 @@
     {
       "symbol": "011070",
       "name": "LG이노텍",
-      "modelScore": 0.865,
+      "modelScore": 0.863,
       "close": 424000.0,
       "rsi14": 22.0,
       "entryRef": 424000.0,
@@ -93,7 +93,7 @@
     {
       "symbol": "009150",
       "name": "삼성전기",
-      "modelScore": 0.865,
+      "modelScore": 0.863,
       "close": 879000.0,
       "rsi14": 28.8,
       "entryRef": 879000.0,
@@ -106,7 +106,7 @@
     {
       "symbol": "036930",
       "name": "주성엔지니어링",
-      "modelScore": 0.861,
+      "modelScore": 0.859,
       "close": 98300.0,
       "rsi14": 28.4,
       "entryRef": 98300.0,
@@ -119,7 +119,7 @@
     {
       "symbol": "007660",
       "name": "이수페타시스",
-      "modelScore": 0.816,
+      "modelScore": 0.814,
       "close": 59200.0,
       "rsi14": 30.4,
       "entryRef": 59200.0,
@@ -132,7 +132,7 @@
     {
       "symbol": "000990",
       "name": "DB하이텍",
-      "modelScore": 0.811,
+      "modelScore": 0.809,
       "close": 71200.0,
       "rsi14": 25.4,
       "entryRef": 71200.0,
@@ -145,7 +145,7 @@
     {
       "symbol": "277810",
       "name": "레인보우로보틱스",
-      "modelScore": 0.808,
+      "modelScore": 0.806,
       "close": 373000.0,
       "rsi14": 44.2,
       "entryRef": 373000.0,
@@ -158,7 +158,7 @@
     {
       "symbol": "240810",
       "name": "원익IPS",
-      "modelScore": 0.788,
+      "modelScore": 0.786,
       "close": 76300.0,
       "rsi14": 38.2,
       "entryRef": 76300.0,
@@ -171,7 +171,7 @@
     {
       "symbol": "089030",
       "name": "테크윙",
-      "modelScore": 0.788,
+      "modelScore": 0.786,
       "close": 31900.0,
       "rsi14": 41.0,
       "entryRef": 31900.0,
@@ -184,7 +184,7 @@
     {
       "symbol": "103590",
       "name": "일진전기",
-      "modelScore": 0.781,
+      "modelScore": 0.779,
       "close": 45650.0,
       "rsi14": 32.7,
       "entryRef": 45650.0,
@@ -197,7 +197,7 @@
     {
       "symbol": "006260",
       "name": "LS",
-      "modelScore": 0.758,
+      "modelScore": 0.756,
       "close": 223500.0,
       "rsi14": 32.6,
       "entryRef": 223500.0,
@@ -210,7 +210,7 @@
     {
       "symbol": "222800",
       "name": "심텍",
-      "modelScore": 0.746,
+      "modelScore": 0.744,
       "close": 63800.0,
       "rsi14": 23.7,
       "entryRef": 63800.0,
@@ -223,7 +223,7 @@
     {
       "symbol": "108490",
       "name": "로보티즈",
-      "modelScore": 0.745,
+      "modelScore": 0.743,
       "close": 158400.0,
       "rsi14": 39.5,
       "entryRef": 158400.0,
@@ -236,7 +236,7 @@
     {
       "symbol": "298040",
       "name": "효성중공업",
-      "modelScore": 0.72,
+      "modelScore": 0.718,
       "close": 1894000.0,
       "rsi14": 30.5,
       "entryRef": 1894000.0,
@@ -249,7 +249,7 @@
     {
       "symbol": "402340",
       "name": "SK스퀘어",
-      "modelScore": 0.707,
+      "modelScore": 0.705,
       "close": 799000.0,
       "rsi14": 32.5,
       "entryRef": 799000.0,
@@ -262,7 +262,7 @@
     {
       "symbol": "067310",
       "name": "하나마이크론",
-      "modelScore": 0.705,
+      "modelScore": 0.704,
       "close": 24750.0,
       "rsi14": 32.2,
       "entryRef": 24750.0,
@@ -275,7 +275,7 @@
     {
       "symbol": "010120",
       "name": "LS ELECTRIC",
-      "modelScore": 0.702,
+      "modelScore": 0.7,
       "close": 150300.0,
       "rsi14": 39.6,
       "entryRef": 150300.0,
@@ -288,7 +288,7 @@
     {
       "symbol": "042700",
       "name": "한미반도체",
-      "modelScore": 0.695,
+      "modelScore": 0.693,
       "close": 167600.0,
       "rsi14": 38.3,
       "entryRef": 167600.0,
