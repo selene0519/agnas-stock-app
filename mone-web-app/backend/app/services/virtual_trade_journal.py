@@ -112,7 +112,7 @@ CALIBRATION_PROMOTION_VERSION = "vtj-calibration-promotion-v1"
 CALIBRATION_PROMOTION_MIN_SIGNAL_DATES = 60
 CALIBRATION_PROMOTION_MIN_TRADES = 120
 CALIBRATION_SHADOW_POLICY = {
-    "version": "self-correction-shadow-v1.1.0",
+    "version": "self-correction-shadow-v1.2.0",
     "inputContractVersion": "correction-shadow-input-v1",
     "maxPositions": 3,
     "maxActiveCandidates": 1,
@@ -127,6 +127,8 @@ CALIBRATION_SHADOW_POLICY = {
     "requiresExactApprovalAndCandidateLineage": True,
     "requiresForwardSealedRawInputs": True,
     "maxRecordingDelayHours": 36.0,
+    "requiresSealAfterCanonicalClose": True,
+    "requiresSealBeforeNextSessionOpen": True,
     "initialRecordingGraceCalendarDays": 5,
     "maxPredictionSilenceCalendarDays": 5,
     "requiresCandidateRecordingFreshness": True,

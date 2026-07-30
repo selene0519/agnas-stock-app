@@ -10,9 +10,10 @@ import json
 import random
 import sys
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -113,6 +114,33 @@ def _parse_time(value: Any) -> datetime | None:
         return parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else parsed.astimezone(timezone.utc)
     except ValueError:
         return None
+
+
+def _forward_seal_window(signal_date: str, market: str) -> tuple[datetime, datetime] | None:
+    """Return canonical close and a conservative next-session open in UTC."""
+    try:
+        signal_day = date.fromisoformat(_text(signal_date)[:10])
+    except ValueError:
+        return None
+    if signal_day.weekday() >= 5:
+        return None
+    normalized = _text(market).lower()
+    if normalized == "kr":
+        market_tz = ZoneInfo("Asia/Seoul")
+        close_clock = time(15, 30)
+        open_clock = time(9, 0)
+    elif normalized == "us":
+        market_tz = ZoneInfo("America/New_York")
+        close_clock = time(16, 0)
+        open_clock = time(9, 30)
+    else:
+        return None
+    next_day = signal_day + timedelta(days=1)
+    while next_day.weekday() >= 5:
+        next_day += timedelta(days=1)
+    signal_close = datetime.combine(signal_day, close_clock, tzinfo=market_tz).astimezone(timezone.utc)
+    next_open = datetime.combine(next_day, open_clock, tzinfo=market_tz).astimezone(timezone.utc)
+    return signal_close, next_open
 
 
 def _read_csv(path: Path) -> list[dict[str, str]]:
@@ -264,18 +292,23 @@ def record_predictions(
     prediction_path: Path = PREDICTIONS,
     ohlcv_dir: Path = OHLCV,
     recorded_at: str | None = None,
+    record_market: str = "all",
 ) -> dict[str, Any]:
     now = recorded_at or datetime.now(timezone.utc).isoformat()
     now_dt = _parse_time(now) or datetime.now(timezone.utc)
     existing = _read_csv(prediction_path)
     by_id = {_text(row.get("prediction_id")): row for row in existing if _text(row.get("prediction_id"))}
     appended = conflicts = skipped_contract = skipped_forward = 0
+    skipped_before_close = skipped_after_open = 0
     diagnostics: list[dict[str, Any]] = []
     for candidate in candidates:
+        if record_market in {"kr", "us"} and _text(candidate.get("market")).lower() != record_market:
+            continue
         after = candidate.get("after") if isinstance(candidate.get("after"), dict) else {}
         fingerprint = _text(candidate.get("candidateFingerprint"))
         diagnostic = {
             "candidateFingerprint": fingerprint,
+            "runAt": now,
             "market": candidate.get("market"),
             "mode": candidate.get("mode"),
             "horizon": candidate.get("horizon"),
@@ -285,6 +318,8 @@ def record_predictions(
             "alreadySealed": 0,
             "skippedInputContract": 0,
             "skippedForwardSeal": 0,
+            "skippedBeforeSignalClose": 0,
+            "skippedAfterNextSessionOpen": 0,
             "conflicts": 0,
         }
         for raw_row in recommendations:
@@ -308,13 +343,28 @@ def record_predictions(
             signal_date = _text(raw_row.get("asOfDate") or raw_row.get("as_of_date"))[:10] or generated_at[:10]
             symbol = _text(raw_row.get("symbol")).upper()
             latest_bar = _latest_ohlcv_date(ohlcv_dir, market, symbol)
+            seal_window = _forward_seal_window(signal_date, market)
             if (
                 not signal_date or not symbol or latest_bar != signal_date
                 or recording_delay_hours is None or recording_delay_hours < 0
                 or recording_delay_hours > MAX_RECORDING_DELAY_HOURS
+                or seal_window is None
             ):
                 skipped_forward += 1
                 diagnostic["skippedForwardSeal"] += 1
+                continue
+            signal_close, next_session_open = seal_window
+            if generated_dt < signal_close or now_dt < signal_close:
+                skipped_forward += 1
+                skipped_before_close += 1
+                diagnostic["skippedForwardSeal"] += 1
+                diagnostic["skippedBeforeSignalClose"] += 1
+                continue
+            if generated_dt >= next_session_open or now_dt >= next_session_open:
+                skipped_forward += 1
+                skipped_after_open += 1
+                diagnostic["skippedForwardSeal"] += 1
+                diagnostic["skippedAfterNextSessionOpen"] += 1
                 continue
             raw_entry = _num(raw_row.get("rawEntry"))
             raw_stop = _num(raw_row.get("rawStop"))
@@ -421,7 +471,10 @@ def record_predictions(
         _write_csv(prediction_path, existing, PREDICTION_FIELDS)
     return {
         "appended": appended, "conflicts": conflicts, "total": len(existing),
+        "recordMarket": record_market,
         "skippedInputContract": skipped_contract, "skippedForwardSeal": skipped_forward,
+        "skippedBeforeSignalClose": skipped_before_close,
+        "skippedAfterNextSessionOpen": skipped_after_open,
         "runAt": now,
         "candidateDiagnostics": diagnostics,
     }
@@ -488,6 +541,10 @@ def candidate_recording_health(
             attempt_reason = "NO_SCOPE_RECOMMENDATIONS"
         elif int(diagnostic.get("skippedInputContract") or 0) >= matched:
             attempt_reason = "INPUT_CONTRACT_REJECTED"
+        elif int(diagnostic.get("skippedAfterNextSessionOpen") or 0) > 0:
+            attempt_reason = "NEXT_SESSION_ALREADY_OPEN"
+        elif int(diagnostic.get("skippedBeforeSignalClose") or 0) > 0:
+            attempt_reason = "SIGNAL_SESSION_NOT_CLOSED"
         elif int(diagnostic.get("skippedForwardSeal") or 0) > 0:
             attempt_reason = "FORWARD_SEAL_REJECTED"
         else:
@@ -524,7 +581,9 @@ def candidate_recording_health(
         "settledPredictions": len(settlements),
         "lastPredictionRecordedAt": last_prediction or None,
         "lastSettlementAt": last_settlement or None,
-        "lastRecordingRunAt": (last_recording_run or {}).get("runAt") if isinstance(last_recording_run, dict) else None,
+        "lastRecordingRunAt": diagnostic.get("runAt") or (
+            (last_recording_run or {}).get("runAt") if isinstance(last_recording_run, dict) else None
+        ),
         "lastRunDiagnostics": diagnostic or None,
     }
 
@@ -743,9 +802,15 @@ def _integrity(
         generated = _parse_time(row.get("generated_at"))
         recorded = _parse_time(row.get("recorded_at"))
         delay = (recorded - generated).total_seconds() / 3600.0 if generated and recorded else None
+        seal_window = _forward_seal_window(_text(row.get("signal_date"))[:10], _text(row.get("market")))
+        signal_close, next_session_open = seal_window if seal_window else (None, None)
         if (
             delay is None or delay < 0 or delay > MAX_RECORDING_DELAY_HOURS
             or _text(row.get("signal_date"))[:10] != _text(row.get("ohlcv_last_date"))[:10]
+            or signal_close is None or next_session_open is None
+            or generated is None or recorded is None
+            or generated < signal_close or recorded < signal_close
+            or generated >= next_session_open or recorded >= next_session_open
         ):
             recording_time_violations += 1
     relationship_violations = sum(
@@ -849,6 +914,7 @@ def build(
     *,
     record: bool = True,
     settle: bool = True,
+    record_market: str = "all",
 ) -> dict[str, Any]:
     try:
         previous_payload = json.loads(output_path.read_text(encoding="utf-8"))
@@ -860,14 +926,41 @@ def build(
     candidates = candidate_status.get("items") if isinstance(candidate_status.get("items"), list) else []
     readiness = candidate_status.get("readiness") if isinstance(candidate_status.get("readiness"), dict) else {}
     registry_status = register_candidates(candidates, registry_path) if record else {"appended": 0, "conflicts": 0, "total": len(_read_csv(registry_path))}
-    prediction_status = record_predictions(candidates, _read_recommendations(), prediction_path) if record else {"appended": 0, "conflicts": 0, "total": len(_read_csv(prediction_path))}
-    last_recording_run = (
-        prediction_status
-        if record
-        else previous_payload.get("lastRecordingRun")
+    prediction_status = (
+        record_predictions(
+            candidates,
+            _read_recommendations(),
+            prediction_path,
+            record_market=record_market,
+        )
+        if record and record_market != "none"
+        else {"appended": 0, "conflicts": 0, "total": len(_read_csv(prediction_path)), "recordMarket": record_market}
+    )
+    previous_recording_run = (
+        previous_payload.get("lastRecordingRun")
         if isinstance(previous_payload.get("lastRecordingRun"), dict)
         else None
     )
+    if record and record_market != "none":
+        previous_diagnostics = (
+            previous_recording_run.get("candidateDiagnostics")
+            if isinstance(previous_recording_run, dict)
+            and isinstance(previous_recording_run.get("candidateDiagnostics"), list)
+            else []
+        )
+        merged_diagnostics = {
+            _text(row.get("candidateFingerprint")): row
+            for row in previous_diagnostics
+            if isinstance(row, dict) and _text(row.get("candidateFingerprint"))
+        }
+        merged_diagnostics.update({
+            _text(row.get("candidateFingerprint")): row
+            for row in prediction_status.get("candidateDiagnostics") or []
+            if isinstance(row, dict) and _text(row.get("candidateFingerprint"))
+        })
+        last_recording_run = {**prediction_status, "candidateDiagnostics": list(merged_diagnostics.values())}
+    else:
+        last_recording_run = previous_recording_run
     settlement_status = settle_predictions(prediction_path, settlement_path) if settle else {"appended": 0, "pending": 0, "total": len(_read_csv(settlement_path))}
     registry_rows = _read_csv(registry_path)
     prediction_rows = _read_csv(prediction_path)
@@ -971,6 +1064,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--no-record", action="store_true")
     parser.add_argument("--no-settle", action="store_true")
+    parser.add_argument("--record-market", choices=("all", "kr", "us", "none"), default="all")
     parser.add_argument("--output", type=Path, default=OUT)
     parser.add_argument("--promotion-output", type=Path, default=PROMOTION)
     args = parser.parse_args()
@@ -979,6 +1073,7 @@ def main() -> int:
         promotion_path=args.promotion_output,
         record=not args.no_record,
         settle=not args.no_settle,
+        record_market=args.record_market,
     )
     print(json.dumps(payload, ensure_ascii=False, indent=2))
     exit_code = operational_exit_code(payload)

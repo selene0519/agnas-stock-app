@@ -490,11 +490,21 @@ jobs:
         # OHLCV cutoff equal to the signal date. Settlement jobs must never
         # backfill these predictions after future bars exist.
         run: |
+          RECORD_MARKET="all"
+          if [ "${GITHUB_EVENT_NAME:-}" = "schedule" ]; then
+            KST_HOUR="$(TZ=Asia/Seoul date '+%H')"
+            case "${KST_HOUR}" in
+              07) RECORD_MARKET="us" ;;  # latest completed US close
+              16) RECORD_MARKET="kr" ;;  # latest completed KR close
+              06) RECORD_MARKET="us" ;;  # Saturday US Friday close
+              *) RECORD_MARKET="none" ;;
+            esac
+          fi
           set +e
-          python scripts/update_self_correction_shadow.py --no-settle
+          python scripts/update_self_correction_shadow.py --no-settle --record-market "${RECORD_MARKET}"
           code=$?
           set -e
-          echo "update_self_correction_shadow(record): exit ${code}"
+          echo "update_self_correction_shadow(record=${RECORD_MARKET}): exit ${code}"
           if [ "${code}" != "0" ]; then
             echo "::error::Self-correction forward prediction sealing failed (exit ${code})"
             exit "${code}"

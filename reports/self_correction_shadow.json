@@ -1,8 +1,8 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-07-30T16:38:09.511914+00:00",
+  "generatedAt": "2026-07-30T17:36:17.760543+00:00",
   "policy": {
-    "version": "self-correction-shadow-v1.1.0",
+    "version": "self-correction-shadow-v1.2.0",
     "inputContractVersion": "correction-shadow-input-v1",
     "maxPositions": 3,
     "maxActiveCandidates": 1,
@@ -21,6 +21,8 @@
     "requiresExactApprovalAndCandidateLineage": true,
     "requiresForwardSealedRawInputs": true,
     "maxRecordingDelayHours": 36.0,
+    "requiresSealAfterCanonicalClose": true,
+    "requiresSealBeforeNextSessionOpen": true,
     "initialRecordingGraceCalendarDays": 5,
     "maxPredictionSilenceCalendarDays": 5,
     "requiresCandidateRecordingFreshness": true,
@@ -30,7 +32,7 @@
     "requiresDrawdownNoWorseThanChampion": true,
     "autoPromotionAllowed": false,
     "humanApprovalRequired": true,
-    "fingerprint": "7071a0f5259f2f2a441f"
+    "fingerprint": "d708b0ffd5eecd3239e8"
   },
   "calibrationPolicy": {
     "version": "vtj-self-calibration-v2.2.0",
@@ -72,7 +74,8 @@
   "predictionRun": {
     "appended": 0,
     "conflicts": 0,
-    "total": 0
+    "total": 0,
+    "recordMarket": "none"
   },
   "lastRecordingRun": {
     "appended": 0,
@@ -771,8 +774,8 @@
         "lastAttemptReason": "INPUT_CONTRACT_REJECTED",
         "candidateFingerprint": "776f38cd63fa6335313a54bdc8cc7512035aceb368fba7e95ac46873ba0a9f47",
         "registeredAt": "2026-07-30T15:50:57.789490+00:00",
-        "candidateAgeCalendarDays": 0.033,
-        "predictionSilenceCalendarDays": 0.033,
+        "candidateAgeCalendarDays": 0.073,
+        "predictionSilenceCalendarDays": 0.073,
         "initialGraceCalendarDays": 5.0,
         "maxPredictionSilenceCalendarDays": 5.0,
         "sealedPredictions": 0,

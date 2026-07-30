@@ -13,7 +13,7 @@ import math
 import os
 import re
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -1507,7 +1507,7 @@ def _load_ohlcv_all_quiet() -> dict[str, list[dict]]:
 
 
 def generate_recommendations() -> dict[str, Any]:
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    now = datetime.now(timezone.utc).isoformat()
     print(f"[{now}] KR 추천 파일 생성 시작")
 
     ohlcv_all = _load_ohlcv_all_quiet()

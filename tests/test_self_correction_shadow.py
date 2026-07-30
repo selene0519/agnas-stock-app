@@ -75,7 +75,7 @@ def _recommendation(signal_date: str = "2026-01-02") -> dict:
         "horizon": "swing",
         "symbol": "TEST",
         "name": "Test",
-        "generatedAt": f"{signal_date}T21:00:00",
+        "generatedAt": f"{signal_date}T21:00:00+00:00",
         "recommendationSource": "test.csv",
         "correctionInputContractVersion": shadow.INPUT_CONTRACT_VERSION,
         "rawEntry": 100,
@@ -214,6 +214,96 @@ def test_prediction_is_sealed_only_when_raw_contract_and_ohlcv_cutoff_match(tmp_
     )
     assert stale["appended"] == 0
     assert stale["skippedForwardSeal"] == 1
+
+
+def test_prediction_cannot_be_sealed_after_next_session_opens_even_within_delay_limit(tmp_path: Path) -> None:
+    prediction_path = tmp_path / "predictions.csv"
+    ohlcv_dir = tmp_path / "ohlcv"
+    _write_ohlcv(ohlcv_dir / "us_TEST_daily.csv", ["2026-01-05"])
+
+    result = shadow.record_predictions(
+        [_candidate()],
+        [_recommendation("2026-01-05")],
+        prediction_path,
+        ohlcv_dir,
+        recorded_at="2026-01-06T15:00:00+00:00",
+    )
+
+    assert result["appended"] == 0
+    assert result["skippedAfterNextSessionOpen"] == 1
+    assert result["candidateDiagnostics"][0]["skippedAfterNextSessionOpen"] == 1
+
+
+def test_prediction_cannot_be_sealed_before_canonical_signal_close(tmp_path: Path) -> None:
+    prediction_path = tmp_path / "predictions.csv"
+    ohlcv_dir = tmp_path / "ohlcv"
+    _write_ohlcv(ohlcv_dir / "us_TEST_daily.csv", ["2026-01-05"])
+    recommendation = {**_recommendation("2026-01-05"), "generatedAt": "2026-01-05T20:00:00+00:00"}
+
+    result = shadow.record_predictions(
+        [_candidate()],
+        [recommendation],
+        prediction_path,
+        ohlcv_dir,
+        recorded_at="2026-01-05T20:30:00+00:00",
+    )
+
+    assert result["appended"] == 0
+    assert result["skippedBeforeSignalClose"] == 1
+
+
+def test_forward_seal_window_is_dst_aware_and_conservative() -> None:
+    winter_close, winter_open = shadow._forward_seal_window("2026-01-05", "us")
+    summer_close, summer_open = shadow._forward_seal_window("2026-07-30", "us")
+
+    assert winter_close.isoformat() == "2026-01-05T21:00:00+00:00"
+    assert winter_open.isoformat() == "2026-01-06T14:30:00+00:00"
+    assert summer_close.isoformat() == "2026-07-30T20:00:00+00:00"
+    assert summer_open.isoformat() == "2026-07-31T13:30:00+00:00"
+
+
+def test_market_scoped_recording_does_not_reseal_other_market(tmp_path: Path) -> None:
+    prediction_path = tmp_path / "predictions.csv"
+    ohlcv_dir = tmp_path / "ohlcv"
+    _write_ohlcv(ohlcv_dir / "us_TEST_daily.csv", ["2026-01-05"])
+    _write_ohlcv(ohlcv_dir / "kr_005930_daily.csv", ["2026-01-05"])
+    us_candidate = _candidate()
+    kr_candidate = {
+        **_candidate(),
+        "candidateFingerprint": "candidate-kr",
+        "market": "kr",
+    }
+    kr_recommendation = {
+        **_recommendation("2026-01-05"),
+        "market": "kr",
+        "symbol": "005930",
+        "generatedAt": "2026-01-05T06:40:00+00:00",
+    }
+
+    kr_run = shadow.record_predictions(
+        [us_candidate, kr_candidate],
+        [_recommendation("2026-01-05"), kr_recommendation],
+        prediction_path,
+        ohlcv_dir,
+        recorded_at="2026-01-05T07:00:00+00:00",
+        record_market="kr",
+    )
+    us_run = shadow.record_predictions(
+        [us_candidate, kr_candidate],
+        [_recommendation("2026-01-05"), kr_recommendation],
+        prediction_path,
+        ohlcv_dir,
+        recorded_at="2026-01-05T22:00:00+00:00",
+        record_market="us",
+    )
+
+    assert kr_run["appended"] == 1
+    assert us_run["appended"] == 1
+    assert kr_run["conflicts"] == 0
+    assert us_run["conflicts"] == 0
+    assert {row["market"] for row in shadow._read_csv(prediction_path)} == {"kr", "us"}
+    assert [row["market"] for row in kr_run["candidateDiagnostics"]] == ["kr"]
+    assert [row["market"] for row in us_run["candidateDiagnostics"]] == ["us"]
 
 
 def test_candidate_recording_health_has_grace_then_fails_loudly() -> None:
@@ -378,6 +468,7 @@ def test_rehashed_prediction_cannot_escape_cross_ledger_lineage_audit() -> None:
         "generated_at": "2026-01-02T21:00:00+00:00",
         "signal_date": "2026-01-02",
         "ohlcv_last_date": "2026-01-02",
+        "market": "us",
         "forward_seal_status": "SEALED_FORWARD",
         "input_contract_version": shadow.INPUT_CONTRACT_VERSION,
     })
@@ -392,8 +483,14 @@ def test_rehashed_prediction_cannot_escape_cross_ledger_lineage_audit() -> None:
 def test_date_block_comparison_can_issue_exact_promotion_certificate() -> None:
     predictions = []
     settlements = []
-    for day_index in range(60):
-        signal_date = (date(2026, 1, 1) + timedelta(days=day_index)).isoformat()
+    signal_days = []
+    current_day = date(2026, 1, 1)
+    while len(signal_days) < 60:
+        if current_day.weekday() < 5:
+            signal_days.append(current_day)
+        current_day += timedelta(days=1)
+    for day_index, signal_day in enumerate(signal_days):
+        signal_date = signal_day.isoformat()
         for symbol_index in range(2):
             prediction_id = f"p-{day_index}-{symbol_index}"
             prediction = {
@@ -411,6 +508,7 @@ def test_date_block_comparison_can_issue_exact_promotion_certificate() -> None:
                 "generated_at": f"{signal_date}T21:00:00+00:00",
                 "signal_date": signal_date,
                 "ohlcv_last_date": signal_date,
+                "market": "us",
                 "symbol": f"S{symbol_index}",
                 "champion_eligible": True,
                 "challenger_eligible": True,
@@ -481,6 +579,7 @@ def test_clustered_single_date_never_qualifies_for_promotion() -> None:
             "generated_at": "2026-01-02T21:00:00+00:00",
             "signal_date": "2026-01-02",
             "ohlcv_last_date": "2026-01-02",
+            "market": "us",
             "champion_eligible": True,
             "challenger_eligible": True,
             "champion_score": index,
@@ -521,6 +620,7 @@ def test_workflows_seal_before_settlement_and_commit_all_shadow_evidence() -> No
     assert accumulator.index("scripts/generate_us_recommendations.py") < accumulator.index(
         "scripts/update_self_correction_shadow.py --no-settle"
     )
+    assert '--record-market "${RECORD_MARKET}"' in accumulator
     assert "scripts/update_self_correction_shadow.py --no-record" in settlement
     assert "data/self_correction_candidate_registry.csv" in commit_script
     assert "data/self_correction_shadow_predictions.csv" in commit_script
@@ -543,6 +643,9 @@ def test_recommendation_generators_emit_raw_shadow_input_contract() -> None:
         assert '"asOfDate": c["as_of_date"]' in source
         assert '"as_of_date": max(' in source
         assert '"correctionInputContractVersion": "correction-shadow-input-v1"' in source
+        assert "datetime.now(timezone.utc).isoformat()" in source
 
     assert shadow.vtj.AUTO_CALIBRATION_POLICY["maxActiveShadowCandidates"] == 1
     assert shadow.vtj.CALIBRATION_SHADOW_POLICY["maxActiveCandidates"] == 1
+    assert shadow.vtj.CALIBRATION_SHADOW_POLICY["requiresSealAfterCanonicalClose"] is True
+    assert shadow.vtj.CALIBRATION_SHADOW_POLICY["requiresSealBeforeNextSessionOpen"] is True

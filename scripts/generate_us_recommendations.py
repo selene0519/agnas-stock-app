@@ -49,7 +49,7 @@ from scripts.generate_kr_recommendations import (
     setup_score, recommendation_bucket, momentum_continuation_score,
 )
 import csv, json, math, os, re
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Any
 
 OHLCV_DIR = ROOT / "data" / "market" / "ohlcv"
@@ -395,7 +395,7 @@ def _load_us_market_regime() -> dict[str, Any]:
 
 
 def generate_us_recommendations() -> dict[str, Any]:
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    now = datetime.now(timezone.utc).isoformat()
     print(f"[{now}] US 추천 파일 생성 시작")
 
     # OHLCV 로드. Actions 러너에는 data/market/ohlcv가 .gitignore 때문에 없을 수 있어
