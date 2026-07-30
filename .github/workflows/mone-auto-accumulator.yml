@@ -485,6 +485,21 @@ jobs:
             exit "${code}"
           fi
 
+      - name: Seal self-correction challenger inputs immediately
+        # Candidate rows require the raw recommendation input contract and an
+        # OHLCV cutoff equal to the signal date. Settlement jobs must never
+        # backfill these predictions after future bars exist.
+        run: |
+          set +e
+          python scripts/update_self_correction_shadow.py --no-settle
+          code=$?
+          set -e
+          echo "update_self_correction_shadow(record): exit ${code}"
+          if [ "${code}" != "0" ]; then
+            echo "::error::Self-correction forward prediction sealing failed (exit ${code})"
+            exit "${code}"
+          fi
+
       - name: Rebuild regime lens self-calibration (KR)
         # forward 루프: settle(만기정산) → journal(백테prior) → calibration(라이브+prior 블렌드)
         #             → screen(오늘후보) → capture(오늘후보를 예측원장에 기록)

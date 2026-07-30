@@ -62,6 +62,8 @@ def _write_valid_calibration_promotion_certificate(approval: dict, suggestion: d
         "evidenceFingerprint": approval["evidence_fingerprint"],
         "calibrationPolicyFingerprint": vtj._calibration_policy_fingerprint(),
         "candidateFingerprint": candidate_fingerprint,
+        "shadowPolicyVersion": vtj.CALIBRATION_SHADOW_POLICY["version"],
+        "shadowPolicyFingerprint": vtj._calibration_shadow_policy_fingerprint(),
         "promotionEligible": True,
         "decision": "READY_FOR_HUMAN_REVIEW",
         "completedSignalDates": vtj.CALIBRATION_PROMOTION_MIN_SIGNAL_DATES,
@@ -819,6 +821,9 @@ def test_approved_calibration_can_be_manually_applied_to_self_correction_params(
     assert applied["status"] == "OK"
     assert applied["applied"] == 1
     assert correction["journalCalibrationApplied"] is True
+    assert correction["journalCalibrationPromoted"] is True
+    assert correction["candidateFingerprint"] == certificate["candidateFingerprint"]
+    assert correction["promotionCertificateHash"] == certificate["recordHash"]
     assert correction["priceAdjustments"]["stopAtrMultiplier"] > 0
     assert refreshed_target["applicationStatus"] == "APPLIED"
     application_rows = vtj._read_rows(vtj.CALIBRATION_APPLICATIONS_CSV, vtj.CALIBRATION_APPLICATION_COLS)
@@ -1178,7 +1183,9 @@ def test_clustered_same_day_samples_never_pass_strict_holdout(monkeypatch: pytes
     assert verdict["reason"] == "LOW_HOLDOUT"
 
 
-def test_sealed_approval_rejects_tamper_and_stale_evidence(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_sealed_approval_rejects_tamper_and_regression_but_allows_newer_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     rows = []
     for idx in range(60):
         signal_date = (datetime(2026, 1, 1) + timedelta(days=idx)).date().isoformat()
@@ -1236,13 +1243,19 @@ def test_sealed_approval_rejects_tamper_and_stale_evidence(monkeypatch: pytest.M
 
     valid = vtj._approval_application_verdict(approval, {"suggestion-a": item})
     tampered = {**approval, "share": 0.4}
-    stale_item = {**item, "sampleCount": 61}
-    stale = vtj._approval_application_verdict(approval, {"suggestion-a": stale_item})
+    regressed_item = {**item, "sampleCount": 59, "distinctSignalDates": 59}
+    regressed = vtj._approval_application_verdict(approval, {"suggestion-a": regressed_item})
+    newer_item = {**item, "suggestionId": "suggestion-new"}
+    newer = vtj._approval_application_verdict(approval, {"suggestion-new": newer_item})
 
     assert valid["eligible"] is True
     assert vtj._approval_application_verdict(tampered, {"suggestion-a": item})["reason"] == "APPROVAL_RECORD_HASH_MISMATCH"
-    assert stale["eligible"] is False
-    assert stale["reason"] == "APPROVAL_EVIDENCE_FIELDS_MISMATCH"
+    assert regressed["eligible"] is False
+    assert regressed["reason"] == "CURRENT_EVIDENCE_REGRESSED"
+    assert newer["eligible"] is True
+    assert newer["currentSuggestionId"] == "suggestion-new"
+    assert newer["approvedEvidenceFingerprint"] == evidence["fingerprint"]
+    assert newer["currentEvidenceFingerprint"] != evidence["fingerprint"]
     missing_promotion = vtj._calibration_promotion_verdict(
         approval,
         evidence["fingerprint"],
@@ -1258,6 +1271,8 @@ def test_sealed_approval_rejects_tamper_and_stale_evidence(monkeypatch: pytest.M
         "evidenceFingerprint": evidence["fingerprint"],
         "calibrationPolicyFingerprint": vtj._calibration_policy_fingerprint(),
         "candidateFingerprint": "candidate-a",
+        "shadowPolicyVersion": vtj.CALIBRATION_SHADOW_POLICY["version"],
+        "shadowPolicyFingerprint": vtj._calibration_shadow_policy_fingerprint(),
         "promotionEligible": True,
         "decision": "READY_FOR_HUMAN_REVIEW",
         "completedSignalDates": 10,

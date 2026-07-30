@@ -1,0 +1,150 @@
+{
+  "status": "SHADOW_ONLY",
+  "generatedAt": "2026-07-30T15:36:26.260760+00:00",
+  "policy": {
+    "version": "self-correction-shadow-v1.0.0",
+    "inputContractVersion": "correction-shadow-input-v1",
+    "maxPositions": 3,
+    "maxActiveCandidates": 1,
+    "positionWeight": 0.1,
+    "minScore": 55.0,
+    "baseMinRiskReward": {
+      "short": 1.5,
+      "swing": 1.8,
+      "mid": 2.0
+    },
+    "baseMaxDistanceToEntryPct": 3.0,
+    "removedExposureStaysCash": true,
+    "sameSignalDatePairedComparison": true,
+    "minCompleteSignalDates": 60,
+    "minEvaluatedChallengerTrades": 120,
+    "requiresExactApprovalAndCandidateLineage": true,
+    "requiresForwardSealedRawInputs": true,
+    "maxRecordingDelayHours": 36.0,
+    "requiresAfterCostPositiveReturn": true,
+    "requiresPairedUpliftLowerCiAboveZero": true,
+    "requiresDrawdownNoWorseThanChampion": true,
+    "autoPromotionAllowed": false,
+    "humanApprovalRequired": true,
+    "fingerprint": "c93b04dc966ea94c401b"
+  },
+  "calibrationPolicy": {
+    "version": "vtj-self-calibration-v2.1.0",
+    "fingerprint": "82ce631c733a679d47e5"
+  },
+  "summary": {
+    "activeCandidates": 0,
+    "registeredCandidates": 0,
+    "sealedPredictions": 0,
+    "settledPredictions": 0,
+    "promotionEligible": 0,
+    "abstain": true
+  },
+  "integrity": {
+    "registryHashViolations": 0,
+    "predictionHashViolations": 0,
+    "settlementHashViolations": 0,
+    "registryDuplicateIds": 0,
+    "predictionDuplicateIds": 0,
+    "settlementDuplicateIds": 0,
+    "predictionLineageViolations": 0,
+    "predictionRecordingTimeViolations": 0,
+    "predictionSettlementRelationshipViolations": 0,
+    "forwardSealViolations": 0,
+    "inputContractViolations": 0,
+    "candidateRegistryImmutableConflicts": 0,
+    "predictionImmutableConflicts": 0
+  },
+  "registryRun": {
+    "appended": 0,
+    "conflicts": 0,
+    "total": 0
+  },
+  "predictionRun": {
+    "appended": 0,
+    "conflicts": 0,
+    "total": 0
+  },
+  "settlementRun": {
+    "appended": 0,
+    "pending": 0,
+    "total": 0
+  },
+  "candidateGate": {
+    "status": "SHADOW_ONLY",
+    "policyVersion": "vtj-self-calibration-v2.1.0",
+    "policyFingerprint": "82ce631c733a679d47e5",
+    "items": [],
+    "blocked": [
+      {
+        "approvalId": "c83f0b28d115e6c2c193",
+        "reason": "ALREADY_APPLIED"
+      },
+      {
+        "approvalId": "91f3c6c6e24f8366db2a",
+        "reason": "ALREADY_APPLIED"
+      },
+      {
+        "approvalId": "970fe0b48a910e30ecae",
+        "reason": "ALREADY_APPLIED"
+      },
+      {
+        "approvalId": "dbc111ecaa68e5332a83",
+        "reason": "ALREADY_APPLIED"
+      },
+      {
+        "approvalId": "dc3c1f0ba0835e5de3a2",
+        "reason": "ALREADY_APPLIED"
+      },
+      {
+        "approvalId": "235f7009f11f81010996",
+        "reason": "ALREADY_APPLIED"
+      },
+      {
+        "approvalId": "31e59c3e18c395a145c6",
+        "reason": "ALREADY_APPLIED"
+      },
+      {
+        "approvalId": "218c653f10bab867af2b",
+        "reason": "ALREADY_APPLIED"
+      },
+      {
+        "approvalId": "5e63b5dda7e604bdb311",
+        "reason": "ALREADY_APPLIED"
+      },
+      {
+        "approvalId": "222a5c054aa52eeeec57",
+        "reason": "ALREADY_APPLIED"
+      },
+      {
+        "approvalId": "9482d8fa5b870111d5fc",
+        "reason": "ALREADY_APPLIED"
+      },
+      {
+        "approvalId": "529f0adba75b95a17219",
+        "reason": "ALREADY_APPLIED"
+      },
+      {
+        "approvalId": "74ed7956c40ab22f2a17",
+        "reason": "ALREADY_APPLIED"
+      },
+      {
+        "approvalId": "a2ffa7ea22b35a0015ed",
+        "reason": "ALREADY_APPLIED"
+      },
+      {
+        "approvalId": "93f70e82de751de4fcdf",
+        "reason": "ALREADY_APPLIED"
+      },
+      {
+        "approvalId": "3e1424cc7df96555a1c5",
+        "reason": "ALREADY_APPLIED"
+      },
+      {
+        "approvalId": "5f0cf81871e7e555c6e0",
+        "reason": "ALREADY_APPLIED"
+      }
+    ]
+  },
+  "candidates": []
+}

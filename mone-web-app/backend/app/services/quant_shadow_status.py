@@ -16,6 +16,7 @@ REPORT_FILES = {
     "metaGate": "shadow_meta_gate.json",
     "riskBudget": "shadow_risk_budget.json",
     "championChallenger": "champion_challenger.json",
+    "selfCorrection": "self_correction_shadow.json",
     "walkForward": "walkforward_integrity.json",
 }
 
@@ -40,6 +41,7 @@ def shadow_status() -> dict[str, Any]:
     sleeve = reports["sleeve"]
     cohort = reports["cohort"]
     champion_challenger = reports["championChallenger"]
+    self_correction = reports["selfCorrection"]
     walk_forward = reports["walkForward"]
 
     missing = [name for name, report in reports.items() if report.get("status") == "MISSING"]
@@ -82,6 +84,21 @@ def shadow_status() -> dict[str, Any]:
         reasons.append("CHAMPION_RISK_ALLOCATION_NOT_PROVEN")
     if not bool(promotion.get("promotionEligible")):
         reasons.append("CHALLENGER_NOT_PROMOTABLE")
+    self_correction_summary = self_correction.get("summary") if isinstance(self_correction.get("summary"), dict) else {}
+    self_correction_candidates = self_correction.get("candidates") if isinstance(self_correction.get("candidates"), list) else []
+    self_correction_promotions = [
+        row.get("promotion") for row in self_correction_candidates
+        if isinstance(row, dict) and isinstance(row.get("promotion"), dict)
+    ]
+    self_correction_blockers = list(dict.fromkeys(
+        reason
+        for promotion_row in self_correction_promotions
+        for reason in (promotion_row.get("blockingReasons") or [])
+    ))
+    if int(self_correction_summary.get("activeCandidates") or 0) <= 0:
+        self_correction_blockers.append("NO_ACTIVE_CANDIDATE")
+    if int(self_correction_summary.get("promotionEligible") or 0) <= 0:
+        reasons.append("SELF_CORRECTION_NOT_PROMOTABLE")
     if not bool(walk_forward.get("promotionGrade")):
         reasons.append("WALKFORWARD_NOT_PROMOTION_GRADE")
 
@@ -129,6 +146,11 @@ def shadow_status() -> dict[str, Any]:
             "challengerPromotionDecision": promotion.get("decision"),
             "challengerBlockingReasons": promotion.get("blockingReasons") or [],
             "completedComparisonDates": comparison.get("completedSignalDates"),
+            "selfCorrectionActiveCandidates": int(self_correction_summary.get("activeCandidates") or 0),
+            "selfCorrectionSealedPredictions": int(self_correction_summary.get("sealedPredictions") or 0),
+            "selfCorrectionSettledPredictions": int(self_correction_summary.get("settledPredictions") or 0),
+            "selfCorrectionPromotionEligible": int(self_correction_summary.get("promotionEligible") or 0),
+            "selfCorrectionBlockingReasons": self_correction_blockers,
             "walkForwardPromotionGrade": bool(walk_forward.get("promotionGrade")),
         },
         "sources": {name: report.get("_source") for name, report in reports.items()},

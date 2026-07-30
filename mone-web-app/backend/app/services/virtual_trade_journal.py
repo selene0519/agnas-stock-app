@@ -68,9 +68,10 @@ AUTO_CALIBRATION_POLICY = {
     # on an unseen, independently clustered cohort.
     "enabled": False,
     "mode": "SHADOW_ONLY",
-    "version": "vtj-self-calibration-v2.0.0",
+    "version": "vtj-self-calibration-v2.1.0",
     "minEffectiveSamples": 40,
     "maxApplicationsPerRun": 1,
+    "maxActiveShadowCandidates": 1,
     "maxFailureShareForAutoApply": 0.45,
     "minHoldoutSamples": 10,
     "holdoutFraction": 0.25,
@@ -81,6 +82,8 @@ AUTO_CALIBRATION_POLICY = {
     "currentEvidenceRevalidationRequired": True,
     "sealedApprovalRequired": True,
     "promotionCertificateRequired": True,
+    "liveCorrectionDefaultEnabled": False,
+    "promotedLineageRequiredForLive": True,
     "minPrePostSamples": 30,
     "rollbackAvgPnlDropPct": 1.5,
     "rollbackWinRateDrop": 0.10,
@@ -101,6 +104,28 @@ AUTO_CALIBRATION_POLICY = {
 CALIBRATION_PROMOTION_VERSION = "vtj-calibration-promotion-v1"
 CALIBRATION_PROMOTION_MIN_SIGNAL_DATES = 60
 CALIBRATION_PROMOTION_MIN_TRADES = 120
+CALIBRATION_SHADOW_POLICY = {
+    "version": "self-correction-shadow-v1.0.0",
+    "inputContractVersion": "correction-shadow-input-v1",
+    "maxPositions": 3,
+    "maxActiveCandidates": 1,
+    "positionWeight": 0.10,
+    "minScore": 55.0,
+    "baseMinRiskReward": {"short": 1.5, "swing": 1.8, "mid": 2.0},
+    "baseMaxDistanceToEntryPct": 3.0,
+    "removedExposureStaysCash": True,
+    "sameSignalDatePairedComparison": True,
+    "minCompleteSignalDates": CALIBRATION_PROMOTION_MIN_SIGNAL_DATES,
+    "minEvaluatedChallengerTrades": CALIBRATION_PROMOTION_MIN_TRADES,
+    "requiresExactApprovalAndCandidateLineage": True,
+    "requiresForwardSealedRawInputs": True,
+    "maxRecordingDelayHours": 36.0,
+    "requiresAfterCostPositiveReturn": True,
+    "requiresPairedUpliftLowerCiAboveZero": True,
+    "requiresDrawdownNoWorseThanChampion": True,
+    "autoPromotionAllowed": False,
+    "humanApprovalRequired": True,
+}
 
 # Bump this value whenever the recommendation decision contract changes.  The
 # fingerprint also includes the correction/model/code versions carried by the
@@ -347,6 +372,8 @@ CALIBRATION_APPLICATION_COLS = [
     "policy_fingerprint",
     "evidence_fingerprint",
     "approval_record_hash",
+    "current_suggestion_id",
+    "current_evidence_fingerprint",
     "candidate_fingerprint",
     "promotion_certificate_hash",
     "record_hash",
@@ -508,6 +535,10 @@ def _hash_payload(value: Any) -> str:
 
 def _calibration_policy_fingerprint() -> str:
     return _hash_payload(AUTO_CALIBRATION_POLICY)[:20]
+
+
+def _calibration_shadow_policy_fingerprint() -> str:
+    return _hash_payload(CALIBRATION_SHADOW_POLICY)[:20]
 
 
 def _sealed_row_hash(row: dict[str, Any], columns: list[str]) -> str:
@@ -2483,7 +2514,7 @@ def _suggestion_base(item: dict[str, Any]) -> dict[str, Any]:
 def _source_summary_id(item: dict[str, Any]) -> str:
     raw = "|".join(
         _text(item.get(key))
-        for key in ("market", "mode", "horizon", "sourceType", "journalSession", "sampleCount", "distinctSignalDates")
+        for key in ("market", "mode", "horizon", "sourceType", "journalSession")
     )
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
 
@@ -2515,15 +2546,28 @@ def _approval_index() -> dict[str, dict[str, Any]]:
     return {_text(row.get("suggestion_id")): row for row in rows if _text(row.get("suggestion_id"))}
 
 
+def _approval_scope_index() -> dict[str, dict[str, Any]]:
+    rows = _read_rows(CALIBRATION_APPROVALS_CSV, CALIBRATION_APPROVAL_COLS)
+    rows.sort(key=lambda row: _text(row.get("reviewed_at")))
+    return {
+        f"{_text(row.get('source_summary_id'))}|{_upper(row.get('reason'))}": row
+        for row in rows
+        if _text(row.get("source_summary_id")) and _upper(row.get("reason"))
+    }
+
+
 def _attach_approval_state(suggestions: list[dict[str, Any]]) -> list[dict[str, Any]]:
     approvals = _approval_index()
+    scope_approvals = _approval_scope_index()
     applications = _application_by_approval()
     out: list[dict[str, Any]] = []
     for item in suggestions:
         work = dict(item)
         work["sourceSummaryId"] = _source_summary_id(work)
         work["suggestionId"] = _suggestion_id(work)
-        approval = approvals.get(work["suggestionId"])
+        approval = approvals.get(work["suggestionId"]) or scope_approvals.get(
+            f"{work['sourceSummaryId']}|{_upper(work.get('reason'))}"
+        )
         work["approvalStatus"] = _text(approval.get("decision")) if approval else "PENDING_REVIEW"
         work["approvalId"] = _text(approval.get("approval_id")) if approval else ""
         work["reviewedAt"] = _text(approval.get("reviewed_at")) if approval else ""
@@ -2751,6 +2795,14 @@ def _approval_application_verdict(
     suggestion_id = _text(approval.get("suggestion_id"))
     current = current_suggestions.get(suggestion_id)
     if current is None:
+        scope_id = _text(approval.get("source_summary_id"))
+        reason = _upper(approval.get("reason"))
+        current = next((
+            item for item in current_suggestions.values()
+            if _text(item.get("sourceSummaryId")) == scope_id
+            and _upper(item.get("reason")) == reason
+        ), None)
+    if current is None:
         return {"eligible": False, "reason": "SUGGESTION_NO_LONGER_CURRENT"}
     field_pairs = {
         "source_summary_id": "sourceSummaryId",
@@ -2760,11 +2812,6 @@ def _approval_application_verdict(
         "source_type": "sourceType",
         "journal_session": "journalSession",
         "reason": "reason",
-        "suggestion_status": "status",
-        "sample_count": "sampleCount",
-        "distinct_signal_dates": "distinctSignalDates",
-        "count": "count",
-        "share": "share",
         "threshold": "threshold",
     }
     if any(
@@ -2774,9 +2821,21 @@ def _approval_application_verdict(
     ):
         return {"eligible": False, "reason": "APPROVAL_EVIDENCE_FIELDS_MISMATCH"}
 
+    approved_samples = int(_safe_float(approval.get("sample_count")) or 0)
+    approved_dates = int(_safe_float(approval.get("distinct_signal_dates")) or 0)
+    current_samples = int(_safe_float(current.get("sampleCount")) or 0)
+    current_dates = int(_safe_float(current.get("distinctSignalDates")) or 0)
+    if current_samples < approved_samples or current_dates < approved_dates:
+        return {
+            "eligible": False,
+            "reason": "CURRENT_EVIDENCE_REGRESSED",
+            "approvedSamples": approved_samples,
+            "currentSamples": current_samples,
+            "approvedDistinctSignalDates": approved_dates,
+            "currentDistinctSignalDates": current_dates,
+        }
+
     evidence = _calibration_evidence(current)
-    if _text(approval.get("evidence_fingerprint")) != evidence["fingerprint"]:
-        return {"eligible": False, "reason": "CALIBRATION_EVIDENCE_FINGERPRINT_MISMATCH"}
     candidate = {**current, "approvalStatus": "PENDING_REVIEW", "applicationStatus": "NOT_APPLIED"}
     verdict = _auto_calibration_verdict(candidate)
     if not verdict.get("eligible"):
@@ -2789,7 +2848,9 @@ def _approval_application_verdict(
         "eligible": True,
         "reason": "SEALED_CURRENT_EVIDENCE_PASS",
         "suggestion": current,
-        "evidenceFingerprint": evidence["fingerprint"],
+        "approvedEvidenceFingerprint": _text(approval.get("evidence_fingerprint")),
+        "currentEvidenceFingerprint": evidence["fingerprint"],
+        "currentSuggestionId": _text(current.get("suggestionId")),
         "validation": evidence["validation"],
     }
 
@@ -2810,6 +2871,146 @@ def _correction_candidate_fingerprint(
         "after": after,
         "delta": delta,
     })
+
+
+def _build_approved_correction_candidate(
+    approval: dict[str, Any],
+    markets: dict[str, Any],
+) -> dict[str, Any]:
+    """Build the exact immutable parameter candidate used by Shadow and apply."""
+    try:
+        from app.engine import correction_store, self_correction_v2
+    except Exception as exc:
+        return {"status": "ERROR", "reason": f"CORRECTION_STORE_UNAVAILABLE: {exc}"}
+    market = _text(approval.get("market")).lower()
+    mode = _text(approval.get("mode")).lower()
+    horizon = _text(approval.get("horizon")).lower()
+    source_type = _upper(approval.get("source_type"))
+    reason = _upper(approval.get("reason"))
+    if market not in MARKETS or mode not in MODES or horizon not in HORIZONS:
+        return {"status": "ERROR", "reason": "INVALID_SCOPE"}
+    raw_sample_count = int(_safe_float(approval.get("sample_count")) or 0)
+    source_weight = _source_weight(source_type)
+    effective_sample_count = max(30, int(round(raw_sample_count * source_weight)))
+    share = float(_safe_float(approval.get("share")) or 0.0)
+    delta = _approved_delta(reason, share, source_weight)
+    if not delta:
+        return {"status": "ERROR", "reason": "NO_PARAMETER_MAPPING"}
+    key = f"{market}_{mode}_{horizon}"
+    stored_before = dict(markets.get(key) or correction_store.load_correction(market, mode, horizon))
+    before = (
+        stored_before
+        if self_correction_v2.live_correction_active(stored_before)
+        else correction_store.neutral_correction(market, mode, horizon)
+    )
+    after = _clamp_nested_adjustments(_merge_nested_adjustments(before, delta))
+    after.update({
+        "market": market,
+        "mode": mode,
+        "horizon": horizon,
+        "sampleCount": max(int(before.get("sampleCount") or 0), effective_sample_count),
+        "rawJournalSampleCount": raw_sample_count,
+        "effectiveJournalSampleCount": effective_sample_count,
+        "confidence": min(
+            _source_confidence_cap(source_type),
+            max(
+                float(before.get("confidence") or 0.0),
+                _confidence_from_effective_samples(effective_sample_count),
+            ),
+        ),
+        "journalCalibrationApplied": True,
+        "journalCalibrationSource": _text(approval.get("approval_id")),
+        "journalCalibrationSourceType": source_type,
+    })
+    top = list(before.get("topFailureReasons") or [])
+    if reason and reason not in top:
+        top.insert(0, reason)
+    after["topFailureReasons"] = top[:8]
+    approved_evidence_fingerprint = _text(approval.get("evidence_fingerprint"))
+    return {
+        "status": "OK",
+        "key": key,
+        "market": market,
+        "mode": mode,
+        "horizon": horizon,
+        "sourceType": source_type,
+        "reason": reason,
+        "sourceWeight": source_weight,
+        "rawSampleCount": raw_sample_count,
+        "effectiveSampleCount": effective_sample_count,
+        "distinctSignalDates": int(_safe_float(approval.get("distinct_signal_dates")) or 0),
+        "delta": delta,
+        "before": before,
+        "after": after,
+        "approvedEvidenceFingerprint": approved_evidence_fingerprint,
+        "candidateFingerprint": _correction_candidate_fingerprint(
+            approval,
+            approved_evidence_fingerprint,
+            before,
+            after,
+            delta,
+        ),
+    }
+
+
+def calibration_shadow_candidates() -> dict[str, Any]:
+    """Return sealed, current-evidence-approved candidates without mutating live params."""
+    try:
+        from app.engine import correction_store
+        params = correction_store.load_params()
+    except Exception as exc:
+        return {"status": "ERROR", "reason": f"CORRECTION_STORE_UNAVAILABLE: {exc}", "items": []}
+    approvals = _read_rows(CALIBRATION_APPROVALS_CSV, CALIBRATION_APPROVAL_COLS)
+    already_applied = _application_index()
+    current_items = calibration_suggestions("all", "all", "all", "all", "all").get("items", [])
+    current_suggestions = {
+        _text(item.get("suggestionId")): item
+        for item in current_items if _text(item.get("suggestionId"))
+    }
+    markets = dict(params.get("markets") or {})
+    items: list[dict[str, Any]] = []
+    blocked: list[dict[str, Any]] = []
+    for approval in approvals:
+        approval_id = _text(approval.get("approval_id"))
+        if _upper(approval.get("decision")) != "APPROVED" or not approval_id:
+            continue
+        if approval_id in already_applied:
+            blocked.append({"approvalId": approval_id, "reason": "ALREADY_APPLIED"})
+            continue
+        verdict = _approval_application_verdict(approval, current_suggestions)
+        if not verdict.get("eligible"):
+            blocked.append({"approvalId": approval_id, "reason": verdict.get("reason")})
+            continue
+        candidate = _build_approved_correction_candidate(approval, markets)
+        if candidate.get("status") != "OK":
+            blocked.append({"approvalId": approval_id, "reason": candidate.get("reason")})
+            continue
+        items.append({
+            **candidate,
+            "approvalId": approval_id,
+            "approvalRecordHash": approval.get("record_hash"),
+            "suggestionId": approval.get("suggestion_id"),
+            "approvedAt": approval.get("reviewed_at"),
+            "currentSuggestionId": verdict.get("currentSuggestionId"),
+            "currentEvidenceFingerprint": verdict.get("currentEvidenceFingerprint"),
+            "calibrationPolicyVersion": AUTO_CALIBRATION_POLICY.get("version"),
+            "calibrationPolicyFingerprint": _calibration_policy_fingerprint(),
+        })
+    items.sort(key=lambda item: (_text(item.get("approvedAt")), _text(item.get("approvalId"))))
+    active_limit = max(1, int(AUTO_CALIBRATION_POLICY.get("maxActiveShadowCandidates") or 1))
+    for queued in items[active_limit:]:
+        blocked.append({
+            "approvalId": queued.get("approvalId"),
+            "reason": "ACTIVE_SHADOW_CANDIDATE_LIMIT",
+        })
+    items = items[:active_limit]
+    return {
+        "status": "SHADOW_ONLY",
+        "policyVersion": AUTO_CALIBRATION_POLICY.get("version"),
+        "policyFingerprint": _calibration_policy_fingerprint(),
+        "items": items,
+        "blocked": blocked,
+    }
 
 
 def _promotion_certificate_hash(certificate: dict[str, Any]) -> str:
@@ -2840,6 +3041,8 @@ def _calibration_promotion_verdict(
         return {"passed": False, "reason": "PROMOTION_CERTIFICATE_HASH_MISMATCH"}
     checks = [
         (_text(certificate.get("version")) == CALIBRATION_PROMOTION_VERSION, "PROMOTION_CERTIFICATE_VERSION_MISMATCH"),
+        (_text(certificate.get("shadowPolicyVersion")) == _text(CALIBRATION_SHADOW_POLICY.get("version")), "PROMOTION_SHADOW_POLICY_VERSION_MISMATCH"),
+        (_text(certificate.get("shadowPolicyFingerprint")) == _calibration_shadow_policy_fingerprint(), "PROMOTION_SHADOW_POLICY_FINGERPRINT_MISMATCH"),
         (_text(certificate.get("calibrationPolicyFingerprint")) == _calibration_policy_fingerprint(), "PROMOTION_POLICY_FINGERPRINT_MISMATCH"),
         (_text(certificate.get("approvalRecordHash")) == _text(approval.get("record_hash")), "PROMOTION_APPROVAL_HASH_MISMATCH"),
         (_text(certificate.get("evidenceFingerprint")) == evidence_fingerprint, "PROMOTION_EVIDENCE_MISMATCH"),
@@ -2918,52 +3121,25 @@ def apply_approved_calibrations(
         if _upper(approval.get("suggestion_status")) != "SUGGESTED":
             skipped.append({"approvalId": approval_id, "reason": "NOT_SUGGESTED"})
             continue
-        market = _text(approval.get("market")).lower()
-        mode = _text(approval.get("mode")).lower()
-        horizon = _text(approval.get("horizon")).lower()
-        source_type = _upper(approval.get("source_type"))
-        reason = _upper(approval.get("reason"))
-        if market not in MARKETS or mode not in MODES or horizon not in HORIZONS:
-            skipped.append({"approvalId": approval_id, "reason": "INVALID_SCOPE"})
+        candidate = _build_approved_correction_candidate(approval, markets)
+        if candidate.get("status") != "OK":
+            skipped.append({"approvalId": approval_id, "reason": candidate.get("reason")})
             continue
-        raw_sample_count = int(_safe_float(approval.get("sample_count")) or 0)
-        source_weight = _source_weight(source_type)
-        effective_sample_count = max(30, int(round(raw_sample_count * source_weight)))
-        share = float(_safe_float(approval.get("share")) or 0.0)
-        delta = _approved_delta(reason, share, source_weight)
-        if not delta:
-            skipped.append({"approvalId": approval_id, "reason": "NO_PARAMETER_MAPPING"})
-            continue
-        key = f"{market}_{mode}_{horizon}"
-        before = dict(markets.get(key) or correction_store.load_correction(market, mode, horizon))
-        after = _clamp_nested_adjustments(_merge_nested_adjustments(before, delta))
-        confidence_cap = _source_confidence_cap(source_type)
-        after.update({
-            "market": market,
-            "mode": mode,
-            "horizon": horizon,
-            "sampleCount": max(int(before.get("sampleCount") or 0), effective_sample_count),
-            "rawJournalSampleCount": raw_sample_count,
-            "effectiveJournalSampleCount": effective_sample_count,
-            "confidence": min(confidence_cap, max(float(before.get("confidence") or 0.0), _confidence_from_effective_samples(effective_sample_count))),
-            "journalCalibrationApplied": True,
-            "journalCalibrationSource": approval_id,
-            "journalCalibrationSourceType": source_type,
-        })
-        top = list(before.get("topFailureReasons") or [])
-        if reason and reason not in top:
-            top.insert(0, reason)
-        after["topFailureReasons"] = top[:8]
-        candidate_fingerprint = _correction_candidate_fingerprint(
-            approval,
-            _text(evidence_gate.get("evidenceFingerprint")),
-            before,
-            after,
-            delta,
-        )
+        market = _text(candidate.get("market"))
+        mode = _text(candidate.get("mode"))
+        horizon = _text(candidate.get("horizon"))
+        source_type = _text(candidate.get("sourceType"))
+        reason = _text(candidate.get("reason"))
+        source_weight = float(candidate.get("sourceWeight") or 0.0)
+        raw_sample_count = int(candidate.get("rawSampleCount") or 0)
+        effective_sample_count = int(candidate.get("effectiveSampleCount") or 0)
+        key = _text(candidate.get("key"))
+        before = dict(candidate.get("before") or {})
+        after = dict(candidate.get("after") or {})
+        candidate_fingerprint = _text(candidate.get("candidateFingerprint"))
         promotion_gate = _calibration_promotion_verdict(
             approval,
-            _text(evidence_gate.get("evidenceFingerprint")),
+            _text(evidence_gate.get("approvedEvidenceFingerprint")),
             candidate_fingerprint,
         )
         if not promotion_gate.get("passed"):
@@ -2978,6 +3154,11 @@ def apply_approved_calibrations(
         after.update({
             "journalCalibrationAppliedBy": _text(applied_by or "local_admin"),
             "appliedAt": applied_at,
+            "journalCalibrationPromoted": True,
+            "calibrationPolicyVersion": AUTO_CALIBRATION_POLICY.get("version"),
+            "calibrationPolicyFingerprint": _calibration_policy_fingerprint(),
+            "candidateFingerprint": candidate_fingerprint,
+            "promotionCertificateHash": (promotion_gate.get("certificate") or {}).get("recordHash"),
         })
         markets[key] = after
         application_id = hashlib.sha256(f"{approval_id}|{applied_at}".encode("utf-8")).hexdigest()[:20]
@@ -3003,8 +3184,10 @@ def apply_approved_calibrations(
             "status": "APPLIED",
             "policy_version": AUTO_CALIBRATION_POLICY.get("version"),
             "policy_fingerprint": _calibration_policy_fingerprint(),
-            "evidence_fingerprint": evidence_gate.get("evidenceFingerprint"),
+            "evidence_fingerprint": evidence_gate.get("approvedEvidenceFingerprint"),
             "approval_record_hash": approval.get("record_hash"),
+            "current_suggestion_id": evidence_gate.get("currentSuggestionId"),
+            "current_evidence_fingerprint": evidence_gate.get("currentEvidenceFingerprint"),
             "candidate_fingerprint": candidate_fingerprint,
             "promotion_certificate_hash": (promotion_gate.get("certificate") or {}).get("recordHash"),
         })

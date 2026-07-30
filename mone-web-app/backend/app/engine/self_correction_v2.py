@@ -27,7 +27,21 @@ from app.engine.quant_scanner import round_to_kr_tick
 # SELF_CORRECTION_ENABLED=false → 전체 보정 비활성화
 # CORRECTION_STRENGTH=0.25/0.5/1.0 → 보정 폭 배율 (기본 1.0)
 def _correction_enabled() -> bool:
-    return os.environ.get("SELF_CORRECTION_ENABLED", "true").lower() not in {"false", "0", "no", "off"}
+    return os.environ.get("SELF_CORRECTION_ENABLED", "false").lower() not in {"false", "0", "no", "off"}
+
+
+def promoted_correction(params: dict[str, Any]) -> bool:
+    """Legacy/unsealed correction files can never become live by environment flag alone."""
+    return (
+        params.get("journalCalibrationPromoted") is True
+        and bool(str(params.get("promotionCertificateHash") or "").strip())
+        and bool(str(params.get("candidateFingerprint") or "").strip())
+        and bool(str(params.get("calibrationPolicyFingerprint") or "").strip())
+    )
+
+
+def live_correction_active(params: dict[str, Any]) -> bool:
+    return _correction_enabled() and promoted_correction(params)
 
 def _correction_strength() -> float:
     try:
@@ -371,6 +385,86 @@ def build_correction_params(market: str = "kr") -> dict[str, Any]:
     return new_params
 
 
+def apply_correction_params(
+    score_components: dict[str, float],
+    entry: float,
+    target: float,
+    stop: float,
+    market: str,
+    params: dict[str, Any],
+    *,
+    correction_version: int = 0,
+    strength: float = 1.0,
+    enforce_evidence_gate: bool = True,
+) -> dict[str, Any]:
+    """Apply an immutable correction candidate without reading global state."""
+    strength = _clamp(float(strength), 0.0, 1.0)
+    confidence = float(params.get("confidence") or 0.0)
+    if enforce_evidence_gate and (
+        confidence < _MIN_CONFIDENCE or int(params.get("sampleCount", 0)) < _MIN_SAMPLES
+    ):
+        return {
+            "adjustedScores": dict(score_components),
+            "adjustedEntry": entry,
+            "adjustedTarget": target,
+            "adjustedStop": stop,
+            "adjustedRrActual": None,
+            "correctionApplied": False,
+            "correctionConfidence": confidence,
+            "correctionStrength": strength,
+            "correctionSummary": f"correction evidence gate failed (confidence={confidence:.2f})",
+            "appliedCorrectionVersion": correction_version,
+        }
+
+    adjusted_scores = dict(score_components)
+    for component, delta in (params.get("weightAdjustments") or {}).items():
+        if component in adjusted_scores:
+            adjusted_scores[component] = round(
+                _clamp(adjusted_scores[component] + float(delta) * 10 * strength, 0, 100),
+                2,
+            )
+
+    price_adj = params.get("priceAdjustments") or {}
+    entry_delta = float(price_adj.get("entryAggressiveness", 0.0)) * strength
+    target_delta = float(price_adj.get("targetMultiplier", 0.0)) * strength
+    stop_delta = float(price_adj.get("stopAtrMultiplier", 0.0)) * strength
+    adjusted_entry = entry * (1 + entry_delta * 0.01) if entry else entry
+    adjusted_target = target * (1 + target_delta) if target else target
+    adjusted_stop = stop * (1 - stop_delta * 0.1) if stop else stop
+
+    def _price_round(price: float | None, fallback: float) -> float:
+        if not price:
+            return fallback
+        return float(round_to_kr_tick(price)) if market == "kr" else round(price, 2)
+
+    adjusted_entry_out = _price_round(adjusted_entry, entry)
+    adjusted_target_out = _price_round(adjusted_target, target)
+    adjusted_stop_out = _price_round(adjusted_stop, stop)
+    rr_actual = None
+    if adjusted_entry_out and adjusted_stop_out and adjusted_target_out and adjusted_entry_out > 0:
+        reward_pct = (adjusted_target_out - adjusted_entry_out) / adjusted_entry_out * 100.0
+        risk_pct = abs((adjusted_entry_out - adjusted_stop_out) / adjusted_entry_out * 100.0)
+        if risk_pct > 0:
+            rr_actual = round(reward_pct / risk_pct, 2)
+
+    reasons = params.get("topFailureReasons") or []
+    return {
+        "adjustedScores": adjusted_scores,
+        "adjustedEntry": adjusted_entry_out,
+        "adjustedTarget": adjusted_target_out,
+        "adjustedStop": adjusted_stop_out,
+        "adjustedRrActual": rr_actual,
+        "correctionApplied": True,
+        "correctionConfidence": confidence,
+        "correctionStrength": strength,
+        "correctionSummary": (
+            f"correction applied (confidence={confidence:.2f}, strength={strength:.2f}, "
+            f"reasons={','.join(str(reason) for reason in reasons[:3])})"
+        ),
+        "appliedCorrectionVersion": correction_version,
+    }
+
+
 def apply_correction(
     score_components: dict[str, float],
     entry: float,
@@ -415,6 +509,18 @@ def apply_correction(
     params = correction_store.load_correction(market, mode, horizon)
     confidence = float(params.get("confidence") or 0.0)
 
+    if not promoted_correction(params):
+        return {
+            "adjustedScores": score_components,
+            "adjustedEntry": entry,
+            "adjustedTarget": target,
+            "adjustedStop": stop,
+            "correctionApplied": False,
+            "correctionConfidence": confidence,
+            "correctionSummary": "correction quarantined: no valid promotion lineage",
+            "appliedCorrectionVersion": version,
+        }
+
     if confidence < _MIN_CONFIDENCE or int(params.get("sampleCount", 0)) < _MIN_SAMPLES:
         return {
             "adjustedScores": score_components,
@@ -428,55 +534,16 @@ def apply_correction(
         }
 
     # 점수 보정 (strength 배율 적용)
-    adjusted_scores = dict(score_components)
-    weight_adj = params.get("weightAdjustments") or {}
-    for comp, delta in weight_adj.items():
-        if comp in adjusted_scores:
-            adjusted_scores[comp] = round(
-                _clamp(adjusted_scores[comp] + delta * 10 * strength, 0, 100), 2
-            )
-
-    # 가격 보정 (strength 배율 적용)
-    price_adj = params.get("priceAdjustments") or {}
-    entry_delta  = float(price_adj.get("entryAggressiveness", 0.0)) * strength
-    target_delta = float(price_adj.get("targetMultiplier", 0.0)) * strength
-    stop_delta   = float(price_adj.get("stopAtrMultiplier", 0.0)) * strength
-
-    adj_entry  = entry  * (1 + entry_delta * 0.01) if entry else entry
-    adj_target = target * (1 + target_delta)        if target else target
-    adj_stop   = stop   * (1 - stop_delta * 0.1)   if stop else stop
-
-    top_reasons = params.get("topFailureReasons") or []
-    summary = (
-        f"보정 적용 (confidence={confidence:.2f}, strength={strength:.2f}, "
-        f"주요실패={','.join(top_reasons[:3])})"
+    return apply_correction_params(
+        score_components,
+        entry,
+        target,
+        stop,
+        market,
+        params,
+        correction_version=int(version or 0),
+        strength=strength,
+        enforce_evidence_gate=False,
     )
 
-    def _price_round(p: float | None, fallback: float) -> float:
-        if not p:
-            return fallback
-        return float(round_to_kr_tick(p)) if market == "kr" else round(p, 2)
-
-    adj_entry_out  = _price_round(adj_entry, entry)
-    adj_target_out = _price_round(adj_target, target)
-    adj_stop_out   = _price_round(adj_stop, stop)
-
-    rr_actual = None
-    if adj_entry_out and adj_stop_out and adj_target_out and adj_entry_out > 0:
-        reward_pct = (adj_target_out - adj_entry_out) / adj_entry_out * 100.0
-        risk_pct   = abs((adj_entry_out - adj_stop_out) / adj_entry_out * 100.0)
-        if risk_pct > 0:
-            rr_actual = round(reward_pct / risk_pct, 2)
-
-    return {
-        "adjustedScores": adjusted_scores,
-        "adjustedEntry": adj_entry_out,
-        "adjustedTarget": adj_target_out,
-        "adjustedStop": adj_stop_out,
-        "adjustedRrActual": rr_actual,
-        "correctionApplied": True,
-        "correctionConfidence": confidence,
-        "correctionStrength": strength,
-        "correctionSummary": summary,
-        "appliedCorrectionVersion": version,
-    }
+    # 가격 보정 (strength 배율 적용)

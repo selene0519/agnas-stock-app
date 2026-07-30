@@ -39,6 +39,11 @@ def load_correction(market: str, mode: str, horizon: str) -> dict[str, Any]:
     return params.get("markets", {}).get(key, _default_correction(market, mode, horizon))
 
 
+def neutral_correction(market: str, mode: str, horizon: str) -> dict[str, Any]:
+    """Return a fresh no-correction baseline for Shadow and quarantine paths."""
+    return _default_correction(market, mode, horizon)
+
+
 def save_params(new_params: dict[str, Any]) -> Path:
     """
     새 보정 파라미터를 저장한다.

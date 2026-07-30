@@ -1761,21 +1761,23 @@ def generate_recommendations() -> dict[str, Any]:
                 _corr_confidence = 0.0
                 _corr_summary = ""
                 _corr_version = 0
+                _raw_entry, _raw_stop, _raw_target = entry, stop, target
+                _raw_model_score = adj_score_final
+                _raw_score_components = {
+                    "upsideScore": sub["upsideScore"],
+                    "momentumScore": sub["momentumScore"],
+                    "riskScore": sub["riskScore"],
+                    "entryScore": sub["entryScore"],
+                    "rrScore": sub["rrScore"],
+                    "qualityScore": sub["qualityScore"],
+                }
                 try:
                     import sys as _sys, os as _os
                     _backend = _os.path.join(_os.path.dirname(__file__), "..", "mone-web-app", "backend")
                     if _backend not in _sys.path:
                         _sys.path.insert(0, _backend)
                     from app.engine.self_correction_v2 import apply_correction as _apply_corr
-                    _sub_scores_dict = {
-                        "upsideScore": sub["upsideScore"],
-                        "momentumScore": sub["momentumScore"],
-                        "riskScore": sub["riskScore"],
-                        "entryScore": sub["entryScore"],
-                        "rrScore": sub["rrScore"],
-                        "qualityScore": sub["qualityScore"],
-                    }
-                    _corr = _apply_corr(_sub_scores_dict, entry, target, stop, "kr", mode, horizon)
+                    _corr = _apply_corr(_raw_score_components, entry, target, stop, "kr", mode, horizon)
                     if _corr.get("correctionApplied"):
                         entry  = int(_corr["adjustedEntry"])
                         target = int(_corr["adjustedTarget"])
@@ -1829,6 +1831,13 @@ def generate_recommendations() -> dict[str, Any]:
                     "entry": _fmt_krw(entry),
                     "stop":  _fmt_krw(stop),
                     "target": _fmt_krw(target),
+                    "rawEntry": _raw_entry,
+                    "rawStop": _raw_stop,
+                    "rawTarget": _raw_target,
+                    "rawModelScore": round(_raw_model_score, 4),
+                    "scoreComponentsJson": json.dumps(_raw_score_components, ensure_ascii=True, sort_keys=True),
+                    "scoreWeightsJson": json.dumps(_MODE_WEIGHTS.get(mode, _MODE_WEIGHTS["balanced"]), ensure_ascii=True, sort_keys=True),
+                    "correctionInputContractVersion": "correction-shadow-input-v1",
                     "probability": round(wr_prob * 100, 1),
                     # 실측 기반인지 하드코딩 기본값인지 구분해서 내보낸다.
                     # 표본이 모자라 기본값을 쓴 행을 측정값처럼 보이게 하면 안 된다.

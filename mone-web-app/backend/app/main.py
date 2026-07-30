@@ -3859,7 +3859,8 @@ def api_admin_correction_preview(
     return {
         "status": "OK",
         "market": mk, "mode": mode, "horizon": horizon,
-        "correctionEnabled": __import__("os").environ.get("SELF_CORRECTION_ENABLED", "true").lower() not in {"false", "0", "no", "off"},
+        "correctionEnabled": _scv2.live_correction_active(correction),
+        "promotionLineageValid": _scv2.promoted_correction(correction),
         "correctionStrength": float(__import__("os").environ.get("CORRECTION_STRENGTH", "1.0")),
         "sampleCount": correction.get("sampleCount", 0),
         "confidence": correction.get("confidence", 0.0),
@@ -3874,7 +3875,7 @@ def api_admin_correction_dashboard(
 ) -> dict:
     """자가보정 종합 대시보드 — 성과 지표, 보정 상태, 데이터 품질."""
     import csv as _db_csv, os as _db_os
-    from app.engine import correction_store as _cs, outcome_analyzer as _oa
+    from app.engine import correction_store as _cs, outcome_analyzer as _oa, self_correction_v2 as _scv2
     mk = _market(market)
     reports = __import__("pathlib").Path(__file__).resolve().parents[3] / "reports"
 
@@ -3930,7 +3931,8 @@ def api_admin_correction_dashboard(
     return {
         "status": "OK",
         "market": mk,
-        "correctionEnabled": _db_os.environ.get("SELF_CORRECTION_ENABLED", "true").lower() not in {"false", "0", "no", "off"},
+        "correctionEnabled": any(_scv2.live_correction_active(value) for value in all_corrections.values()),
+        "promotedCorrectionCount": sum(1 for value in all_corrections.values() if _scv2.promoted_correction(value)),
         "correctionStrength": float(_db_os.environ.get("CORRECTION_STRENGTH", "1.0")),
         "paramsVersion": params.get("version", 0),
         "paramsGeneratedAt": params.get("generatedAt"),

@@ -564,17 +564,20 @@ def generate_us_recommendations() -> dict[str, Any]:
                 _corr_confidence = 0.0
                 _corr_summary = ""
                 _corr_version = 0
+                _raw_entry, _raw_stop, _raw_target = entry, stop, target
+                _raw_model_score = adj_score
+                _raw_score_components = _sub_scores(ind)
                 try:
                     import sys as _sys, os as _os
                     _backend = _os.path.join(_os.path.dirname(__file__), "..", "mone-web-app", "backend")
                     if _backend not in _sys.path:
                         _sys.path.insert(0, _backend)
                     from app.engine.self_correction_v2 import apply_correction as _apply_corr
-                    _sub = _sub_scores(ind)
                     _corr = _apply_corr(
-                        {"upsideScore": _sub["upsideScore"], "momentumScore": _sub["momentumScore"],
-                         "riskScore": _sub["riskScore"], "entryScore": _sub["entryScore"],
-                         "rrScore": _sub["rrScore"], "qualityScore": _sub["qualityScore"]},
+                        {key: _raw_score_components[key] for key in (
+                            "upsideScore", "momentumScore", "riskScore",
+                            "entryScore", "rrScore", "qualityScore",
+                        )},
                         entry, target, stop, "us", mode, horizon
                     )
                     if _corr.get("correctionApplied"):
@@ -644,6 +647,20 @@ def generate_us_recommendations() -> dict[str, Any]:
                     "entry": _fmt_usd(entry),
                     "stop": _fmt_usd(stop),
                     "target": _fmt_usd(target),
+                    "rawEntry": _raw_entry,
+                    "rawStop": _raw_stop,
+                    "rawTarget": _raw_target,
+                    "rawModelScore": round(_raw_model_score, 4),
+                    "scoreComponentsJson": json.dumps(
+                        {key: _raw_score_components[key] for key in (
+                            "upsideScore", "momentumScore", "riskScore",
+                            "entryScore", "rrScore", "qualityScore",
+                        )},
+                        ensure_ascii=True,
+                        sort_keys=True,
+                    ),
+                    "scoreWeightsJson": json.dumps(_MODE_WEIGHTS.get(mode, _MODE_WEIGHTS["balanced"]), ensure_ascii=True, sort_keys=True),
+                    "correctionInputContractVersion": "correction-shadow-input-v1",
                     "probability": round(wr_prob * 100, 1),
                     # 실측 기반인지 하드코딩 기본값인지 구분해서 내보낸다.
                     # 표본이 모자라 기본값을 쓴 행을 측정값처럼 보이게 하면 안 된다.

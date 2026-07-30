@@ -58,6 +58,21 @@ def test_shadow_status_fails_closed_when_evidence_is_not_positive(tmp_path: Path
         "riskAllocationGate": {"passed": True},
         "promotion": {"promotionEligible": False, "decision": "KEEP_CHALLENGER_SHADOW", "blockingReasons": ["LOW_COMPLETE_SIGNAL_DATES"]},
     })
+    _write(tmp_path, "selfCorrection", {
+        "status": "SHADOW_ONLY",
+        "summary": {
+            "activeCandidates": 1,
+            "sealedPredictions": 10,
+            "settledPredictions": 4,
+            "promotionEligible": 0,
+        },
+        "candidates": [{
+            "promotion": {
+                "promotionEligible": False,
+                "blockingReasons": ["LOW_PROMOTION_SIGNAL_DATES"],
+            },
+        }],
+    })
     _write(tmp_path, "walkForward", {"status": "WARN", "promotionGrade": False})
 
     result = status.shadow_status()
@@ -76,9 +91,13 @@ def test_shadow_status_fails_closed_when_evidence_is_not_positive(tmp_path: Path
     assert result["summary"]["riskPolicyFingerprint"] == "risk-a"
     assert result["summary"]["riskAllocationFingerprint"] == "allocation-a"
     assert result["summary"]["championRiskAllocationGatePassed"] is True
+    assert result["summary"]["selfCorrectionActiveCandidates"] == 1
+    assert result["summary"]["selfCorrectionSealedPredictions"] == 10
+    assert result["summary"]["selfCorrectionBlockingReasons"] == ["LOW_PROMOTION_SIGNAL_DATES"]
     assert "ALPHA_NOT_PROVEN" in result["decisionReasons"]
     assert "RESIDUAL_ALPHA_MODEL_NOT_PROVEN" in result["decisionReasons"]
     assert "NO_POSITIVE_SLEEVE" in result["decisionReasons"]
+    assert "SELF_CORRECTION_NOT_PROMOTABLE" in result["decisionReasons"]
 
 
 def test_missing_reports_never_look_healthy(tmp_path: Path, monkeypatch) -> None:
