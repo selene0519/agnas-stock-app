@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-30T01:13:24.868016+00:00",
+  "generatedAt": "2026-07-30T01:28:25.622118+00:00",
   "tradesSimulated": 26476,
   "sampleStep": 10,
   "horizon": "swing",
@@ -94,6 +94,48 @@
       },
       "regimeSpreadPp": 0.6672,
       "bearIsWorst": false
+    },
+    "trend60+거래량": {
+      "cells": {
+        "BEAR": {
+          "n": 6106,
+          "winRatePct": 43.6,
+          "meanPct": 0.2863
+        },
+        "BULL": {
+          "n": 9952,
+          "winRatePct": 44.3,
+          "meanPct": 0.7807
+        },
+        "SIDE": {
+          "n": 10418,
+          "winRatePct": 39.4,
+          "meanPct": -0.2527
+        }
+      },
+      "regimeSpreadPp": 1.0334,
+      "bearIsWorst": true
+    },
+    "거래량단독": {
+      "cells": {
+        "BEAR": {
+          "n": 7110,
+          "winRatePct": 42.4,
+          "meanPct": 0.1152
+        },
+        "BULL": {
+          "n": 3766,
+          "winRatePct": 43.6,
+          "meanPct": 0.5015
+        },
+        "SIDE": {
+          "n": 15600,
+          "winRatePct": 41.9,
+          "meanPct": 0.2678
+        }
+      },
+      "regimeSpreadPp": 0.3863,
+      "bearIsWorst": true
     }
   },
   "caveats": [

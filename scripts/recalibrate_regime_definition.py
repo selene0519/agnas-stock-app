@@ -57,7 +57,7 @@ MIN_CELL = 200
 # ── 후보 국면 정의 ────────────────────────────────────────────────────
 # 각 함수는 (20일선 이격%, 5일 모멘텀%, 60일 추세%, 120일 추세%)를 받아
 # BULL/SIDE/BEAR를 돌려준다.
-def _def_current(d20, m5, t60, t120):
+def _def_current(d20, m5, t60, t120, vr=None):
     """현행: 단기 둘로만 판정. 하락장 반등을 BULL로 부른다."""
     if d20 > 0 and m5 > 0:
         return "BULL"
@@ -66,7 +66,7 @@ def _def_current(d20, m5, t60, t120):
     return "SIDE"
 
 
-def _def_trend60(d20, m5, t60, t120):
+def _def_trend60(d20, m5, t60, t120, vr=None):
     """60일 추세를 확인 조건으로 추가."""
     if t60 is None:
         return _def_current(d20, m5, t60, t120)
@@ -79,7 +79,7 @@ def _def_trend60(d20, m5, t60, t120):
     return "SIDE"
 
 
-def _def_trend_only(d20, m5, t60, t120):
+def _def_trend_only(d20, m5, t60, t120, vr=None):
     """중기 추세만 본다 — 단기 잡음을 아예 배제."""
     if t60 is None:
         return "SIDE"
@@ -90,7 +90,35 @@ def _def_trend_only(d20, m5, t60, t120):
     return "SIDE"
 
 
-def _def_dual_trend(d20, m5, t60, t120):
+def _def_trend60_vol(d20, m5, t60, t120, vr=None):
+    """trend60단독 + **거래량 확인**. 거래량이 고갈된 구간은 SIDE로 본다.
+
+    발상: 나쁜 국면이 SIDE(횡보)인데, 횡보는 거래량 고갈과 함께 온다.
+    거래량이 마르면 추세가 없어 손절이 잡음에 털린다.
+    """
+    if t60 is None:
+        return "SIDE"
+    if vr is not None and vr < 0.85:
+        return "SIDE"          # 거래량 고갈 -> 추세 없음
+    if t60 > 3.0:
+        return "BULL"
+    if t60 < -3.0:
+        return "BEAR"
+    return "SIDE"
+
+
+def _def_vol_only(d20, m5, t60, t120, vr=None):
+    """거래량만으로 판정 — 거래량이 정말 정보인지 단독 검정."""
+    if vr is None:
+        return "SIDE"
+    if vr > 1.15:
+        return "BULL"
+    if vr < 0.85:
+        return "SIDE"
+    return "BEAR" if (t60 is not None and t60 < 0) else "SIDE"
+
+
+def _def_dual_trend(d20, m5, t60, t120, vr=None):
     """60일과 120일이 **같은 방향**일 때만 국면을 선언한다."""
     if t60 is None or t120 is None:
         return "SIDE"
@@ -106,6 +134,8 @@ DEFS = {
     "trend60확인": _def_trend60,
     "trend60단독": _def_trend_only,
     "dual(60+120)": _def_dual_trend,
+    "trend60+거래량": _def_trend60_vol,
+    "거래량단독": _def_vol_only,
 }
 
 
@@ -118,8 +148,12 @@ def _load(path: Path) -> list[tuple[str, float, float, float]]:
                 h, lo, c = float(r["high"]), float(r["low"]), float(r["close"])
             except (KeyError, TypeError, ValueError):
                 continue
+            try:
+                v = float(r.get("volume") or 0)
+            except (TypeError, ValueError):
+                v = 0.0
             if d and c > 0:
-                out.append((d, h, lo, c))
+                out.append((d, h, lo, c, v))
     out.sort()
     return out
 
@@ -140,7 +174,8 @@ def run(step: int, horizon: str = "swing") -> dict:
     hold_bars, stop_mult, target_mult = cfg["bars"], cfg["stop"], cfg["target"]
     kospi = _load(OHLCV / "kr_KOSPI_daily.csv")
     kdate = {d: i for i, (d, *_r) in enumerate(kospi)}
-    kclose = [c for _d, _h, _l, c in kospi]
+    kclose = [x[3] for x in kospi]
+    kvol = [x[4] for x in kospi]
 
     def _feats(i):
         if i < 120:
@@ -150,7 +185,11 @@ def run(step: int, horizon: str = "swing") -> dict:
         m5 = (kclose[i] - kclose[i - 5]) / kclose[i - 5] * 100
         t60 = (kclose[i] - kclose[i - 60]) / kclose[i - 60] * 100
         t120 = (kclose[i] - kclose[i - 120]) / kclose[i - 120] * 100
-        return d20, m5, t60, t120
+        # 거래량비: 최근 20일 평균 / 직전 60일 평균. 1보다 작으면 거래량 고갈.
+        v20 = statistics.fmean(kvol[i - 19:i + 1]) if all(kvol[i - 19:i + 1]) else 0.0
+        v60 = statistics.fmean(kvol[i - 59:i + 1]) if i >= 59 and all(kvol[i - 59:i + 1]) else 0.0
+        vr = (v20 / v60) if v60 else None
+        return d20, m5, t60, t120, vr
 
     # 국면 라벨을 정의별로 미리 계산
     labels = {name: {} for name in DEFS}
