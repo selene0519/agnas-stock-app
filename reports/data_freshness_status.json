@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-31T10:42:40.566772+00:00",
+  "generatedAt": "2026-07-31T16:06:42.520396+00:00",
   "overall": "WARN",
   "criticalFailures": 0,
   "hardFailures": 0,
@@ -15,16 +15,16 @@
     {
       "name": "kr_ohlcv",
       "status": "OK",
-      "detail": "0.45d, asOf=2026-07-31",
+      "detail": "0.67d, asOf=2026-07-31",
       "critical": true,
-      "ageDays": 0.45
+      "ageDays": 0.67
     },
     {
       "name": "kr_recommendations",
       "status": "OK",
-      "detail": "-0.36d, asOf=2026-07-31 19:14:51",
+      "detail": "-0.29d, asOf=2026-07-31 23:02:11",
       "critical": true,
-      "ageDays": -0.36
+      "ageDays": -0.29
     },
     {
       "name": "collector_steps",
@@ -36,37 +36,37 @@
     {
       "name": "collector_run",
       "status": "OK",
-      "detail": "2.75d, asOf=2026-07-28T16:40:53.766520",
+      "detail": "2.98d, asOf=2026-07-28T16:40:53.766520",
       "critical": true,
-      "ageDays": 2.75
+      "ageDays": 2.98
     },
     {
       "name": "vtj_journal",
       "status": "OK",
-      "detail": "0.02d, asOf=2026-07-31T19:16:58+09:00",
+      "detail": "0.09d, asOf=2026-07-31T23:04:12+09:00",
       "critical": false,
-      "ageDays": 0.02
+      "ageDays": 0.09
     },
     {
       "name": "live_calibration",
       "status": "OK",
-      "detail": "0.45d, asOf=2026-07-31",
+      "detail": "0.67d, asOf=2026-07-31",
       "critical": false,
-      "ageDays": 0.45
+      "ageDays": 0.67
     },
     {
       "name": "strategy_win_rates",
       "status": "OK",
-      "detail": "-0.37d, asOf=2026-07-31 19:42:39",
+      "detail": "-0.37d, asOf=2026-08-01 01:06:41",
       "critical": false,
       "ageDays": -0.37
     },
     {
       "name": "prediction_capture",
       "status": "OK",
-      "detail": "0.45d, asOf=2026-07-31",
+      "detail": "0.67d, asOf=2026-07-31",
       "critical": true,
-      "ageDays": 0.45
+      "ageDays": 0.67
     },
     {
       "name": "capture_continuity",
@@ -78,14 +78,14 @@
     {
       "name": "settlement_backlog",
       "status": "OK",
-      "detail": "만기경과 미정산 0건 / 대기중 143건",
+      "detail": "만기경과 미정산 0건 / 대기중 159건",
       "critical": false,
       "ageDays": null
     },
     {
       "name": "clean_window_samples",
       "status": "WARN",
-      "detail": "clean window(2026-07-10) 정산표본 3건 / 전체 정산 663건 / 원장 966행 — 표본 부족(30건 미만)",
+      "detail": "clean window(2026-07-10) 정산표본 3건 / 전체 정산 663건 / 원장 982행 — 표본 부족(30건 미만)",
       "critical": false,
       "ageDays": null
     },
