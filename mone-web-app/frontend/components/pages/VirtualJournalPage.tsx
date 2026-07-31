@@ -5,6 +5,7 @@ import { Activity, BookOpenCheck, CheckCircle2, ClipboardCheck, Play, RefreshCw,
 import { mone, type Horizon, type Market, type Mode } from "@/lib/api";
 import { outcomeTone, toneClassName } from "@/lib/tone";
 import { displayName } from "@/lib/moneDisplay";
+import { FAILURE_REASON_LABELS } from "@/lib/statusLabels";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import AlphaPanel from "@/components/AlphaPanel";
 
@@ -117,34 +118,6 @@ const HORIZONS_ORDER = ["short", "swing", "mid"];
 const MODE_KO: Record<string, string> = { conservative: "보수", balanced: "균형", aggressive: "공격" };
 const HORIZON_KO: Record<string, string> = { short: "단기", swing: "스윙", mid: "중기" };
 
-const FAILURE_REASON_LABELS: Record<string, string> = {
-  UNKNOWN: "원인 미분류",
-  DATA_MISSING: "데이터 부족",
-  PRICE_INVALID: "가격 오류",
-  ENTRY_NOT_TOUCHED: "진입가 미도달",
-  TARGET_BEFORE_STOP: "목표가 선도달",
-  STOP_BEFORE_TARGET: "손절 선도달",
-  TARGET_NOT_REACHED: "목표가 미도달",
-  DIRECTION_FAILED: "방향성 실패",
-  STOP_TOO_TIGHT: "손절폭 과소",
-  OVEREXTENDED_ENTRY: "과열 구간 진입",
-  MARKET_GAP: "갭 변동 영향",
-  MISSED_PROFIT_CAPTURE: "수익 구간 포착 실패",
-  DATA_QUALITY_PROBLEM: "데이터 품질 문제",
-  ENTRY_PRICE_TOO_DEEP: "진입가 과도 보수",
-  TARGET_TOO_FAR_OR_MOMENTUM_WEAK: "목표가 과대 또는 모멘텀 약함",
-  WEAK_CANDIDATE_SIGNAL: "후보 선정 신호 약함",
-  HIGH_DRAWDOWN_BEFORE_SUCCESS: "진입 후 역행폭 과대",
-  NO_FUTURE_BARS_YET: "평가 대기",
-  INSUFFICIENT_HOLDING_PERIOD: "평가 기간 부족",
-  ENTRY_TOUCHED_BUT_NO_EXIT: "진입 후 미청산",
-  MISSING_ENTRY_PRICE: "진입가 누락",
-  MISSING_TARGET_OR_STOP: "목표/손절가 누락",
-  INVALID_PRICE_PATH: "가격 경로 오류",
-  SYMBOL_OR_DATE_MISMATCH: "종목/날짜 매칭 실패",
-  PENDING_EVALUATION: "평가 대기",
-  UNCLASSIFIED_PRICE_PATH: "가격 경로 미분류",
-};
 
 const PENDING_FAILURE_REASONS = new Set(["NO_FUTURE_BARS_YET", "PENDING_EVALUATION", "INSUFFICIENT_HOLDING_PERIOD"]);
 const DATA_QUALITY_FAILURE_REASONS = new Set(["DATA_MISSING", "PRICE_INVALID", "MISSING_ENTRY_PRICE", "MISSING_TARGET_OR_STOP", "INVALID_PRICE_PATH", "SYMBOL_OR_DATE_MISMATCH"]);

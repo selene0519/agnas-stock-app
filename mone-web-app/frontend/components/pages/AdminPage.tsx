@@ -5,6 +5,8 @@ import { mone } from "@/lib/api";
 import { adminAuthHeaders } from "@/lib/adminAuth";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { toneClassName } from "@/lib/tone";
+import { statusLabel } from "@/lib/utils";
+import { failureReasonLabel } from "@/lib/statusLabels";
 import NewsPage from "./NewsPage";
 import PredictionPage from "./PredictionPage";
 
@@ -23,7 +25,19 @@ const STATUS_LABEL: Record<string, { text: string; cls: string }> = {
 };
 
 function syncStatusDisplay(status: string) {
-  return STATUS_LABEL[status] ?? { text: status, cls: "text-slate-400" };
+  // 매핑에 없는 코드를 그대로 반환하면 화면에 기계코드가 뜬다 — 공용
+  // statusLabel()이 안전한 폴백("상태 확인 중")을 준다. 원문은 title로만 남긴다.
+  return STATUS_LABEL[status] ?? { text: statusLabel(status), cls: "text-slate-400" };
+}
+
+/**
+ * 진단용 코드 값 표시. 관리자에게 원문 코드는 쓸모가 있지만 **본문 텍스트로**
+ * 노출하면 안 된다(기계코드 규칙). 한국어 라벨을 보여주고 원문은 title에 둔다.
+ */
+function codeText(raw: any): { value: string; title: string } {
+  const code = String(raw ?? "").trim();
+  if (!code) return { value: "-", title: "" };
+  return { value: statusLabel(code), title: code };
 }
 
 function Metric({ label, value, accent = false }: { label: string; value: any; accent?: boolean }) {
@@ -35,11 +49,12 @@ function Metric({ label, value, accent = false }: { label: string; value: any; a
   );
 }
 
-function Mini({ label, value }: { label: string; value: string }) {
+function Mini({ label, value, title }: { label: string; value: string; title?: string }) {
   return (
     <div className="rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2">
-      <div className="text-[10px] text-slate-400">{label}</div>
-      <div className="mt-1 truncate font-mono text-xs text-slate-200" title={value}>{value}</div>
+      <div className="text-[11px] text-slate-400">{label}</div>
+      {/* title에 원문 코드를 남겨 진단은 유지하되, 본문에는 한국어만 보인다. */}
+      <div className="mt-1 truncate text-xs text-slate-200" title={title || value}>{value}</div>
     </div>
   );
 }
@@ -50,11 +65,14 @@ function ActionBtn({ label, onClick, loading, variant = "default" }: {
   const cls = {
     default: "border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800",
     danger:  "border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/20",
-    blue:    "border-blue-500/30 bg-blue-600 text-white hover:bg-blue-500",
-    green:   "border-emerald-500/30 bg-emerald-600 text-slate-950 hover:bg-emerald-500",
+    // ⚠️ `bg-blue-600`과 슬래시 달린 `border-blue-500/30`을 **같은 class 문자열**에
+    // 두면 globals.css의 반투명 blue 규칙이 배경만 10% 틴트로 덮어써서 잉크만
+    // 남는다(실측 1.08:1 — 사실상 안 보였다). 테두리는 슬래시 없는 값으로 쓴다.
+    blue:    "border-blue-600 bg-blue-600 text-white hover:bg-blue-500",
+    green:   "border-emerald-600 bg-emerald-600 text-slate-950 hover:bg-emerald-500",
   }[variant];
   return (
-    <button onClick={onClick} disabled={loading} className={`rounded-xl border px-4 py-2 text-sm font-medium disabled:opacity-50 ${cls}`}>
+    <button onClick={onClick} disabled={loading} className={`min-h-11 rounded-xl border px-4 py-2 text-sm font-medium disabled:opacity-50 ${cls}`}>
       {loading ? "처리 중..." : label}
     </button>
   );
@@ -75,8 +93,10 @@ function pct(value: any) {
   return Number.isFinite(n) ? `${n.toFixed(1)}%` : "-";
 }
 
+const MODE_KO: Record<string, string> = { conservative: "보수", balanced: "균형", aggressive: "공격" };
+const HORIZON_KO: Record<string, string> = { short: "단기", swing: "스윙", mid: "중기" };
+
 interface CorrectionTabProps {
-  authToken: string;
   market: string; mode: string; horizon: string;
   dash: any; preview: any;
   loading: boolean; rebuildLoading: boolean;
@@ -86,8 +106,6 @@ interface CorrectionTabProps {
   onLoadDash: () => void;
   onLoadPreview: () => void;
   onRebuild: () => void;
-  message: string;
-  setMessage: (m: string) => void;
 }
 
 function ConfidenceBar({ value }: { value: number }) {
@@ -103,8 +121,18 @@ function ConfidenceBar({ value }: { value: number }) {
 function CorrectionTab({ market, mode, horizon, dash, preview, loading, rebuildLoading,
   onMarketChange, onModeChange, onHorizonChange, onLoadDash, onLoadPreview, onRebuild }: CorrectionTabProps) {
 
-  const MODES = ["conservative", "balanced", "aggressive"];
-  const HORIZONS = ["short", "swing", "mid"];
+  // 앱 전체가 쓰는 한국어 라벨(보수/균형/공격, 단기/스윙/중기)로 맞춘다 —
+  // 여기만 영문 코드가 그대로 버튼에 찍혀 있었다.
+  const MODES: { id: string; label: string }[] = [
+    { id: "conservative", label: "보수" },
+    { id: "balanced", label: "균형" },
+    { id: "aggressive", label: "공격" },
+  ];
+  const HORIZONS: { id: string; label: string }[] = [
+    { id: "short", label: "단기" },
+    { id: "swing", label: "스윙" },
+    { id: "mid", label: "중기" },
+  ];
 
   const corr = dash?.correctionsByKey ?? {};
   const perf = dash?.performanceStats ?? {};
@@ -122,17 +150,17 @@ function CorrectionTab({ market, mode, horizon, dash, preview, loading, rebuildL
         </div>
         <div className="flex flex-wrap gap-2">
           {["kr", "us"].map((m) => (
-            <button key={m} onClick={() => onMarketChange(m)}
-              className={`rounded-xl border px-3 py-1.5 text-sm font-medium ${market === m ? "mone-selection-brand" : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"}`}>
+            <button key={m} onClick={() => onMarketChange(m)} aria-pressed={market === m}
+              className={`min-h-11 rounded-xl border px-4 py-1.5 text-sm font-medium ${market === m ? "mone-selection-brand" : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"}`}>
               {m.toUpperCase()}
             </button>
           ))}
           <button onClick={onLoadDash} disabled={loading}
-            className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-800 disabled:opacity-50">
+            className="min-h-11 rounded-xl border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-800 disabled:opacity-50">
             {loading ? "불러오는 중..." : "대시보드 갱신"}
           </button>
           <button onClick={onRebuild} disabled={rebuildLoading}
-            className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-sm text-amber-200 hover:bg-amber-500/20 disabled:opacity-50">
+            className="min-h-11 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-sm text-amber-200 hover:bg-amber-500/20 disabled:opacity-50">
             {rebuildLoading ? "재계산 중..." : "보정 파라미터 재계산"}
           </button>
         </div>
@@ -197,8 +225,11 @@ function CorrectionTab({ market, mode, horizon, dash, preview, loading, rebuildL
                   <div key={key} className={`rounded-xl border p-4 ${isActive ? "border-emerald-800/50 bg-emerald-950/10" : "border-slate-800 bg-slate-900/40"}`}>
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div>
-                        <span className="font-mono text-sm font-semibold text-slate-200">{keyMode} / {keyHorizon}</span>
-                        <span className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-medium ${isActive ? "bg-emerald-500/20 text-emerald-300" : "bg-slate-700 text-slate-400"}`}>
+                        <span className="text-sm font-semibold text-slate-200" title={key}>
+                          {MODE_KO[keyMode] ?? keyMode} · {HORIZON_KO[keyHorizon] ?? keyHorizon}
+                        </span>
+                        {/* slate-400 on slate-700 = 4.04:1 로 AA 미달이었다(10px 본문). */}
+                        <span className={`ml-2 rounded-full px-2 py-0.5 text-[11px] font-medium ${isActive ? "bg-emerald-500/20 text-emerald-300" : "bg-slate-700 text-slate-300"}`}>
                           {isActive ? "보정 적용 중" : "보정 미적용"}
                         </span>
                       </div>
@@ -211,7 +242,7 @@ function CorrectionTab({ market, mode, horizon, dash, preview, loading, rebuildL
                     {c.topFailureReasons?.length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-1">
                         {c.topFailureReasons.map((r: string) => (
-                          <span key={r} className="rounded bg-red-500/10 px-1.5 py-0.5 text-[10px] text-red-300 border border-red-500/20">{r}</span>
+                          <span key={r} title={r} className="rounded bg-red-500/10 px-1.5 py-0.5 text-[11px] text-red-300 border border-red-500/20">{failureReasonLabel(r)}</span>
                         ))}
                       </div>
                     )}
@@ -234,19 +265,19 @@ function CorrectionTab({ market, mode, horizon, dash, preview, loading, rebuildL
               <h3 className="text-sm font-semibold text-slate-300">보정 전/후 미리보기</h3>
               <div className="flex flex-wrap gap-2">
                 {MODES.map((m) => (
-                  <button key={m} onClick={() => onModeChange(m)}
-                    className={`rounded-lg border px-2.5 py-1 text-xs ${mode === m ? "mone-selection-brand" : "border-slate-700 bg-slate-900 text-slate-400 hover:bg-slate-800"}`}>
-                    {m}
+                  <button key={m.id} onClick={() => onModeChange(m.id)} aria-pressed={mode === m.id}
+                    className={`min-h-11 rounded-lg border px-3 py-1 text-xs ${mode === m.id ? "mone-selection-brand" : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"}`}>
+                    {m.label}
                   </button>
                 ))}
                 {HORIZONS.map((h) => (
-                  <button key={h} onClick={() => onHorizonChange(h)}
-                    className={`rounded-lg border px-2.5 py-1 text-xs ${horizon === h ? "mone-selection-brand" : "border-slate-700 bg-slate-900 text-slate-400 hover:bg-slate-800"}`}>
-                    {h}
+                  <button key={h.id} onClick={() => onHorizonChange(h.id)} aria-pressed={horizon === h.id}
+                    className={`min-h-11 rounded-lg border px-3 py-1 text-xs ${horizon === h.id ? "mone-selection-brand" : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"}`}>
+                    {h.label}
                   </button>
                 ))}
                 <button onClick={onLoadPreview}
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs text-slate-200 hover:bg-slate-800">
+                  className="min-h-11 rounded-lg border border-slate-700 bg-slate-900 px-3 py-1 text-xs text-slate-200 hover:bg-slate-800">
                   미리보기 로드
                 </button>
               </div>
@@ -265,7 +296,7 @@ function CorrectionTab({ market, mode, horizon, dash, preview, loading, rebuildL
                 {preview.topFailureReasons?.length > 0 && (
                   <div className="mb-3 flex flex-wrap gap-1">
                     {preview.topFailureReasons.map((r: string) => (
-                      <span key={r} className="rounded bg-orange-500/10 px-1.5 py-0.5 text-[10px] text-orange-300 border border-orange-500/20">{r}</span>
+                      <span key={r} title={r} className="rounded bg-orange-500/10 px-1.5 py-0.5 text-[11px] text-orange-300 border border-orange-500/20">{failureReasonLabel(r)}</span>
                     ))}
                   </div>
                 )}
@@ -462,16 +493,17 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
     <div className="space-y-6 p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100">
-            관리자 대시보드{" "}
-            <span className="rounded bg-amber-500/20 px-2 py-1 text-xs text-amber-400">관리자</span>
-          </h1>
+          {/* 배지를 h1 **안에** 두면 접근가능한 이름이 "관리자 대시보드 관리자"가 된다. */}
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-slate-100">관리자 대시보드</h1>
+            <span className="rounded bg-amber-500/20 px-2 py-1 text-xs font-semibold text-amber-300">관리자</span>
+          </div>
           <p className="mt-1 text-sm text-slate-400">데이터 파이프라인, GitHub 상태, 가상운용 결과를 점검합니다.</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <button onClick={load} className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">새로고침</button>
+          <button onClick={load} className="min-h-11 rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">새로고침</button>
           {onLogout && (
-            <button onClick={onLogout} className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-200 hover:bg-red-500/20">
+            <button onClick={onLogout} className="min-h-11 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-200 hover:bg-red-500/20">
               로그아웃
             </button>
           )}
@@ -480,11 +512,27 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
 
       <SegmentedControl<AdminTab> options={ADMIN_TABS.map((t) => ({ value: t.id, label: t.label }))} value={tab} onChange={setTab} />
 
+      {/* 결과 배너는 탭 **밖에** 둔다. 예전엔 운영 탭 안에만 있어서, 자가보정 탭의
+          "보정 파라미터 재계산"이 setMessage를 불러도 화면엔 아무것도 안 떴다 —
+          누른 사람은 성공했는지 실패했는지 알 방법이 없었다. */}
+      {message && (
+        <div role="status" aria-live="polite" className="flex items-start justify-between gap-3 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-300">
+          <span className="min-w-0 flex-1 break-words">{message}</span>
+          <button
+            type="button"
+            onClick={() => setMessage("")}
+            aria-label="알림 닫기"
+            className="-my-1 -mr-2 flex size-11 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {tab === "prediction" && <PredictionPage />}
       {tab === "news" && <NewsPage />}
       {tab === "correction" && (
         <CorrectionTab
-          authToken={authToken}
           market={correctionMarket}
           mode={correctionMode}
           horizon={correctionHorizon}
@@ -498,20 +546,10 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
           onLoadDash={() => loadCorrectionDash(correctionMarket)}
           onLoadPreview={() => loadCorrectionPreview(correctionMarket, correctionMode, correctionHorizon)}
           onRebuild={rebuildCorrection}
-          message={message}
-          setMessage={setMessage}
         />
       )}
-      {tab !== "overview" && tab !== "correction" && null}
       {tab === "overview" && (
         <>
-
-      {message && (
-        <div className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-300">
-          {message}
-          <button onClick={() => setMessage("")} className="ml-3 text-slate-400 hover:text-slate-200">✕</button>
-        </div>
-      )}
 
       {/* 액션 버튼 묶음 */}
       <div className="flex flex-wrap gap-2">
@@ -524,36 +562,37 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
       {pipelineStatus.length > 0 && (
         <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
           <div className="mb-3">
-            <div className="text-sm font-semibold text-slate-200">Collection pipeline status</div>
-            <div className="mt-0.5 text-xs text-slate-400">GitHub Actions, local collector, Render readable files</div>
+            <div className="text-sm font-semibold text-slate-200">수집 파이프라인 상태</div>
+            <div className="mt-0.5 text-xs text-slate-400">GitHub Actions · 로컬 수집기 · 서버가 읽는 파일</div>
           </div>
           <div className="grid gap-3 lg:grid-cols-2">
             {pipelineStatus.map((row: any, idx: number) => (
               <div key={row.market || idx} className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
                 <div className="mb-3 flex items-center justify-between">
-                  <div className="font-mono text-sm font-bold text-slate-100">{String(row.market || "-").toUpperCase()}</div>
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${toneClassName(row.localCollectorPushed ? "safe" : "warning")}`}>
-                    local {row.localCollectorStatus || "확인 불가"}
+                  <div className="text-sm font-bold text-slate-100">{String(row.market || "-").toUpperCase()}</div>
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${toneClassName(row.localCollectorPushed ? "safe" : "warning")}`}
+                        title={String(row.localCollectorStatus || "")}>
+                    로컬 수집기 {codeText(row.localCollectorStatus).value}
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs">
-                  <Mini label="GitHub Actions" value={`${row.githubActionsStatus || "확인 불가"}`} />
-                  <Mini label="Collector pushed" value={row.localCollectorPushed === true ? "true" : row.localCollectorPushed === false ? "false" : "unknown"} />
-                  <Mini label="Render latest file" value={row.renderLatestFileDate || "-"} />
-                  <Mini label="Recommendation" value={row.recommendationLatestDate || "-"} />
-                  <Mini label="Snapshot" value={row.snapshotLatestDate || "-"} />
+                  <Mini label="GitHub Actions" {...codeText(row.githubActionsStatus)} />
+                  <Mini label="수집기 푸시" value={row.localCollectorPushed === true ? "완료" : row.localCollectorPushed === false ? "안 됨" : "확인 불가"} />
+                  <Mini label="서버 최신 파일" value={row.renderLatestFileDate || "-"} />
+                  <Mini label="추천 파일" value={row.recommendationLatestDate || "-"} />
+                  <Mini label="스냅샷" value={row.snapshotLatestDate || "-"} />
                   <Mini label="OHLCV" value={row.ohlcvLatestDate || "-"} />
-                  <Mini label="Price source" value={row.currentPriceSourceStatus || "-"} />
-                  <Mini label="Data status" value={row.dataStatus || "-"} />
+                  <Mini label="현재가 출처" {...codeText(row.currentPriceSourceStatus)} />
+                  <Mini label="데이터 상태" {...codeText(row.dataStatus)} />
                 </div>
                 {row.localCollectorLastError && <div className="mt-2 break-all text-xs text-red-300">{row.localCollectorLastError}</div>}
                 {((row.activeGaps || []).length > 0 || (row.nextActions || []).length > 0 || (row.checkedFiles || []).length > 0) && (
-                  <details className="mt-3 rounded-lg border border-slate-800 px-3 py-2 text-xs text-slate-400">
-                    <summary className="cursor-pointer text-slate-300">Details</summary>
-                    <div className="mt-2 space-y-1">
-                      {(row.activeGaps || []).slice(0, 5).map((item: string) => <div key={`gap-${item}`}>gap: {item}</div>)}
-                      {(row.nextActions || []).slice(0, 5).map((item: string) => <div key={`next-${item}`}>next: {item}</div>)}
-                      {(row.checkedFiles || []).slice(0, 8).map((item: string) => <div key={`file-${item}`} className="font-mono text-slate-400">{item}</div>)}
+                  <details className="mt-3 rounded-lg border border-slate-800 px-3 text-xs text-slate-400">
+                    <summary className="flex min-h-11 cursor-pointer items-center text-slate-300">자세히 보기</summary>
+                    <div className="space-y-1 pb-2">
+                      {(row.activeGaps || []).slice(0, 5).map((item: string) => <div key={`gap-${item}`}>미수집: {item}</div>)}
+                      {(row.nextActions || []).slice(0, 5).map((item: string) => <div key={`next-${item}`}>다음 조치: {item}</div>)}
+                      {(row.checkedFiles || []).slice(0, 8).map((item: string) => <div key={`file-${item}`} className="break-all text-slate-400">{item}</div>)}
                     </div>
                   </details>
                 )}
@@ -613,12 +652,12 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
             <h2 className="text-lg font-semibold text-slate-100">빗각 과거 검증</h2>
             <p className="text-sm text-slate-400">과거 시점에서 그은 지지·저항 빗각을 다음 5봉 실제 고저가와 뉴스 리스크로 검증합니다.</p>
           </div>
-          <span className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-400">{trendlineAccuracy.status || "확인 불가"}</span>
+          <span className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300" title={String(trendlineAccuracy.status || "")}>{codeText(trendlineAccuracy.status).value}</span>
         </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
           <Metric label="표본" value={trendlineAccuracy.sampleCount ?? "-"} />
           <Metric label="전체 존중률" value={pct(trendlineAccuracy.respectRatePct)} accent />
-          <Metric label="VERIFIED_90" value={trendlineAccuracy.verified90Count ?? "-"} accent />
+          <Metric label="검증 완료선" value={trendlineAccuracy.verified90Count ?? "-"} accent />
           <Metric label="검증선 존중률" value={pct(trendlineAccuracy.verified90RespectRatePct)} accent />
           <Metric label="뉴스 차단" value={trendlineAccuracy.newsBlockedCount ?? "-"} />
         </div>
@@ -634,12 +673,12 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
             <h2 className="text-lg font-semibold text-slate-100">데이터 점검</h2>
             <p className="text-sm text-slate-400">백엔드 루트, 데이터 상태, 파일 구분을 표시합니다.</p>
           </div>
-          <span className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-400">{audit.status || "확인 불가"}</span>
+          <span className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300" title={String(audit.status || "")}>{codeText(audit.status).value}</span>
         </div>
 
         <div className="grid grid-cols-1 gap-2 text-xs text-slate-400 md:grid-cols-2">
           <div>백엔드 루트: <span className="font-mono text-slate-300">{audit.root || "-"}</span></div>
-          <div>상태: <span className="font-mono text-slate-300">{audit.status || "-"}</span></div>
+          <div>상태: <span className="text-slate-300" title={String(audit.status || "")}>{codeText(audit.status).value}</span></div>
         </div>
 
         {/* 사용자 원장 파일 */}
@@ -656,7 +695,7 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
                   {userItems.map((item: any, idx: number) => (
                     <tr key={idx} className="border-b border-slate-900">
                       <td className="py-2 pr-3 text-emerald-300">{item.name || item.label || "-"}</td>
-                      <td className="py-2 pr-3 text-slate-400">{item.status || "-"}</td>
+                      <td className="py-2 pr-3 text-slate-400" title={String(item.status || "")}>{codeText(item.status).value}</td>
                       <td className="py-2 pr-3 text-slate-400">{item.count ?? "-"}</td>
                       <td className="break-all py-2 pr-3 font-mono text-slate-400">{item.path || item.file || "-"}</td>
                     </tr>
@@ -683,7 +722,7 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
                 {autoItems.map((item: any, idx: number) => (
                   <tr key={idx} className="border-b border-slate-900">
                     <td className="py-2 pr-3 text-slate-300">{item.name || item.label || "-"}</td>
-                    <td className="py-2 pr-3 text-slate-400">{item.status || "-"}</td>
+                    <td className="py-2 pr-3 text-slate-400" title={String(item.status || "")}>{codeText(item.status).value}</td>
                     <td className="py-2 pr-3 text-slate-400">{item.count ?? "-"}</td>
                     <td className="break-all py-2 pr-3 font-mono text-slate-400">{item.path || item.file || "-"}</td>
                   </tr>

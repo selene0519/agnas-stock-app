@@ -88,3 +88,47 @@ export function toneBadgeClass(tone: Tone): string {
     default: return "border-slate-700 bg-slate-950 text-slate-300";
   }
 }
+
+/**
+ * 검증·보정 파이프라인이 내는 실패 원인 코드의 한국어 라벨.
+ *
+ * 원래 VirtualJournalPage.tsx 안의 지역 상수였는데, 관리자 대시보드의
+ * 자가보정 탭(`topFailureReasons`)도 같은 코드를 그리면서 **원문 그대로**
+ * 노출하고 있었다(STOP_TOO_TIGHT 등). 같은 어휘를 두 화면이 서로 다르게
+ * 말하지 않도록 여기로 올린다.
+ */
+export const FAILURE_REASON_LABELS: Record<string, string> = {
+
+  UNKNOWN: "원인 미분류",
+  DATA_MISSING: "데이터 부족",
+  PRICE_INVALID: "가격 오류",
+  ENTRY_NOT_TOUCHED: "진입가 미도달",
+  TARGET_BEFORE_STOP: "목표가 선도달",
+  STOP_BEFORE_TARGET: "손절 선도달",
+  TARGET_NOT_REACHED: "목표가 미도달",
+  DIRECTION_FAILED: "방향성 실패",
+  STOP_TOO_TIGHT: "손절폭 과소",
+  OVEREXTENDED_ENTRY: "과열 구간 진입",
+  MARKET_GAP: "갭 변동 영향",
+  MISSED_PROFIT_CAPTURE: "수익 구간 포착 실패",
+  DATA_QUALITY_PROBLEM: "데이터 품질 문제",
+  ENTRY_PRICE_TOO_DEEP: "진입가 과도 보수",
+  TARGET_TOO_FAR_OR_MOMENTUM_WEAK: "목표가 과대 또는 모멘텀 약함",
+  WEAK_CANDIDATE_SIGNAL: "후보 선정 신호 약함",
+  HIGH_DRAWDOWN_BEFORE_SUCCESS: "진입 후 역행폭 과대",
+  NO_FUTURE_BARS_YET: "평가 대기",
+  INSUFFICIENT_HOLDING_PERIOD: "평가 기간 부족",
+  ENTRY_TOUCHED_BUT_NO_EXIT: "진입 후 미청산",
+  MISSING_ENTRY_PRICE: "진입가 누락",
+  MISSING_TARGET_OR_STOP: "목표/손절가 누락",
+  INVALID_PRICE_PATH: "가격 경로 오류",
+  SYMBOL_OR_DATE_MISMATCH: "종목/날짜 매칭 실패",
+  PENDING_EVALUATION: "평가 대기",
+  UNCLASSIFIED_PRICE_PATH: "가격 경로 미분류",
+};
+
+/** 모르는 코드를 사용자에게 그대로 보이지 않게 감싼다. */
+export function failureReasonLabel(raw: unknown): string {
+  const code = up(raw) || "UNKNOWN";
+  return FAILURE_REASON_LABELS[code] || "원인 미분류";
+}

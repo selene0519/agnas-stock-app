@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -38,6 +39,28 @@ MIN_TOUCH_PX = 44
 # app/page.tsx의 pageIds와 같아야 한다. 어긋나면 화면이 조용히 빠진다.
 PAGES = ["home", "report", "stocks", "holdings", "chart", "news",
          "prediction", "advanced", "paper", "journal", "broker", "admin"]
+
+# ⚠️ `admin`은 **로그인 게이트**다(app/page.tsx:322 — adminToken이 없으면
+# AdminLoginPage를 그린다). 토큰 없이 재면 12개 화면을 다 돈 것처럼 보이지만
+# 실제로는 로그인 폼만 잰다 — 2026-07-31에 그 사실이 드러났고, 그때까지
+# 가려져 있던 관리자 대시보드에서 44px 미달 18건과 기계코드 9건이 나왔다.
+# (2026-07-26/28/29 세 번의 감사가 전부 이걸 놓쳤다.)
+#
+# 토큰을 주면 실제 대시보드를 잰다:
+#   MONE_MEASURE_ADMIN_TOKEN=$(curl -s -XPOST localhost:8050/api/auth/admin-login \
+#     -H 'Content-Type: application/json' -d '{"adminId":"...","password":"..."}' \
+#     | python -c 'import json,sys;print(json.load(sys.stdin)["token"])')
+ADMIN_TOKEN_KEY = "mone:adminToken"
+
+# 탭 안에만 있는 화면은 URL이 없다. 관리자 "자가보정" 탭은 다른 어떤 pageId로도
+# 안 닿아서 지금껏 한 번도 계측되지 않았다 -> 탭을 눌러서 연다.
+#
+# 탭만 열면 **빈 상태**를 잰다. 자가보정 탭은 데이터를 불러와야 전략 선택
+# 버튼들이 그려지는데, 탭만 누른 계측은 6건, 실제로 불러온 뒤는 13건이었다.
+# 그래서 라벨을 **순서대로** 눌러 본문이 채워진 상태를 잰다(없으면 조용히 넘어간다).
+TAB_DRILLS: dict[str, list[tuple[str, list[str]]]] = {
+    "admin": [("자가보정", ["자가보정", "대시보드 갱신", "미리보기 로드"])],
+}
 
 # 보이는 상호작용 요소를 모아 렌더 박스를 재는 스크립트.
 # getBoundingClientRect는 부모 flex/grid가 늘려준 실제 높이를 반영한다.
@@ -113,7 +136,16 @@ PROBE_JS = r"""
 """
 
 
-def run(base: str) -> dict:
+def _measure(page) -> dict:
+    probe = page.evaluate(PROBE_JS)
+    # 가로 스크롤(모바일에서 제일 티나는 레이아웃 붕괴)
+    probe["horizontalOverflowPx"] = page.evaluate(
+        "() => Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth)"
+    )
+    return probe
+
+
+def run(base: str, admin_token: str = "") -> dict:
     from playwright.sync_api import sync_playwright
 
     results: dict[str, dict] = {}
@@ -122,6 +154,9 @@ def run(base: str) -> dict:
         browser = p.chromium.launch(executable_path=CHROMIUM)
         for page_id in PAGES:
             ctx = browser.new_context(viewport=VIEWPORT, device_scale_factor=2)
+            if admin_token:
+                ctx.add_init_script(
+                    f"window.localStorage.setItem({json.dumps(ADMIN_TOKEN_KEY)}, {json.dumps(admin_token)});")
             page = ctx.new_page()
             errs: list[str] = []
             page.on("console", lambda m, e=errs: e.append(m.text) if m.type == "error" else None)
@@ -133,25 +168,47 @@ def run(base: str) -> dict:
                 # 백엔드가 없으면 networkidle이 안 올 수 있다 — 렌더는 됐으므로 계속.
                 pass
             page.wait_for_timeout(1500)
-            probe = page.evaluate(PROBE_JS)
-            # 가로 스크롤(모바일에서 제일 티나는 레이아웃 붕괴)
-            probe["horizontalOverflowPx"] = page.evaluate(
-                "() => Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth)"
-            )
+            probe = _measure(page)
+            # 인증이 필요한 화면인데 토큰이 없으면 **로그인 폼을 잰 것**이다.
+            # 0으로 찍힌 걸 "통과"로 읽으면 안 되니 리포트에 남긴다.
+            if page_id in ("admin", "broker"):
+                probe["authGated"] = True
+                probe["measuredAuthenticated"] = bool(admin_token) and page_id == "admin"
             results[page_id] = probe
             console_errors[page_id] = errs[:5]
+
+            # 탭 전용 화면(URL 없음)도 같은 기준으로 잰다.
+            for tab_name, click_labels in TAB_DRILLS.get(page_id, []):
+                if page_id == "admin" and not admin_token:
+                    continue  # 로그인 폼엔 그 탭이 없다
+                opened = False
+                for label in click_labels:
+                    try:
+                        page.get_by_text(label, exact=True).first.click(timeout=15000)
+                        page.wait_for_timeout(3000)
+                        opened = True
+                    except Exception:
+                        continue  # 그 단계 버튼이 없으면 건너뛴다(데이터가 없을 수 있다)
+                if not opened:
+                    continue
+                key = f"{page_id}:{tab_name}"
+                results[key] = _measure(page)
+                console_errors[key] = errs[:5]
             ctx.close()
         browser.close()
     return {"viewport": VIEWPORT, "minTouchPx": MIN_TOUCH_PX,
+            "adminMeasuredAuthenticated": bool(admin_token),
             "pages": results, "consoleErrors": console_errors}
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--base", default="http://127.0.0.1:3000")
+    ap.add_argument("--admin-token", default=os.environ.get("MONE_MEASURE_ADMIN_TOKEN", ""),
+                    help="관리자 대시보드를 실제로 재려면 필요. 없으면 로그인 폼만 잰다.")
     args = ap.parse_args()
 
-    data = run(args.base)
+    data = run(args.base, args.admin_token)
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
@@ -165,6 +222,9 @@ def main() -> int:
         totals[0] += len(r["small"]); totals[1] += len(r["unnamed"])
         totals[2] += len(r["machineCodes"]); totals[3] += errs
     print(f"\n합계: 44px미달 {totals[0]} / 무명 {totals[1]} / 기계코드 {totals[2]} / 콘솔에러 {totals[3]}")
+    if not data.get("adminMeasuredAuthenticated"):
+        print("\n⚠️  admin은 로그인 폼만 쟀다 — 관리자 대시보드 본문은 **미계측**이다.")
+        print("    실제로 재려면 --admin-token 또는 MONE_MEASURE_ADMIN_TOKEN을 넘길 것.")
     return 0
 
 

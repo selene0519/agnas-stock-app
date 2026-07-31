@@ -102,6 +102,26 @@ const STATUS_LABELS: Record<string, string> = {
   // 그대로 떠 있었다 — 밑줄 없는 단독 대문자라 앞선 기계코드 스캔에서 놓쳤다.
   DEFERRED: "판정 보류",
   CHECK: "확인 필요",
+  // 운영/파이프라인 코드. 관리자 대시보드가 자체 매핑 없이 원문을 그대로
+  // 찍고 있었다 — 2026-07-31 실측에서 UNKNOWN·NORMAL·EMPTY_RESULT·LOADING이
+  // 화면에 노출됐다(관리자 화면은 로그인 게이트라 그동안 계측에서 빠져 있었다).
+  UNKNOWN: "확인 불가",
+  LOADING: "불러오는 중",
+  NOT_RUN: "미실행",
+  DEGRADED: "일부 지연",
+  CRITICAL: "긴급 점검 필요",
+  WARN: "주의",
+  WARNING: "주의",
+  // GitHub Actions 런 상태
+  SUCCESS: "성공",
+  FAILURE: "실패",
+  FAILED: "실패",
+  RUNNING: "실행 중",
+  IN_PROGRESS: "실행 중",
+  QUEUED: "대기 중",
+  CANCELLED: "취소됨",
+  TIMED_OUT: "시간 초과",
+  NEVER_RUN: "실행 이력 없음",
 };
 
 export function statusLabel(s: DataStatus | string): string {

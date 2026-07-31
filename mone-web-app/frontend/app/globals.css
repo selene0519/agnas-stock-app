@@ -547,7 +547,13 @@ html[data-theme="light"] .mone-app-shell [class*="bg-red-"]:not([class*="/"])[cl
 }
 /* Translucent washes (bg-emerald-500/10 etc.) are near-white in light mode —
    force-white text on them was invisible. Use a solid, readable tone instead. */
-html[data-theme="light"] .mone-app-shell [class*="bg-blue-"][class*="/"][class*="text-white"] {
+/* 슬래시는 **bg 유틸리티 자체**에 붙여 검사한다 — `[class*="/"]`만 쓰면
+   `border-blue-500/30 bg-blue-600 text-white`(불투명 배경)까지 걸려서 흰
+   글자가 teal(#0d9488)로 바뀐다. 실측 3.23:1(라이트). */
+html[data-theme="light"] .mone-app-shell [class*="bg-blue-400/"][class*="text-white"],
+html[data-theme="light"] .mone-app-shell [class*="bg-blue-500/"][class*="text-white"],
+html[data-theme="light"] .mone-app-shell [class*="bg-blue-600/"][class*="text-white"],
+html[data-theme="light"] .mone-app-shell [class*="bg-blue-700/"][class*="text-white"] {
   color: #0d9488 !important;
 }
 html[data-theme="light"] .mone-app-shell [class*="bg-emerald-"][class*="/"][class*="text-white"] {
@@ -590,7 +596,24 @@ html[data-theme="light"] .mone-header-button {
 .mone-app-shell [class*="hover:bg-blue-700"]:hover {
   background-color: var(--brand-hover) !important;
 }
-.mone-app-shell [class*="bg-blue-"][class*="/"] {
+/* 반투명 blue 배경(`bg-blue-500/10` 등)만 흐린 브랜드색으로 바꾼다.
+   ⚠️ 예전 선택자는 `[class*="bg-blue-"][class*="/"]`였는데, `[class*="/"]`는
+   class 문자열 **어디에** 슬래시가 있든 걸린다. 그래서
+   `border-blue-500/30 bg-blue-600 text-white`처럼 **불투명 배경 + 슬래시 달린
+   테두리**를 같이 쓰면, 위 규칙이 준 잉크(#052420)는 남고 배경만 10% 틴트로
+   덮여 글자가 사실상 안 보였다 — 관리자 대시보드 "GitHub 동기화" 버튼 실측
+   1.08:1(다크)/3.23:1(라이트). 슬래시를 **bg 유틸리티 자체**에 붙여 검사한다. */
+.mone-app-shell [class*="bg-blue-50/"],
+.mone-app-shell [class*="bg-blue-100/"],
+.mone-app-shell [class*="bg-blue-200/"],
+.mone-app-shell [class*="bg-blue-300/"],
+.mone-app-shell [class*="bg-blue-400/"],
+.mone-app-shell [class*="bg-blue-500/"],
+.mone-app-shell [class*="bg-blue-600/"],
+.mone-app-shell [class*="bg-blue-700/"],
+.mone-app-shell [class*="bg-blue-800/"],
+.mone-app-shell [class*="bg-blue-900/"],
+.mone-app-shell [class*="bg-blue-950/"] {
   background-color: var(--brand-dim) !important;
 }
 .mone-app-shell [class*="text-blue-"] {

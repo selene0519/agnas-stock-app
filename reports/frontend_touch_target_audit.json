@@ -4,12 +4,42 @@
     "height": 812
   },
   "minTouchPx": 44,
+  "adminMeasuredAuthenticated": true,
   "pages": {
     "home": {
-      "small": [],
+      "small": [
+        {
+          "tag": "button",
+          "w": 36,
+          "h": 44,
+          "text": "근접 알림: KO",
+          "cls": "inline-flex min-h-11 max-w-full flex-none items-center gap-1 rounded-l"
+        }
+      ],
       "unnamed": [],
-      "machineCodes": [],
-      "total": 8,
+      "machineCodes": [
+        {
+          "code": "SPY",
+          "context": "SPY"
+        },
+        {
+          "code": "SLB",
+          "context": "SLB"
+        },
+        {
+          "code": "LYFT",
+          "context": "LYFT"
+        },
+        {
+          "code": "LYFT",
+          "context": "LYFT"
+        },
+        {
+          "code": "TMDX",
+          "context": "TMDX"
+        }
+      ],
+      "total": 28,
       "horizontalOverflowPx": 0
     },
     "report": {
@@ -34,23 +64,758 @@
       "horizontalOverflowPx": 0
     },
     "chart": {
-      "small": [],
+      "small": [
+        {
+          "tag": "button",
+          "w": 317,
+          "h": 30,
+          "text": "정밀 근거 보기",
+          "cls": "shrink-0 rounded-lg border border-blue-400/40 bg-blue-600/30 px-3 py-1"
+        }
+      ],
       "unnamed": [],
-      "machineCodes": [],
-      "total": 10,
+      "machineCodes": [
+        {
+          "code": "LYFT",
+          "context": "LYFT"
+        },
+        {
+          "code": "LYFT",
+          "context": "LYFT"
+        },
+        {
+          "code": "RSI14",
+          "context": "RSI14"
+        },
+        {
+          "code": "ATR14",
+          "context": "ATR14"
+        },
+        {
+          "code": "MDD20",
+          "context": "MDD20"
+        },
+        {
+          "code": "ATR",
+          "context": "ATR(14) ="
+        },
+        {
+          "code": "ATR",
+          "context": "ATR 단위"
+        },
+        {
+          "code": "ATR",
+          "context": "일일 변동성 높음 (ATR 4.2%) — 포지션 크기 축소 고려"
+        }
+      ],
+      "total": 29,
       "horizontalOverflowPx": 0
     },
     "news": {
       "small": [],
       "unnamed": [],
-      "machineCodes": [],
-      "total": 14,
+      "machineCodes": [
+        {
+          "code": "GOOGL",
+          "context": "GOOGL"
+        },
+        {
+          "code": "AMZN",
+          "context": "AMZN"
+        },
+        {
+          "code": "AAPL",
+          "context": "AAPL"
+        },
+        {
+          "code": "MSFT",
+          "context": "MSFT"
+        },
+        {
+          "code": "NVIDIA",
+          "context": "NVIDIA"
+        },
+        {
+          "code": "NVDA",
+          "context": "NVDA"
+        },
+        {
+          "code": "NBIS",
+          "context": "NBIS"
+        },
+        {
+          "code": "SNDK",
+          "context": "SNDK"
+        },
+        {
+          "code": "BMNR",
+          "context": "BMNR"
+        },
+        {
+          "code": "CRCL",
+          "context": "CRCL"
+        },
+        {
+          "code": "TLT",
+          "context": "TLT"
+        },
+        {
+          "code": "AMD",
+          "context": "AMD"
+        },
+        {
+          "code": "ASML",
+          "context": "ASML Holding"
+        },
+        {
+          "code": "ASML",
+          "context": "ASML"
+        },
+        {
+          "code": "AST",
+          "context": "AST SpaceMobile"
+        },
+        {
+          "code": "ASTS",
+          "context": "ASTS"
+        },
+        {
+          "code": "ABBV",
+          "context": "ABBV"
+        },
+        {
+          "code": "ADBE",
+          "context": "ADBE"
+        },
+        {
+          "code": "AVAV",
+          "context": "AVAV"
+        },
+        {
+          "code": "ABNB",
+          "context": "ABNB"
+        },
+        {
+          "code": "AMAT",
+          "context": "AMAT"
+        },
+        {
+          "code": "AAOI",
+          "context": "AAOI"
+        },
+        {
+          "code": "ACHR",
+          "context": "ACHR"
+        },
+        {
+          "code": "ANET",
+          "context": "ANET"
+        },
+        {
+          "code": "ARM",
+          "context": "ARM"
+        },
+        {
+          "code": "ALAB",
+          "context": "ALAB"
+        },
+        {
+          "code": "BAC",
+          "context": "BAC"
+        },
+        {
+          "code": "BBAI",
+          "context": "BBAI"
+        },
+        {
+          "code": "AVGO",
+          "context": "AVGO"
+        },
+        {
+          "code": "CAT",
+          "context": "CAT"
+        },
+        {
+          "code": "CAVA",
+          "context": "CAVA"
+        },
+        {
+          "code": "CAVA",
+          "context": "CAVA"
+        },
+        {
+          "code": "CELH",
+          "context": "CELH"
+        },
+        {
+          "code": "CVX",
+          "context": "CVX"
+        },
+        {
+          "code": "NET",
+          "context": "NET"
+        },
+        {
+          "code": "COHR",
+          "context": "COHR"
+        },
+        {
+          "code": "COIN",
+          "context": "COIN"
+        },
+        {
+          "code": "COP",
+          "context": "COP"
+        },
+        {
+          "code": "CEG",
+          "context": "CEG"
+        },
+        {
+          "code": "COST",
+          "context": "COST"
+        },
+        {
+          "code": "CRDO",
+          "context": "CRDO"
+        },
+        {
+          "code": "CRWD",
+          "context": "CRWD"
+        },
+        {
+          "code": "DASH",
+          "context": "DASH"
+        },
+        {
+          "code": "DIA",
+          "context": "DIA"
+        },
+        {
+          "code": "DIA",
+          "context": "DIA"
+        },
+        {
+          "code": "DRAM",
+          "context": "DRAM"
+        },
+        {
+          "code": "DRAM",
+          "context": "DRAM"
+        },
+        {
+          "code": "DDOG",
+          "context": "DDOG"
+        },
+        {
+          "code": "DELL",
+          "context": "DELL"
+        },
+        {
+          "code": "DELL",
+          "context": "DELL"
+        },
+        {
+          "code": "DUOL",
+          "context": "DUOL"
+        },
+        {
+          "code": "ETN",
+          "context": "ETN"
+        },
+        {
+          "code": "ESTC",
+          "context": "ESTC"
+        },
+        {
+          "code": "LLY",
+          "context": "LLY"
+        },
+        {
+          "code": "XLE",
+          "context": "XLE"
+        },
+        {
+          "code": "EXAS",
+          "context": "EXAS"
+        },
+        {
+          "code": "XOM",
+          "context": "XOM"
+        },
+        {
+          "code": "XLF",
+          "context": "XLF"
+        },
+        {
+          "code": "GLD",
+          "context": "GLD"
+        },
+        {
+          "code": "HPE",
+          "context": "HPE"
+        },
+        {
+          "code": "HYG",
+          "context": "HYG"
+        },
+        {
+          "code": "HYG",
+          "context": "HYG"
+        },
+        {
+          "code": "HIMS",
+          "context": "HIMS"
+        },
+        {
+          "code": "HUT",
+          "context": "HUT"
+        },
+        {
+          "code": "IREN",
+          "context": "IREN Limited"
+        },
+        {
+          "code": "IREN",
+          "context": "IREN"
+        },
+        {
+          "code": "INTC",
+          "context": "INTC"
+        },
+        {
+          "code": "LUNR",
+          "context": "LUNR"
+        },
+        {
+          "code": "ISRG",
+          "context": "ISRG"
+        },
+        {
+          "code": "IONQ",
+          "context": "IONQ"
+        },
+        {
+          "code": "IONQ",
+          "context": "IONQ"
+        },
+        {
+          "code": "JNJ",
+          "context": "JNJ"
+        },
+        {
+          "code": "JNJ",
+          "context": "JNJ"
+        },
+        {
+          "code": "JPM",
+          "context": "JPM"
+        },
+        {
+          "code": "JOBY",
+          "context": "JOBY"
+        },
+        {
+          "code": "KLA",
+          "context": "KLA"
+        },
+        {
+          "code": "KLAC",
+          "context": "KLAC"
+        },
+        {
+          "code": "KTOS",
+          "context": "KTOS"
+        },
+        {
+          "code": "LMT",
+          "context": "LMT"
+        },
+        {
+          "code": "LMT",
+          "context": "LMT"
+        },
+        {
+          "code": "LQD",
+          "context": "LQD"
+        },
+        {
+          "code": "LQD",
+          "context": "LQD"
+        },
+        {
+          "code": "LYFT",
+          "context": "LYFT"
+        },
+        {
+          "code": "LYFT",
+          "context": "LYFT"
+        },
+        {
+          "code": "LRCX",
+          "context": "LRCX"
+        },
+        {
+          "code": "LITE",
+          "context": "LITE"
+        },
+        {
+          "code": "MARA",
+          "context": "MARA Holdings"
+        },
+        {
+          "code": "MARA",
+          "context": "MARA"
+        },
+        {
+          "code": "MCD",
+          "context": "MCD"
+        },
+        {
+          "code": "MCD",
+          "context": "MCD"
+        },
+        {
+          "code": "MXL",
+          "context": "MXL"
+        },
+        {
+          "code": "MXL",
+          "context": "MXL"
+        },
+        {
+          "code": "MRVL",
+          "context": "MRVL"
+        },
+        {
+          "code": "MELI",
+          "context": "MELI"
+        },
+        {
+          "code": "META",
+          "context": "META"
+        },
+        {
+          "code": "MSTR",
+          "context": "MSTR"
+        },
+        {
+          "code": "MDB",
+          "context": "MDB"
+        },
+        {
+          "code": "MPWR",
+          "context": "MPWR"
+        },
+        {
+          "code": "QQQ",
+          "context": "QQQ"
+        },
+        {
+          "code": "NFLX",
+          "context": "NFLX"
+        },
+        {
+          "code": "NVO",
+          "context": "NVO"
+        },
+        {
+          "code": "SMR",
+          "context": "SMR"
+        },
+        {
+          "code": "OXY",
+          "context": "OXY"
+        },
+        {
+          "code": "OKLO",
+          "context": "OKLO"
+        },
+        {
+          "code": "OKLO",
+          "context": "OKLO"
+        },
+        {
+          "code": "OKTA",
+          "context": "OKTA"
+        },
+        {
+          "code": "OKTA",
+          "context": "OKTA"
+        },
+        {
+          "code": "ORCL",
+          "context": "ORCL"
+        },
+        {
+          "code": "PEP",
+          "context": "PEP"
+        },
+        {
+          "code": "PEP",
+          "context": "PEP"
+        },
+        {
+          "code": "PFE",
+          "context": "PFE"
+        },
+        {
+          "code": "PFE",
+          "context": "PFE"
+        },
+        {
+          "code": "PLTR",
+          "context": "PLTR"
+        },
+        {
+          "code": "PANW",
+          "context": "PANW"
+        },
+        {
+          "code": "QCOM",
+          "context": "QCOM"
+        },
+        {
+          "code": "QUBT",
+          "context": "QUBT"
+        },
+        {
+          "code": "RBLX",
+          "context": "RBLX"
+        },
+        {
+          "code": "RSP",
+          "context": "RSP"
+        },
+        {
+          "code": "RSP",
+          "context": "RSP"
+        },
+        {
+          "code": "RXRX",
+          "context": "RXRX"
+        },
+        {
+          "code": "RDDT",
+          "context": "RDDT"
+        },
+        {
+          "code": "RGTI",
+          "context": "RGTI"
+        },
+        {
+          "code": "RIOT",
+          "context": "RIOT"
+        },
+        {
+          "code": "RIVN",
+          "context": "RIVN"
+        },
+        {
+          "code": "HOOD",
+          "context": "HOOD"
+        },
+        {
+          "code": "RKLB",
+          "context": "RKLB"
+        },
+        {
+          "code": "IWM",
+          "context": "IWM"
+        },
+        {
+          "code": "SPY",
+          "context": "SPY"
+        },
+        {
+          "code": "SCHD",
+          "context": "SCHD"
+        },
+        {
+          "code": "SCHD",
+          "context": "SCHD"
+        },
+        {
+          "code": "SNAP",
+          "context": "SNAP"
+        },
+        {
+          "code": "SNAP",
+          "context": "SNAP"
+        },
+        {
+          "code": "SOXL",
+          "context": "SOXL"
+        },
+        {
+          "code": "SOXS",
+          "context": "SOXS"
+        },
+        {
+          "code": "SOXS",
+          "context": "SOXS"
+        },
+        {
+          "code": "SP500",
+          "context": "SP500"
+        },
+        {
+          "code": "SP500",
+          "context": "SP500"
+        },
+        {
+          "code": "SPCX",
+          "context": "SPCX"
+        },
+        {
+          "code": "SPCX",
+          "context": "SPCX"
+        },
+        {
+          "code": "SQQQ",
+          "context": "SQQQ"
+        },
+        {
+          "code": "SQQQ",
+          "context": "SQQQ"
+        },
+        {
+          "code": "CRM",
+          "context": "CRM"
+        },
+        {
+          "code": "SLB",
+          "context": "SLB"
+        },
+        {
+          "code": "STX",
+          "context": "STX"
+        },
+        {
+          "code": "NOW",
+          "context": "NOW"
+        },
+        {
+          "code": "SHOP",
+          "context": "SHOP"
+        },
+        {
+          "code": "SIMO",
+          "context": "SIMO"
+        },
+        {
+          "code": "SNOW",
+          "context": "SNOW"
+        },
+        {
+          "code": "SOUN",
+          "context": "SOUN"
+        },
+        {
+          "code": "SMCI",
+          "context": "SMCI"
+        },
+        {
+          "code": "TSMC",
+          "context": "TSMC"
+        },
+        {
+          "code": "TSM",
+          "context": "TSM"
+        },
+        {
+          "code": "TXN",
+          "context": "TXN"
+        },
+        {
+          "code": "TXN",
+          "context": "TXN"
+        },
+        {
+          "code": "TEM",
+          "context": "TEM"
+        },
+        {
+          "code": "TER",
+          "context": "TER"
+        },
+        {
+          "code": "TSLA",
+          "context": "TSLA"
+        },
+        {
+          "code": "DIS",
+          "context": "DIS"
+        },
+        {
+          "code": "TMDX",
+          "context": "TMDX"
+        },
+        {
+          "code": "UBER",
+          "context": "UBER"
+        },
+        {
+          "code": "UBER",
+          "context": "UBER"
+        },
+        {
+          "code": "PATH",
+          "context": "PATH"
+        },
+        {
+          "code": "UNH",
+          "context": "UNH"
+        },
+        {
+          "code": "SMH",
+          "context": "SMH"
+        },
+        {
+          "code": "VRTX",
+          "context": "VRTX"
+        },
+        {
+          "code": "VRT",
+          "context": "VRT"
+        },
+        {
+          "code": "WMT",
+          "context": "WMT"
+        },
+        {
+          "code": "WDC",
+          "context": "WDC"
+        },
+        {
+          "code": "ELF",
+          "context": "ELF"
+        },
+        {
+          "code": "IBIT",
+          "context": "IBIT"
+        },
+        {
+          "code": "SOXX",
+          "context": "SOXX"
+        },
+        {
+          "code": "GOOGL",
+          "context": "GOOGL"
+        }
+      ],
+      "total": 174,
       "horizontalOverflowPx": 0
     },
     "prediction": {
       "small": [],
       "unnamed": [],
-      "machineCodes": [],
+      "machineCodes": [
+        {
+          "code": "WEAKENING",
+          "context": "WEAKENING"
+        }
+      ],
       "total": 19,
       "horizontalOverflowPx": 0
     },
@@ -58,21 +823,950 @@
       "small": [],
       "unnamed": [],
       "machineCodes": [],
-      "total": 20,
+      "total": 22,
       "horizontalOverflowPx": 0
     },
     "paper": {
       "small": [],
       "unnamed": [],
       "machineCodes": [],
-      "total": 15,
+      "total": 17,
       "horizontalOverflowPx": 0
     },
     "journal": {
-      "small": [],
+      "small": [
+        {
+          "tag": "button",
+          "w": 50,
+          "h": 25,
+          "text": "검토 완료로 표시 (MANUAL_REVIEWED 승격, 보정 가중치 1.",
+          "cls": "mt-2.5 inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-"
+        },
+        {
+          "tag": "button",
+          "w": 50,
+          "h": 25,
+          "text": "검토 완료로 표시 (MANUAL_REVIEWED 승격, 보정 가중치 1.",
+          "cls": "mt-2.5 inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-"
+        },
+        {
+          "tag": "button",
+          "w": 50,
+          "h": 25,
+          "text": "검토 완료로 표시 (MANUAL_REVIEWED 승격, 보정 가중치 1.",
+          "cls": "mt-2.5 inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-"
+        },
+        {
+          "tag": "button",
+          "w": 50,
+          "h": 25,
+          "text": "검토 완료로 표시 (MANUAL_REVIEWED 승격, 보정 가중치 1.",
+          "cls": "mt-2.5 inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-"
+        },
+        {
+          "tag": "button",
+          "w": 50,
+          "h": 25,
+          "text": "검토 완료로 표시 (MANUAL_REVIEWED 승격, 보정 가중치 1.",
+          "cls": "mt-2.5 inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-"
+        },
+        {
+          "tag": "button",
+          "w": 50,
+          "h": 25,
+          "text": "검토 완료로 표시 (MANUAL_REVIEWED 승격, 보정 가중치 1.",
+          "cls": "mt-2.5 inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-"
+        },
+        {
+          "tag": "button",
+          "w": 50,
+          "h": 25,
+          "text": "검토 완료로 표시 (MANUAL_REVIEWED 승격, 보정 가중치 1.",
+          "cls": "mt-2.5 inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-"
+        },
+        {
+          "tag": "button",
+          "w": 50,
+          "h": 25,
+          "text": "검토 완료로 표시 (MANUAL_REVIEWED 승격, 보정 가중치 1.",
+          "cls": "mt-2.5 inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-"
+        },
+        {
+          "tag": "button",
+          "w": 50,
+          "h": 25,
+          "text": "검토 완료로 표시 (MANUAL_REVIEWED 승격, 보정 가중치 1.",
+          "cls": "mt-2.5 inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-"
+        },
+        {
+          "tag": "button",
+          "w": 50,
+          "h": 25,
+          "text": "검토 완료로 표시 (MANUAL_REVIEWED 승격, 보정 가중치 1.",
+          "cls": "mt-2.5 inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-"
+        },
+        {
+          "tag": "button",
+          "w": 50,
+          "h": 25,
+          "text": "검토 완료로 표시 (MANUAL_REVIEWED 승격, 보정 가중치 1.",
+          "cls": "mt-2.5 inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-"
+        },
+        {
+          "tag": "button",
+          "w": 50,
+          "h": 25,
+          "text": "검토 완료로 표시 (MANUAL_REVIEWED 승격, 보정 가중치 1.",
+          "cls": "mt-2.5 inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-"
+        },
+        {
+          "tag": "button",
+          "w": 50,
+          "h": 25,
+          "text": "검토 완료로 표시 (MANUAL_REVIEWED 승격, 보정 가중치 1.",
+          "cls": "mt-2.5 inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-"
+        },
+        {
+          "tag": "button",
+          "w": 50,
+          "h": 25,
+          "text": "검토 완료로 표시 (MANUAL_REVIEWED 승격, 보정 가중치 1.",
+          "cls": "mt-2.5 inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-"
+        },
+        {
+          "tag": "button",
+          "w": 50,
+          "h": 25,
+          "text": "검토 완료로 표시 (MANUAL_REVIEWED 승격, 보정 가중치 1.",
+          "cls": "mt-2.5 inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-"
+        },
+        {
+          "tag": "button",
+          "w": 50,
+          "h": 25,
+          "text": "검토 완료로 표시 (MANUAL_REVIEWED 승격, 보정 가중치 1.",
+          "cls": "mt-2.5 inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-"
+        },
+        {
+          "tag": "button",
+          "w": 50,
+          "h": 25,
+          "text": "검토 완료로 표시 (MANUAL_REVIEWED 승격, 보정 가중치 1.",
+          "cls": "mt-2.5 inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-"
+        },
+        {
+          "tag": "button",
+          "w": 50,
+          "h": 25,
+          "text": "검토 완료로 표시 (MANUAL_REVIEWED 승격, 보정 가중치 1.",
+          "cls": "mt-2.5 inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-"
+        },
+        {
+          "tag": "button",
+          "w": 50,
+          "h": 25,
+          "text": "검토 완료로 표시 (MANUAL_REVIEWED 승격, 보정 가중치 1.",
+          "cls": "mt-2.5 inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-"
+        },
+        {
+          "tag": "button",
+          "w": 50,
+          "h": 25,
+          "text": "검토 완료로 표시 (MANUAL_REVIEWED 승격, 보정 가중치 1.",
+          "cls": "mt-2.5 inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-"
+        },
+        {
+          "tag": "button",
+          "w": 50,
+          "h": 25,
+          "text": "검토 완료로 표시 (MANUAL_REVIEWED 승격, 보정 가중치 1.",
+          "cls": "mt-2.5 inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-"
+        },
+        {
+          "tag": "button",
+          "w": 50,
+          "h": 25,
+          "text": "검토 완료로 표시 (MANUAL_REVIEWED 승격, 보정 가중치 1.",
+          "cls": "mt-2.5 inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-"
+        },
+        {
+          "tag": "button",
+          "w": 50,
+          "h": 25,
+          "text": "검토 완료로 표시 (MANUAL_REVIEWED 승격, 보정 가중치 1.",
+          "cls": "mt-2.5 inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-"
+        },
+        {
+          "tag": "button",
+          "w": 50,
+          "h": 25,
+          "text": "검토 완료로 표시 (MANUAL_REVIEWED 승격, 보정 가중치 1.",
+          "cls": "mt-2.5 inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-"
+        },
+        {
+          "tag": "button",
+          "w": 50,
+          "h": 25,
+          "text": "검토 완료로 표시 (MANUAL_REVIEWED 승격, 보정 가중치 1.",
+          "cls": "mt-2.5 inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-"
+        },
+        {
+          "tag": "button",
+          "w": 50,
+          "h": 25,
+          "text": "검토 완료로 표시 (MANUAL_REVIEWED 승격, 보정 가중치 1.",
+          "cls": "mt-2.5 inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-"
+        },
+        {
+          "tag": "button",
+          "w": 50,
+          "h": 25,
+          "text": "검토 완료로 표시 (MANUAL_REVIEWED 승격, 보정 가중치 1.",
+          "cls": "mt-2.5 inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-"
+        },
+        {
+          "tag": "button",
+          "w": 50,
+          "h": 25,
+          "text": "검토 완료로 표시 (MANUAL_REVIEWED 승격, 보정 가중치 1.",
+          "cls": "mt-2.5 inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-"
+        },
+        {
+          "tag": "button",
+          "w": 50,
+          "h": 25,
+          "text": "검토 완료로 표시 (MANUAL_REVIEWED 승격, 보정 가중치 1.",
+          "cls": "mt-2.5 inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-"
+        }
+      ],
       "unnamed": [],
-      "machineCodes": [],
-      "total": 39,
+      "machineCodes": [
+        {
+          "code": "OFF",
+          "context": "· 실전 OFF"
+        },
+        {
+          "code": "LMT",
+          "context": "LMT"
+        },
+        {
+          "code": "LMT",
+          "context": "LMT"
+        },
+        {
+          "code": "TIGER",
+          "context": "TIGER S&P500"
+        },
+        {
+          "code": "NVO",
+          "context": "NVO"
+        },
+        {
+          "code": "STOP_TOO_TIGHT",
+          "context": "STOP_TOO_TIGHT"
+        },
+        {
+          "code": "BAC",
+          "context": "BAC"
+        },
+        {
+          "code": "ELF",
+          "context": "ELF"
+        },
+        {
+          "code": "NET",
+          "context": "NET"
+        },
+        {
+          "code": "HMM",
+          "context": "HMM"
+        },
+        {
+          "code": "TIGER",
+          "context": "TIGER S&P500"
+        },
+        {
+          "code": "THESIS_VALID_BUT_SLOW",
+          "context": "THESIS_VALID_BUT_SLOW"
+        },
+        {
+          "code": "HMM",
+          "context": "HMM"
+        },
+        {
+          "code": "NONE",
+          "context": "NONE"
+        },
+        {
+          "code": "THESIS_VALID_BUT_SLOW",
+          "context": "THESIS_VALID_BUT_SLOW"
+        },
+        {
+          "code": "HMM",
+          "context": "HMM"
+        },
+        {
+          "code": "NONE",
+          "context": "NONE"
+        },
+        {
+          "code": "MARKET_GAP",
+          "context": "MARKET_GAP"
+        },
+        {
+          "code": "HMM",
+          "context": "HMM"
+        },
+        {
+          "code": "ELF",
+          "context": "ELF"
+        },
+        {
+          "code": "UNH",
+          "context": "UNH"
+        },
+        {
+          "code": "ABBV",
+          "context": "ABBV"
+        },
+        {
+          "code": "NVO",
+          "context": "NVO"
+        },
+        {
+          "code": "OVEREXTENDED_ENTRY",
+          "context": "OVEREXTENDED_ENTRY"
+        },
+        {
+          "code": "ABBV",
+          "context": "ABBV"
+        },
+        {
+          "code": "DATA_QUALITY",
+          "context": "DATA_QUALITY"
+        },
+        {
+          "code": "ABBV",
+          "context": "ABBV"
+        },
+        {
+          "code": "DATA_QUALITY",
+          "context": "DATA_QUALITY"
+        },
+        {
+          "code": "SNOW",
+          "context": "SNOW"
+        },
+        {
+          "code": "UNH",
+          "context": "UNH"
+        },
+        {
+          "code": "DATA_QUALITY",
+          "context": "DATA_QUALITY"
+        },
+        {
+          "code": "HIMS",
+          "context": "HIMS"
+        },
+        {
+          "code": "MARKET_GAP",
+          "context": "MARKET_GAP"
+        },
+        {
+          "code": "ELF",
+          "context": "ELF"
+        },
+        {
+          "code": "HOOD",
+          "context": "HOOD"
+        },
+        {
+          "code": "MARKET_GAP",
+          "context": "MARKET_GAP"
+        },
+        {
+          "code": "ABBV",
+          "context": "ABBV"
+        },
+        {
+          "code": "BAC",
+          "context": "BAC"
+        },
+        {
+          "code": "UNH",
+          "context": "UNH"
+        },
+        {
+          "code": "DATA_QUALITY",
+          "context": "DATA_QUALITY"
+        },
+        {
+          "code": "SCHD",
+          "context": "SCHD"
+        },
+        {
+          "code": "SCHD",
+          "context": "SCHD"
+        },
+        {
+          "code": "UNH",
+          "context": "UNH"
+        },
+        {
+          "code": "DATA_QUALITY",
+          "context": "DATA_QUALITY"
+        },
+        {
+          "code": "UNH",
+          "context": "UNH"
+        },
+        {
+          "code": "DATA_QUALITY",
+          "context": "DATA_QUALITY"
+        },
+        {
+          "code": "UNH",
+          "context": "UNH"
+        },
+        {
+          "code": "DATA_QUALITY",
+          "context": "DATA_QUALITY"
+        },
+        {
+          "code": "UNH",
+          "context": "UNH"
+        },
+        {
+          "code": "DATA_QUALITY",
+          "context": "DATA_QUALITY"
+        },
+        {
+          "code": "TIGER",
+          "context": "TIGER S&P500"
+        },
+        {
+          "code": "THESIS_VALID_BUT_SLOW",
+          "context": "THESIS_VALID_BUT_SLOW"
+        },
+        {
+          "code": "THESIS_VALID_BUT_SLOW",
+          "context": "THESIS_VALID_BUT_SLOW"
+        },
+        {
+          "code": "HIMS",
+          "context": "HIMS"
+        },
+        {
+          "code": "MARKET_GAP",
+          "context": "MARKET_GAP"
+        },
+        {
+          "code": "HOOD",
+          "context": "HOOD"
+        },
+        {
+          "code": "MARKET_GAP",
+          "context": "MARKET_GAP"
+        },
+        {
+          "code": "ELF",
+          "context": "ELF"
+        },
+        {
+          "code": "ABNB",
+          "context": "ABNB"
+        },
+        {
+          "code": "DATA_QUALITY",
+          "context": "DATA_QUALITY"
+        },
+        {
+          "code": "ABBV",
+          "context": "ABBV"
+        },
+        {
+          "code": "HIMS",
+          "context": "HIMS"
+        },
+        {
+          "code": "MARKET_GAP",
+          "context": "MARKET_GAP"
+        },
+        {
+          "code": "TEM",
+          "context": "TEM"
+        },
+        {
+          "code": "STOP_TOO_TIGHT",
+          "context": "STOP_TOO_TIGHT"
+        },
+        {
+          "code": "HPE",
+          "context": "HPE"
+        },
+        {
+          "code": "ABNB",
+          "context": "ABNB"
+        },
+        {
+          "code": "DATA_QUALITY",
+          "context": "DATA_QUALITY"
+        },
+        {
+          "code": "JPM",
+          "context": "JPM"
+        },
+        {
+          "code": "BAC",
+          "context": "BAC"
+        },
+        {
+          "code": "GOOGL",
+          "context": "GOOGL"
+        },
+        {
+          "code": "STOP_TOO_TIGHT",
+          "context": "STOP_TOO_TIGHT"
+        },
+        {
+          "code": "BAC",
+          "context": "BAC"
+        },
+        {
+          "code": "RDDT",
+          "context": "RDDT"
+        },
+        {
+          "code": "STOP_TOO_TIGHT",
+          "context": "STOP_TOO_TIGHT"
+        },
+        {
+          "code": "AAPL",
+          "context": "AAPL"
+        },
+        {
+          "code": "STOP_TOO_TIGHT",
+          "context": "STOP_TOO_TIGHT"
+        },
+        {
+          "code": "BAC",
+          "context": "BAC"
+        },
+        {
+          "code": "GOOGL",
+          "context": "GOOGL"
+        },
+        {
+          "code": "OVEREXTENDED_ENTRY",
+          "context": "OVEREXTENDED_ENTRY"
+        },
+        {
+          "code": "ADBE",
+          "context": "ADBE"
+        },
+        {
+          "code": "TIGER",
+          "context": "TIGER S&P500"
+        },
+        {
+          "code": "LMT",
+          "context": "LMT"
+        },
+        {
+          "code": "LMT",
+          "context": "LMT"
+        },
+        {
+          "code": "TIGER",
+          "context": "TIGER S&P500"
+        },
+        {
+          "code": "NVO",
+          "context": "NVO"
+        },
+        {
+          "code": "STOP_TOO_TIGHT",
+          "context": "STOP_TOO_TIGHT"
+        },
+        {
+          "code": "BAC",
+          "context": "BAC"
+        },
+        {
+          "code": "ELF",
+          "context": "ELF"
+        },
+        {
+          "code": "NET",
+          "context": "NET"
+        },
+        {
+          "code": "HMM",
+          "context": "HMM"
+        },
+        {
+          "code": "TIGER",
+          "context": "TIGER S&P500"
+        },
+        {
+          "code": "THESIS_VALID_BUT_SLOW",
+          "context": "THESIS_VALID_BUT_SLOW"
+        },
+        {
+          "code": "HMM",
+          "context": "HMM"
+        },
+        {
+          "code": "NONE",
+          "context": "NONE"
+        },
+        {
+          "code": "THESIS_VALID_BUT_SLOW",
+          "context": "THESIS_VALID_BUT_SLOW"
+        },
+        {
+          "code": "HMM",
+          "context": "HMM"
+        },
+        {
+          "code": "NONE",
+          "context": "NONE"
+        },
+        {
+          "code": "MARKET_GAP",
+          "context": "MARKET_GAP"
+        },
+        {
+          "code": "HMM",
+          "context": "HMM"
+        },
+        {
+          "code": "ELF",
+          "context": "ELF"
+        },
+        {
+          "code": "UNH",
+          "context": "UNH"
+        },
+        {
+          "code": "ABBV",
+          "context": "ABBV"
+        },
+        {
+          "code": "NVO",
+          "context": "NVO"
+        },
+        {
+          "code": "OVEREXTENDED_ENTRY",
+          "context": "OVEREXTENDED_ENTRY"
+        },
+        {
+          "code": "ABBV",
+          "context": "ABBV"
+        },
+        {
+          "code": "DATA_QUALITY",
+          "context": "DATA_QUALITY"
+        },
+        {
+          "code": "ABBV",
+          "context": "ABBV"
+        },
+        {
+          "code": "DATA_QUALITY",
+          "context": "DATA_QUALITY"
+        },
+        {
+          "code": "SNOW",
+          "context": "SNOW"
+        },
+        {
+          "code": "UNH",
+          "context": "UNH"
+        },
+        {
+          "code": "DATA_QUALITY",
+          "context": "DATA_QUALITY"
+        },
+        {
+          "code": "HIMS",
+          "context": "HIMS"
+        },
+        {
+          "code": "MARKET_GAP",
+          "context": "MARKET_GAP"
+        },
+        {
+          "code": "ELF",
+          "context": "ELF"
+        },
+        {
+          "code": "HOOD",
+          "context": "HOOD"
+        },
+        {
+          "code": "MARKET_GAP",
+          "context": "MARKET_GAP"
+        },
+        {
+          "code": "ABBV",
+          "context": "ABBV"
+        },
+        {
+          "code": "BAC",
+          "context": "BAC"
+        },
+        {
+          "code": "UNH",
+          "context": "UNH"
+        },
+        {
+          "code": "DATA_QUALITY",
+          "context": "DATA_QUALITY"
+        },
+        {
+          "code": "SCHD",
+          "context": "SCHD"
+        },
+        {
+          "code": "SCHD",
+          "context": "SCHD"
+        },
+        {
+          "code": "UNH",
+          "context": "UNH"
+        },
+        {
+          "code": "DATA_QUALITY",
+          "context": "DATA_QUALITY"
+        },
+        {
+          "code": "UNH",
+          "context": "UNH"
+        },
+        {
+          "code": "DATA_QUALITY",
+          "context": "DATA_QUALITY"
+        },
+        {
+          "code": "UNH",
+          "context": "UNH"
+        },
+        {
+          "code": "DATA_QUALITY",
+          "context": "DATA_QUALITY"
+        },
+        {
+          "code": "UNH",
+          "context": "UNH"
+        },
+        {
+          "code": "DATA_QUALITY",
+          "context": "DATA_QUALITY"
+        },
+        {
+          "code": "TIGER",
+          "context": "TIGER S&P500"
+        },
+        {
+          "code": "THESIS_VALID_BUT_SLOW",
+          "context": "THESIS_VALID_BUT_SLOW"
+        },
+        {
+          "code": "THESIS_VALID_BUT_SLOW",
+          "context": "THESIS_VALID_BUT_SLOW"
+        },
+        {
+          "code": "HIMS",
+          "context": "HIMS"
+        },
+        {
+          "code": "MARKET_GAP",
+          "context": "MARKET_GAP"
+        },
+        {
+          "code": "HOOD",
+          "context": "HOOD"
+        },
+        {
+          "code": "MARKET_GAP",
+          "context": "MARKET_GAP"
+        },
+        {
+          "code": "ELF",
+          "context": "ELF"
+        },
+        {
+          "code": "ABNB",
+          "context": "ABNB"
+        },
+        {
+          "code": "DATA_QUALITY",
+          "context": "DATA_QUALITY"
+        },
+        {
+          "code": "ABBV",
+          "context": "ABBV"
+        },
+        {
+          "code": "HIMS",
+          "context": "HIMS"
+        },
+        {
+          "code": "MARKET_GAP",
+          "context": "MARKET_GAP"
+        },
+        {
+          "code": "TEM",
+          "context": "TEM"
+        },
+        {
+          "code": "STOP_TOO_TIGHT",
+          "context": "STOP_TOO_TIGHT"
+        },
+        {
+          "code": "HPE",
+          "context": "HPE"
+        },
+        {
+          "code": "ABNB",
+          "context": "ABNB"
+        },
+        {
+          "code": "DATA_QUALITY",
+          "context": "DATA_QUALITY"
+        },
+        {
+          "code": "JPM",
+          "context": "JPM"
+        },
+        {
+          "code": "BAC",
+          "context": "BAC"
+        },
+        {
+          "code": "GOOGL",
+          "context": "GOOGL"
+        },
+        {
+          "code": "STOP_TOO_TIGHT",
+          "context": "STOP_TOO_TIGHT"
+        },
+        {
+          "code": "BAC",
+          "context": "BAC"
+        },
+        {
+          "code": "RDDT",
+          "context": "RDDT"
+        },
+        {
+          "code": "STOP_TOO_TIGHT",
+          "context": "STOP_TOO_TIGHT"
+        },
+        {
+          "code": "AAPL",
+          "context": "AAPL"
+        },
+        {
+          "code": "STOP_TOO_TIGHT",
+          "context": "STOP_TOO_TIGHT"
+        },
+        {
+          "code": "BAC",
+          "context": "BAC"
+        },
+        {
+          "code": "GOOGL",
+          "context": "GOOGL"
+        },
+        {
+          "code": "OVEREXTENDED_ENTRY",
+          "context": "OVEREXTENDED_ENTRY"
+        },
+        {
+          "code": "ADBE",
+          "context": "ADBE"
+        },
+        {
+          "code": "TIGER",
+          "context": "TIGER S&P500"
+        },
+        {
+          "code": "STOP_TOO_TIGHT",
+          "context": "STOP_TOO_TIGHT"
+        },
+        {
+          "code": "DATA_QUALITY",
+          "context": "DATA_QUALITY"
+        },
+        {
+          "code": "MARKET_GAP",
+          "context": "MARKET_GAP"
+        },
+        {
+          "code": "OVEREXTENDED_ENTRY",
+          "context": "OVEREXTENDED_ENTRY"
+        },
+        {
+          "code": "UNKNOWN",
+          "context": "UNKNOWN"
+        },
+        {
+          "code": "PENDING_REVIEW",
+          "context": "PENDING_REVIEW"
+        },
+        {
+          "code": "FORWARD_PAPER_TRADE",
+          "context": "FORWARD_PAPER_TRADE"
+        },
+        {
+          "code": "PENDING_REVIEW",
+          "context": "PENDING_REVIEW"
+        },
+        {
+          "code": "FORWARD_PAPER_TRADE",
+          "context": "FORWARD_PAPER_TRADE"
+        },
+        {
+          "code": "PENDING_REVIEW",
+          "context": "PENDING_REVIEW"
+        },
+        {
+          "code": "FORWARD_PAPER_TRADE",
+          "context": "FORWARD_PAPER_TRADE"
+        },
+        {
+          "code": "PENDING_REVIEW",
+          "context": "PENDING_REVIEW"
+        },
+        {
+          "code": "FORWARD_PAPER_TRADE",
+          "context": "FORWARD_PAPER_TRADE"
+        },
+        {
+          "code": "PENDING_REVIEW",
+          "context": "PENDING_REVIEW"
+        },
+        {
+          "code": "FORWARD_PAPER_TRADE",
+          "context": "FORWARD_PAPER_TRADE"
+        },
+        {
+          "code": "PENDING_REVIEW",
+          "context": "PENDING_REVIEW"
+        },
+        {
+          "code": "ATR",
+          "context": "Widen stop or ATR multiplier."
+        },
+        {
+          "code": "FORWARD_PAPER_TRADE",
+          "context": "FORWARD_PAPER_TRADE"
+        }
+      ],
+      "total": 73,
       "horizontalOverflowPx": 0
     },
     "broker": {
@@ -80,100 +1774,43 @@
       "unnamed": [],
       "machineCodes": [],
       "total": 10,
-      "horizontalOverflowPx": 0
+      "horizontalOverflowPx": 0,
+      "authGated": true,
+      "measuredAuthenticated": false
     },
     "admin": {
       "small": [],
       "unnamed": [],
       "machineCodes": [],
-      "total": 12,
+      "total": 17,
+      "horizontalOverflowPx": 0,
+      "authGated": true,
+      "measuredAuthenticated": true
+    },
+    "admin:자가보정": {
+      "small": [],
+      "unnamed": [],
+      "machineCodes": [],
+      "total": 25,
       "horizontalOverflowPx": 0
     }
   },
   "consoleErrors": {
-    "home": [
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)"
-    ],
-    "report": [
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)"
-    ],
-    "stocks": [
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)"
-    ],
-    "holdings": [
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)"
-    ],
-    "chart": [
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)"
-    ],
-    "news": [
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)"
-    ],
-    "prediction": [
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)"
-    ],
-    "advanced": [
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)"
-    ],
-    "paper": [
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)"
-    ],
+    "home": [],
+    "report": [],
+    "stocks": [],
+    "holdings": [],
+    "chart": [],
+    "news": [],
+    "prediction": [],
+    "advanced": [],
+    "paper": [],
     "journal": [
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)"
+      "Failed to load resource: the server responded with a status of 422 (Unprocessable Entity)",
+      "Failed to load resource: the server responded with a status of 422 (Unprocessable Entity)"
     ],
-    "broker": [
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)"
-    ],
-    "admin": [
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)",
-      "Failed to load resource: the server responded with a status of 502 (Bad Gateway)"
-    ]
+    "broker": [],
+    "admin": [],
+    "admin:자가보정": []
   }
 }
