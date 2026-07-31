@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-30T23:53:18.450431+00:00",
+  "generatedAt": "2026-07-31T10:42:40.566772+00:00",
   "overall": "WARN",
   "criticalFailures": 0,
   "hardFailures": 0,
@@ -15,16 +15,16 @@
     {
       "name": "kr_ohlcv",
       "status": "OK",
-      "detail": "1.0d, asOf=2026-07-30",
+      "detail": "0.45d, asOf=2026-07-31",
       "critical": true,
-      "ageDays": 1.0
+      "ageDays": 0.45
     },
     {
       "name": "kr_recommendations",
       "status": "OK",
-      "detail": "-0.37d, asOf=2026-07-31 08:44:31",
+      "detail": "-0.36d, asOf=2026-07-31 19:14:51",
       "critical": true,
-      "ageDays": -0.37
+      "ageDays": -0.36
     },
     {
       "name": "collector_steps",
@@ -36,56 +36,56 @@
     {
       "name": "collector_run",
       "status": "OK",
-      "detail": "2.3d, asOf=2026-07-28T16:40:53.766520",
+      "detail": "2.75d, asOf=2026-07-28T16:40:53.766520",
       "critical": true,
-      "ageDays": 2.3
+      "ageDays": 2.75
     },
     {
       "name": "vtj_journal",
       "status": "OK",
-      "detail": "0.01d, asOf=2026-07-31T08:46:01+09:00",
+      "detail": "0.02d, asOf=2026-07-31T19:16:58+09:00",
       "critical": false,
-      "ageDays": 0.01
+      "ageDays": 0.02
     },
     {
       "name": "live_calibration",
       "status": "OK",
-      "detail": "-0.0d, asOf=2026-07-31",
+      "detail": "0.45d, asOf=2026-07-31",
       "critical": false,
-      "ageDays": -0.0
+      "ageDays": 0.45
     },
     {
       "name": "strategy_win_rates",
       "status": "OK",
-      "detail": "-0.37d, asOf=2026-07-31 08:53:17",
+      "detail": "-0.37d, asOf=2026-07-31 19:42:39",
       "critical": false,
       "ageDays": -0.37
     },
     {
       "name": "prediction_capture",
       "status": "OK",
-      "detail": "1.0d, asOf=2026-07-30",
+      "detail": "0.45d, asOf=2026-07-31",
       "critical": true,
-      "ageDays": 1.0
+      "ageDays": 0.45
     },
     {
       "name": "capture_continuity",
       "status": "OK",
-      "detail": "거래일 2일 중 캡처 2일 (기준일 2026-07-28~, 유예 1일)",
+      "detail": "거래일 3일 중 캡처 3일 (기준일 2026-07-28~, 유예 1일)",
       "critical": true,
       "ageDays": null
     },
     {
       "name": "settlement_backlog",
       "status": "OK",
-      "detail": "만기경과 미정산 0건 / 대기중 103건",
+      "detail": "만기경과 미정산 0건 / 대기중 143건",
       "critical": false,
       "ageDays": null
     },
     {
       "name": "clean_window_samples",
       "status": "WARN",
-      "detail": "clean window(2026-07-10) 정산표본 3건 / 전체 정산 663건 / 원장 926행 — 표본 부족(30건 미만)",
+      "detail": "clean window(2026-07-10) 정산표본 3건 / 전체 정산 663건 / 원장 966행 — 표본 부족(30건 미만)",
       "critical": false,
       "ageDays": null
     },
