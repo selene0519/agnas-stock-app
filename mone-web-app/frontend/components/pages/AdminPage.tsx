@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { LogOut, RefreshCw } from "lucide-react";
 import { mone } from "@/lib/api";
 import { adminAuthHeaders } from "@/lib/adminAuth";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { MetricCard } from "@/components/ui/MetricCard";
 import { toneClassName } from "@/lib/tone";
 import { statusLabel } from "@/lib/utils";
 import { failureReasonLabel } from "@/lib/statusLabels";
@@ -40,18 +42,14 @@ function codeText(raw: any): { value: string; title: string } {
   return { value: statusLabel(code), title: code };
 }
 
+/** 지표 타일은 분석 화면과 같은 공용 MetricCard를 쓴다(자체 구현이 하나 더 있었다). */
 function Metric({ label, value, accent = false }: { label: string; value: any; accent?: boolean }) {
-  return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-      <div className="text-xs text-slate-400">{label}</div>
-      <div className={`mt-2 text-xl font-bold ${accent ? "text-emerald-400" : "text-slate-100"}`}>{value}</div>
-    </div>
-  );
+  return <MetricCard label={label} value={value} emphasis={accent ? "primary" : undefined} />;
 }
 
 function Mini({ label, value, title }: { label: string; value: string; title?: string }) {
   return (
-    <div className="rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2">
+    <div className="mone-home-inset rounded-lg border px-3 py-2">
       <div className="text-[11px] text-slate-400">{label}</div>
       {/* title에 원문 코드를 남겨 진단은 유지하되, 본문에는 한국어만 보인다. */}
       <div className="mt-1 truncate text-xs text-slate-200" title={title || value}>{value}</div>
@@ -62,17 +60,19 @@ function Mini({ label, value, title }: { label: string; value: string; title?: s
 function ActionBtn({ label, onClick, loading, variant = "default" }: {
   label: string; onClick: () => void; loading?: boolean; variant?: "default" | "danger" | "blue" | "green";
 }) {
+  // 이 앱은 큰 채도 높은 채움 버튼을 쓰지 않는다 — 홈·탐색·보유는 은은한 표면에
+  // teal 강조를 얹는다(`.mone-primary-action`). 예전엔 여기만 teal·emerald·파랑
+  // 채움 버튼 3개가 나란히 있어서 화면이 앱의 다른 부분과 따로 놀았고,
+  // teal과 emerald가 붙어 있어 두 액션이 구분도 안 됐다.
   const cls = {
-    default: "border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800",
-    danger:  "border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/20",
-    // ⚠️ `bg-blue-600`과 슬래시 달린 `border-blue-500/30`을 **같은 class 문자열**에
-    // 두면 globals.css의 반투명 blue 규칙이 배경만 10% 틴트로 덮어써서 잉크만
-    // 남는다(실측 1.08:1 — 사실상 안 보였다). 테두리는 슬래시 없는 값으로 쓴다.
-    blue:    "border-blue-600 bg-blue-600 text-white hover:bg-blue-500",
-    green:   "border-emerald-600 bg-emerald-600 text-slate-950 hover:bg-emerald-500",
+    default: "mone-home-inset border text-slate-200 hover:text-white",
+    danger:  "border border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/20",
+    blue:    "mone-primary-action",
+    green:   "mone-home-inset border text-slate-200 hover:text-white",
   }[variant];
   return (
-    <button onClick={onClick} disabled={loading} className={`min-h-11 rounded-xl border px-4 py-2 text-sm font-medium disabled:opacity-50 ${cls}`}>
+    <button onClick={onClick} disabled={loading}
+      className={`min-h-11 rounded-[10px] px-4 py-2 text-sm font-semibold transition-[color,background-color,transform] active:scale-[0.98] disabled:opacity-50 ${cls}`}>
       {loading ? "처리 중..." : label}
     </button>
   );
@@ -141,44 +141,47 @@ function CorrectionTab({ market, mode, horizon, dash, preview, loading, rebuildL
   const strength = dash?.correctionStrength ?? 1.0;
 
   return (
-    <div className="space-y-6">
-      {/* 헤더 & 컨트롤 */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-xl font-bold text-slate-100">자가보정 대시보드</h2>
-          <p className="text-sm text-slate-400">가상검증 결과 기반 추천 파라미터 자동 보정 현황을 점검합니다.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {["kr", "us"].map((m) => (
-            <button key={m} onClick={() => onMarketChange(m)} aria-pressed={market === m}
-              className={`min-h-11 rounded-xl border px-4 py-1.5 text-sm font-medium ${market === m ? "mone-selection-brand" : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"}`}>
-              {m.toUpperCase()}
-            </button>
-          ))}
-          <button onClick={onLoadDash} disabled={loading}
-            className="min-h-11 rounded-xl border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-800 disabled:opacity-50">
-            {loading ? "불러오는 중..." : "대시보드 갱신"}
+    <div className="flex flex-col gap-4">
+      {/* 헤더 & 컨트롤 — 시장 선택은 보유/탐색 화면과 같은 `mone-market-tabs` 세그먼트다.
+          예전엔 여기만 KR/US가 작은 칩이라 같은 개념이 화면마다 다르게 보였다. */}
+      <div>
+        <h2 className="mone-home-section-title">자가보정 대시보드</h2>
+        <p className="mone-page-subtitle !ml-0">가상검증 결과 기반 추천 파라미터 자동 보정 현황을 점검합니다.</p>
+      </div>
+
+      <div className="mone-market-tabs">
+        {["kr", "us"].map((m) => (
+          <button key={m} type="button" onClick={() => onMarketChange(m)} aria-pressed={market === m}
+            className={`active:scale-[0.96] ${market === m ? "mone-selection-brand" : "text-slate-400 hover:text-slate-300"}`}>
+            {m === "kr" ? "국장" : "미장"}
           </button>
-          <button onClick={onRebuild} disabled={rebuildLoading}
-            className="min-h-11 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-sm text-amber-200 hover:bg-amber-500/20 disabled:opacity-50">
-            {rebuildLoading ? "재계산 중..." : "보정 파라미터 재계산"}
-          </button>
-        </div>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <button onClick={onLoadDash} disabled={loading}
+          className="mone-home-inset min-h-11 rounded-[10px] border px-4 py-2 text-sm font-semibold text-slate-200 transition-[color,transform] active:scale-[0.98] hover:text-white disabled:opacity-50">
+          {loading ? "불러오는 중..." : "대시보드 갱신"}
+        </button>
+        <button onClick={onRebuild} disabled={rebuildLoading}
+          className="min-h-11 rounded-[10px] border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-200 transition-[background-color,transform] active:scale-[0.98] hover:bg-amber-500/20 disabled:opacity-50">
+          {rebuildLoading ? "재계산 중..." : "보정 파라미터 재계산"}
+        </button>
       </div>
 
       {!dash && !loading && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-8 text-center text-slate-400">
+        <div className="mone-home-card p-8 text-center text-slate-400">
           대시보드를 불러오려면 &quot;대시보드 갱신&quot; 버튼을 누르세요.
         </div>
       )}
       {loading && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-8 text-center text-slate-400">불러오는 중...</div>
+        <div className="mone-home-card p-8 text-center text-slate-400">불러오는 중...</div>
       )}
 
       {dash && !loading && (
         <>
           {/* 킬스위치 & 환경 상태 */}
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <Metric label="킬스위치" value={<span className={enabledCls}>{enabledStr}</span>} />
             <Metric label="보정 강도" value={`${(strength * 100).toFixed(0)}%`} />
             <Metric label="파라미터 버전" value={`v${dash.paramsVersion ?? "-"}`} />
@@ -193,8 +196,8 @@ function CorrectionTab({ market, mode, horizon, dash, preview, loading, rebuildL
 
           {/* 성과 지표 */}
           {perf.settledCount > 0 && (
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-              <h3 className="mb-3 text-sm font-semibold text-slate-300">가상검증 성과 지표</h3>
+            <div className="mone-home-card p-5">
+              <h3 className="mone-home-section-title mb-3">가상검증 성과 지표</h3>
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                 <Metric label="체결 / 정산" value={`${perf.executedCount ?? 0} / ${perf.settledCount ?? 0}`} />
                 <Metric label="승률" value={`${perf.winRate ?? 0}%`} accent />
@@ -210,8 +213,8 @@ function CorrectionTab({ market, mode, horizon, dash, preview, loading, rebuildL
           )}
 
           {/* 전략별 보정 현황 */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-            <h3 className="mb-4 text-sm font-semibold text-slate-300">{market.toUpperCase()} 전략별 보정 상태</h3>
+          <div className="mone-home-card p-5">
+            <h3 className="mone-home-section-title mb-4">{market.toUpperCase()} 전략별 보정 상태</h3>
             <div className="space-y-3">
               {Object.entries(corr).length === 0 && (
                 <div className="text-sm text-slate-400">데이터 없음 — 보정 파라미터를 재계산해 주세요.</div>
@@ -225,7 +228,7 @@ function CorrectionTab({ market, mode, horizon, dash, preview, loading, rebuildL
                   <div key={key} className={`rounded-xl border p-4 ${isActive ? "border-emerald-800/50 bg-emerald-950/10" : "border-slate-800 bg-slate-900/40"}`}>
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div>
-                        <span className="text-sm font-semibold text-slate-200" title={key}>
+                        <span className="mone-home-section-title" title={key}>
                           {MODE_KO[keyMode] ?? keyMode} · {HORIZON_KO[keyHorizon] ?? keyHorizon}
                         </span>
                         {/* slate-400 on slate-700 = 4.04:1 로 AA 미달이었다(10px 본문). */}
@@ -260,27 +263,38 @@ function CorrectionTab({ market, mode, horizon, dash, preview, loading, rebuildL
           </div>
 
           {/* 전후 미리보기 */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <h3 className="text-sm font-semibold text-slate-300">보정 전/후 미리보기</h3>
-              <div className="flex flex-wrap gap-2">
-                {MODES.map((m) => (
-                  <button key={m.id} onClick={() => onModeChange(m.id)} aria-pressed={mode === m.id}
-                    className={`min-h-11 rounded-lg border px-3 py-1 text-xs ${mode === m.id ? "mone-selection-brand" : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"}`}>
-                    {m.label}
-                  </button>
-                ))}
-                {HORIZONS.map((h) => (
-                  <button key={h.id} onClick={() => onHorizonChange(h.id)} aria-pressed={horizon === h.id}
-                    className={`min-h-11 rounded-lg border px-3 py-1 text-xs ${horizon === h.id ? "mone-selection-brand" : "border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"}`}>
-                    {h.label}
-                  </button>
-                ))}
-                <button onClick={onLoadPreview}
-                  className="min-h-11 rounded-lg border border-slate-700 bg-slate-900 px-3 py-1 text-xs text-slate-200 hover:bg-slate-800">
-                  미리보기 로드
-                </button>
+          <div className="mone-home-card p-5">
+            <h3 className="mone-home-section-title mb-3">보정 전/후 미리보기</h3>
+            {/* 투자성향·투자기간은 탐색 화면과 **같은 라벨 + 같은 세그먼트 모양**으로 낸다.
+                예전엔 여기만 라벨 없는 작은 칩 6개가 한 줄에 섞여 있어서, 앞의 3개가
+                성향이고 뒤의 3개가 기간이라는 걸 눌러보기 전엔 알 수 없었다. */}
+            <div className="mb-3 space-y-2">
+              <div>
+                <div className="mb-1.5 text-xs font-semibold text-slate-400">투자성향</div>
+                <div className="mone-market-tabs">
+                  {MODES.map((m) => (
+                    <button key={m.id} type="button" onClick={() => onModeChange(m.id)} aria-pressed={mode === m.id}
+                      className={`active:scale-[0.96] ${mode === m.id ? "mone-selection-brand" : "text-slate-400 hover:text-slate-300"}`}>
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
               </div>
+              <div>
+                <div className="mb-1.5 text-xs font-semibold text-slate-400">투자기간</div>
+                <div className="mone-market-tabs">
+                  {HORIZONS.map((h) => (
+                    <button key={h.id} type="button" onClick={() => onHorizonChange(h.id)} aria-pressed={horizon === h.id}
+                      className={`active:scale-[0.96] ${horizon === h.id ? "mone-selection-brand" : "text-slate-400 hover:text-slate-300"}`}>
+                      {h.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <button onClick={onLoadPreview}
+                className="mone-home-inset min-h-11 w-full rounded-[10px] border px-4 py-2 text-sm font-semibold text-slate-200 transition-[color,transform] active:scale-[0.98] hover:text-white">
+                미리보기 로드
+              </button>
             </div>
 
             {!preview && <div className="text-sm text-slate-400">전략을 선택하고 &quot;미리보기 로드&quot;를 누르세요.</div>}
@@ -490,21 +504,40 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
   const autoItems = items.filter((item: any) => !USER_FILES.some((f) => (item.path || item.file || "").includes(f)));
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
+    /* 루트를 `mone-home`으로 감싸야 카드 표면 토큰(--home-surface 등)이 적용된다.
+       예전엔 `p-6`를 따로 줘서 관리자 카드만 다른 화면보다 좁았다. */
+    <div className="mone-home flex flex-col gap-4">
+      {/* 헤더는 홈·탐색·보유·분석과 같은 구조: 제목(teal 점) + 부제 + 우측 아이콘 버튼.
+          ⚠️ 제목 칸에 `min-w-0`가 없으면 우측 버튼이 밀어붙여 "관리 / 자 대 / 시보드"로
+          깨진다 — 실제로 그렇게 렌더되고 있었다. */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
           {/* 배지를 h1 **안에** 두면 접근가능한 이름이 "관리자 대시보드 관리자"가 된다. */}
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-slate-100">관리자 대시보드</h1>
-            <span className="rounded bg-amber-500/20 px-2 py-1 text-xs font-semibold text-amber-300">관리자</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="mone-page-title">관리자</h1>
+            <span className="shrink-0 rounded bg-amber-500/20 px-2 py-0.5 text-[11px] font-semibold text-amber-300">관리자 전용</span>
           </div>
-          <p className="mt-1 text-sm text-slate-400">데이터 파이프라인, GitHub 상태, 가상운용 결과를 점검합니다.</p>
+          <p className="mone-page-subtitle">데이터 파이프라인, GitHub 상태, 가상운용 결과를 점검합니다.</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <button onClick={load} className="min-h-11 rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">새로고침</button>
+          <button
+            type="button"
+            onClick={load}
+            title="관리자 데이터 새로고침"
+            aria-label="관리자 데이터 새로고침"
+            className="mone-home-inset relative inline-flex size-9 items-center justify-center rounded-[8px] border text-slate-400 transition-[color,transform] after:absolute after:-inset-1 after:content-[''] hover:text-slate-100 active:scale-[0.96]"
+          >
+            <RefreshCw size={15} />
+          </button>
           {onLogout && (
-            <button onClick={onLogout} className="min-h-11 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-200 hover:bg-red-500/20">
-              로그아웃
+            <button
+              type="button"
+              onClick={onLogout}
+              title="관리자 로그아웃"
+              aria-label="관리자 로그아웃"
+              className="relative inline-flex size-9 items-center justify-center rounded-[8px] border border-red-500/30 bg-red-500/10 text-red-300 transition-[color,transform] after:absolute after:-inset-1 after:content-[''] hover:text-red-200 active:scale-[0.96]"
+            >
+              <LogOut size={15} />
             </button>
           )}
         </div>
@@ -560,14 +593,14 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
 
       {/* GitHub 동기화 상태 */}
       {pipelineStatus.length > 0 && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
+        <div className="mone-home-card p-5">
           <div className="mb-3">
-            <div className="text-sm font-semibold text-slate-200">수집 파이프라인 상태</div>
+            <div className="mone-home-section-title">수집 파이프라인 상태</div>
             <div className="mt-0.5 text-xs text-slate-400">GitHub Actions · 로컬 수집기 · 서버가 읽는 파일</div>
           </div>
           <div className="grid gap-3 lg:grid-cols-2">
             {pipelineStatus.map((row: any, idx: number) => (
-              <div key={row.market || idx} className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+              <div key={row.market || idx} className="mone-home-inset rounded-xl border p-4">
                 <div className="mb-3 flex items-center justify-between">
                   <div className="text-sm font-bold text-slate-100">{String(row.market || "-").toUpperCase()}</div>
                   <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${toneClassName(row.localCollectorPushed ? "safe" : "warning")}`}
@@ -602,9 +635,9 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
         </div>
       )}
 
-      <div className={`rounded-2xl border p-5 ${syncStatus?.status === "OK" ? "border-blue-900/50 bg-blue-950/10" : syncStatus?.status ? "border-amber-900/50 bg-amber-950/10" : "border-slate-800 bg-slate-900/40"}`}>
+      <div className={`mone-home-card p-5 ${syncStatus?.status && syncStatus.status !== "OK" ? "!border-amber-900/60" : ""}`}>
         <div className="flex items-center justify-between gap-3">
-          <div className="text-sm font-semibold text-slate-300">GitHub 데이터 동기화</div>
+          <div className="mone-home-section-title">GitHub 데이터 동기화</div>
           <span className={`font-mono text-sm font-bold ${syncDisp.cls}`}>{syncDisp.text}</span>
         </div>
         {syncStatus && (
@@ -627,9 +660,9 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
       </div>
 
       {/* GitHub 저장소 상태 */}
-      <div className={`rounded-2xl border p-5 ${githubOk ? "border-emerald-900/60 bg-emerald-950/10" : "border-red-900/60 bg-red-950/10"}`}>
+      <div className={`mone-home-card p-5 ${github.status === "LOADING" ? "" : githubOk ? "!border-emerald-900/60" : "!border-red-900/60"}`}>
         <div className="text-sm text-slate-400">GitHub 저장소 상태</div>
-        <div className={`mt-3 font-mono text-lg ${githubOk ? "text-emerald-400" : "text-red-400"}`}>
+        <div className={`mt-3 text-lg font-bold ${github.status === "LOADING" ? "text-slate-300" : githubOk ? "text-emerald-400" : "text-red-400"}`}>
           {github.status === "LOADING" ? "확인 중..." : githubOk ? "Git 저장소 감지됨" : "Git 저장소 미감지"}
         </div>
         <div className="mt-2 break-all text-xs text-slate-400">
@@ -639,17 +672,17 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
       </div>
 
       {/* 가상운용 요약 */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Metric label="전체 추천" value={virtualSummary.totalRecommendations ?? "-"} />
         <Metric label="가상 체결" value={virtualSummary.executedTrades ?? "-"} />
         <Metric label="승률" value={virtualSummary.winRate !== undefined ? `${Number(virtualSummary.winRate).toFixed(2)}%` : "-"} />
         <Metric label="누적 수익률" value={virtualSummary.cumulativeReturnPct !== undefined ? `${Number(virtualSummary.cumulativeReturnPct).toFixed(2)}%` : "-"} accent />
       </div>
 
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+      <div className="mone-home-card p-5">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-slate-100">빗각 과거 검증</h2>
+            <h2 className="mone-home-section-title">빗각 과거 검증</h2>
             <p className="text-sm text-slate-400">과거 시점에서 그은 지지·저항 빗각을 다음 5봉 실제 고저가와 뉴스 리스크로 검증합니다.</p>
           </div>
           <span className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300" title={String(trendlineAccuracy.status || "")}>{codeText(trendlineAccuracy.status).value}</span>
@@ -667,10 +700,10 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
       </div>
 
       {/* 데이터 점검 */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+      <div className="mone-home-card p-5">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-slate-100">데이터 점검</h2>
+            <h2 className="mone-home-section-title">데이터 점검</h2>
             <p className="text-sm text-slate-400">백엔드 루트, 데이터 상태, 파일 구분을 표시합니다.</p>
           </div>
           <span className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300" title={String(audit.status || "")}>{codeText(audit.status).value}</span>
