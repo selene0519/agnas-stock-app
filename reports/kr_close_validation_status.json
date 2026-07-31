@@ -8,6 +8,14 @@
       "file": "mone_v36_final_trade_validation_kr_conservative_mid_20260731.csv",
       "rows": 2,
       "normalRows": 1
+    },
+    {
+      "market": "kr",
+      "mode": "aggressive",
+      "horizon": "mid",
+      "file": "mone_v36_final_trade_validation_kr_aggressive_mid_20260731.csv",
+      "rows": 6,
+      "normalRows": 6
     }
   ],
   "skipped": [
@@ -57,13 +65,6 @@
       "market": "kr",
       "mode": "aggressive",
       "horizon": "swing",
-      "rows": 0,
-      "reason": "no_today_ohlcv_or_no_recommendations"
-    },
-    {
-      "market": "kr",
-      "mode": "aggressive",
-      "horizon": "mid",
       "rows": 0,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
@@ -120,7 +121,7 @@
       "market": "us",
       "mode": "aggressive",
       "horizon": "swing",
-      "rows": 0,
+      "rows": 1,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
@@ -131,5 +132,5 @@
       "reason": "no_today_ohlcv_or_no_recommendations"
     }
   ],
-  "updatedAt": "2026-07-31T16:17:06"
+  "updatedAt": "2026-07-31T19:16:34"
 }
