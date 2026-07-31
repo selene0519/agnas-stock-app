@@ -1,6 +1,15 @@
 {
   "date": "2026-07-31",
-  "created": [],
+  "created": [
+    {
+      "market": "kr",
+      "mode": "conservative",
+      "horizon": "mid",
+      "file": "mone_v36_final_trade_validation_kr_conservative_mid_20260731.csv",
+      "rows": 2,
+      "normalRows": 1
+    }
+  ],
   "skipped": [
     {
       "market": "kr",
@@ -18,13 +27,6 @@
     },
     {
       "market": "kr",
-      "mode": "conservative",
-      "horizon": "mid",
-      "rows": 2,
-      "reason": "no_today_ohlcv_or_no_recommendations"
-    },
-    {
-      "market": "kr",
       "mode": "balanced",
       "horizon": "short",
       "rows": 0,
@@ -69,7 +71,7 @@
       "market": "us",
       "mode": "conservative",
       "horizon": "short",
-      "rows": 8,
+      "rows": 10,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
@@ -83,35 +85,35 @@
       "market": "us",
       "mode": "conservative",
       "horizon": "mid",
-      "rows": 11,
+      "rows": 12,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
       "market": "us",
       "mode": "balanced",
       "horizon": "short",
-      "rows": 6,
+      "rows": 9,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
       "market": "us",
       "mode": "balanced",
       "horizon": "swing",
-      "rows": 10,
+      "rows": 11,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
       "market": "us",
       "mode": "balanced",
       "horizon": "mid",
-      "rows": 8,
+      "rows": 11,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
       "market": "us",
       "mode": "aggressive",
       "horizon": "short",
-      "rows": 10,
+      "rows": 15,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
@@ -125,9 +127,9 @@
       "market": "us",
       "mode": "aggressive",
       "horizon": "mid",
-      "rows": 20,
+      "rows": 22,
       "reason": "no_today_ohlcv_or_no_recommendations"
     }
   ],
-  "updatedAt": "2026-07-31T08:45:37"
+  "updatedAt": "2026-07-31T16:17:06"
 }
