@@ -1,16 +1,16 @@
 {
-  "generatedAt": "2026-07-31T21:54:22.941369+00:00",
+  "generatedAt": "2026-07-31T22:20:07.463798+00:00",
   "market": "kr",
   "marketRegime": "SIDE",
   "marketRegimeLabel": "횡보장",
   "regimeDetail": {
     "asOf": "2026-07-31",
-    "distToMa20": -4.46,
-    "mom5": -1.42,
-    "trend60": -4.92,
+    "distToMa20": NaN,
+    "mom5": NaN,
+    "trend60": NaN,
     "volRatio": 0.809,
     "definition": "trend60+거래량(약추세만)",
-    "kospi": 6595.45
+    "kospi": NaN
   },
   "favorableRegime": false,
   "finalScoreThreshold": 84.0,
@@ -29,73 +29,7 @@
     "winRate": null
   },
   "note": "앱이 지는 이유=전부 거래. 실측상 (+)인 유일 구성(강세장+finalScore≥84)만 실전. 약세/횡보/저점수는 실전 없음(현금 보존). 이게 −1.92%→+0.72%의 차이.",
-  "candidateCount": 5,
+  "candidateCount": 0,
   "actionableCount": 0,
-  "candidates": [
-    {
-      "symbol": "028670",
-      "name": "팬오션",
-      "finalScore": 74.0,
-      "entry": null,
-      "stop": null,
-      "target": null,
-      "decisionBucket": "기다림",
-      "supplySignal": "STRONG_BUY",
-      "eventBadges": "EV음수 | 기관+외국인 동반매수",
-      "highConviction": false,
-      "gateReason": "관찰만 — 횡보장(실전 게이트 OFF)"
-    },
-    {
-      "symbol": "068270",
-      "name": "셀트리온",
-      "finalScore": 69.4,
-      "entry": null,
-      "stop": null,
-      "target": null,
-      "decisionBucket": "기다림",
-      "supplySignal": "INST_BUY",
-      "eventBadges": "EV음수 | 기관 순매수 | 저평가성장주",
-      "highConviction": false,
-      "gateReason": "관찰만 — 횡보장(실전 게이트 OFF)"
-    },
-    {
-      "symbol": "035720",
-      "name": "카카오",
-      "finalScore": 69.2,
-      "entry": null,
-      "stop": null,
-      "target": null,
-      "decisionBucket": "기다림",
-      "supplySignal": "STRONG_BUY",
-      "eventBadges": "EV음수 | 기관+외국인 동반매수",
-      "highConviction": false,
-      "gateReason": "관찰만 — 횡보장(실전 게이트 OFF)"
-    },
-    {
-      "symbol": "078930",
-      "name": "GS",
-      "finalScore": 67.3,
-      "entry": null,
-      "stop": null,
-      "target": null,
-      "decisionBucket": "기다림",
-      "supplySignal": "STRONG_BUY",
-      "eventBadges": "EV음수 | 기관+외국인 동반매수 | 저평가성장주",
-      "highConviction": false,
-      "gateReason": "관찰만 — 횡보장(실전 게이트 OFF)"
-    },
-    {
-      "symbol": "096770",
-      "name": "SK이노베이션",
-      "finalScore": 53.9,
-      "entry": null,
-      "stop": null,
-      "target": null,
-      "decisionBucket": "기다림",
-      "supplySignal": "INST_BUY",
-      "eventBadges": "EV음수 | 이격도수렴 | 기관 순매수",
-      "highConviction": false,
-      "gateReason": "관찰만 — 횡보장(실전 게이트 OFF)"
-    }
-  ]
+  "candidates": []
 }
