@@ -8,7 +8,7 @@ import re
 from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import Query
 from fastapi.routing import APIRoute
@@ -83,12 +83,46 @@ def _num(v: Any, default: float = 0.0) -> float:
 
 
 def _portfolio_return_pct(returns: List[float], allocation_pct: float = 10.0) -> float:
+    """(레거시) 거래를 **한 건씩 순차로** 자본의 10%씩 걸었다고 보고 복리.
+
+    ⚠️ 이 가정은 실제 원장과 맞지 않는다. 2026-07-31 실측: 체결 630건이 **13일**에만
+    몰려 있고 하루 최대 178건이었다. 같은 날 나온 건 동시 포지션이지 순차 거래가
+    아닌데, 이 함수는 기하 감쇠를 630번 먹인다(13번이 맞다) → 손실을 약 2배
+    부풀린다(직렬 -83.9% vs 날짜별 -39.6%, 거래당 평균은 -2.9%).
+    비교용으로만 남기고 화면 표시는 `_dated_portfolio_return_pct`를 쓴다.
+    """
     if not returns:
         return 0.0
     slot = max(0.0, min(allocation_pct, 100.0)) / 100.0
     capital = 1.0
     for value in returns:
         capital *= max(0.0, 1.0 + (float(value) / 100.0) * slot)
+    return (capital - 1.0) * 100.0
+
+
+def _dated_portfolio_return_pct(dated_returns: List[Tuple[str, float]]) -> float:
+    """같은 날 추천은 **동시 포지션**으로 보고, 날짜별 등가중 → 거래일 단위 복리.
+
+    "그날 나온 후보를 전부 등가중으로 담았다면"에 해당한다. 복리는 거래일 수만큼만
+    적용되므로 동시 포지션을 직렬로 세는 왜곡이 사라진다.
+    날짜를 못 읽는 행은 서로 섞으면 평균이 왜곡되므로 각자 하루로 취급한다.
+    """
+    if not dated_returns:
+        return 0.0
+    buckets: Dict[str, List[float]] = {}
+    undated: List[float] = []
+    for raw_date, value in dated_returns:
+        day = raw_date if re.search(r"20\d{2}-\d{2}-\d{2}", str(raw_date or "")) else ""
+        if day:
+            buckets.setdefault(day, []).append(float(value))
+        else:
+            undated.append(float(value))
+    capital = 1.0
+    for day in sorted(buckets):
+        same_day = buckets[day]
+        capital *= max(0.0, 1.0 + (sum(same_day) / len(same_day)) / 100.0)
+    for value in undated:
+        capital *= max(0.0, 1.0 + value / 100.0)
     return (capital - 1.0) * 100.0
 
 
@@ -341,11 +375,16 @@ def _virtual_summary(market: str = "all", mode: str = "all", horizon: str = "all
     win_rate = round(len(wins) / len(executed) * 100, 2) if executed else 0
     avg_return = round(sum(returns) / len(returns), 2) if returns else 0
     raw_return_sum = round(sum(returns), 2) if returns else 0
-    cumulative = round(_portfolio_return_pct(returns), 2) if returns else 0
+    # 날짜별 등가중 복리가 표시용 기준값. 직렬 복리는 비교용으로만 남긴다.
+    dated_returns = [(_row_date_value(r), _return_pct(r)) for r in executed]
+    cumulative = round(_dated_portfolio_return_pct(dated_returns), 2) if returns else 0
+    serial_cumulative = round(_portfolio_return_pct(returns), 2) if returns else 0
+    trading_days = len({d for d, _ in dated_returns if re.search(r"20\d{2}-\d{2}-\d{2}", str(d or ""))})
     latest_win_count = sum(1 for r in latest_executed if _is_win(r))
     latest_win_rate = round(latest_win_count / len(latest_executed) * 100, 2) if latest_executed else 0
     latest_avg_return = round(sum(latest_returns) / len(latest_returns), 2) if latest_returns else 0
-    latest_cumulative = round(_portfolio_return_pct(latest_returns), 2) if latest_returns else 0
+    latest_dated = [(_row_date_value(r), _return_pct(r)) for r in latest_executed]
+    latest_cumulative = round(_dated_portfolio_return_pct(latest_dated), 2) if latest_returns else 0
 
     return {
         "status": "OK" if filtered else "NO_DATA",
@@ -369,7 +408,16 @@ def _virtual_summary(market: str = "all", mode: str = "all", horizon: str = "all
         "cumulativeReturnPct": cumulative,
         "executedReturnPct": avg_return,
         "rawReturnSumPct": raw_return_sum,
-        "returnBasis": "executed rows; cumulativeReturnPct is a 10% equal-slot virtual portfolio compound return, not raw return sum",
+        # 예전 직렬 복리값. 화면에선 안 쓰지만 두 수치가 왜 다른지 추적할 수 있게 남긴다.
+        "serialCumulativeReturnPct": serial_cumulative,
+        "compoundingBasis": "dailyEqualWeight",
+        "tradingDayCount": trading_days,
+        "returnBasis": (
+            "executed rows; cumulativeReturnPct compounds per **trading day** "
+            "(same-day picks are concurrent positions, equal-weighted), not per trade. "
+            "serialCumulativeReturnPct is the legacy per-trade 10%-slot chain and "
+            "overstates loss when picks are clustered. avgReturnPct is the per-trade mean."
+        ),
         "unexecutedExcludedFromReturn": True,
         "latestRecommendations": len(latest_rows),
         "latestExecutedTrades": len(latest_executed),

@@ -5,6 +5,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import time
 import urllib.parse
 import urllib.request
@@ -4263,7 +4264,14 @@ def _safe_pct(value: object) -> float | None:
 
 
 def _portfolio_return_pct(returns: list[float], allocation_pct: float = 10.0) -> float:
-    """Equal-slot virtual portfolio return. Avoids misleading raw return sums."""
+    """(레거시) 거래를 **한 건씩 순차로** 자본의 10%씩 걸었다고 보고 복리.
+
+    ⚠️ 이 가정은 원장과 맞지 않는다. 2026-07-31 실측: 체결 630건이 **13일**에만
+    몰려 있었고 하루 최대 178건이었다. 같은 날 나온 건 동시 포지션이지 순차 거래가
+    아닌데 이 함수는 기하 감쇠를 630번 먹인다(13번이 맞다) → 손실을 약 2배
+    부풀렸다(직렬 -83.9% vs 날짜별 -39.6%, 거래당 평균 -2.9%).
+    비교·추적용으로만 남기고 표시값은 `_dated_portfolio_return_pct`를 쓴다.
+    """
     if not returns:
         return 0.0
     slot = max(0.0, min(allocation_pct, 100.0)) / 100.0
@@ -4273,7 +4281,66 @@ def _portfolio_return_pct(returns: list[float], allocation_pct: float = 10.0) ->
     return (capital - 1.0) * 100.0
 
 
-def _virtual_summary_from_reports(market: str, mode: str = "balanced", horizon: str = "swing") -> dict:
+_DATE_RE = re.compile(r"20\d{2}-\d{2}-\d{2}")
+
+_RETURN_BASIS_NOTE = (
+    "executed rows; cumulativeReturnPct compounds per **trading day** (same-day picks are "
+    "concurrent positions and are equal-weighted), not once per trade. "
+    "serialCumulativeReturnPct is the legacy per-trade 10%-slot chain, kept for comparison — "
+    "it overstates loss when picks cluster on few days. avgReturnPct is the per-trade mean."
+)
+
+
+def _row_trade_date(row: object) -> str:
+    """추천이 나온 날짜. 이 날짜가 같으면 동시 포지션으로 본다."""
+    if not isinstance(row, dict):
+        return ""
+    for key in ("createdAt", "recommendationDate", "date", "validationDate", "validatedAt"):
+        match = _DATE_RE.search(str(row.get(key) or ""))
+        if match:
+            return match.group(0)
+    return ""
+
+
+def _dated_portfolio_return_pct(dated_returns: list[tuple[str, float]]) -> float:
+    """같은 날 추천은 **동시 포지션**으로 보고, 날짜별 등가중 → 거래일 단위 복리.
+
+    "그날 나온 후보를 전부 등가중으로 담았다면"에 해당한다. 복리가 거래일 수만큼만
+    적용되므로 동시 포지션을 직렬로 세던 왜곡이 사라진다.
+    날짜를 못 읽는 행은 서로 섞으면 평균이 왜곡되므로 각자 하루로 취급한다.
+    """
+    if not dated_returns:
+        return 0.0
+    buckets: dict[str, list[float]] = {}
+    undated: list[float] = []
+    for raw_date, value in dated_returns:
+        if _DATE_RE.search(str(raw_date or "")):
+            buckets.setdefault(str(raw_date), []).append(float(value))
+        else:
+            undated.append(float(value))
+    capital = 1.0
+    for day in sorted(buckets):
+        same_day = buckets[day]
+        capital *= max(0.0, 1.0 + (sum(same_day) / len(same_day)) / 100.0)
+    for value in undated:
+        capital *= max(0.0, 1.0 + value / 100.0)
+    return (capital - 1.0) * 100.0
+
+
+def _dated_returns_from_rows(rows: list, value_key: str = "returnPct") -> list[tuple[str, float]]:
+    out: list[tuple[str, float]] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        value = _safe_pct(row.get(value_key))
+        if value is None:
+            continue
+        out.append((_row_trade_date(row), value))
+    return out
+
+
+def _virtual_summary_from_reports(market: str, mode: str = "balanced", horizon: str = "swing",
+                                  _include_internals: bool = False) -> dict:
     def _truth(value: object) -> bool:
         return str(value).strip().lower() in {"1", "true", "yes", "y", "filled", "executed", "체결"}
 
@@ -4314,7 +4381,11 @@ def _virtual_summary_from_reports(market: str, mode: str = "balanced", horizon: 
     returns = [value for value in returns if value is not None]
     wins = [value for value in returns if value > 0]
     raw_sum = sum(returns)
-    cumulative = _portfolio_return_pct(returns)
+    # 같은 날 추천은 동시 포지션이다 — 날짜별 등가중 후 거래일 단위로만 복리한다.
+    dated = _dated_returns_from_rows(executed)
+    cumulative = _dated_portfolio_return_pct(dated)
+    serial_cumulative = _portfolio_return_pct(returns)
+    trading_days = len({d for d, _ in dated if d})
     avg = raw_sum / len(returns) if returns else 0.0
     pending = [
         row for row in ledger
@@ -4323,13 +4394,18 @@ def _virtual_summary_from_reports(market: str, mode: str = "balanced", horizon: 
     latest_date = ""
     for row in validations:
         latest_date = max(latest_date, str(row.get("validatedAt") or row.get("validationDate") or row.get("createdAt") or ""))
+    internals = {"_datedReturns": dated} if _include_internals else {}
     return {
+        **internals,
         "status": "OK" if validations or ledger else "NO_DATA",
         "market": market,
         "mode": mode,
         "horizon": horizon,
         "source": "virtual_validation_results.csv + virtual_prediction_ledger.csv",
-        "returnBasis": "executed rows; cumulativeReturnPct is a 10% equal-slot virtual portfolio compound return, not raw return sum",
+        "returnBasis": _RETURN_BASIS_NOTE,
+        "compoundingBasis": "dailyEqualWeight",
+        "tradingDayCount": trading_days,
+        "serialCumulativeReturnPct": round(serial_cumulative, 3),
         "pnlCurveScope": "portfolio_aggregate",
         "rawReturnSumPct": round(raw_sum, 3),
         "totalRecommendations": len(ledger) or len(validations),
@@ -4344,6 +4420,9 @@ def _virtual_summary_from_reports(market: str, mode: str = "balanced", horizon: 
         "winRate": round((len(wins) / len(returns)) * 100, 2) if returns else 0,
         "latestWinRate": round((len(wins) / len(returns)) * 100, 2) if returns else 0,
         "executedReturnPct": round(avg, 3),
+        # 예전엔 이 두 키가 없어서 화면이 평균 수익률을 못 읽고 None을 받았다.
+        "avgReturnPct": round(avg, 3),
+        "averageReturnPct": round(avg, 3),
         "cumulativeReturnPct": round(cumulative, 3),
         "latestCumulativeReturnPct": round(cumulative, 3),
         "latestDate": latest_date[:10],
@@ -9627,17 +9706,21 @@ def _install_mone_virtual_report_routes_v1():
         horizon: str = _MoneVirtualQuery("all"),
     ) -> dict:
         if str(market).lower() == "all":
-            kr = _virtual_summary_from_reports("kr", mode, horizon)
-            us = _virtual_summary_from_reports("us", mode, horizon)
+            kr = _virtual_summary_from_reports("kr", mode, horizon, _include_internals=True)
+            us = _virtual_summary_from_reports("us", mode, horizon, _include_internals=True)
             total = int(kr.get("totalRecommendations") or 0) + int(us.get("totalRecommendations") or 0)
             executed = int(kr.get("executedTrades") or 0) + int(us.get("executedTrades") or 0)
             unexecuted = int(kr.get("unexecutedCount") or 0) + int(us.get("unexecutedCount") or 0)
             combined_items = (kr.get("items") or []) + (us.get("items") or [])
-            combined_returns = [
-                value for value in (_safe_pct(row.get("returnPct")) for row in combined_items if isinstance(row, dict))
-                if value is not None
-            ]
-            cumulative = _portfolio_return_pct(combined_returns)
+            # ⚠️ 예전엔 수익률을 `items`에서 뽑았는데, items는 **300건으로 잘리고
+            # 미체결 행까지 섞여 있다** — executedTrades(체결 전체)와 모집단이 달랐다.
+            # 시장별 계산과 같은 체결 행 집합을 쓴다.
+            combined_dated = (kr.pop("_datedReturns", []) or []) + (us.pop("_datedReturns", []) or [])
+            combined_returns = [value for _, value in combined_dated]
+            # 국장·미장을 합칠 때도 같은 날 추천은 동시 포지션이다.
+            cumulative = _dated_portfolio_return_pct(combined_dated)
+            serial_cumulative = _portfolio_return_pct(combined_returns)
+            trading_days = len({d for d, _ in combined_dated if d})
             raw_sum = sum(combined_returns)
             avg_return = raw_sum / len(combined_returns) if combined_returns else 0.0
             rate = round((executed / (executed + unexecuted)) * 100, 2) if executed + unexecuted else 0
@@ -9654,10 +9737,15 @@ def _install_mone_virtual_report_routes_v1():
                 "executionRate": rate,
                 "latestExecutionRate": rate,
                 "executedReturnPct": round(avg_return, 3),
+                "avgReturnPct": round(avg_return, 3),
+                "averageReturnPct": round(avg_return, 3),
                 "cumulativeReturnPct": round(cumulative, 3),
                 "latestCumulativeReturnPct": round(cumulative, 3),
+                "serialCumulativeReturnPct": round(serial_cumulative, 3),
+                "compoundingBasis": "dailyEqualWeight",
+                "tradingDayCount": trading_days,
                 "rawReturnSumPct": round(raw_sum, 3),
-                "returnBasis": "executed rows; cumulativeReturnPct is a 10% equal-slot virtual portfolio compound return, not raw return sum",
+                "returnBasis": _RETURN_BASIS_NOTE,
                 "items": combined_items,
                 "count": int(kr.get("count") or 0) + int(us.get("count") or 0),
                 "source": "virtual_validation_results.csv + virtual_prediction_ledger.csv",

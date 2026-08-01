@@ -671,21 +671,33 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
         {github.error && <div className="mt-2 break-all text-xs text-red-300">{github.error}</div>}
       </div>
 
-      {/* 가상운용 요약 */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      {/* 가상운용 요약 — 누적 수익률만 보면 오독한다. 거래당 평균을 같이 낸다. */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         <Metric label="전체 추천" value={virtualSummary.totalRecommendations ?? "-"} />
         <Metric label="가상 체결" value={virtualSummary.executedTrades ?? "-"} />
         <Metric label="승률" value={virtualSummary.winRate !== undefined ? `${Number(virtualSummary.winRate).toFixed(2)}%` : "-"} />
+        <Metric label="거래당 평균" value={virtualSummary.avgReturnPct !== undefined && virtualSummary.avgReturnPct !== null ? `${Number(virtualSummary.avgReturnPct).toFixed(2)}%` : "-"} />
         <Metric label="누적 수익률" value={virtualSummary.cumulativeReturnPct !== undefined ? `${Number(virtualSummary.cumulativeReturnPct).toFixed(2)}%` : "-"} accent />
+        <Metric label="거래일" value={virtualSummary.tradingDayCount ?? "-"} />
       </div>
+      {virtualSummary.cumulativeReturnPct !== undefined && (
+        <p className="text-xs leading-relaxed text-slate-400">
+          누적 수익률은 <span className="text-slate-300">같은 날 추천을 등가중으로 담고 거래일 단위로 복리</span>한 값입니다
+          {virtualSummary.tradingDayCount ? ` (체결 ${virtualSummary.executedTrades ?? "-"}건 / ${virtualSummary.tradingDayCount}거래일)` : ""}.
+          같은 날 나온 추천은 동시 포지션이므로 거래 건마다 복리하지 않습니다
+          {virtualSummary.serialCumulativeReturnPct !== undefined
+            ? ` — 건별 복리로 세면 ${Number(virtualSummary.serialCumulativeReturnPct).toFixed(1)}%로 손실이 과대평가됩니다.`
+            : "."}
+        </p>
+      )}
 
       <div className="mone-home-card p-5">
         <div className="mb-4 flex items-center justify-between gap-3">
-          <div>
+          <div className="min-w-0">
             <h2 className="mone-home-section-title">빗각 과거 검증</h2>
             <p className="text-sm text-slate-400">과거 시점에서 그은 지지·저항 빗각을 다음 5봉 실제 고저가와 뉴스 리스크로 검증합니다.</p>
           </div>
-          <span className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300" title={String(trendlineAccuracy.status || "")}>{codeText(trendlineAccuracy.status).value}</span>
+          <span className="shrink-0 whitespace-nowrap rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300" title={String(trendlineAccuracy.status || "")}>{codeText(trendlineAccuracy.status).value}</span>
         </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
           <Metric label="표본" value={trendlineAccuracy.sampleCount ?? "-"} />
@@ -701,12 +713,12 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
 
       {/* 데이터 점검 */}
       <div className="mone-home-card p-5">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="min-w-0">
             <h2 className="mone-home-section-title">데이터 점검</h2>
             <p className="text-sm text-slate-400">백엔드 루트, 데이터 상태, 파일 구분을 표시합니다.</p>
           </div>
-          <span className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300" title={String(audit.status || "")}>{codeText(audit.status).value}</span>
+          <span className="shrink-0 whitespace-nowrap rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300" title={String(audit.status || "")}>{codeText(audit.status).value}</span>
         </div>
 
         <div className="grid grid-cols-1 gap-2 text-xs text-slate-400 md:grid-cols-2">
