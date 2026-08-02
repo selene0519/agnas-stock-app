@@ -138,3 +138,9 @@ def test_recommendation_time_must_include_timezone() -> None:
     assert gate._parse_time("2026-07-31 09:00:00") is None
     assert gate._parse_time("2026-07-31T09:00:00+09:00") is not None
     assert gate._policy()["requiresTimezoneAwareRecommendationTime"] is True
+
+
+def test_currency_formatted_price_fields_are_numeric_for_us_and_kr() -> None:
+    assert gate._num("$262.21") == 262.21
+    assert gate._num("₩72,500") == 72500.0
+    assert gate._num("72,500원") == 72500.0

@@ -104,7 +104,14 @@ def _text(value: Any) -> str:
 
 def _num(value: Any) -> float | None:
     try:
-        raw = _text(value).replace(",", "").replace("%", "")
+        raw = (
+            _text(value)
+            .replace(",", "")
+            .replace("%", "")
+            .replace("$", "")
+            .replace("₩", "")
+            .replace("원", "")
+        )
         return float(raw) if raw and raw.lower() not in {"nan", "none", "null", "-"} else None
     except (TypeError, ValueError):
         return None
