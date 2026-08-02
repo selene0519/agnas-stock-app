@@ -374,6 +374,7 @@ def build() -> dict[str, Any]:
             "riskRewardRatio": _num(row.get("rrActual") or row.get("riskRewardRatio")),
             "entryPrice": _num(row.get("entry") or row.get("entryPrice")),
             "stopPrice": _num(row.get("stop") or row.get("stopPrice")),
+            "targetPrice": _num(row.get("target") or row.get("targetPrice")),
             "sector": _text(row.get("sector")) or "UNKNOWN",
             "beta": _num(row.get("beta")),
             "modelProbabilityDisplayOnly": _num(row.get("probability")),

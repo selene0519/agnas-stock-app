@@ -653,6 +653,8 @@ export const mone = {
     apiGet<any>("/api/quant/operating-status", p),
   quantProductScope: () =>
     apiGet<any>("/api/quant/product-scope"),
+  quantAdvisoryRecommendations: (p?: { market?: Market | string; limit?: number }) =>
+    apiGet<any>("/api/quant/advisory-recommendations", p),
   quantShadowStatus: () =>
     apiGet<QuantShadowStatus>("/api/quant/shadow-status"),
   backtestSummary: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string }) =>

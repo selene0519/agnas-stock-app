@@ -71,5 +71,9 @@ def test_quant_lab_ui_names_paper_evidence_and_user_decision_boundary() -> None:
     assert "실제 주문 없이" in paper
     assert "사용자가 결정하고 증권사에서 직접 실행" in status
     assert "실계좌 주문 연결 없음" in status
+    assert "검증된 추천 계약" in status
+    assert "최대 권고비중" in status
+    assert "반대근거" in status
+    assert "불확실성" in status
     assert "MONE 트레이딩" not in bottom_nav + sidebar + advanced
     assert "AI 매매일지" not in bottom_nav + advanced

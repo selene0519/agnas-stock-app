@@ -13,17 +13,35 @@ const STATE_STYLE: Record<string, { label: string; className: string; icon: type
   BLOCKED: { label: "안전장치 차단", className: "border-red-400/30 bg-red-400/10 text-red-200", icon: AlertTriangle },
 };
 
+const DECISION_STYLE: Record<string, string> = {
+  TAKE: "border-emerald-400/30 bg-emerald-400/10 text-emerald-200",
+  WAIT: "border-amber-400/30 bg-amber-400/10 text-amber-200",
+  REJECT: "border-rose-400/30 bg-rose-400/10 text-rose-200",
+};
+
+function price(value: unknown, market: Market): string {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0) return "-";
+  return market === "us" ? `$${number.toLocaleString("en-US", { maximumFractionDigits: 2 })}` : `${number.toLocaleString("ko-KR", { maximumFractionDigits: 0 })}원`;
+}
+
 export function QuantOperatingStatus({ market }: { market: Market }) {
   const [row, setRow] = useState<any>(null);
+  const [advisory, setAdvisory] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
   async function load() {
     setLoading(true);
     try {
-      const payload = await mone.quantOperatingStatus({ market });
-      setRow(payload?.markets?.[market] ?? null);
+      const [statusResult, advisoryResult] = await Promise.allSettled([
+        mone.quantOperatingStatus({ market }),
+        mone.quantAdvisoryRecommendations({ market, limit: 3 }),
+      ]);
+      setRow(statusResult.status === "fulfilled" ? statusResult.value?.markets?.[market] ?? null : null);
+      setAdvisory(advisoryResult.status === "fulfilled" ? advisoryResult.value : null);
     } catch {
       setRow(null);
+      setAdvisory(null);
     } finally {
       setLoading(false);
     }
@@ -36,6 +54,7 @@ export function QuantOperatingStatus({ market }: { market: Market }) {
   const StateIcon = state.icon;
   const risk = row?.riskBudget ?? {};
   const journal = row?.journal ?? {};
+  const advisoryItems = Array.isArray(advisory?.items) ? advisory.items : [];
 
   return (
     <section className="border-y border-slate-800/80 py-4">
@@ -90,6 +109,41 @@ export function QuantOperatingStatus({ market }: { market: Market }) {
               </span>
             ))}
           </div>
+          {advisoryItems.length > 0 && (
+            <div className="mt-4 space-y-2" aria-label="AI 퀀트 추천 계약">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-xs font-semibold text-slate-200">검증된 추천 계약</h3>
+                <span className="font-mono text-[10px] text-slate-500">
+                  TAKE {advisory?.summary?.take ?? 0} · WAIT {advisory?.summary?.wait ?? 0} · REJECT {advisory?.summary?.reject ?? 0}
+                </span>
+              </div>
+              {advisoryItems.map((item: any) => (
+                <article key={item.candidateKey} className="rounded-lg border border-slate-800 bg-slate-950/45 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <span className="text-sm font-semibold text-slate-100">{item.name || item.symbol}</span>
+                      <span className="ml-2 font-mono text-[10px] text-slate-500">{item.symbol}</span>
+                    </div>
+                    <span className={`rounded-md border px-2 py-0.5 font-mono text-[10px] font-bold ${DECISION_STYLE[item.decision] ?? DECISION_STYLE.REJECT}`}>
+                      {item.decision}
+                    </span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-[11px] sm:grid-cols-4">
+                    <span><span className="block text-slate-500">진입</span><span className="font-mono text-slate-200">{price(item.entryPrice, market)}</span></span>
+                    <span><span className="block text-slate-500">손절</span><span className="font-mono text-rose-300">{price(item.stopPrice, market)}</span></span>
+                    <span><span className="block text-slate-500">목표</span><span className="font-mono text-emerald-300">{price(item.targetPrice, market)}</span></span>
+                    <span><span className="block text-slate-500">최대 권고비중</span><span className="font-mono text-slate-200">{Number(item.maxRecommendedWeightPct ?? 0).toFixed(2)}%</span></span>
+                  </div>
+                  <p className="mt-3 text-[11px] leading-5 text-slate-300">근거 · {item.rationale?.[0] || "검증 근거 부족"}</p>
+                  <p className="mt-1 text-[11px] leading-5 text-amber-200/80">반대근거 · {item.counterEvidence?.[0] || "추가 검토 필요"}</p>
+                  <div className="mt-2 flex flex-wrap justify-between gap-2 text-[10px] text-slate-500">
+                    <span>불확실성 {item.uncertainty?.level || "HIGH"}</span>
+                    <span>{item.validUntil ? `유효 ${new Date(item.validUntil).toLocaleString("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}까지` : "유효기간 없음"}</span>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
         </>
       )}
     </section>

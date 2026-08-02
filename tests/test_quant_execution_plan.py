@@ -31,6 +31,7 @@ def _reports(now: datetime | None = None) -> tuple[dict, dict, dict]:
         "decision": "TAKE",
         "entryPrice": 100.0,
         "stopPrice": 95.0,
+        "targetPrice": 110.0,
         "residualAlphaModelFingerprint": residual_fingerprint,
         "residualAlphaModelInstanceFingerprint": "instance-a",
         "residualAlphaPredictionId": "prediction-a",
@@ -104,6 +105,7 @@ def test_exact_candidate_and_weight_are_authorized() -> None:
     assert auth["allowed"] is True
     assert auth["weight"] == 0.10
     assert auth["entryPrice"] == 100.0
+    assert auth["targetPrice"] == 110.0
     assert auth["riskPolicyVersion"] == plan.RISK_POLICY_VERSION
 
 

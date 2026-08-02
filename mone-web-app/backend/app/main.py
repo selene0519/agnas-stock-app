@@ -8649,6 +8649,17 @@ def api_quant_product_scope() -> dict:
     return product_scope()
 
 
+@app.get("/api/quant/advisory-recommendations")
+def api_quant_advisory_recommendations(
+    market: str = Query("all", pattern="^(kr|us|all)$"),
+    limit: int = Query(20, ge=1, le=100),
+) -> dict:
+    """Complete TAKE/WAIT/REJECT contract for manual user review."""
+    from app.services.quant_advisory import advisory_recommendations
+
+    return advisory_recommendations(market=market, limit=limit)
+
+
 @app.post("/api/journal/self-learning/auto-calibrate")
 def api_journal_self_learning_auto_calibrate(payload: dict = Body(default_factory=dict)) -> dict:
     from app.services import virtual_trade_journal as vtj

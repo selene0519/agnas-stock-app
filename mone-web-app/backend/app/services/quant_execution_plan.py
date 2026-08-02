@@ -1,10 +1,11 @@
-"""Fail-closed candidate-level execution authority for Quant V2.
+"""Fail-closed candidate-level Paper allocation authority for Quant V2.
 
 The operating governor answers whether the system may consider a new entry.
 This module answers the stricter question: *which exact candidate and weight*
-may be executed.  It independently verifies the meta-gate and risk-allocation
-reports so a global TAKE cannot accidentally authorize an unrelated raw
-recommendation or an oversized order.
+may enter the Paper evidence ledger. It independently verifies the meta-gate
+and risk-allocation reports so a global TAKE cannot accidentally authorize an
+unrelated raw recommendation or an oversized simulated position. It grants no
+broker or live-order authority.
 """
 from __future__ import annotations
 
@@ -361,6 +362,7 @@ def validate_reports(
             "signalDate": _text(meta_row.get("signalDate"))[:10],
             "entryPrice": _num(meta_row.get("entryPrice")),
             "stopPrice": _num(meta_row.get("stopPrice")),
+            "targetPrice": _num(meta_row.get("targetPrice")),
             "metaPolicyFingerprint": meta_fingerprint,
             "riskPolicyVersion": RISK_POLICY_VERSION,
             "riskPolicyFingerprint": risk_fingerprint,
