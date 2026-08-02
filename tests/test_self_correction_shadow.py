@@ -151,13 +151,39 @@ def test_live_correction_defaults_off_and_quarantines_unpromoted_legacy(monkeypa
     legacy_blocked = live_correction.apply_correction(
         {"momentumScore": 60.0}, 100.0, 120.0, 90.0, "us", "balanced", "swing"
     )
-    promoted = {
+    hash_only_promoted = {
         **legacy,
         "journalCalibrationPromoted": True,
         "promotionCertificateHash": "certificate-a",
         "candidateFingerprint": "candidate-a",
         "calibrationPolicyFingerprint": "policy-a",
     }
+    monkeypatch.setattr(live_correction.correction_store, "load_correction", lambda *_args: hash_only_promoted)
+    hash_only_blocked = live_correction.apply_correction(
+        {"momentumScore": 60.0}, 100.0, 120.0, 90.0, "us", "balanced", "swing"
+    )
+    certificate = {
+        "approvalId": "approval-a",
+        "approvalRecordHash": "approval-hash-a",
+        "evidenceFingerprint": "evidence-a",
+        "candidateFingerprint": "candidate-a",
+        "calibrationPolicyFingerprint": "policy-a",
+        "shadowPolicyFingerprint": "shadow-a",
+        "evaluationPolicyFingerprint": "evaluation-a",
+        "promotionEligible": True,
+        "decision": "READY_FOR_HUMAN_REVIEW",
+    }
+    certificate["recordHash"] = live_correction.correction_store.promotion_certificate_hash(certificate)
+    promoted = {
+        **hash_only_promoted,
+        "promotionCertificateHash": certificate["recordHash"],
+        "promotionCertificate": certificate,
+    }
+    sealed_params = live_correction.correction_store.seal_params({
+        "version": 373,
+        "markets": {"us_balanced_swing": promoted},
+    })
+    monkeypatch.setattr(live_correction.correction_store, "load_params", lambda: sealed_params)
     monkeypatch.setattr(live_correction.correction_store, "load_correction", lambda *_args: promoted)
     promoted_result = live_correction.apply_correction(
         {"momentumScore": 60.0}, 100.0, 120.0, 90.0, "us", "balanced", "swing"
@@ -166,6 +192,7 @@ def test_live_correction_defaults_off_and_quarantines_unpromoted_legacy(monkeypa
     assert default_off["correctionApplied"] is False
     assert legacy_blocked["correctionApplied"] is False
     assert "quarantined" in legacy_blocked["correctionSummary"]
+    assert hash_only_blocked["correctionApplied"] is False
     assert promoted_result["correctionApplied"] is True
 
 

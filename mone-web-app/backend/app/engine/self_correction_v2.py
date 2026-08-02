@@ -32,16 +32,16 @@ def _correction_enabled() -> bool:
 
 def promoted_correction(params: dict[str, Any]) -> bool:
     """Legacy/unsealed correction files can never become live by environment flag alone."""
-    return (
-        params.get("journalCalibrationPromoted") is True
-        and bool(str(params.get("promotionCertificateHash") or "").strip())
-        and bool(str(params.get("candidateFingerprint") or "").strip())
-        and bool(str(params.get("calibrationPolicyFingerprint") or "").strip())
-    )
+    return correction_store.promoted_correction_lineage_valid(params)
 
 
 def live_correction_active(params: dict[str, Any]) -> bool:
-    return _correction_enabled() and promoted_correction(params)
+    if not _correction_enabled() or not promoted_correction(params):
+        return False
+    stored = correction_store.load_params()
+    if not correction_store.params_lineage_verdict(stored, require_integrity=True)["valid"]:
+        return False
+    return any(value == params for value in (stored.get("markets") or {}).values())
 
 def _correction_strength() -> float:
     try:
@@ -490,7 +490,8 @@ def apply_correction(
         "appliedCorrectionVersion": int,
     }
     """
-    version = correction_store.load_params().get("version", 0)
+    all_params = correction_store.load_params()
+    version = all_params.get("version", 0)
 
     # 킬스위치: SELF_CORRECTION_ENABLED=false → 즉시 원래 값 반환
     if not _correction_enabled():
@@ -509,7 +510,8 @@ def apply_correction(
     params = correction_store.load_correction(market, mode, horizon)
     confidence = float(params.get("confidence") or 0.0)
 
-    if not promoted_correction(params):
+    params_verdict = correction_store.params_lineage_verdict(all_params, require_integrity=True)
+    if not params_verdict["valid"] or not promoted_correction(params):
         return {
             "adjustedScores": score_components,
             "adjustedEntry": entry,

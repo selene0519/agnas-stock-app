@@ -888,6 +888,8 @@ def test_approved_calibration_can_be_manually_applied_to_self_correction_params(
     assert correction["journalCalibrationPromoted"] is True
     assert correction["candidateFingerprint"] == certificate["candidateFingerprint"]
     assert correction["promotionCertificateHash"] == certificate["recordHash"]
+    assert correction["promotionCertificate"] == certificate
+    assert correction_store.validate_params_integrity(correction_store.load_params()) is True
     assert correction["priceAdjustments"]["stopAtrMultiplier"] > 0
     assert refreshed_target["applicationStatus"] == "APPLIED"
     application_rows = vtj._read_rows(vtj.CALIBRATION_APPLICATIONS_CSV, vtj.CALIBRATION_APPLICATION_COLS)
@@ -1621,6 +1623,68 @@ def test_self_learning_rollback_restores_previous_correction_version(
     assert out["toVersion"] == 0
     assert restored["rollbackFromVersion"] == 1
     assert restored["markets"]["kr_balanced_swing"]["confidence"] == 0.1
+
+
+def test_self_learning_rollback_rejects_tampered_backup(
+    isolated_vtj: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(correction_store, "_reports_dir", lambda: isolated_vtj)
+    correction_store.save_params({"version": 0, "markets": {"kr_balanced_swing": {"confidence": 0.1}}})
+    correction_store.save_params({"version": 1, "markets": {"kr_balanced_swing": {"confidence": 0.9}}})
+    before = correction_store.load_params()
+    backup_path = isolated_vtj / "self_correction_params_v0.json"
+    backup = json.loads(backup_path.read_text(encoding="utf-8"))
+    backup["markets"]["kr_balanced_swing"]["confidence"] = 9.9
+    backup_path.write_text(json.dumps(backup), encoding="utf-8")
+
+    out = vtj.rollback_self_learning(version=0, requested_by="pytest")
+
+    assert out["status"] == "ERROR"
+    assert out["error"] == "ROLLBACK_INTEGRITY_FAILED"
+    assert "PARAMS_INTEGRITY_INVALID" in out["blockingReasons"]
+    assert correction_store.load_params() == before
+
+
+def test_self_learning_rollback_rejects_backup_version_mismatch(
+    isolated_vtj: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(correction_store, "_reports_dir", lambda: isolated_vtj)
+    correction_store.save_params({"version": 0, "markets": {}})
+    correction_store.save_params({"version": 1, "markets": {}})
+    before = correction_store.load_params()
+    backup_path = isolated_vtj / "self_correction_params_v0.json"
+    backup = json.loads(backup_path.read_text(encoding="utf-8"))
+    backup["version"] = 99
+    backup_path.write_text(json.dumps(correction_store.seal_params(backup)), encoding="utf-8")
+
+    out = vtj.rollback_self_learning(version=0, requested_by="pytest")
+
+    assert out["status"] == "ERROR"
+    assert out["error"] == "ROLLBACK_INTEGRITY_FAILED"
+    assert "ROLLBACK_VERSION_MISMATCH" in out["blockingReasons"]
+    assert correction_store.load_params() == before
+
+
+def test_self_learning_rollback_can_replace_tampered_current_from_valid_backup(
+    isolated_vtj: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(correction_store, "_reports_dir", lambda: isolated_vtj)
+    correction_store.save_params({"version": 0, "markets": {"kr_balanced_swing": {"confidence": 0.1}}})
+    correction_store.save_params({"version": 1, "markets": {"kr_balanced_swing": {"confidence": 0.9}}})
+    current_path = correction_store._params_path()
+    current = correction_store.load_params()
+    current["markets"]["kr_balanced_swing"]["confidence"] = 9.9
+    current_path.write_text(json.dumps(current), encoding="utf-8")
+
+    out = vtj.rollback_self_learning(version=0, requested_by="pytest")
+    restored = correction_store.load_params()
+
+    assert out["status"] == "OK"
+    assert restored["markets"]["kr_balanced_swing"]["confidence"] == 0.1
+    assert correction_store.validate_params_integrity(restored) is True
 
 
 def test_historical_replay_backfill_steps_cutoff_dates_without_future_peek(

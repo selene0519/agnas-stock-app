@@ -3321,6 +3321,7 @@ def apply_approved_calibrations(
                 "candidateFingerprint": candidate_fingerprint,
             })
             continue
+        promotion_certificate = dict(promotion_gate.get("certificate") or {})
         applied_at = _now_iso()
         after.update({
             "journalCalibrationAppliedBy": _text(applied_by or "local_admin"),
@@ -3329,7 +3330,8 @@ def apply_approved_calibrations(
             "calibrationPolicyVersion": AUTO_CALIBRATION_POLICY.get("version"),
             "calibrationPolicyFingerprint": _calibration_policy_fingerprint(),
             "candidateFingerprint": candidate_fingerprint,
-            "promotionCertificateHash": (promotion_gate.get("certificate") or {}).get("recordHash"),
+            "promotionCertificateHash": promotion_certificate.get("recordHash"),
+            "promotionCertificate": promotion_certificate,
         })
         markets[key] = after
         application_id = hashlib.sha256(f"{approval_id}|{applied_at}".encode("utf-8")).hexdigest()[:20]
@@ -4249,11 +4251,39 @@ def rollback_self_learning(version: int | None = None, requested_by: str = "loca
         restored = json.loads(backup.read_text(encoding="utf-8"))
     except Exception as exc:
         return {"status": "ERROR", "error": f"RESTORE_READ_FAILED: {exc}"}
+    try:
+        restored_version = int(restored.get("version"))
+    except (AttributeError, TypeError, ValueError):
+        restored_version = -1
+    restore_verdict = correction_store.params_lineage_verdict(restored, require_integrity=True)
+    if restored_version != target_version:
+        restore_verdict["blockingReasons"] = [
+            "ROLLBACK_VERSION_MISMATCH",
+            *(restore_verdict.get("blockingReasons") or []),
+        ]
+        restore_verdict["valid"] = False
+    if not restore_verdict.get("valid"):
+        return {
+            "status": "ERROR",
+            "error": "ROLLBACK_INTEGRITY_FAILED",
+            "targetVersion": target_version,
+            "currentVersion": current_version,
+            "blockingReasons": restore_verdict.get("blockingReasons") or [],
+        }
     restored["rollbackFromVersion"] = current_version
     restored["rollbackToVersion"] = target_version
     restored["rollbackRequestedBy"] = _text(requested_by or "local_admin")
     restored["rollbackAt"] = _now_iso()
-    correction_store.save_params(restored)
+    try:
+        correction_store.save_params(restored, backup_current=False)
+    except Exception as exc:
+        return {
+            "status": "ERROR",
+            "error": "ROLLBACK_WRITE_FAILED",
+            "targetVersion": target_version,
+            "currentVersion": current_version,
+            "detail": str(exc),
+        }
     run = {
         "status": "ROLLBACK",
         "generatedAt": _now_iso(),
