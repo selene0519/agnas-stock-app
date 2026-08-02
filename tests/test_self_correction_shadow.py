@@ -677,6 +677,10 @@ def test_workflows_seal_before_settlement_and_commit_all_shadow_evidence() -> No
     assert "data/self_correction_shadow_settlements.csv" in commit_script
     assert "reports/self_correction_shadow.json" in commit_script
     assert "reports/self_correction_promotion.json" in commit_script
+    assert 'calibration_performance_gate(market="all", auto_rollback=True)' in accumulator
+    assert accumulator.index("VTJ post-promotion capital guard") < accumulator.index(
+        "Generate KR recommendations from OHLCV"
+    )
 
 
 def test_recommendation_generators_emit_raw_shadow_input_contract() -> None:

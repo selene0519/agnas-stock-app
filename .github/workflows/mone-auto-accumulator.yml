@@ -423,6 +423,36 @@ jobs:
           fi
           set -e
 
+      - name: VTJ post-promotion capital guard
+        working-directory: mone-web-app/backend
+        env:
+          PYTHONPATH: .
+        run: |
+          set +e
+          python - <<'PY'
+          import sys, json
+          from pathlib import Path
+          sys.path.insert(0, str(Path.cwd()))
+          from app.services import virtual_trade_journal as vtj
+          # This runs before recommendation generation. Only the currently
+          # active, integrity-sealed correction can roll back; a failed
+          # rollback quarantines that correction before it can affect capital.
+          result = vtj.calibration_performance_gate(market="all", auto_rollback=True)
+          print("[vtj-post-promotion-capital-guard]")
+          print(json.dumps(result, ensure_ascii=False, indent=2))
+          if result.get("status") in {"ROLLBACK_READY", "DEGRADED_BLOCKED"}:
+              raise SystemExit(2)
+          if result.get("candidateCount", 0) and not result.get("capitalBlocked"):
+              raise SystemExit(3)
+          PY
+          code=$?
+          set -e
+          echo "vtj-post-promotion-capital-guard: exit ${code}"
+          if [ "${code}" != "0" ]; then
+            echo "::error::Post-promotion capital guard could not establish a safe correction state"
+            exit "${code}"
+          fi
+
       - name: Generate KR recommendations from OHLCV
         run: |
           set +e
@@ -786,24 +816,6 @@ jobs:
           print(json.dumps(result, ensure_ascii=False, indent=2))
           PY
           echo "vtj-self-learning: exit $?"
-          set -e
-
-      - name: VTJ self-learning performance gate
-        working-directory: mone-web-app/backend
-        env:
-          PYTHONPATH: .
-        run: |
-          set +e
-          python - <<'PY'
-          import sys, json
-          from pathlib import Path
-          sys.path.insert(0, str(Path.cwd()))
-          from app.services import virtual_trade_journal as vtj
-          result = vtj.calibration_performance_gate(market="all", auto_rollback=False)
-          print("[vtj-self-learning/performance-gate]")
-          print(json.dumps(result, ensure_ascii=False, indent=2))
-          PY
-          echo "vtj-performance-gate: exit $?"
           set -e
 
       - name: VTJ 기술지표 소급 채우기 (과거 RSI/거래량 역산)

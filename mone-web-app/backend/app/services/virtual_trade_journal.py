@@ -108,6 +108,18 @@ AUTO_CALIBRATION_POLICY = {
         "BACKTEST_EXPERIMENT": 0.35,
     },
 }
+CALIBRATION_PERFORMANCE_POLICY = {
+    "version": "vtj-post-promotion-monitor-v1.0.0",
+    "minPrePostSamples": 30,
+    "minPrePostDistinctSignalDates": 30,
+    "rollbackAvgPnlDropPct": 1.5,
+    "rollbackWinRateDrop": 0.10,
+    "rollbackConfidenceZ": 1.96,
+    "rollbackEmergencyMinDistinctSignalDates": 10,
+    "rollbackEmergencyDrawdownPct": 8.0,
+    "requireCurrentApplicationLineage": True,
+    "rollbackFailureAction": "QUARANTINE_ACTIVE_CORRECTION",
+}
 CALIBRATION_PROMOTION_VERSION = "vtj-calibration-promotion-v1"
 CALIBRATION_PROMOTION_MIN_SIGNAL_DATES = 60
 CALIBRATION_PROMOTION_MIN_TRADES = 120
@@ -3899,6 +3911,7 @@ def _performance_scope_rows(
     out = [
         row for row in rows
         if _upper(row.get("status")) in {"EVALUATED", "CANCELLED"}
+        and _upper(row.get("source_type")) in {"FORWARD_PAPER_TRADE", "MANUAL_REVIEWED"}
         and _safe_float(row.get("net_pnl_pct")) is not None
     ]
     out = _dedupe_decision_units(out)
@@ -3912,13 +3925,126 @@ def _performance_metrics(rows: list[dict[str, Any]]) -> dict[str, Any]:
     wins = sum(1 for row in rows if (_safe_float(row.get("net_pnl_pct")) or 0.0) > 0 or _upper(row.get("outcome")) == "TARGET_HIT")
     return {
         "samples": len(rows),
+        "distinctSignalDates": len({_row_event_date(row)[:10] for row in rows if _row_event_date(row)}),
         "winRate": round(wins / len(rows), 4) if rows else None,
         "avgNetPnlPct": round(sum(vals) / len(vals), 4) if vals else None,
+        "maxDrawdownPct": _max_drawdown(vals),
     }
+
+
+def _row_used_live_correction(row: dict[str, Any]) -> bool:
+    raw = row.get("raw_recommendation")
+    if isinstance(raw, dict):
+        return raw.get("correctionApplied") is True
+    try:
+        raw = json.loads(_text(row.get("raw_recommendation_json")) or "{}")
+    except Exception:
+        return False
+    return isinstance(raw, dict) and raw.get("correctionApplied") is True
+
+
+def _daily_performance_series(rows: list[dict[str, Any]]) -> dict[str, list[float]]:
+    grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        event_date = _row_event_date(row)[:10]
+        if event_date:
+            grouped[event_date].append(row)
+    pnl: list[float] = []
+    wins: list[float] = []
+    for event_date in sorted(grouped):
+        day_rows = grouped[event_date]
+        day_pnl = [_safe_float(row.get("net_pnl_pct")) for row in day_rows]
+        day_pnl = [value for value in day_pnl if value is not None]
+        if not day_pnl:
+            continue
+        pnl.append(sum(day_pnl) / len(day_pnl))
+        day_wins = sum(
+            1
+            for row in day_rows
+            if (_safe_float(row.get("net_pnl_pct")) or 0.0) > 0
+            or _upper(row.get("outcome")) == "TARGET_HIT"
+        )
+        wins.append(day_wins / len(day_rows))
+    return {"pnl": pnl, "wins": wins}
+
+
+def _mean_difference_upper_bound(before: list[float], after: list[float], z_score: float) -> float | None:
+    if len(before) < 2 or len(after) < 2:
+        return None
+
+    def _variance(values: list[float]) -> float:
+        average = sum(values) / len(values)
+        return sum((value - average) ** 2 for value in values) / (len(values) - 1)
+
+    difference = (sum(after) / len(after)) - (sum(before) / len(before))
+    standard_error = math.sqrt((_variance(before) / len(before)) + (_variance(after) / len(after)))
+    return difference + z_score * standard_error
+
+
+def _performance_application_lineage(
+    application: dict[str, Any],
+    current_params: dict[str, Any],
+) -> dict[str, Any]:
+    from app.engine import correction_store
+
+    blockers: list[str] = []
+    if _text(application.get("record_hash")) != _sealed_row_hash(application, CALIBRATION_APPLICATION_COLS):
+        blockers.append("APPLICATION_RECORD_HASH_MISMATCH")
+    if not correction_store.params_lineage_verdict(current_params, require_integrity=True)["valid"]:
+        blockers.append("CURRENT_CORRECTION_LINEAGE_INVALID")
+    current_version = int(_safe_float(current_params.get("version")) or 0)
+    application_version = int(_safe_float(application.get("correction_version")) or -1)
+    if application_version != current_version:
+        blockers.append("APPLICATION_NOT_CURRENT_VERSION")
+    key = f"{_text(application.get('market')).lower()}_{_text(application.get('mode')).lower()}_{_text(application.get('horizon')).lower()}"
+    correction = (current_params.get("markets") or {}).get(key)
+    if not isinstance(correction, dict) or not correction_store.promoted_correction_lineage_valid(correction):
+        blockers.append("APPLICATION_CORRECTION_NOT_ACTIVE")
+        correction = {}
+    if _text(application.get("policy_version")) != _text(correction.get("calibrationPolicyVersion")):
+        blockers.append("APPLICATION_POLICY_VERSION_MISMATCH")
+    if _text(application.get("policy_fingerprint")) != _text(correction.get("calibrationPolicyFingerprint")):
+        blockers.append("APPLICATION_POLICY_FINGERPRINT_MISMATCH")
+    if _text(application.get("candidate_fingerprint")) != _text(correction.get("candidateFingerprint")):
+        blockers.append("APPLICATION_CANDIDATE_FINGERPRINT_MISMATCH")
+    if _text(application.get("promotion_certificate_hash")) != _text(correction.get("promotionCertificateHash")):
+        blockers.append("APPLICATION_PROMOTION_CERTIFICATE_MISMATCH")
+    return {"valid": not blockers, "blockingReasons": blockers, "key": key}
+
+
+def _quarantine_degraded_correction(application: dict[str, Any], rollback_result: dict[str, Any]) -> dict[str, Any]:
+    from app.engine import correction_store
+
+    params = correction_store.load_params()
+    lineage = _performance_application_lineage(application, params)
+    if not lineage["valid"]:
+        return {"status": "ERROR", "error": "QUARANTINE_LINEAGE_FAILED", **lineage}
+    key = lineage["key"]
+    markets = dict(params.get("markets") or {})
+    correction = dict(markets[key])
+    correction.update({
+        "journalCalibrationPromoted": False,
+        "journalCalibrationQuarantined": True,
+        "quarantineReason": "POST_PROMOTION_PERFORMANCE_DEGRADED",
+        "quarantineAt": _now_iso(),
+        "failedRollback": rollback_result,
+    })
+    markets[key] = correction
+    quarantined = {
+        **params,
+        "version": int(params.get("version") or 0) + 1,
+        "generatedAt": _now_iso(),
+        "source": "performance_gate_fail_closed_quarantine",
+        "markets": markets,
+    }
+    correction_store.save_params(quarantined)
+    return {"status": "OK", "key": key, "correctionVersion": quarantined["version"]}
 
 
 def calibration_performance_gate(market: str = "all", auto_rollback: bool = False) -> dict[str, Any]:
     _ensure()
+    from app.engine import correction_store
+
     applications = [
         row for row in _read_rows(CALIBRATION_APPLICATIONS_CSV, CALIBRATION_APPLICATION_COLS)
         if _upper(row.get("status")) == "APPLIED"
@@ -3929,32 +4055,66 @@ def calibration_performance_gate(market: str = "all", auto_rollback: bool = Fals
         return {"status": "NO_APPLICATIONS", "items": [], "autoRollback": False}
 
     merged_rows = _merge_evaluations(_read_journal_rows())
-    min_samples = int(AUTO_CALIBRATION_POLICY.get("minPrePostSamples") or 30)
-    pnl_drop = float(AUTO_CALIBRATION_POLICY.get("rollbackAvgPnlDropPct") or 1.5)
-    win_drop = float(AUTO_CALIBRATION_POLICY.get("rollbackWinRateDrop") or 0.10)
+    current_params = correction_store.load_params()
+    min_samples = int(CALIBRATION_PERFORMANCE_POLICY.get("minPrePostSamples") or 30)
+    min_dates = int(CALIBRATION_PERFORMANCE_POLICY.get("minPrePostDistinctSignalDates") or 30)
+    pnl_drop = float(CALIBRATION_PERFORMANCE_POLICY.get("rollbackAvgPnlDropPct") or 1.5)
+    win_drop = float(CALIBRATION_PERFORMANCE_POLICY.get("rollbackWinRateDrop") or 0.10)
+    confidence_z = float(CALIBRATION_PERFORMANCE_POLICY.get("rollbackConfidenceZ") or 1.96)
+    emergency_min_dates = int(CALIBRATION_PERFORMANCE_POLICY.get("rollbackEmergencyMinDistinctSignalDates") or 10)
+    emergency_drawdown = float(CALIBRATION_PERFORMANCE_POLICY.get("rollbackEmergencyDrawdownPct") or 8.0)
     items: list[dict[str, Any]] = []
     rollback_candidates: list[dict[str, Any]] = []
     for app in applications[:12]:
         applied_at = _text(app.get("applied_at"))
         rows = _performance_scope_rows(app, merged_rows=merged_rows)
+        application_version = int(_safe_float(app.get("correction_version")) or -1)
         before = [row for row in rows if _row_event_date(row) < applied_at]
-        after = [row for row in rows if _row_event_date(row) >= applied_at]
+        after = [
+            row
+            for row in rows
+            if _row_event_date(row) >= applied_at
+            and int(_safe_float(row.get("correction_version_at_signal")) or -1) == application_version
+            and _row_used_live_correction(row)
+        ]
         before_m = _performance_metrics(before[-max(min_samples, 100):])
         after_m = _performance_metrics(after)
+        daily_before = _daily_performance_series(before[-max(min_samples, 100):])
+        daily_after = _daily_performance_series(after)
+        cluster_adjusted_drawdown = _max_drawdown(daily_after["pnl"])
+        pnl_upper = _mean_difference_upper_bound(daily_before["pnl"], daily_after["pnl"], confidence_z)
+        win_upper = _mean_difference_upper_bound(daily_before["wins"], daily_after["wins"], confidence_z)
         status = "LOW_SAMPLE"
-        reason = f"Need {min_samples} before and after samples."
+        reason = f"Need {min_samples} samples and {min_dates} distinct signal dates before and after."
         degraded = False
-        if before_m["samples"] >= min_samples and after_m["samples"] >= min_samples:
-            before_avg = float(before_m.get("avgNetPnlPct") or 0.0)
-            after_avg = float(after_m.get("avgNetPnlPct") or 0.0)
-            before_wr = float(before_m.get("winRate") or 0.0)
-            after_wr = float(after_m.get("winRate") or 0.0)
-            # A material deterioration in either capital outcome or hit rate is
-            # sufficient to stop promotion. Requiring both allowed harmful
-            # calibrations to remain active when only one guardrail failed.
-            degraded = (after_avg <= before_avg - pnl_drop) or (after_wr <= before_wr - win_drop)
+        confirmed_window = (
+            before_m["samples"] >= min_samples
+            and after_m["samples"] >= min_samples
+            and before_m["distinctSignalDates"] >= min_dates
+            and after_m["distinctSignalDates"] >= min_dates
+        )
+        statistically_degraded = confirmed_window and (
+            (pnl_upper is not None and pnl_upper <= -pnl_drop)
+            or (win_upper is not None and win_upper <= -win_drop)
+        )
+        emergency_degraded = (
+            after_m["distinctSignalDates"] >= emergency_min_dates
+            and float(cluster_adjusted_drawdown or 0.0) >= emergency_drawdown
+        )
+        degraded = statistically_degraded or emergency_degraded
+        if confirmed_window or emergency_degraded:
             status = "DEGRADED" if degraded else "PASS"
-            reason = "Post-calibration performance deteriorated." if degraded else "Post-calibration performance is within guardrails."
+            if statistically_degraded:
+                reason = "Post-calibration deterioration is statistically above the rollback threshold."
+            elif emergency_degraded:
+                reason = "Post-calibration drawdown breached the emergency capital guardrail."
+            else:
+                reason = "Post-calibration performance is within guardrails."
+        lineage = _performance_application_lineage(app, current_params)
+        rollback_ready = degraded and bool(lineage.get("valid"))
+        if degraded and not rollback_ready:
+            status = "DEGRADED_BLOCKED"
+            reason = "Degradation detected, but immutable application-to-current lineage did not match."
         item = {
             "applicationId": app.get("application_id"),
             "approvalId": app.get("approval_id"),
@@ -3966,29 +4126,74 @@ def calibration_performance_gate(market: str = "all", auto_rollback: bool = Fals
             "correctionVersion": app.get("correction_version"),
             "status": status,
             "degraded": degraded,
-            "rollbackReady": degraded,
+            "rollbackReady": rollback_ready,
             "message": reason,
             "before": before_m,
             "after": after_m,
+            "statistics": {
+                "confidenceZ": confidence_z,
+                "pnlDifferenceUpperBound": round(pnl_upper, 6) if pnl_upper is not None else None,
+                "winRateDifferenceUpperBound": round(win_upper, 6) if win_upper is not None else None,
+                "statisticallyDegraded": statistically_degraded,
+                "emergencyDegraded": emergency_degraded,
+                "clusterAdjustedMaxDrawdownPct": cluster_adjusted_drawdown,
+            },
+            "lineage": lineage,
         }
-        if degraded:
+        if rollback_ready:
             rollback_candidates.append(item)
         items.append(item)
 
     rollback_result: dict[str, Any] | None = None
+    quarantine_result: dict[str, Any] | None = None
+    capital_blocked = False
     if auto_rollback and rollback_candidates:
         latest_version = int(_safe_float(rollback_candidates[0].get("correctionVersion")) or 0)
         rollback_result = rollback_self_learning(version=max(0, latest_version - 1), requested_by="auto_performance_gate")
+        capital_blocked = rollback_result.get("status") == "OK"
+        if not capital_blocked:
+            try:
+                application_id = _text(rollback_candidates[0].get("applicationId"))
+                application = next(
+                    row for row in applications if _text(row.get("application_id")) == application_id
+                )
+                quarantine_result = _quarantine_degraded_correction(application, rollback_result)
+                capital_blocked = quarantine_result.get("status") == "OK"
+            except Exception as exc:
+                quarantine_result = {"status": "ERROR", "error": "QUARANTINE_FAILED", "detail": str(exc)}
+
+    degraded_blocked = any(item["status"] == "DEGRADED_BLOCKED" for item in items)
+    if capital_blocked and rollback_result and rollback_result.get("status") == "OK":
+        overall_status = "ROLLED_BACK"
+    elif capital_blocked:
+        overall_status = "QUARANTINED"
+    elif rollback_candidates:
+        overall_status = "ROLLBACK_READY"
+    elif degraded_blocked:
+        overall_status = "DEGRADED_BLOCKED"
+    elif all(item["status"] == "LOW_SAMPLE" for item in items):
+        overall_status = "LOW_SAMPLE"
+    else:
+        overall_status = "OK"
 
     return {
-        "status": "ROLLBACK_READY" if rollback_candidates else ("LOW_SAMPLE" if all(item["status"] == "LOW_SAMPLE" for item in items) else "OK"),
+        "status": overall_status,
         "policy": {
+            "version": CALIBRATION_PERFORMANCE_POLICY["version"],
+            "fingerprint": _hash_payload(CALIBRATION_PERFORMANCE_POLICY)[:20],
             "minPrePostSamples": min_samples,
+            "minPrePostDistinctSignalDates": min_dates,
             "rollbackAvgPnlDropPct": pnl_drop,
             "rollbackWinRateDrop": win_drop,
+            "rollbackConfidenceZ": confidence_z,
+            "rollbackEmergencyMinDistinctSignalDates": emergency_min_dates,
+            "rollbackEmergencyDrawdownPct": emergency_drawdown,
         },
+        "autoRollbackRequested": bool(auto_rollback),
         "autoRollback": bool(auto_rollback and rollback_candidates),
         "rollbackResult": rollback_result,
+        "quarantineResult": quarantine_result,
+        "capitalBlocked": capital_blocked,
         "candidateCount": len(rollback_candidates),
         "items": items,
     }

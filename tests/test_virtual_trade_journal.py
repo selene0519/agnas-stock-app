@@ -1752,14 +1752,15 @@ def test_calibration_performance_gate_flags_degraded_applied_correction(isolated
     eval_rows = []
     for idx in range(60):
         before = idx < 30
-        day = idx + 1 if before else idx - 29
-        date = f"2026-01-{day:02d}" if before else f"2026-02-{day:02d}"
+        start = datetime(2026, 1, 1) if before else datetime(2026, 2, 1)
+        date = (start + timedelta(days=idx if before else idx - 30)).date().isoformat()
         jid = f"gate-{idx}"
         journal_rows.append(
             {
                 "journal_id": jid,
                 "source_type": "FORWARD_PAPER_TRADE",
                 "journal_session": "AFTER_CLOSE_TRADE",
+                "correction_version_at_signal": 2 if before else 3,
                 "as_of_date": date,
                 "generated_at": f"{date}T09:00:00",
                 "captured_at": f"{date}T09:00:00",
@@ -1786,7 +1787,7 @@ def test_calibration_performance_gate_flags_degraded_applied_correction(isolated
                 "market_regime_at_signal": "RISK_ON",
                 "sector": "",
                 "reject_reason": "",
-                "raw_recommendation_json": "{}",
+                "raw_recommendation_json": json.dumps({"correctionApplied": not before}),
             }
         )
         eval_rows.append(
@@ -1804,11 +1805,152 @@ def test_calibration_performance_gate_flags_degraded_applied_correction(isolated
 
     out = vtj.calibration_performance_gate("kr")
 
-    assert out["status"] == "ROLLBACK_READY"
-    assert out["candidateCount"] == 1
+    assert out["status"] == "DEGRADED_BLOCKED"
+    assert out["candidateCount"] == 0
     assert out["items"][0]["before"]["samples"] == 30
     assert out["items"][0]["after"]["samples"] == 30
-    assert out["items"][0]["rollbackReady"] is True
+    assert out["items"][0]["degraded"] is True
+    assert out["items"][0]["rollbackReady"] is False
+    assert "APPLICATION_RECORD_HASH_MISMATCH" in out["items"][0]["lineage"]["blockingReasons"]
+
+
+def _performance_gate_promoted_correction(candidate_fingerprint: str = "candidate-live") -> dict:
+    certificate = {
+        "approvalId": "approval-live",
+        "approvalRecordHash": "approval-hash-live",
+        "evidenceFingerprint": "evidence-live",
+        "candidateFingerprint": candidate_fingerprint,
+        "calibrationPolicyFingerprint": vtj._calibration_policy_fingerprint(),
+        "shadowPolicyFingerprint": vtj._calibration_shadow_policy_fingerprint(),
+        "evaluationPolicyFingerprint": vtj._evaluation_policy_fingerprint(),
+        "promotionEligible": True,
+        "decision": "READY_FOR_HUMAN_REVIEW",
+    }
+    certificate["recordHash"] = correction_store.promotion_certificate_hash(certificate)
+    return {
+        "confidence": 0.8,
+        "sampleCount": 120,
+        "journalCalibrationPromoted": True,
+        "candidateFingerprint": candidate_fingerprint,
+        "calibrationPolicyVersion": vtj.AUTO_CALIBRATION_POLICY["version"],
+        "calibrationPolicyFingerprint": vtj._calibration_policy_fingerprint(),
+        "promotionCertificateHash": certificate["recordHash"],
+        "promotionCertificate": certificate,
+    }
+
+
+def _performance_gate_application(correction: dict, version: int = 3) -> dict:
+    row = {
+        "application_id": "application-live",
+        "approval_id": "approval-live",
+        "applied_at": "2026-02-01T00:00:00",
+        "market": "kr",
+        "mode": "balanced",
+        "horizon": "swing",
+        "status": "APPLIED",
+        "correction_version": version,
+        "policy_version": vtj.AUTO_CALIBRATION_POLICY["version"],
+        "policy_fingerprint": vtj._calibration_policy_fingerprint(),
+        "candidate_fingerprint": correction["candidateFingerprint"],
+        "promotion_certificate_hash": correction["promotionCertificateHash"],
+    }
+    row["record_hash"] = vtj._sealed_row_hash(row, vtj.CALIBRATION_APPLICATION_COLS)
+    return row
+
+
+def _performance_gate_rows(*, clustered: bool = False) -> list[dict]:
+    rows: list[dict] = []
+    before_start = datetime(2026, 1, 1)
+    after_start = datetime(2026, 2, 1)
+    for index in range(30):
+        before_date = before_start if clustered else before_start + timedelta(days=index)
+        after_date = after_start if clustered else after_start + timedelta(days=index)
+        rows.extend([
+            {
+                "status": "EVALUATED",
+                "generated_at": before_date.isoformat(),
+                "source_type": "FORWARD_PAPER_TRADE",
+                "correction_version_at_signal": 2,
+                "raw_recommendation_json": json.dumps({"correctionApplied": False}),
+                "net_pnl_pct": 2.0,
+                "outcome": "TARGET_HIT",
+            },
+            {
+                "status": "EVALUATED",
+                "generated_at": after_date.isoformat(),
+                "source_type": "FORWARD_PAPER_TRADE",
+                "correction_version_at_signal": 3,
+                "raw_recommendation_json": json.dumps({"correctionApplied": True}),
+                "net_pnl_pct": -1.5,
+                "outcome": "STOP_HIT",
+            },
+        ])
+    return sorted(rows, key=vtj._row_event_date)
+
+
+@pytest.mark.parametrize(
+    ("corrupt_backup", "expected_status"),
+    [(False, "ROLLED_BACK"), (True, "QUARANTINED")],
+)
+def test_performance_gate_rolls_back_or_quarantines_only_exact_active_lineage(
+    isolated_vtj: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    corrupt_backup: bool,
+    expected_status: str,
+) -> None:
+    monkeypatch.setattr(correction_store, "_reports_dir", lambda: isolated_vtj)
+    correction_store.save_params({
+        "version": 2,
+        "markets": {"kr_balanced_swing": {"confidence": 0.1}},
+    })
+    promoted = _performance_gate_promoted_correction()
+    correction_store.save_params({
+        "version": 3,
+        "markets": {"kr_balanced_swing": promoted},
+    })
+    application = _performance_gate_application(promoted)
+    vtj._write_rows(vtj.CALIBRATION_APPLICATIONS_CSV, [application], vtj.CALIBRATION_APPLICATION_COLS)
+    monkeypatch.setattr(vtj, "_performance_scope_rows", lambda *_args, **_kwargs: _performance_gate_rows())
+    if corrupt_backup:
+        backup_path = isolated_vtj / "self_correction_params_v2.json"
+        backup = json.loads(backup_path.read_text(encoding="utf-8"))
+        backup["version"] = 999
+        backup_path.write_text(json.dumps(backup), encoding="utf-8")
+
+    out = vtj.calibration_performance_gate("kr", auto_rollback=True)
+    current = correction_store.load_params()
+
+    assert out["status"] == expected_status
+    assert out["capitalBlocked"] is True
+    assert out["candidateCount"] == 1
+    if corrupt_backup:
+        assert out["rollbackResult"]["error"] == "ROLLBACK_INTEGRITY_FAILED"
+        assert current["markets"]["kr_balanced_swing"]["journalCalibrationPromoted"] is False
+        assert current["markets"]["kr_balanced_swing"]["journalCalibrationQuarantined"] is True
+    else:
+        assert out["rollbackResult"]["status"] == "OK"
+        assert current["version"] == 2
+        assert current["markets"]["kr_balanced_swing"]["confidence"] == 0.1
+
+
+def test_performance_gate_does_not_treat_clustered_trades_as_independent_dates(
+    isolated_vtj: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    application = _performance_gate_application(_performance_gate_promoted_correction())
+    vtj._write_rows(vtj.CALIBRATION_APPLICATIONS_CSV, [application], vtj.CALIBRATION_APPLICATION_COLS)
+    monkeypatch.setattr(
+        vtj,
+        "_performance_scope_rows",
+        lambda *_args, **_kwargs: _performance_gate_rows(clustered=True),
+    )
+
+    out = vtj.calibration_performance_gate("kr", auto_rollback=True)
+
+    assert out["status"] == "LOW_SAMPLE"
+    assert out["candidateCount"] == 0
+    assert out["capitalBlocked"] is False
+    assert out["items"][0]["after"]["distinctSignalDates"] == 1
 
 
 def test_ops_dashboard_reports_journal_and_file_health(isolated_vtj: Path) -> None:
