@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import math
 import os
@@ -9,7 +10,7 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
-from app.services import paper_trading
+from app.services import paper_trading, quant_execution_plan
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 REPORTS = REPO_ROOT / "reports"
@@ -20,6 +21,7 @@ AI_BALANCE_JSON = PAPER_DIR / "ai_paper_balance.json"
 AI_STOPS_JSON = PAPER_DIR / "ai_paper_stops.json"
 AI_STATE_JSON = PAPER_DIR / "ai_paper_state.json"
 AI_SUPERVISOR_STATUS_JSON = PAPER_DIR / "ai_paper_supervisor_status.json"
+AI_EXECUTION_LEDGER_CSV = PAPER_DIR / "ai_paper_execution_ledger.csv"
 
 AGENT_POOL: tuple[dict[str, str], ...] = (
     {"id": "ml_rank_balanced_mid", "label": "ML Rank Balanced Mid", "mode": "balanced", "horizon": "mid"},
@@ -48,6 +50,12 @@ NAV_FIELDS = [
     "state", "seed", "cash", "valuation", "portfolioValue", "totalPnl",
     "totalReturnPct", "survivalPct", "positionCount", "tradeCount",
     "buyCount", "sellCount", "proofStatus",
+]
+
+EXECUTION_FIELDS = [
+    "createdAt", "market", "agentId", "generation", "symbol", "quantity", "price", "totalValue",
+    "decisionId", "candidateKey", "signalDate", "metaPolicyFingerprint", "riskPolicyVersion",
+    "riskPolicyFingerprint", "allocationFingerprint", "targetWeight", "recordHash",
 ]
 
 
@@ -110,6 +118,23 @@ def _num(value: Any) -> float:
         return float(cleaned)
     except Exception:
         return 0.0
+
+
+def _candidate_key(row: dict[str, Any], signal_date: str) -> str:
+    raw = "|".join([
+        str(signal_date or "")[:10],
+        str(row.get("market") or "").strip().lower(),
+        str(row.get("mode") or "").strip().lower(),
+        str(row.get("horizon") or "").strip().lower(),
+        str(row.get("symbol") or "").strip().upper(),
+    ])
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:24]
+
+
+def _execution_record_hash(row: dict[str, Any]) -> str:
+    payload = {key: row.get(key, "") for key in EXECUTION_FIELDS if key != "recordHash"}
+    raw = json.dumps(payload, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
 def _market_list(market: str) -> list[str]:
@@ -264,6 +289,7 @@ def _collect_recommendations(market: str, agent: dict[str, str] | None = None) -
             block = str(row.get("tradeBlockStatus") or "").upper()
             decision = str(row.get("decisionBucket") or row.get("newEntryDecision") or "")
             data_status = str(row.get("dataStatus") or "")
+            signal_date = str(row.get("asOfDate") or row.get("as_of_date") or row.get("generatedAt") or "")[:10]
 
             if block in {"BLOCK", "CAUTION", "EV_NEGATIVE", "ENSEMBLE_LOW"}:
                 continue
@@ -296,7 +322,9 @@ def _collect_recommendations(market: str, agent: dict[str, str] | None = None) -
                 "riskScore": risk_score,
                 "source": str(path.relative_to(REPO_ROOT)).replace("\\", "/"),
                 "generatedAt": str(row.get("generatedAt") or ""),
+                "signalDate": signal_date,
             }
+            item["candidateKey"] = _candidate_key(item, signal_date)
             old = seen.get(symbol)
             if old is None or (
                 _decision_priority(item["decision"]),
@@ -623,13 +651,60 @@ def _quantity_for(market: str, cash: float, equity: float, entry: float, stop: f
     return round(qty, 4)
 
 
+def _quantity_for_execution_weight(
+    market: str,
+    cash: float,
+    equity: float,
+    entry: float,
+    target_weight: float,
+    remaining_gross_value: float,
+) -> float:
+    """Translate an approved target weight to quantity without redistribution."""
+    if cash <= 0 or equity <= 0 or entry <= 0 or target_weight <= 0 or remaining_gross_value <= 0:
+        return 0.0
+    notional = min(cash, equity * target_weight, remaining_gross_value)
+    qty = notional / entry
+    if market == "kr":
+        return float(max(0, int(qty)))
+    return math.floor(max(0.0, qty) * 10_000) / 10_000
+
+
+def _append_execution_record(
+    market: str,
+    ctx: dict[str, Any],
+    rec: dict[str, Any],
+    authorization: dict[str, Any],
+    quantity: float,
+) -> None:
+    row = {
+        "createdAt": datetime.now().astimezone().isoformat(timespec="seconds"),
+        "market": market,
+        "agentId": ctx["agentId"],
+        "generation": int(ctx["generation"]),
+        "symbol": rec["symbol"],
+        "quantity": round(quantity, 4),
+        "price": round(rec["entry"], 4),
+        "totalValue": round(quantity * rec["entry"], 4),
+        "decisionId": authorization.get("decisionId"),
+        "candidateKey": authorization.get("candidateKey"),
+        "signalDate": authorization.get("signalDate"),
+        "metaPolicyFingerprint": authorization.get("metaPolicyFingerprint"),
+        "riskPolicyVersion": authorization.get("riskPolicyVersion"),
+        "riskPolicyFingerprint": authorization.get("riskPolicyFingerprint"),
+        "allocationFingerprint": authorization.get("allocationFingerprint"),
+        "targetWeight": authorization.get("weight"),
+    }
+    row["recordHash"] = _execution_record_hash(row)
+    _append_csv(AI_EXECUTION_LEDGER_CSV, row, EXECUTION_FIELDS)
+
+
 def _apply_position_multiplier(market: str, quantity: float, multiplier: float) -> float:
     if quantity <= 0:
         return 0.0
     adjusted = quantity * max(0.0, min(multiplier, 1.0))
     if market == "kr":
         return float(max(1, int(adjusted))) if quantity >= 1 and multiplier > 0 else 0.0
-    return round(adjusted, 4)
+    return math.floor(adjusted * 10_000) / 10_000
 
 
 def _sell_triggered_positions(market: str, dry_run: bool) -> list[dict[str, Any]]:
@@ -673,7 +748,11 @@ def _sell_triggered_positions(market: str, dry_run: bool) -> list[dict[str, Any]
     return actions
 
 
-def _buy_candidates(market: str, dry_run: bool) -> list[dict[str, Any]]:
+def _buy_candidates(
+    market: str,
+    dry_run: bool,
+    execution_plan: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
     actions: list[dict[str, Any]] = []
     ctx = _active_context(market)
     agent = ctx["agent"]
@@ -713,6 +792,22 @@ def _buy_candidates(market: str, dry_run: bool) -> list[dict[str, Any]]:
     cash = float(summary.get("cash") or 0)
     equity = float(summary.get("portfolioValue") if summary.get("portfolioValue") is not None else cash)
     min_trade = MIN_TRADE_KR if market == "kr" else MIN_TRADE_US
+    plan = execution_plan or quant_execution_plan.execution_plan(market)
+    if plan.get("status") != "AUTHORIZED":
+        return [{
+            "action": "SKIP",
+            "scope": "NEW_ENTRY",
+            "market": market,
+            "reason": "QUANT_EXECUTION_PLAN_INVALID",
+            "reasonCodes": list(plan.get("blockingReasons") or []),
+            "result": {"ok": False, "dryRun": dry_run},
+        }]
+    current_gross_value = sum(
+        max(_num(pos.get("valuation")), _num(pos.get("totalCost")), _num(pos.get("cost")))
+        for pos in positions
+    )
+    max_gross_value = equity * _num(plan.get("maxGrossExposure"))
+    remaining_gross_value = max(0.0, max_gross_value - current_gross_value)
 
     for rec in _collect_recommendations(market, agent):
         if slots <= 0 or cash < min_trade:
@@ -720,7 +815,41 @@ def _buy_candidates(market: str, dry_run: bool) -> list[dict[str, Any]]:
         symbol = rec["symbol"]
         if symbol in held:
             continue
-        qty = _quantity_for(market, cash, equity, rec["entry"], rec["stop"], slots)
+        authorization = quant_execution_plan.authorization_for(
+            market,
+            symbol,
+            candidate_key=str(rec.get("candidateKey") or ""),
+            plan=plan,
+        )
+        if not authorization.get("allowed"):
+            continue
+        approved_entry = _num(authorization.get("entryPrice"))
+        approved_stop = _num(authorization.get("stopPrice"))
+        entry_tolerance = max(0.01, approved_entry * 1e-6)
+        stop_tolerance = max(0.01, approved_stop * 1e-6)
+        if (
+            approved_entry <= 0
+            or approved_stop <= 0
+            or abs(rec["entry"] - approved_entry) > entry_tolerance
+            or abs(rec["stop"] - approved_stop) > stop_tolerance
+        ):
+            actions.append({
+                "action": "SKIP",
+                "scope": "NEW_ENTRY",
+                "market": market,
+                "symbol": symbol,
+                "reason": "EXECUTION_CANDIDATE_PRICE_LINEAGE_MISMATCH",
+                "result": {"ok": False, "dryRun": dry_run},
+            })
+            continue
+        qty = _quantity_for_execution_weight(
+            market,
+            cash,
+            equity,
+            rec["entry"],
+            _num(authorization.get("weight")),
+            remaining_gross_value,
+        )
         if rec.get("paperOnly"):
             qty = _apply_position_multiplier(market, qty, _num(rec.get("paperSizeMultiplier")) or LENS_EXPERIMENT_SIZE_MULT)
         total = qty * rec["entry"]
@@ -741,6 +870,7 @@ def _buy_candidates(market: str, dry_run: bool) -> list[dict[str, Any]]:
             )
             _set_cash(market, agent["id"], cash - total)
             _set_stop(market, agent["id"], symbol, rec["stop"], rec["target"], f"AI paper {agent['label']} {rec['source']}")
+            _append_execution_record(market, ctx, rec, authorization, qty)
         actions.append({
             "action": "BUY",
             "market": market,
@@ -761,10 +891,12 @@ def _buy_candidates(market: str, dry_run: bool) -> list[dict[str, Any]]:
             "paperRegime": rec.get("paperRegime", ""),
             "paperSizeMultiplier": rec.get("paperSizeMultiplier", ""),
             "calibrationGate": rec.get("calibrationGate", ""),
+            "executionAuthority": authorization,
             "result": result,
         })
         if result.get("ok"):
             cash -= total
+            remaining_gross_value = max(0.0, remaining_gross_value - total)
             held.add(symbol)
             slots -= 1
     return actions
@@ -1043,7 +1175,7 @@ def run_cycle(market: str = "all", dry_run: bool = True) -> dict[str, Any]:
         # denied.  Only the buy leg is governed by entry authority.
         actions.extend(_sell_triggered_positions(mk, dry_run=dry_run))
         if authority.get("paperEntryAllowed"):
-            actions.extend(_buy_candidates(mk, dry_run=dry_run))
+            actions.extend(_buy_candidates(mk, dry_run=dry_run, execution_plan=authority.get("executionPlan")))
         else:
             actions.append({
                 "action": "SKIP",

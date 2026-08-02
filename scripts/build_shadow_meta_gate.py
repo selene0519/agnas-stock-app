@@ -33,8 +33,9 @@ MIN_INDEPENDENT_DECISIONS = 100
 MIN_DISTINCT_SIGNAL_DATES = 30
 MIN_RISK_REWARD = 1.5
 MAX_TAKE = 3
+MAX_RECOMMENDATION_AGE_HOURS = 36.0
 PROBABILITY_BINS = ((0, 50), (50, 60), (60, 70), (70, 80), (80, 101))
-POLICY_VERSION = "shadow-meta-v1.2.2"
+POLICY_VERSION = "shadow-meta-v1.2.3"
 RESIDUAL_ALPHA_POLICY_VERSION = "shadow-residual-alpha-v1.1.2"
 
 
@@ -52,6 +53,8 @@ def _policy(residual_model_fingerprint: str = "MISSING") -> dict[str, Any]:
         "residualAlphaPolicyVersion": RESIDUAL_ALPHA_POLICY_VERSION,
         "residualAlphaModelFingerprint": residual_model_fingerprint or "MISSING",
         "uncalibratedProbabilityCanTriggerTake": False,
+        "maxRecommendationAgeHours": MAX_RECOMMENDATION_AGE_HOURS,
+        "requiresTimezoneAwareRecommendationTime": True,
     }
 
 
@@ -104,6 +107,19 @@ def _num(value: Any) -> float | None:
         raw = _text(value).replace(",", "").replace("%", "")
         return float(raw) if raw and raw.lower() not in {"nan", "none", "null", "-"} else None
     except (TypeError, ValueError):
+        return None
+
+
+def _parse_time(value: Any) -> datetime | None:
+    raw = _text(value)
+    if not raw:
+        return None
+    try:
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            return None
+        return parsed.astimezone(timezone.utc)
+    except ValueError:
         return None
 
 
@@ -242,8 +258,9 @@ def _candidate_decision(
     cell: dict[str, Any] | None,
     residual_prediction: dict[str, Any] | None = None,
     residual_evidence_status: str = "MISSING",
+    timing_reasons: list[str] | None = None,
 ) -> tuple[str, list[str]]:
-    reasons: list[str] = []
+    reasons: list[str] = list(timing_reasons or [])
     data_status = _text(row.get("dataStatus") or row.get("data_status")).upper()
     expected_value = _num(row.get("expectedValue") or row.get("expected_value"))
     risk_reward = _num(row.get("rrActual") or row.get("riskRewardRatio") or row.get("risk_reward_ratio"))
@@ -261,17 +278,23 @@ def _candidate_decision(
         reasons.append("RESIDUAL_ALPHA_PREDICTION_NOT_FORWARD_SEALED")
     elif (_num(residual_prediction.get("predictionLower90Pct")) or 0.0) <= 0:
         reasons.append("RESIDUAL_ALPHA_NOT_POSITIVE")
+    if any(reason in reasons for reason in (
+        "DATA_NOT_NORMAL",
+        "EV_NOT_POSITIVE",
+        "RISK_REWARD_TOO_LOW",
+        "RECOMMENDATION_TIME_INVALID",
+        "RECOMMENDATION_STALE",
+        "RECOMMENDATION_FROM_FUTURE",
+        "RESIDUAL_ALPHA_NOT_POSITIVE",
+    )):
+        return "REJECT", reasons
     if cell is None:
         reasons.append("NO_FORWARD_EVIDENCE")
         return "WAIT", reasons
     reasons.extend(cell.get("blockingReasons") or [])
     if any(reason in reasons for reason in (
-        "DATA_NOT_NORMAL",
-        "EV_NOT_POSITIVE",
-        "RISK_REWARD_TOO_LOW",
         "NON_POSITIVE_AFTER_COST_EXPECTANCY",
         "PROFIT_FACTOR_NOT_ABOVE_ONE",
-        "RESIDUAL_ALPHA_NOT_POSITIVE",
     )):
         return "REJECT", reasons
     if any(reason in reasons for reason in (
@@ -286,6 +309,7 @@ def _candidate_decision(
 
 
 def build() -> dict[str, Any]:
+    now_utc = datetime.now(timezone.utc)
     cells = _cell_stats(_independent_rows())
     try:
         residual_report = json.loads(RESIDUAL_ALPHA.read_text(encoding="utf-8"))
@@ -311,6 +335,16 @@ def build() -> dict[str, Any]:
         horizon = _text(row.get("horizon")).lower()
         cell_key = f"{market}|{mode}|{horizon}"
         generated_at = _text(row.get("generatedAt") or row.get("generated_at"))
+        recommendation_time = _parse_time(generated_at)
+        timing_reasons: list[str] = []
+        if recommendation_time is None:
+            timing_reasons.append("RECOMMENDATION_TIME_INVALID")
+        else:
+            age_hours = (now_utc - recommendation_time).total_seconds() / 3600.0
+            if age_hours < 0:
+                timing_reasons.append("RECOMMENDATION_FROM_FUTURE")
+            elif age_hours > MAX_RECOMMENDATION_AGE_HOURS:
+                timing_reasons.append("RECOMMENDATION_STALE")
         signal_date = _text(row.get("asOfDate") or row.get("as_of_date"))[:10] or generated_at[:10]
         candidate_key = _candidate_key(row, signal_date)
         residual_prediction = residual_predictions.get(candidate_key)
@@ -319,6 +353,7 @@ def build() -> dict[str, Any]:
             cells.get(cell_key),
             residual_prediction,
             residual_evidence_status,
+            timing_reasons,
         )
         decisions.append({
             "decisionId": _decision_id(row, signal_date, residual_model_fingerprint),
@@ -355,7 +390,7 @@ def build() -> dict[str, Any]:
     take = [row for row in decisions if row["decision"] == "TAKE"][:MAX_TAKE]
     return {
         "status": "SHADOW_ONLY",
-        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "generatedAt": now_utc.isoformat(),
         "policy": {**_policy(residual_model_fingerprint), "fingerprint": meta_policy_fingerprint},
         "residualAlphaModel": {
             "status": residual_report.get("status"),

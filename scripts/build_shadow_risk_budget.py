@@ -25,7 +25,7 @@ MAX_GROSS_EXPOSURE = 0.30
 MAX_SECTOR_EXPOSURE = 0.15
 MAX_PORTFOLIO_BETA = 0.30
 ACCOUNT_RISK_PER_TRADE = 0.005
-POLICY_VERSION = "shadow-risk-budget-v1.1.0"
+POLICY_VERSION = "shadow-risk-budget-v1.2.0"
 
 
 def _fingerprint(payload: Any, *, length: int | None = 20) -> str:
@@ -46,6 +46,7 @@ def _policy(meta_policy_fingerprint: str) -> dict[str, Any]:
         "accountRiskPerTrade": ACCOUNT_RISK_PER_TRADE,
         "removedExposureStaysCash": True,
         "redistributionAllowed": False,
+        "uniqueMarketSymbol": True,
     }
 
 
@@ -76,6 +77,7 @@ def _allocation_evidence(
             "decisionId": str(row.get("decisionId") or ""),
             "candidateKey": str(row.get("candidateKey") or ""),
             "symbol": str(row.get("symbol") or ""),
+            "market": str(row.get("market") or ""),
             "reason": str(row.get("reason") or ""),
             "clamps": sorted(str(value) for value in (row.get("clamps") or [])),
         }
@@ -104,6 +106,7 @@ def allocate(candidates: list[dict[str, Any]]) -> dict[str, Any]:
     sector_weights: dict[str, float] = {}
     gross = 0.0
     portfolio_beta = 0.0
+    allocated_symbols: set[tuple[str, str]] = set()
 
     ranked = sorted(
         [candidate for candidate in candidates if str(candidate.get("decision") or "").upper() == "TAKE"],
@@ -112,11 +115,20 @@ def allocate(candidates: list[dict[str, Any]]) -> dict[str, Any]:
     )
     for candidate in ranked:
         symbol = str(candidate.get("symbol") or "").strip()
+        market = str(candidate.get("market") or "").strip().lower()
         identity = {
             "decisionId": candidate.get("decisionId"),
             "candidateKey": candidate.get("candidateKey"),
             "symbol": symbol,
+            "market": market,
         }
+        market_symbol = (market, symbol.upper())
+        if not market or not symbol:
+            rejected.append({**identity, "reason": "INVALID_MARKET_OR_SYMBOL"})
+            continue
+        if market_symbol in allocated_symbols:
+            rejected.append({**identity, "reason": "DUPLICATE_SYMBOL_LOWER_RANK", "clamps": ["UNIQUE_MARKET_SYMBOL"]})
+            continue
         entry = _num(candidate.get("entryPrice"))
         stop = _num(candidate.get("stopPrice"))
         if entry is None or stop is None or entry <= 0 or stop >= entry:
@@ -166,6 +178,7 @@ def allocate(candidates: list[dict[str, Any]]) -> dict[str, Any]:
             "betaSource": "CANDIDATE" if _num(candidate.get("beta")) is not None else "CONSERVATIVE_DEFAULT_1.0",
             "clamps": clamps,
         })
+        allocated_symbols.add(market_symbol)
 
     return {
         "positions": positions,

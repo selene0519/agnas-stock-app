@@ -11,6 +11,7 @@ CSV 기반 가상 매매 원장:
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import os
 import threading
@@ -23,6 +24,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[4]
 _DATA_DIR = _REPO_ROOT / "data" / "paper"
 _TRADES_CSV = _DATA_DIR / "paper_trades.csv"
 _BALANCE_JSON = _DATA_DIR / "paper_balance.json"
+_EXECUTION_LEDGER_CSV = _DATA_DIR / "paper_execution_ledger.csv"
 _STOPS_JSON = _DATA_DIR / "paper_stops.json"  # {market}:{symbol} → {stopPrice, targetPrice, note}
 
 SEED_KR = float(os.getenv("PAPER_SEED_KR", "5000000"))
@@ -33,6 +35,12 @@ _LOCK = threading.Lock()
 _TRADE_FIELDS = [
     "id", "createdAt", "market", "symbol", "name",
     "action", "price", "quantity", "totalValue", "memo",
+]
+
+_EXECUTION_FIELDS = [
+    "tradeId", "createdAt", "market", "symbol", "price", "quantity", "totalValue",
+    "decisionId", "candidateKey", "signalDate", "metaPolicyFingerprint", "riskPolicyVersion",
+    "riskPolicyFingerprint", "allocationFingerprint", "targetWeight", "recordHash",
 ]
 
 
@@ -84,6 +92,38 @@ def _append_trade(trade: dict) -> None:
         if write_header:
             writer.writeheader()
         writer.writerow({k: trade.get(k, "") for k in _TRADE_FIELDS})
+
+
+def _append_execution_lineage(trade: dict[str, Any], authority: dict[str, Any]) -> dict[str, Any]:
+    """Append sealed candidate/risk lineage without rewriting legacy trades."""
+    _ensure_dirs()
+    row: dict[str, Any] = {
+        "tradeId": trade.get("id"),
+        "createdAt": trade.get("createdAt"),
+        "market": trade.get("market"),
+        "symbol": trade.get("symbol"),
+        "price": trade.get("price"),
+        "quantity": trade.get("quantity"),
+        "totalValue": trade.get("totalValue"),
+        "decisionId": authority.get("decisionId"),
+        "candidateKey": authority.get("candidateKey"),
+        "signalDate": authority.get("signalDate"),
+        "metaPolicyFingerprint": authority.get("metaPolicyFingerprint"),
+        "riskPolicyVersion": authority.get("riskPolicyVersion"),
+        "riskPolicyFingerprint": authority.get("riskPolicyFingerprint"),
+        "allocationFingerprint": authority.get("allocationFingerprint"),
+        "targetWeight": authority.get("weight"),
+    }
+    canonical = {key: row.get(key, "") for key in _EXECUTION_FIELDS if key != "recordHash"}
+    raw = json.dumps(canonical, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
+    row["recordHash"] = hashlib.sha256(raw.encode("utf-8")).hexdigest()
+    write_header = not _EXECUTION_LEDGER_CSV.exists() or _EXECUTION_LEDGER_CSV.stat().st_size == 0
+    with _EXECUTION_LEDGER_CSV.open("a", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=_EXECUTION_FIELDS)
+        if write_header:
+            writer.writeheader()
+        writer.writerow({key: row.get(key, "") for key in _EXECUTION_FIELDS})
+    return row
 
 
 # ── 포지션 계산 ────────────────────────────────────────────────────────────
@@ -226,6 +266,31 @@ def buy(
             "error": "New paper entries are not authorized by the quant operating governor.",
             "operatingAuthority": authority,
         }
+    normalized_symbol = str(symbol or "").strip().upper()
+    try:
+        from app.services.quant_execution_plan import authorization_for
+
+        execution_authority = authorization_for(
+            mk,
+            normalized_symbol,
+            plan=authority.get("executionPlan"),
+        )
+    except Exception as exc:
+        execution_authority = {
+            "allowed": False,
+            "reason": "EXECUTION_PLAN_UNAVAILABLE",
+            "error": repr(exc),
+        }
+    if not execution_authority.get("allowed"):
+        return {
+            "ok": False,
+            "status": "BLOCKED",
+            "code": "QUANT_EXECUTION_CANDIDATE_GATE",
+            "error": "This symbol is not authorized by the sealed candidate-level execution plan.",
+            "executionAuthority": execution_authority,
+        }
+    if quantity <= 0:
+        return {"ok": False, "status": "BLOCKED", "code": "INVALID_QUANTITY", "error": "Quantity must be positive."}
     with _LOCK:
         balance = _load_balance()
         cash = balance.get(mk, 0.0)
@@ -235,7 +300,60 @@ def buy(
             if price is None:
                 return {"ok": False, "error": f"{symbol} 현재가를 조회할 수 없습니다."}
 
+        approved_entry = float(execution_authority.get("entryPrice") or 0.0)
+        approved_stop = float(execution_authority.get("stopPrice") or 0.0)
+        if approved_entry <= 0 or approved_stop <= 0 or price <= approved_stop:
+            return {
+                "ok": False,
+                "status": "BLOCKED",
+                "code": "INVALID_EXECUTION_PRICE",
+                "error": "Execution price is incompatible with the sealed entry/stop plan.",
+            }
+        from app.services.quant_execution_plan import EXPECTED_RISK_POLICY, MAX_ENTRY_SLIPPAGE_PCT
+
+        if price > approved_entry * (1.0 + MAX_ENTRY_SLIPPAGE_PCT):
+            return {
+                "ok": False,
+                "status": "BLOCKED",
+                "code": "ENTRY_SLIPPAGE_LIMIT",
+                "error": "Requested price exceeds the sealed entry-price slippage limit.",
+            }
+
         total = price * quantity
+        positions = _compute_positions(_load_trades())
+        enriched = _enrich_positions(positions)
+        values: dict[str, float] = {}
+        for row in enriched:
+            key = f"{str(row.get('market') or '').lower()}:{str(row.get('symbol') or '').upper()}"
+            values[key] = max(float(row.get("valuation") or 0.0), float(row.get("cost") or 0.0))
+        equity = cash + sum(values.values())
+        current_gross = sum(value for key, value in values.items() if key.startswith(f"{mk}:"))
+        symbol_key = f"{mk}:{normalized_symbol}"
+        target_weight = float(execution_authority.get("weight") or 0.0)
+        remaining_symbol = max(0.0, equity * target_weight - values.get(symbol_key, 0.0))
+        remaining_gross = max(
+            0.0,
+            equity * float(EXPECTED_RISK_POLICY["maxGrossExposure"]) - current_gross,
+        )
+        max_new_notional = min(cash, remaining_symbol, remaining_gross)
+        if total > max_new_notional + 0.01:
+            return {
+                "ok": False,
+                "status": "BLOCKED",
+                "code": "QUANT_RISK_WEIGHT_EXCEEDED",
+                "error": "Requested order exceeds its sealed target weight or remaining portfolio gross budget.",
+                "maxNewNotional": round(max_new_notional, 2),
+                "requestedNotional": round(total, 2),
+                "targetWeight": target_weight,
+            }
+        loss_at_stop = total * (price - approved_stop) / price
+        if equity <= 0 or loss_at_stop / equity > float(EXPECTED_RISK_POLICY["accountRiskPerTrade"]) + 1e-9:
+            return {
+                "ok": False,
+                "status": "BLOCKED",
+                "code": "QUANT_STOP_RISK_EXCEEDED",
+                "error": "Requested order exceeds the account loss budget at the sealed stop.",
+            }
         if total > cash:
             return {
                 "ok": False,
@@ -257,6 +375,7 @@ def buy(
             "memo": memo,
         }
         _append_trade(trade)
+        execution_lineage = _append_execution_lineage(trade, execution_authority)
         balance[mk] = round(cash - total, 2)
         _save_balance(balance)
 
@@ -264,6 +383,8 @@ def buy(
             "ok": True,
             "trade": trade,
             "remainingCash": balance[mk],
+            "executionAuthority": execution_authority,
+            "executionLineage": execution_lineage,
             "message": f"{name or symbol} {quantity:g}주 매수 완료 (체결가 {price:,.0f})",
         }
 

@@ -1,8 +1,8 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-07-30T12:48:04.837430+00:00",
+  "generatedAt": "2026-07-30T18:38:42.883738+00:00",
   "policy": {
-    "version": "shadow-meta-v1.2.2",
+    "version": "shadow-meta-v1.2.3",
     "maxTake": 3,
     "minIndependentDecisions": 100,
     "minDistinctSignalDates": 30,
@@ -14,7 +14,9 @@
     "residualAlphaPolicyVersion": "shadow-residual-alpha-v1.1.2",
     "residualAlphaModelFingerprint": "7f3642213237690bb880",
     "uncalibratedProbabilityCanTriggerTake": false,
-    "fingerprint": "7ab81641bf1fda23081b"
+    "maxRecommendationAgeHours": 36.0,
+    "requiresTimezoneAwareRecommendationTime": true,
+    "fingerprint": "0bb3379dfc7bec772798"
   },
   "residualAlphaModel": {
     "status": "SHADOW_ONLY",
@@ -42,9 +44,9 @@
   "take": [],
   "decisions": [
     {
-      "decisionId": "ec96040b297ef14505b90f02",
-      "policyVersion": "shadow-meta-v1.2.2",
-      "policyFingerprint": "7ab81641bf1fda23081b",
+      "decisionId": "32e77362690e9ceb0f209b09",
+      "policyVersion": "shadow-meta-v1.2.3",
+      "policyFingerprint": "0bb3379dfc7bec772798",
       "candidateKey": "22a9e8f398baf47c8cbe8ce5",
       "signalDate": "2026-07-29",
       "generatedAt": "2026-07-29 21:49:37",
@@ -55,11 +57,8 @@
       "name": "Snowflake",
       "decision": "REJECT",
       "reasons": [
-        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN",
-        "LOW_INDEPENDENT_DECISIONS",
-        "LOW_DISTINCT_SIGNAL_DATES",
-        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
-        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+        "RECOMMENDATION_TIME_INVALID",
+        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN"
       ],
       "score": 85.5,
       "expectedValue": 0.79,
@@ -79,9 +78,9 @@
       "recommendationSource": "mone_v36_final_recommendations_us_conservative_mid.csv"
     },
     {
-      "decisionId": "8742c2592e028daabc860b74",
-      "policyVersion": "shadow-meta-v1.2.2",
-      "policyFingerprint": "7ab81641bf1fda23081b",
+      "decisionId": "413d0695523d3a082a597a5e",
+      "policyVersion": "shadow-meta-v1.2.3",
+      "policyFingerprint": "0bb3379dfc7bec772798",
       "candidateKey": "371202e170ef08c80aed9b43",
       "signalDate": "2026-07-29",
       "generatedAt": "2026-07-29 21:49:37",
@@ -92,11 +91,8 @@
       "name": "HPE",
       "decision": "REJECT",
       "reasons": [
-        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN",
-        "LOW_INDEPENDENT_DECISIONS",
-        "LOW_DISTINCT_SIGNAL_DATES",
-        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
-        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+        "RECOMMENDATION_TIME_INVALID",
+        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN"
       ],
       "score": 80.1,
       "expectedValue": 0.91,
@@ -116,9 +112,9 @@
       "recommendationSource": "mone_v36_final_recommendations_us_conservative_mid.csv"
     },
     {
-      "decisionId": "0d9d383c5daa75fca8447a9f",
-      "policyVersion": "shadow-meta-v1.2.2",
-      "policyFingerprint": "7ab81641bf1fda23081b",
+      "decisionId": "62698aae18ec1b8e78795590",
+      "policyVersion": "shadow-meta-v1.2.3",
+      "policyFingerprint": "0bb3379dfc7bec772798",
       "candidateKey": "8a2b678fda93a3062be58172",
       "signalDate": "2026-07-29",
       "generatedAt": "2026-07-29 21:49:37",
@@ -129,13 +125,10 @@
       "name": "LMT",
       "decision": "REJECT",
       "reasons": [
+        "RECOMMENDATION_TIME_INVALID",
         "DATA_NOT_NORMAL",
         "EV_NOT_POSITIVE",
-        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN",
-        "LOW_INDEPENDENT_DECISIONS",
-        "LOW_DISTINCT_SIGNAL_DATES",
-        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
-        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN"
       ],
       "score": 71.4,
       "expectedValue": -0.63,
@@ -155,9 +148,9 @@
       "recommendationSource": "mone_v36_final_recommendations_us_aggressive_mid.csv"
     },
     {
-      "decisionId": "6a6b5e6bb99223569df2c823",
-      "policyVersion": "shadow-meta-v1.2.2",
-      "policyFingerprint": "7ab81641bf1fda23081b",
+      "decisionId": "5a94cce58bd4c24a24c56c1b",
+      "policyVersion": "shadow-meta-v1.2.3",
+      "policyFingerprint": "0bb3379dfc7bec772798",
       "candidateKey": "6d7a89293f9a1d7544a748b4",
       "signalDate": "2026-07-29",
       "generatedAt": "2026-07-29 21:49:37",
@@ -168,11 +161,8 @@
       "name": "AVGO",
       "decision": "REJECT",
       "reasons": [
-        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN",
-        "LOW_INDEPENDENT_DECISIONS",
-        "LOW_DISTINCT_SIGNAL_DATES",
-        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
-        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+        "RECOMMENDATION_TIME_INVALID",
+        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN"
       ],
       "score": 71.3,
       "expectedValue": 0.03,
@@ -192,9 +182,9 @@
       "recommendationSource": "mone_v36_final_recommendations_us_conservative_swing.csv"
     },
     {
-      "decisionId": "8a8975bb92f5d3400eaf584c",
-      "policyVersion": "shadow-meta-v1.2.2",
-      "policyFingerprint": "7ab81641bf1fda23081b",
+      "decisionId": "c4b9160ee9061ab8fc40e351",
+      "policyVersion": "shadow-meta-v1.2.3",
+      "policyFingerprint": "0bb3379dfc7bec772798",
       "candidateKey": "7023e614679cb521ab97a5ea",
       "signalDate": "2026-07-29",
       "generatedAt": "2026-07-29 21:49:37",
@@ -205,12 +195,9 @@
       "name": "Apple",
       "decision": "REJECT",
       "reasons": [
+        "RECOMMENDATION_TIME_INVALID",
         "EV_NOT_POSITIVE",
-        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN",
-        "LOW_INDEPENDENT_DECISIONS",
-        "LOW_DISTINCT_SIGNAL_DATES",
-        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
-        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN"
       ],
       "score": 70.2,
       "expectedValue": -0.57,
@@ -230,9 +217,9 @@
       "recommendationSource": "mone_v36_final_recommendations_us_aggressive_mid.csv"
     },
     {
-      "decisionId": "004fb7839fff3aed06f92225",
-      "policyVersion": "shadow-meta-v1.2.2",
-      "policyFingerprint": "7ab81641bf1fda23081b",
+      "decisionId": "b8f4f90e5681051236aa5950",
+      "policyVersion": "shadow-meta-v1.2.3",
+      "policyFingerprint": "0bb3379dfc7bec772798",
       "candidateKey": "12d6cadfb0ff224abccf23b2",
       "signalDate": "2026-07-29",
       "generatedAt": "2026-07-29 21:49:37",
@@ -243,12 +230,9 @@
       "name": "e.l.f. Beauty",
       "decision": "REJECT",
       "reasons": [
+        "RECOMMENDATION_TIME_INVALID",
         "EV_NOT_POSITIVE",
-        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN",
-        "LOW_INDEPENDENT_DECISIONS",
-        "LOW_DISTINCT_SIGNAL_DATES",
-        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
-        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN"
       ],
       "score": 69.9,
       "expectedValue": -1.39,
@@ -268,9 +252,9 @@
       "recommendationSource": "mone_v36_final_recommendations_us_aggressive_mid.csv"
     },
     {
-      "decisionId": "73c230665c3f2bf1992c3e05",
-      "policyVersion": "shadow-meta-v1.2.2",
-      "policyFingerprint": "7ab81641bf1fda23081b",
+      "decisionId": "235f05641e660c914c7cd38b",
+      "policyVersion": "shadow-meta-v1.2.3",
+      "policyFingerprint": "0bb3379dfc7bec772798",
       "candidateKey": "7ec50f57cf507b68f57e63af",
       "signalDate": "2026-07-29",
       "generatedAt": "2026-07-29 21:49:37",
@@ -281,13 +265,10 @@
       "name": "Adobe",
       "decision": "REJECT",
       "reasons": [
+        "RECOMMENDATION_TIME_INVALID",
         "DATA_NOT_NORMAL",
         "EV_NOT_POSITIVE",
-        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN",
-        "LOW_INDEPENDENT_DECISIONS",
-        "LOW_DISTINCT_SIGNAL_DATES",
-        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
-        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN"
       ],
       "score": 69.1,
       "expectedValue": -1.14,
@@ -307,9 +288,9 @@
       "recommendationSource": "mone_v36_final_recommendations_us_aggressive_mid.csv"
     },
     {
-      "decisionId": "c3e0b71f67d60157f14a988e",
-      "policyVersion": "shadow-meta-v1.2.2",
-      "policyFingerprint": "7ab81641bf1fda23081b",
+      "decisionId": "f24a58ddd1ed393f39b93fe5",
+      "policyVersion": "shadow-meta-v1.2.3",
+      "policyFingerprint": "0bb3379dfc7bec772798",
       "candidateKey": "46f1d66e5e64b0ce841ac3f8",
       "signalDate": "2026-07-29",
       "generatedAt": "2026-07-29 21:49:37",
@@ -320,11 +301,8 @@
       "name": "Dell",
       "decision": "REJECT",
       "reasons": [
-        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN",
-        "LOW_INDEPENDENT_DECISIONS",
-        "LOW_DISTINCT_SIGNAL_DATES",
-        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
-        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+        "RECOMMENDATION_TIME_INVALID",
+        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN"
       ],
       "score": 68.2,
       "expectedValue": 0.26,
@@ -344,9 +322,9 @@
       "recommendationSource": "mone_v36_final_recommendations_us_conservative_swing.csv"
     },
     {
-      "decisionId": "72d5e909ab55e1620eab92eb",
-      "policyVersion": "shadow-meta-v1.2.2",
-      "policyFingerprint": "7ab81641bf1fda23081b",
+      "decisionId": "2e001eaae6121a0cc01f002b",
+      "policyVersion": "shadow-meta-v1.2.3",
+      "policyFingerprint": "0bb3379dfc7bec772798",
       "candidateKey": "62f26410c2fdc4d54731f75f",
       "signalDate": "2026-07-29",
       "generatedAt": "2026-07-29 21:49:37",
@@ -357,13 +335,10 @@
       "name": "KO",
       "decision": "REJECT",
       "reasons": [
+        "RECOMMENDATION_TIME_INVALID",
         "DATA_NOT_NORMAL",
         "EV_NOT_POSITIVE",
-        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN",
-        "LOW_INDEPENDENT_DECISIONS",
-        "LOW_DISTINCT_SIGNAL_DATES",
-        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
-        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN"
       ],
       "score": 67.2,
       "expectedValue": -1.08,
@@ -383,9 +358,9 @@
       "recommendationSource": "mone_v36_final_recommendations_us_aggressive_mid.csv"
     },
     {
-      "decisionId": "8bdc407c40adfcbaf5b71320",
-      "policyVersion": "shadow-meta-v1.2.2",
-      "policyFingerprint": "7ab81641bf1fda23081b",
+      "decisionId": "4c8ac38f48e83a4072635c83",
+      "policyVersion": "shadow-meta-v1.2.3",
+      "policyFingerprint": "0bb3379dfc7bec772798",
       "candidateKey": "0a3f8e0174854964b721d7d2",
       "signalDate": "2026-07-29",
       "generatedAt": "2026-07-29 21:49:37",
@@ -396,13 +371,10 @@
       "name": "ABBV",
       "decision": "REJECT",
       "reasons": [
+        "RECOMMENDATION_TIME_INVALID",
         "DATA_NOT_NORMAL",
         "EV_NOT_POSITIVE",
-        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN",
-        "LOW_INDEPENDENT_DECISIONS",
-        "LOW_DISTINCT_SIGNAL_DATES",
-        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
-        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN"
       ],
       "score": 64.2,
       "expectedValue": -1.86,
@@ -422,9 +394,9 @@
       "recommendationSource": "mone_v36_final_recommendations_us_balanced_mid.csv"
     },
     {
-      "decisionId": "b5bbfdbd6e411f64ed177258",
-      "policyVersion": "shadow-meta-v1.2.2",
-      "policyFingerprint": "7ab81641bf1fda23081b",
+      "decisionId": "8c8796fb6f0a8406d52c8a4b",
+      "policyVersion": "shadow-meta-v1.2.3",
+      "policyFingerprint": "0bb3379dfc7bec772798",
       "candidateKey": "03c0187296b8e22a539aebc7",
       "signalDate": "2026-07-29",
       "generatedAt": "2026-07-29 21:49:37",
@@ -435,12 +407,9 @@
       "name": "Salesforce",
       "decision": "REJECT",
       "reasons": [
+        "RECOMMENDATION_TIME_INVALID",
         "EV_NOT_POSITIVE",
-        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN",
-        "LOW_INDEPENDENT_DECISIONS",
-        "LOW_DISTINCT_SIGNAL_DATES",
-        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
-        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN"
       ],
       "score": 64.0,
       "expectedValue": -1.79,
@@ -460,9 +429,9 @@
       "recommendationSource": "mone_v36_final_recommendations_us_aggressive_mid.csv"
     },
     {
-      "decisionId": "8b97282df7b30f42ce091e5e",
-      "policyVersion": "shadow-meta-v1.2.2",
-      "policyFingerprint": "7ab81641bf1fda23081b",
+      "decisionId": "1d575673058841bcfc2f3418",
+      "policyVersion": "shadow-meta-v1.2.3",
+      "policyFingerprint": "0bb3379dfc7bec772798",
       "candidateKey": "c9c13f436379590c82b5b44f",
       "signalDate": "2026-07-29",
       "generatedAt": "2026-07-29 21:49:37",
@@ -473,13 +442,10 @@
       "name": "Bank of America",
       "decision": "REJECT",
       "reasons": [
+        "RECOMMENDATION_TIME_INVALID",
         "DATA_NOT_NORMAL",
         "EV_NOT_POSITIVE",
-        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN",
-        "LOW_INDEPENDENT_DECISIONS",
-        "LOW_DISTINCT_SIGNAL_DATES",
-        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
-        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN"
       ],
       "score": 63.9,
       "expectedValue": -1.19,
@@ -499,9 +465,9 @@
       "recommendationSource": "mone_v36_final_recommendations_us_aggressive_mid.csv"
     },
     {
-      "decisionId": "51d96e13d5f8ae6f1e279f87",
-      "policyVersion": "shadow-meta-v1.2.2",
-      "policyFingerprint": "7ab81641bf1fda23081b",
+      "decisionId": "8795173fd4428803f70ab362",
+      "policyVersion": "shadow-meta-v1.2.3",
+      "policyFingerprint": "0bb3379dfc7bec772798",
       "candidateKey": "cfd477ca816bac50096a4224",
       "signalDate": "2026-07-29",
       "generatedAt": "2026-07-29 21:49:37",
@@ -512,13 +478,10 @@
       "name": "Schlumberger",
       "decision": "REJECT",
       "reasons": [
+        "RECOMMENDATION_TIME_INVALID",
         "DATA_NOT_NORMAL",
         "EV_NOT_POSITIVE",
-        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN",
-        "LOW_INDEPENDENT_DECISIONS",
-        "LOW_DISTINCT_SIGNAL_DATES",
-        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
-        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN"
       ],
       "score": 63.3,
       "expectedValue": -1.24,
@@ -538,9 +501,9 @@
       "recommendationSource": "mone_v36_final_recommendations_us_aggressive_mid.csv"
     },
     {
-      "decisionId": "73fe77bf369fc1c4f40cdfff",
-      "policyVersion": "shadow-meta-v1.2.2",
-      "policyFingerprint": "7ab81641bf1fda23081b",
+      "decisionId": "bb3ad760f50e65cd94c858e5",
+      "policyVersion": "shadow-meta-v1.2.3",
+      "policyFingerprint": "0bb3379dfc7bec772798",
       "candidateKey": "c77ba92012060dc0f875ed9a",
       "signalDate": "2026-07-29",
       "generatedAt": "2026-07-29 21:49:37",
@@ -551,13 +514,10 @@
       "name": "RSP",
       "decision": "REJECT",
       "reasons": [
+        "RECOMMENDATION_TIME_INVALID",
         "DATA_NOT_NORMAL",
         "EV_NOT_POSITIVE",
-        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN",
-        "LOW_INDEPENDENT_DECISIONS",
-        "LOW_DISTINCT_SIGNAL_DATES",
-        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
-        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN"
       ],
       "score": 61.0,
       "expectedValue": -0.6,
@@ -577,9 +537,9 @@
       "recommendationSource": "mone_v36_final_recommendations_us_aggressive_mid.csv"
     },
     {
-      "decisionId": "aaa66d95979d76c5494a061f",
-      "policyVersion": "shadow-meta-v1.2.2",
-      "policyFingerprint": "7ab81641bf1fda23081b",
+      "decisionId": "dccff8eafa8f57bf03cdd475",
+      "policyVersion": "shadow-meta-v1.2.3",
+      "policyFingerprint": "0bb3379dfc7bec772798",
       "candidateKey": "80c930a5bbd5b5966d46c9e5",
       "signalDate": "2026-07-29",
       "generatedAt": "2026-07-29 21:49:37",
@@ -590,13 +550,10 @@
       "name": "Mastercard",
       "decision": "REJECT",
       "reasons": [
+        "RECOMMENDATION_TIME_INVALID",
         "DATA_NOT_NORMAL",
         "EV_NOT_POSITIVE",
-        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN",
-        "LOW_INDEPENDENT_DECISIONS",
-        "LOW_DISTINCT_SIGNAL_DATES",
-        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
-        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN"
       ],
       "score": 59.8,
       "expectedValue": -1.82,
@@ -616,9 +573,9 @@
       "recommendationSource": "mone_v36_final_recommendations_us_balanced_mid.csv"
     },
     {
-      "decisionId": "8c62958f66b7b87993a33b1f",
-      "policyVersion": "shadow-meta-v1.2.2",
-      "policyFingerprint": "7ab81641bf1fda23081b",
+      "decisionId": "aa5e368efbd05468d81e3ec1",
+      "policyVersion": "shadow-meta-v1.2.3",
+      "policyFingerprint": "0bb3379dfc7bec772798",
       "candidateKey": "ea071df24ecc50e936a93d70",
       "signalDate": "2026-07-29",
       "generatedAt": "2026-07-29 21:49:37",
@@ -629,13 +586,10 @@
       "name": "Ford",
       "decision": "REJECT",
       "reasons": [
+        "RECOMMENDATION_TIME_INVALID",
         "DATA_NOT_NORMAL",
         "EV_NOT_POSITIVE",
-        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN",
-        "LOW_INDEPENDENT_DECISIONS",
-        "LOW_DISTINCT_SIGNAL_DATES",
-        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
-        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN"
       ],
       "score": 59.2,
       "expectedValue": -2.37,
@@ -655,9 +609,9 @@
       "recommendationSource": "mone_v36_final_recommendations_us_aggressive_mid.csv"
     },
     {
-      "decisionId": "9efe68c2a69b3f8096c2d8d4",
-      "policyVersion": "shadow-meta-v1.2.2",
-      "policyFingerprint": "7ab81641bf1fda23081b",
+      "decisionId": "4d8e8910b01e6ce4518aa571",
+      "policyVersion": "shadow-meta-v1.2.3",
+      "policyFingerprint": "0bb3379dfc7bec772798",
       "candidateKey": "e5e2185f22624d8c880dba2f",
       "signalDate": "2026-07-29",
       "generatedAt": "2026-07-29 21:49:37",
@@ -668,13 +622,10 @@
       "name": "Chevron",
       "decision": "REJECT",
       "reasons": [
+        "RECOMMENDATION_TIME_INVALID",
         "DATA_NOT_NORMAL",
         "EV_NOT_POSITIVE",
-        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN",
-        "LOW_INDEPENDENT_DECISIONS",
-        "LOW_DISTINCT_SIGNAL_DATES",
-        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
-        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN"
       ],
       "score": 59.1,
       "expectedValue": -1.87,
@@ -694,9 +645,9 @@
       "recommendationSource": "mone_v36_final_recommendations_us_balanced_mid.csv"
     },
     {
-      "decisionId": "3927db831dae5d41e9e89f6c",
-      "policyVersion": "shadow-meta-v1.2.2",
-      "policyFingerprint": "7ab81641bf1fda23081b",
+      "decisionId": "b94cec2a7a385fd00e0590f8",
+      "policyVersion": "shadow-meta-v1.2.3",
+      "policyFingerprint": "0bb3379dfc7bec772798",
       "candidateKey": "3acd1b52cc296506aacdfd23",
       "signalDate": "2026-07-29",
       "generatedAt": "2026-07-29 21:49:37",
@@ -707,13 +658,10 @@
       "name": "JNJ",
       "decision": "REJECT",
       "reasons": [
+        "RECOMMENDATION_TIME_INVALID",
         "DATA_NOT_NORMAL",
         "EV_NOT_POSITIVE",
-        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN",
-        "LOW_INDEPENDENT_DECISIONS",
-        "LOW_DISTINCT_SIGNAL_DATES",
-        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
-        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN"
       ],
       "score": 57.4,
       "expectedValue": -1.83,
@@ -733,9 +681,9 @@
       "recommendationSource": "mone_v36_final_recommendations_us_aggressive_short.csv"
     },
     {
-      "decisionId": "278ce10333d1816c799bf0c3",
-      "policyVersion": "shadow-meta-v1.2.2",
-      "policyFingerprint": "7ab81641bf1fda23081b",
+      "decisionId": "003257e263462b230ee0b036",
+      "policyVersion": "shadow-meta-v1.2.3",
+      "policyFingerprint": "0bb3379dfc7bec772798",
       "candidateKey": "75c83b16f698b33ee4a42f18",
       "signalDate": "2026-07-29",
       "generatedAt": "2026-07-29 21:49:37",
@@ -746,13 +694,10 @@
       "name": "PFE",
       "decision": "REJECT",
       "reasons": [
+        "RECOMMENDATION_TIME_INVALID",
         "DATA_NOT_NORMAL",
         "EV_NOT_POSITIVE",
-        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN",
-        "LOW_INDEPENDENT_DECISIONS",
-        "LOW_DISTINCT_SIGNAL_DATES",
-        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
-        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN"
       ],
       "score": 55.6,
       "expectedValue": -1.98,
@@ -772,9 +717,9 @@
       "recommendationSource": "mone_v36_final_recommendations_us_aggressive_mid.csv"
     },
     {
-      "decisionId": "26e470121ac387cfcf8e7f08",
-      "policyVersion": "shadow-meta-v1.2.2",
-      "policyFingerprint": "7ab81641bf1fda23081b",
+      "decisionId": "c3bc94b7978a67dda1b95d76",
+      "policyVersion": "shadow-meta-v1.2.3",
+      "policyFingerprint": "0bb3379dfc7bec772798",
       "candidateKey": "ddb5723a6810cd8f76558ac2",
       "signalDate": "2026-07-29",
       "generatedAt": "2026-07-29 21:49:37",
@@ -785,14 +730,11 @@
       "name": "SCHD",
       "decision": "REJECT",
       "reasons": [
+        "RECOMMENDATION_TIME_INVALID",
         "DATA_NOT_NORMAL",
         "EV_NOT_POSITIVE",
         "RISK_REWARD_TOO_LOW",
-        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN",
-        "LOW_INDEPENDENT_DECISIONS",
-        "LOW_DISTINCT_SIGNAL_DATES",
-        "NON_POSITIVE_AFTER_COST_EXPECTANCY",
-        "PROFIT_FACTOR_NOT_ABOVE_ONE"
+        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN"
       ],
       "score": 53.9,
       "expectedValue": -1.49,

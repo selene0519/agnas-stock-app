@@ -1,8 +1,8 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-07-30T13:54:52.026555+00:00",
+  "generatedAt": "2026-07-30T18:38:44.688897+00:00",
   "policy": {
-    "version": "champion-challenger-v1.3.3",
+    "version": "champion-challenger-v1.3.4",
     "champion": "TOP_3_RAW_CANDIDATES",
     "challenger": "SHADOW_META_GATE_TAKE_ONLY",
     "positionWeight": 0.1,
@@ -18,13 +18,13 @@
     "requiresValidatedResidualAlphaPredictionModel": true,
     "residualAlphaPolicyVersion": "shadow-residual-alpha-v1.1.2",
     "challengerUsesRecordedRiskBudgetWeights": true,
-    "riskBudgetPolicyVersion": "shadow-risk-budget-v1.1.0",
+    "riskBudgetPolicyVersion": "shadow-risk-budget-v1.2.0",
     "requiresValidRiskAllocationLineage": true,
     "requiresChallengerDrawdownNoWorseThanChampion": true,
     "requiresTimeIntegrity": true,
     "autoPromotionAllowed": false,
     "humanApprovalRequired": true,
-    "fingerprint": "5162344624fe0a92136e"
+    "fingerprint": "d7c9349915ae067c6556"
   },
   "recording": {
     "appended": 0,
@@ -33,20 +33,20 @@
     "total": 140
   },
   "policyCohort": {
-    "activeFingerprint": "5162344624fe0a92136e",
-    "activeMetaPolicyFingerprint": "7ab81641bf1fda23081b",
-    "activeRiskPolicyFingerprint": "b25191ddabe035b5b32a",
-    "activeRows": 20,
-    "validActiveRows": 20,
-    "excludedPriorPolicyRows": 120
+    "activeFingerprint": "d7c9349915ae067c6556",
+    "activeMetaPolicyFingerprint": "0bb3379dfc7bec772798",
+    "activeRiskPolicyFingerprint": "e35273b1243c0e38f6ce",
+    "activeRows": 0,
+    "validActiveRows": 0,
+    "excludedPriorPolicyRows": 140
   },
   "integrity": {
     "immutableConflicts": 0,
     "timeIntegrityViolations": 0,
     "recordHashViolations": 0,
     "invalidRecordIds": [],
-    "fingerprintCoverage": 1.0,
-    "riskLineageCoverage": 1.0,
+    "fingerprintCoverage": 0.0,
+    "riskLineageCoverage": 0.0,
     "violations": []
   },
   "alphaGate": {
@@ -79,15 +79,15 @@
   },
   "riskAllocationGate": {
     "passed": true,
-    "policyVersion": "shadow-risk-budget-v1.1.0",
-    "requiredPolicyVersion": "shadow-risk-budget-v1.1.0",
-    "policyFingerprint": "b25191ddabe035b5b32a",
-    "allocationFingerprint": "eeb60e4ceba85c5284a7169c99e108e9c38597f17619be206d79672bac68d2e0",
+    "policyVersion": "shadow-risk-budget-v1.2.0",
+    "requiredPolicyVersion": "shadow-risk-budget-v1.2.0",
+    "policyFingerprint": "e35273b1243c0e38f6ce",
+    "allocationFingerprint": "95d4478772c20929eed0b5859a91c97901415dcce1a7b5dae433464161ae6492",
     "blockingReasons": []
   },
   "comparison": {
     "completedSignalDates": 0,
-    "incompleteSignalDates": 1,
+    "incompleteSignalDates": 0,
     "champion": {
       "completeSignalDates": 0,
       "selectedEvaluatedTrades": 0,
@@ -116,6 +116,8 @@
     "promotionEligible": false,
     "decision": "KEEP_CHALLENGER_SHADOW",
     "blockingReasons": [
+      "INCOMPLETE_POLICY_FINGERPRINT_COVERAGE",
+      "INCOMPLETE_RISK_LINEAGE_COVERAGE",
       "LOW_COMPLETE_SIGNAL_DATES",
       "LOW_EVALUATED_CHALLENGER_TRADES",
       "NON_POSITIVE_CHALLENGER_RETURN",

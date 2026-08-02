@@ -217,6 +217,41 @@ def test_risk_allocation_tamper_is_rejected_even_when_lineage_claims_valid() -> 
     assert context["weights"] == {}
 
 
+def test_risk_builder_keeps_only_highest_ranked_copy_of_market_symbol() -> None:
+    candidates = [
+        {
+            "decisionId": "high",
+            "candidateKey": "candidate-high",
+            "decision": "TAKE",
+            "market": "us",
+            "symbol": "AAPL",
+            "score": 90,
+            "entryPrice": 100,
+            "stopPrice": 95,
+            "sector": "Technology",
+            "beta": 1.0,
+        },
+        {
+            "decisionId": "low",
+            "candidateKey": "candidate-low",
+            "decision": "TAKE",
+            "market": "us",
+            "symbol": "AAPL",
+            "score": 80,
+            "entryPrice": 100,
+            "stopPrice": 95,
+            "sector": "Technology",
+            "beta": 1.0,
+        },
+    ]
+
+    allocation = risk_builder.allocate(candidates)
+
+    assert [row["decisionId"] for row in allocation["positions"]] == ["high"]
+    assert allocation["rejected"][0]["decisionId"] == "low"
+    assert allocation["rejected"][0]["reason"] == "DUPLICATE_SYMBOL_LOWER_RANK"
+
+
 def test_rehashed_risk_limit_violation_still_fails_closed() -> None:
     decision = _decision()
     meta = {"policy": {"fingerprint": "meta-policy-a"}, "take": [decision]}

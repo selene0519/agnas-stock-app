@@ -102,3 +102,95 @@ def test_direct_paper_buy_service_cannot_bypass_operating_authority(monkeypatch)
     assert result["status"] == "BLOCKED"
     assert result["code"] == "QUANT_OPERATING_GATE"
     assert ledger_reads == []
+
+
+def _tradeable_authority(market: str, user_id: str = "") -> dict:
+    return {
+        "market": market,
+        "operatingState": "TRADEABLE",
+        "entryAllowed": True,
+        "paperEntryAllowed": True,
+        "exitAllowed": True,
+        "executionPlan": {
+            "status": "AUTHORIZED",
+            "maxGrossExposure": 0.30,
+            "positions": [{
+                "decisionId": "decision-a",
+                "candidateKey": "candidate-a",
+                "market": "us",
+                "symbol": "AAPL",
+                "entryPrice": 100.0,
+                "stopPrice": 95.0,
+                "weight": 0.10,
+            }],
+        },
+    }
+
+
+def test_direct_paper_buy_rejects_symbol_outside_execution_plan(monkeypatch) -> None:
+    monkeypatch.setattr(governor, "entry_authority", _tradeable_authority)
+    ledger_reads: list[bool] = []
+    monkeypatch.setattr(paper_trading, "_load_balance", lambda: ledger_reads.append(True) or {"us": 1_000.0})
+
+    result = paper_trading.buy("MSFT", "us", 1, price=100.0)
+
+    assert result["ok"] is False
+    assert result["code"] == "QUANT_EXECUTION_CANDIDATE_GATE"
+    assert ledger_reads == []
+
+
+def test_direct_paper_buy_cannot_exceed_sealed_target_weight(monkeypatch) -> None:
+    monkeypatch.setattr(governor, "entry_authority", _tradeable_authority)
+    monkeypatch.setattr(paper_trading, "_load_balance", lambda: {"us": 1_000.0})
+    monkeypatch.setattr(paper_trading, "_load_trades", lambda: [])
+    monkeypatch.setattr(paper_trading, "_enrich_positions", lambda positions: [])
+
+    result = paper_trading.buy("AAPL", "us", 2, price=100.0)
+
+    assert result["ok"] is False
+    assert result["code"] == "QUANT_RISK_WEIGHT_EXCEEDED"
+    assert result["maxNewNotional"] == 100.0
+
+
+def test_direct_paper_buy_persists_execution_lineage(monkeypatch) -> None:
+    monkeypatch.setattr(governor, "entry_authority", _tradeable_authority)
+    monkeypatch.setattr(paper_trading, "_load_balance", lambda: {"us": 1_000.0})
+    monkeypatch.setattr(paper_trading, "_load_trades", lambda: [])
+    monkeypatch.setattr(paper_trading, "_enrich_positions", lambda positions: [])
+    monkeypatch.setattr(paper_trading, "_save_balance", lambda balance: None)
+    trades: list[dict] = []
+    lineage: list[tuple[dict, dict]] = []
+    monkeypatch.setattr(paper_trading, "_append_trade", lambda trade: trades.append(trade))
+    monkeypatch.setattr(
+        paper_trading,
+        "_append_execution_lineage",
+        lambda trade, authority: lineage.append((trade, authority)) or {"recordHash": "hash-a"},
+    )
+
+    result = paper_trading.buy("AAPL", "us", 0.5, price=100.0)
+
+    assert result["ok"] is True
+    assert len(trades) == 1
+    assert len(lineage) == 1
+    assert lineage[0][1]["candidateKey"] == "candidate-a"
+    assert result["executionLineage"]["recordHash"] == "hash-a"
+
+
+def test_execution_lineage_row_is_hash_sealed(monkeypatch, tmp_path) -> None:
+    path = tmp_path / "paper_execution_ledger.csv"
+    monkeypatch.setattr(paper_trading, "_EXECUTION_LEDGER_CSV", path)
+    trade = {
+        "id": "trade-a", "createdAt": "2026-07-31 09:00:00", "market": "us", "symbol": "AAPL",
+        "price": 100.0, "quantity": 0.5, "totalValue": 50.0,
+    }
+    authority = {
+        "decisionId": "decision-a", "candidateKey": "candidate-a", "signalDate": "2026-07-31",
+        "metaPolicyFingerprint": "meta-a", "riskPolicyVersion": "risk-v1",
+        "riskPolicyFingerprint": "risk-a", "allocationFingerprint": "allocation-a", "weight": 0.10,
+    }
+
+    row = paper_trading._append_execution_lineage(trade, authority)
+
+    assert path.exists()
+    assert len(row["recordHash"]) == 64
+    assert "candidate-a" in path.read_text(encoding="utf-8")

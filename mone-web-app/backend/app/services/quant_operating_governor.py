@@ -10,7 +10,13 @@ from __future__ import annotations
 from typing import Any
 
 from app.engine import data_quality, session
-from app.services import ai_paper_trader, portfolio_risk_budget, quant_shadow_status, virtual_trade_journal
+from app.services import (
+    ai_paper_trader,
+    portfolio_risk_budget,
+    quant_execution_plan,
+    quant_shadow_status,
+    virtual_trade_journal,
+)
 
 
 _MARKETS = ("kr", "us")
@@ -26,6 +32,7 @@ def _decision_reason(code: str) -> str:
         "QUANT_SHADOW_NOT_APPROVED": "Quant V2 evidence has not approved a new entry.",
         "QUANT_EVIDENCE_INTEGRITY_NOT_READY": "Quant V2 evidence reports are missing, stale, or invalid.",
         "OPERATING_AUTHORITY_UNAVAILABLE": "Operating authority unavailable; new entries fail closed.",
+        "QUANT_EXECUTION_PLAN_INVALID": "Candidate-level execution lineage or risk allocation is not valid.",
     }
     if code in english_labels:
         return english_labels[code]
@@ -84,8 +91,41 @@ def _govern_market(market: str, user_id: str = "", shadow: dict[str, Any] | None
         and str(shadow.get("decision") or "").upper() == "SHADOW_TAKE"
     )
 
+    if proof_ready := bool(performance_gate.get("allowed")):
+        try:
+            execution_plan = quant_execution_plan.execution_plan(market)
+        except Exception as exc:
+            execution_plan = {
+                "status": "BLOCKED",
+                "positions": [],
+                "blockingReasons": ["EXECUTION_PLAN_UNAVAILABLE"],
+                "error": repr(exc),
+            }
+        active_agent = paper_status.get("activeAgent") if isinstance(paper_status.get("activeAgent"), dict) else {}
+        active_mode = str(active_agent.get("mode") or "").lower()
+        active_horizon = str(active_agent.get("horizon") or "").lower()
+        if active_mode and active_horizon and execution_plan.get("positions"):
+            execution_plan = {
+                **execution_plan,
+                "positions": [
+                    row for row in execution_plan.get("positions", [])
+                    if str(row.get("mode") or "").lower() == active_mode
+                    and str(row.get("horizon") or "").lower() == active_horizon
+                ],
+            }
+            if not execution_plan["positions"]:
+                execution_plan["status"] = "BLOCKED"
+                execution_plan["blockingReasons"] = ["NO_EXECUTABLE_POSITION_FOR_ACTIVE_AGENT"]
+        execution_ready = execution_plan.get("status") == "AUTHORIZED" and bool(execution_plan.get("positions"))
+    else:
+        execution_plan = {
+            "status": "DEFERRED",
+            "positions": [],
+            "blockingReasons": ["Execution plan is evaluated after independent performance evidence passes."],
+        }
+        execution_ready = True
+
     data_ready = not bool(quality.get("killSwitch"))
-    proof_ready = bool(performance_gate.get("allowed"))
     is_review_session = bool(price_session.get("isReviewMode"))
 
     # The full journal operations board includes calibration analytics over a
@@ -136,12 +176,15 @@ def _govern_market(market: str, user_id: str = "", shadow: dict[str, Any] | None
         reasons.append("QUANT_EVIDENCE_INTEGRITY_NOT_READY")
     if not shadow_signal_ready:
         reasons.append("QUANT_SHADOW_NOT_APPROVED")
+    if not execution_ready:
+        reasons.append("QUANT_EXECUTION_PLAN_INVALID")
 
-    candidate_count = int(paper_status.get("candidateCount") or 0)
+    raw_candidate_count = int(paper_status.get("candidateCount") or 0)
+    candidate_count = len(execution_plan.get("positions") or []) if execution_ready and raw_candidate_count > 0 else 0
     if not reasons and candidate_count <= 0:
         reasons.append("NO_ELIGIBLE_CANDIDATE")
 
-    if not journal_ready or not risk_ready or not data_ready or not shadow_integrity_ready:
+    if not journal_ready or not risk_ready or not data_ready or not shadow_integrity_ready or not execution_ready:
         operating_state = "BLOCKED"
     elif not proof_ready or not shadow_signal_ready or candidate_count <= 0:
         operating_state = "ABSTAIN"
@@ -158,6 +201,7 @@ def _govern_market(market: str, user_id: str = "", shadow: dict[str, Any] | None
         {"id": "data", "label": "데이터 품질", "passed": data_ready, "detail": quality.get("status")},
     ]
     checks.append({"id": "quantShadow", "label": "Quant V2 evidence", "passed": shadow_signal_ready, "detail": shadow.get("decision")})
+    checks.append({"id": "executionPlan", "label": "Candidate execution lineage", "passed": execution_ready, "detail": execution_plan.get("status")})
     return {
         "market": market,
         "operatingState": operating_state,
@@ -166,6 +210,7 @@ def _govern_market(market: str, user_id: str = "", shadow: dict[str, Any] | None
         "exitAllowed": True,
         "liveOrderAllowed": operating_state == "TRADEABLE" and bool(shadow.get("liveTradingAllowed")),
         "candidateCount": candidate_count if proof_ready and shadow_signal_ready else 0,
+        "rawCandidateCount": raw_candidate_count,
         "reasonCodes": list(dict.fromkeys(reasons)),
         "reasons": [_decision_reason(code) for code in dict.fromkeys(reasons)],
         "checks": checks,
@@ -185,6 +230,7 @@ def _govern_market(market: str, user_id: str = "", shadow: dict[str, Any] | None
             "maxPortfolioLossPct": (risk_budget.get("policy") or {}).get("maxPortfolioLossPct"),
             "warnings": risk_budget.get("warnings") or [],
         },
+        "executionPlan": execution_plan,
         "dataQuality": {"status": quality.get("status") or quality.get("dataStatus"), "killSwitch": bool(quality.get("killSwitch"))},
         "priceSession": price_session,
         "quantShadow": {

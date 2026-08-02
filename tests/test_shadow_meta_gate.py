@@ -117,3 +117,24 @@ def test_meta_policy_and_decision_cohort_bind_to_residual_model_fingerprint() ->
 
     assert gate._policy_fingerprint("model-a") != gate._policy_fingerprint("model-b")
     assert gate._decision_id(row, "2026-07-30", "model-a") != gate._decision_id(row, "2026-07-30", "model-b")
+
+
+def test_stale_recommendation_is_rejected_even_without_cell_evidence() -> None:
+    candidate = {"dataStatus": "NORMAL", "expectedValue": 2, "rrActual": 2.0}
+
+    decision, reasons = gate._candidate_decision(
+        candidate,
+        None,
+        {"status": "PREDICTED", "predictionLower90Pct": 1.0, "forwardSealStatus": "SEALED_FORWARD"},
+        "PASS",
+        ["RECOMMENDATION_STALE"],
+    )
+
+    assert decision == "REJECT"
+    assert "RECOMMENDATION_STALE" in reasons
+
+
+def test_recommendation_time_must_include_timezone() -> None:
+    assert gate._parse_time("2026-07-31 09:00:00") is None
+    assert gate._parse_time("2026-07-31T09:00:00+09:00") is not None
+    assert gate._policy()["requiresTimezoneAwareRecommendationTime"] is True

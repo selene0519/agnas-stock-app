@@ -31,9 +31,9 @@ EVALUATIONS = ROOT / "data" / "virtual_trade_evaluations.csv"
 LEDGER = ROOT / "data" / "shadow_challenger_journal.csv"
 OUT = ROOT / "reports" / "champion_challenger.json"
 
-POLICY_VERSION = "champion-challenger-v1.3.3"
+POLICY_VERSION = "champion-challenger-v1.3.4"
 RESIDUAL_ALPHA_POLICY_VERSION = "shadow-residual-alpha-v1.1.2"
-RISK_BUDGET_POLICY_VERSION = "shadow-risk-budget-v1.1.0"
+RISK_BUDGET_POLICY_VERSION = "shadow-risk-budget-v1.2.0"
 EXPECTED_RISK_POLICY = {
     "baseWeight": 0.10,
     "maxPositionWeight": 0.10,
@@ -43,6 +43,7 @@ EXPECTED_RISK_POLICY = {
     "accountRiskPerTrade": 0.005,
     "removedExposureStaysCash": True,
     "redistributionAllowed": False,
+    "uniqueMarketSymbol": True,
 }
 POSITION_WEIGHT = 0.10
 MAX_POSITIONS = 3
@@ -158,6 +159,7 @@ def _allocation_evidence(risk: dict[str, Any]) -> dict[str, Any]:
             "decisionId": _text(row.get("decisionId")),
             "candidateKey": _text(row.get("candidateKey")),
             "symbol": _text(row.get("symbol")),
+            "market": _text(row.get("market")),
             "reason": _text(row.get("reason")),
             "clamps": sorted(_text(value) for value in (row.get("clamps") or [])),
         }
@@ -204,7 +206,7 @@ def _risk_context(meta: dict[str, Any], risk: dict[str, Any]) -> dict[str, Any]:
     rejected = risk.get("rejected") if isinstance(risk.get("rejected"), list) else []
     take = meta.get("take") if isinstance(meta.get("take"), list) else []
     take_by_id = {
-        _text(row.get("decisionId")): _text(row.get("candidateKey"))
+        _text(row.get("decisionId")): row
         for row in take if isinstance(row, dict) and _text(row.get("decisionId"))
     }
     outcome_rows = [row for row in positions + rejected if isinstance(row, dict)]
@@ -212,17 +214,28 @@ def _risk_context(meta: dict[str, Any], risk: dict[str, Any]) -> dict[str, Any]:
     if set(outcome_ids) != set(take_by_id) or len(outcome_ids) != len(set(outcome_ids)):
         blockers.append("RISK_ALLOCATION_DECISION_SET_MISMATCH")
     if any(
-        take_by_id.get(_text(row.get("decisionId"))) != _text(row.get("candidateKey"))
+        _text(take_by_id.get(_text(row.get("decisionId")), {}).get("candidateKey")) != _text(row.get("candidateKey"))
         for row in outcome_rows
     ):
         blockers.append("RISK_ALLOCATION_CANDIDATE_MISMATCH")
+    if any(
+        _text(take_by_id.get(_text(row.get("decisionId")), {}).get("symbol")).upper() != _text(row.get("symbol")).upper()
+        or _text(take_by_id.get(_text(row.get("decisionId")), {}).get("market")).lower() != _text(row.get("market")).lower()
+        for row in outcome_rows
+    ):
+        blockers.append("RISK_ALLOCATION_MARKET_SYMBOL_MISMATCH")
     weights: dict[str, float] = {}
+    market_symbols: set[tuple[str, str]] = set()
     computed_beta = 0.0
     computed_sectors: dict[str, float] = defaultdict(float)
     for row in positions:
         if not isinstance(row, dict):
             continue
         decision_id = _text(row.get("decisionId"))
+        market_symbol = (_text(row.get("market")).lower(), _text(row.get("symbol")).upper())
+        if market_symbol in market_symbols:
+            blockers.append("DUPLICATE_MARKET_SYMBOL_ALLOCATION")
+        market_symbols.add(market_symbol)
         weight = _num(row.get("weight"))
         if not decision_id or weight is None or weight <= 0 or weight > POSITION_WEIGHT + 1e-12:
             blockers.append("INVALID_RISK_POSITION")

@@ -10,11 +10,16 @@ from app.services import quant_operating_governor as governor
 
 
 def _stub_dependencies(monkeypatch, *, allowed=True, journal_status="RUNNING", risk_status="OK", kill_switch=False, review=False, candidates=2):
-    monkeypatch.setattr(governor.ai_paper_trader, "status", lambda market: {"markets": {market: {"candidateCount": candidates, "entryPerformanceGate": {"allowed": allowed, "reason": "REALIZED_AND_OOS_EDGE_CONFIRMED"}, "proofBoard": {"status": "OK"}}}})
+    monkeypatch.setattr(governor.ai_paper_trader, "status", lambda market: {"markets": {market: {"activeAgent": {"mode": "balanced", "horizon": "mid"}, "candidateCount": candidates, "entryPerformanceGate": {"allowed": allowed, "reason": "REALIZED_AND_OOS_EDGE_CONFIRMED"}, "proofBoard": {"status": "OK"}}}})
     monkeypatch.setattr(governor.virtual_trade_journal, "ops_dashboard", lambda market: {"status": "OK", "operational": {"status": journal_status, "recordingStatus": "OK", "evaluationStatus": "OK"}})
     monkeypatch.setattr(governor.portfolio_risk_budget, "risk_budget", lambda market, user_id="": {"status": risk_status, "policy": {"maxPortfolioLossPct": 6.0}})
     monkeypatch.setattr(governor.data_quality, "data_quality", lambda market, mode: {"status": "OK", "killSwitch": kill_switch})
     monkeypatch.setattr(governor.session, "get_price_session", lambda market: {"isReviewMode": review, "priceSession": f"{market}_closed" if review else f"{market}_intraday"})
+    monkeypatch.setattr(
+        governor.quant_execution_plan,
+        "execution_plan",
+        lambda market: {"status": "AUTHORIZED", "positions": [{"market": market, "symbol": "005930", "mode": "balanced", "horizon": "mid"}], "blockingReasons": []},
+    )
     monkeypatch.setattr(
         governor.quant_shadow_status,
         "shadow_status",
@@ -53,6 +58,40 @@ def test_governor_blocks_when_journal_is_not_healthy(monkeypatch) -> None:
     result = governor.operating_status("kr")["markets"]["kr"]
     assert result["operatingState"] == "BLOCKED"
     assert "JOURNAL_INTEGRITY_NOT_READY" in result["reasonCodes"]
+
+
+def test_governor_blocks_when_candidate_execution_lineage_is_invalid(monkeypatch) -> None:
+    _stub_dependencies(monkeypatch)
+    monkeypatch.setattr(
+        governor.quant_execution_plan,
+        "execution_plan",
+        lambda market: {"status": "BLOCKED", "positions": [], "blockingReasons": ["RISK_ALLOCATION_FINGERPRINT_MISMATCH"]},
+    )
+
+    result = governor.operating_status("kr")["markets"]["kr"]
+
+    assert result["operatingState"] == "BLOCKED"
+    assert result["entryAllowed"] is False
+    assert "QUANT_EXECUTION_PLAN_INVALID" in result["reasonCodes"]
+
+
+def test_governor_does_not_authorize_candidate_from_inactive_agent_cell(monkeypatch) -> None:
+    _stub_dependencies(monkeypatch)
+    monkeypatch.setattr(
+        governor.quant_execution_plan,
+        "execution_plan",
+        lambda market: {
+            "status": "AUTHORIZED",
+            "positions": [{"market": market, "symbol": "005930", "mode": "aggressive", "horizon": "short"}],
+            "blockingReasons": [],
+        },
+    )
+
+    result = governor.operating_status("kr")["markets"]["kr"]
+
+    assert result["operatingState"] == "BLOCKED"
+    assert "QUANT_EXECUTION_PLAN_INVALID" in result["reasonCodes"]
+    assert result["executionPlan"]["blockingReasons"] == ["NO_EXECUTABLE_POSITION_FOR_ACTIVE_AGENT"]
 
 
 def test_governor_blocks_stale_quant_evidence_even_when_legacy_gate_passes(monkeypatch) -> None:
