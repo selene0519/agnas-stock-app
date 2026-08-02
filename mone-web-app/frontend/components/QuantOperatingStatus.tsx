@@ -19,6 +19,12 @@ const DECISION_STYLE: Record<string, string> = {
   REJECT: "border-rose-400/30 bg-rose-400/10 text-rose-200",
 };
 
+const OBJECTIVE_STYLE: Record<string, string> = {
+  PASS: "text-emerald-300",
+  WAIT: "text-amber-300",
+  BLOCKED: "text-rose-300",
+};
+
 function price(value: unknown, market: Market): string {
   const number = Number(value);
   if (!Number.isFinite(number) || number <= 0) return "-";
@@ -28,20 +34,24 @@ function price(value: unknown, market: Market): string {
 export function QuantOperatingStatus({ market }: { market: Market }) {
   const [row, setRow] = useState<any>(null);
   const [advisory, setAdvisory] = useState<any>(null);
+  const [objectives, setObjectives] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
   async function load() {
     setLoading(true);
     try {
-      const [statusResult, advisoryResult] = await Promise.allSettled([
+      const [statusResult, advisoryResult, objectiveResult] = await Promise.allSettled([
         mone.quantOperatingStatus({ market }),
         mone.quantAdvisoryRecommendations({ market, limit: 3 }),
+        mone.quantObjectiveStatus(),
       ]);
       setRow(statusResult.status === "fulfilled" ? statusResult.value?.markets?.[market] ?? null : null);
       setAdvisory(advisoryResult.status === "fulfilled" ? advisoryResult.value : null);
+      setObjectives(objectiveResult.status === "fulfilled" ? objectiveResult.value : null);
     } catch {
       setRow(null);
       setAdvisory(null);
+      setObjectives(null);
     } finally {
       setLoading(false);
     }
@@ -55,6 +65,29 @@ export function QuantOperatingStatus({ market }: { market: Market }) {
   const risk = row?.riskBudget ?? {};
   const journal = row?.journal ?? {};
   const advisoryItems = Array.isArray(advisory?.items) ? advisory.items : [];
+  const objective = objectives?.objectives ?? {};
+  const objectiveRows = [
+    {
+      key: "afterCostExpectancy",
+      label: "비용차감 기대값",
+      value: objective.afterCostExpectancy?.valuePct == null ? "-" : `${Number(objective.afterCostExpectancy.valuePct).toFixed(2)}%`,
+    },
+    {
+      key: "payoff",
+      label: "손익비 / PF",
+      value: objective.payoff?.payoffRatio == null ? "-" : `${Number(objective.payoff.payoffRatio).toFixed(2)} / ${Number(objective.payoff.profitFactor ?? 0).toFixed(2)}`,
+    },
+    {
+      key: "drawdown",
+      label: "최대낙폭",
+      value: objective.drawdown?.challengerMaxDrawdownPct == null ? "-" : `${Number(objective.drawdown.challengerMaxDrawdownPct).toFixed(2)}%`,
+    },
+    {
+      key: "residualAlpha",
+      label: "잔차 알파 하한",
+      value: objective.residualAlpha?.selectedBlockBootstrapCi95?.[0] == null ? "-" : `${Number(objective.residualAlpha.selectedBlockBootstrapCi95[0]).toFixed(2)}%`,
+    },
+  ];
 
   return (
     <section className="border-y border-slate-800/80 py-4">
@@ -80,6 +113,23 @@ export function QuantOperatingStatus({ market }: { market: Market }) {
         <span className="font-semibold text-teal-200">AI는 분석하고 추천합니다</span>
         <span className="text-slate-400">사용자가 결정하고 증권사에서 직접 실행 · 실계좌 주문 연결 없음</span>
       </div>
+
+      {objectives && (
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="퀀트 북극성 지표">
+          {objectiveRows.map((item) => {
+            const status = objective[item.key]?.status ?? "WAIT";
+            return (
+              <div key={item.key} className="rounded-lg border border-slate-800 bg-slate-950/45 px-3 py-2">
+                <div className="flex items-center justify-between gap-2 text-[10px] text-slate-500">
+                  <span>{item.label}</span>
+                  <span className={`font-mono font-bold ${OBJECTIVE_STYLE[status] ?? OBJECTIVE_STYLE.WAIT}`}>{status}</span>
+                </div>
+                <div className="mt-1 font-mono text-xs font-semibold text-slate-200">{item.value}</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {loading && !row ? <div className="mt-3 h-16 animate-pulse rounded-lg bg-slate-800/50" /> : row && (
         <>

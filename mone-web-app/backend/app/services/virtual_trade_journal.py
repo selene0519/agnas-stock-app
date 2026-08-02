@@ -109,22 +109,25 @@ AUTO_CALIBRATION_POLICY = {
     },
 }
 CALIBRATION_PERFORMANCE_POLICY = {
-    "version": "vtj-post-promotion-monitor-v1.0.0",
+    "version": "vtj-post-promotion-monitor-v1.1.0",
     "minPrePostSamples": 30,
     "minPrePostDistinctSignalDates": 30,
     "rollbackAvgPnlDropPct": 1.5,
     "rollbackWinRateDrop": 0.10,
+    "rollbackIfAfterCostExpectancyNonPositive": True,
+    "rollbackMinProfitFactor": 1.0,
+    "rollbackMinPayoffRatio": 1.0,
     "rollbackConfidenceZ": 1.96,
     "rollbackEmergencyMinDistinctSignalDates": 10,
     "rollbackEmergencyDrawdownPct": 8.0,
     "requireCurrentApplicationLineage": True,
     "rollbackFailureAction": "QUARANTINE_ACTIVE_CORRECTION",
 }
-CALIBRATION_PROMOTION_VERSION = "vtj-calibration-promotion-v1"
+CALIBRATION_PROMOTION_VERSION = "vtj-calibration-promotion-v2"
 CALIBRATION_PROMOTION_MIN_SIGNAL_DATES = 60
 CALIBRATION_PROMOTION_MIN_TRADES = 120
 CALIBRATION_SHADOW_POLICY = {
-    "version": "self-correction-shadow-v1.3.0",
+    "version": "self-correction-shadow-v1.4.0",
     "inputContractVersion": "correction-shadow-input-v1",
     "maxPositions": 3,
     "maxActiveCandidates": 1,
@@ -147,8 +150,14 @@ CALIBRATION_SHADOW_POLICY = {
     "requiresCandidateRecordingFreshness": True,
     "terminalFailureAtPrecommittedMinimum": True,
     "requiresAfterCostPositiveReturn": True,
+    "requiresAfterCostExpectancyLowerCiAboveZero": True,
+    "requiresProfitFactorAboveOne": True,
+    "minPayoffRatio": 1.0,
+    "maxPayoffRelativeDegradationVsChampion": 0.05,
     "requiresPairedUpliftLowerCiAboveZero": True,
     "requiresDrawdownNoWorseThanChampion": True,
+    "requiresValidatedResidualAlphaModel": True,
+    "requiresResidualAlphaLowerCiAboveZero": True,
     "autoPromotionAllowed": False,
     "humanApprovalRequired": True,
 }
@@ -3233,7 +3242,23 @@ def _calibration_promotion_verdict(
         (int(_safe_float(certificate.get("completedSignalDates")) or 0) >= CALIBRATION_PROMOTION_MIN_SIGNAL_DATES, "LOW_PROMOTION_SIGNAL_DATES"),
         (int(_safe_float(certificate.get("evaluatedChallengerTrades")) or 0) >= CALIBRATION_PROMOTION_MIN_TRADES, "LOW_PROMOTION_TRADES"),
         (float(_safe_float(certificate.get("avgAfterCostReturnPct")) or 0.0) > 0, "NON_POSITIVE_PROMOTION_RETURN"),
+        (float(_safe_float(certificate.get("profitFactor")) or 0.0) > 1.0, "PROMOTION_PROFIT_FACTOR_NOT_ABOVE_ONE"),
+        (
+            float(_safe_float(certificate.get("payoffRatio")) or 0.0)
+            >= float(CALIBRATION_SHADOW_POLICY.get("minPayoffRatio") or 1.0),
+            "PROMOTION_PAYOFF_RATIO_TOO_LOW",
+        ),
+        (
+            _text(certificate.get("residualAlphaPolicyVersion")) == "shadow-residual-alpha-v1.1.2",
+            "PROMOTION_RESIDUAL_ALPHA_POLICY_MISMATCH",
+        ),
+        (bool(_text(certificate.get("residualAlphaModelFingerprint"))), "PROMOTION_RESIDUAL_ALPHA_MODEL_MISSING"),
     ]
+    expectancy_ci = certificate.get("afterCostExpectancyBootstrapCi95") if isinstance(certificate.get("afterCostExpectancyBootstrapCi95"), list) else []
+    checks.append((
+        len(expectancy_ci) >= 2 and float(_safe_float(expectancy_ci[0]) or 0.0) > 0,
+        "PROMOTION_AFTER_COST_EXPECTANCY_NOT_PROVEN",
+    ))
     uplift_ci = certificate.get("pairedUpliftCi95") if isinstance(certificate.get("pairedUpliftCi95"), list) else []
     checks.append((len(uplift_ci) >= 2 and float(_safe_float(uplift_ci[0]) or 0.0) > 0, "PROMOTION_UPLIFT_NOT_PROVEN"))
     champion_dd = _safe_float(certificate.get("championMaxDrawdownPct"))
@@ -3241,6 +3266,11 @@ def _calibration_promotion_verdict(
     checks.append((
         champion_dd is not None and challenger_dd is not None and challenger_dd <= champion_dd,
         "PROMOTION_DRAWDOWN_WORSE",
+    ))
+    residual_ci = certificate.get("residualAlphaSelectedCi95") if isinstance(certificate.get("residualAlphaSelectedCi95"), list) else []
+    checks.append((
+        len(residual_ci) >= 2 and float(_safe_float(residual_ci[0]) or 0.0) > 0,
+        "PROMOTION_RESIDUAL_ALPHA_NOT_PROVEN",
     ))
     blockers = [reason for passed, reason in checks if not passed]
     return {
@@ -3923,13 +3953,40 @@ def _performance_metrics(rows: list[dict[str, Any]]) -> dict[str, Any]:
     vals = [_safe_float(row.get("net_pnl_pct")) for row in rows]
     vals = [v for v in vals if v is not None]
     wins = sum(1 for row in rows if (_safe_float(row.get("net_pnl_pct")) or 0.0) > 0 or _upper(row.get("outcome")) == "TARGET_HIT")
+    winning_values = [value for value in vals if value > 0]
+    losing_values = [value for value in vals if value < 0]
+    gross_profit = sum(winning_values)
+    gross_loss = abs(sum(losing_values))
+    average_win = sum(winning_values) / len(winning_values) if winning_values else None
+    average_loss = abs(sum(losing_values) / len(losing_values)) if losing_values else None
+    payoff_ratio = average_win / average_loss if average_win is not None and average_loss else None
     return {
         "samples": len(rows),
         "distinctSignalDates": len({_row_event_date(row)[:10] for row in rows if _row_event_date(row)}),
         "winRate": round(wins / len(rows), 4) if rows else None,
         "avgNetPnlPct": round(sum(vals) / len(vals), 4) if vals else None,
+        "afterCostExpectancyPct": round(sum(vals) / len(vals), 4) if vals else None,
+        "profitFactor": round(gross_profit / gross_loss, 4) if gross_loss > 0 else (999.0 if gross_profit > 0 else None),
+        "avgWinPct": round(average_win, 4) if average_win is not None else None,
+        "avgLossPct": round(average_loss, 4) if average_loss is not None else None,
+        "payoffRatio": round(payoff_ratio, 4) if payoff_ratio is not None else None,
         "maxDrawdownPct": _max_drawdown(vals),
     }
+
+
+def _performance_objective_breaches(
+    metrics: dict[str, Any],
+    min_profit_factor: float,
+    min_payoff_ratio: float,
+) -> list[str]:
+    breaches: list[str] = []
+    if float(metrics.get("afterCostExpectancyPct") or 0.0) <= 0:
+        breaches.append("AFTER_COST_EXPECTANCY_NON_POSITIVE")
+    if float(metrics.get("profitFactor") or 0.0) <= min_profit_factor:
+        breaches.append("PROFIT_FACTOR_FLOOR_BREACHED")
+    if float(metrics.get("payoffRatio") or 0.0) < min_payoff_ratio:
+        breaches.append("PAYOFF_RATIO_FLOOR_BREACHED")
+    return breaches
 
 
 def _row_used_live_correction(row: dict[str, Any]) -> bool:
@@ -4060,6 +4117,8 @@ def calibration_performance_gate(market: str = "all", auto_rollback: bool = Fals
     min_dates = int(CALIBRATION_PERFORMANCE_POLICY.get("minPrePostDistinctSignalDates") or 30)
     pnl_drop = float(CALIBRATION_PERFORMANCE_POLICY.get("rollbackAvgPnlDropPct") or 1.5)
     win_drop = float(CALIBRATION_PERFORMANCE_POLICY.get("rollbackWinRateDrop") or 0.10)
+    min_profit_factor = float(CALIBRATION_PERFORMANCE_POLICY.get("rollbackMinProfitFactor") or 1.0)
+    min_payoff_ratio = float(CALIBRATION_PERFORMANCE_POLICY.get("rollbackMinPayoffRatio") or 1.0)
     confidence_z = float(CALIBRATION_PERFORMANCE_POLICY.get("rollbackConfidenceZ") or 1.96)
     emergency_min_dates = int(CALIBRATION_PERFORMANCE_POLICY.get("rollbackEmergencyMinDistinctSignalDates") or 10)
     emergency_drawdown = float(CALIBRATION_PERFORMANCE_POLICY.get("rollbackEmergencyDrawdownPct") or 8.0)
@@ -4093,10 +4152,13 @@ def calibration_performance_gate(market: str = "all", auto_rollback: bool = Fals
             and before_m["distinctSignalDates"] >= min_dates
             and after_m["distinctSignalDates"] >= min_dates
         )
-        statistically_degraded = confirmed_window and (
+        statistical_drop = confirmed_window and (
             (pnl_upper is not None and pnl_upper <= -pnl_drop)
             or (win_upper is not None and win_upper <= -win_drop)
         )
+        objective_breaches = _performance_objective_breaches(after_m, min_profit_factor, min_payoff_ratio)
+        objective_floor_breached = confirmed_window and bool(objective_breaches)
+        statistically_degraded = statistical_drop or objective_floor_breached
         emergency_degraded = (
             after_m["distinctSignalDates"] >= emergency_min_dates
             and float(cluster_adjusted_drawdown or 0.0) >= emergency_drawdown
@@ -4105,7 +4167,7 @@ def calibration_performance_gate(market: str = "all", auto_rollback: bool = Fals
         if confirmed_window or emergency_degraded:
             status = "DEGRADED" if degraded else "PASS"
             if statistically_degraded:
-                reason = "Post-calibration deterioration is statistically above the rollback threshold."
+                reason = "Post-calibration expectancy, payoff, profit factor, or confidence-adjusted performance breached the rollback policy."
             elif emergency_degraded:
                 reason = "Post-calibration drawdown breached the emergency capital guardrail."
             else:
@@ -4135,6 +4197,9 @@ def calibration_performance_gate(market: str = "all", auto_rollback: bool = Fals
                 "pnlDifferenceUpperBound": round(pnl_upper, 6) if pnl_upper is not None else None,
                 "winRateDifferenceUpperBound": round(win_upper, 6) if win_upper is not None else None,
                 "statisticallyDegraded": statistically_degraded,
+                "statisticalDrop": statistical_drop,
+                "objectiveFloorBreached": objective_floor_breached,
+                "objectiveBreaches": objective_breaches if confirmed_window else [],
                 "emergencyDegraded": emergency_degraded,
                 "clusterAdjustedMaxDrawdownPct": cluster_adjusted_drawdown,
             },
@@ -4185,6 +4250,8 @@ def calibration_performance_gate(market: str = "all", auto_rollback: bool = Fals
             "minPrePostDistinctSignalDates": min_dates,
             "rollbackAvgPnlDropPct": pnl_drop,
             "rollbackWinRateDrop": win_drop,
+            "rollbackMinProfitFactor": min_profit_factor,
+            "rollbackMinPayoffRatio": min_payoff_ratio,
             "rollbackConfidenceZ": confidence_z,
             "rollbackEmergencyMinDistinctSignalDates": emergency_min_dates,
             "rollbackEmergencyDrawdownPct": emergency_drawdown,

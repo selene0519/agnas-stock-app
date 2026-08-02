@@ -154,11 +154,13 @@ def test_time_travel_outcome_is_excluded(tmp_path: Path) -> None:
 def test_promotion_requires_all_preregistered_gates() -> None:
     comparison = {
         "completedSignalDates": 60,
-        "champion": {"maxDrawdownPct": 8.0},
+        "champion": {"maxDrawdownPct": 8.0, "payoffRatio": 1.1},
         "challenger": {
             "selectedEvaluatedTrades": 120,
             "avgDailyReturnPct": 0.1,
+            "afterCostExpectancyBootstrapCi95": [0.01, 0.2],
             "profitFactor": 1.3,
+            "payoffRatio": 1.2,
             "maxDrawdownPct": 6.0,
         },
         "pairedUplift": {"bootstrapCi95": [0.01, 0.2]},
@@ -174,6 +176,35 @@ def test_promotion_requires_all_preregistered_gates() -> None:
     assert blocked["promotionEligible"] is False
     assert "RESIDUAL_ALPHA_NOT_PROVEN" in blocked["blockingReasons"]
     assert "RESIDUAL_ALPHA_MODEL_NOT_PROVEN" in blocked["blockingReasons"]
+
+
+def test_promotion_blocks_win_rate_optics_when_payoff_or_expectancy_is_unproven() -> None:
+    comparison = {
+        "completedSignalDates": 60,
+        "champion": {"maxDrawdownPct": 5.0, "payoffRatio": 1.2},
+        "challenger": {
+            "selectedEvaluatedTrades": 120,
+            "avgDailyReturnPct": 0.2,
+            "afterCostExpectancyBootstrapCi95": [-0.01, 0.4],
+            "profitFactor": 1.4,
+            "payoffRatio": 0.8,
+            "maxDrawdownPct": 4.0,
+        },
+        "pairedUplift": {"bootstrapCi95": [0.01, 0.2]},
+    }
+    integrity = {
+        "immutableConflicts": 0,
+        "recordHashViolations": 0,
+        "timeIntegrityViolations": 0,
+        "fingerprintCoverage": 1.0,
+        "riskLineageCoverage": 1.0,
+    }
+
+    result = cc.promotion_decision(comparison, {"passed": True}, {"passed": True}, integrity)
+
+    assert result["promotionEligible"] is False
+    assert "AFTER_COST_EXPECTANCY_NOT_PROVEN" in result["blockingReasons"]
+    assert "CHALLENGER_PAYOFF_RATIO_TOO_LOW" in result["blockingReasons"]
 
 
 def test_residual_model_gate_requires_explicit_pass() -> None:

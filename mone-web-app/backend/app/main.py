@@ -8660,6 +8660,14 @@ def api_quant_advisory_recommendations(
     return advisory_recommendations(market=market, limit=limit)
 
 
+@app.get("/api/quant/objective-status")
+def api_quant_objective_status() -> dict:
+    """Cost-adjusted expectancy, payoff, drawdown, and residual-alpha status."""
+    from app.services.quant_objective_status import objective_status
+
+    return objective_status()
+
+
 @app.post("/api/journal/self-learning/auto-calibrate")
 def api_journal_self_learning_auto_calibrate(payload: dict = Body(default_factory=dict)) -> dict:
     from app.services import virtual_trade_journal as vtj

@@ -16,6 +16,16 @@ from typing import Any
 
 PARAMS_INTEGRITY_VERSION = "self-correction-params-integrity-v1"
 PARAMS_INTEGRITY_FIELD = "paramsIntegrity"
+REQUIRED_PROMOTION_CERTIFICATE_VERSION = "vtj-calibration-promotion-v2"
+REQUIRED_SHADOW_POLICY_VERSION = "self-correction-shadow-v1.4.0"
+REQUIRED_RESIDUAL_ALPHA_POLICY_VERSION = "shadow-residual-alpha-v1.1.2"
+
+
+def _as_float(value: Any) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _reports_dir() -> Path:
@@ -81,6 +91,7 @@ def promoted_correction_lineage_verdict(correction: dict[str, Any]) -> dict[str,
     for field in (
         "approvalId", "approvalRecordHash", "evidenceFingerprint", "candidateFingerprint",
         "calibrationPolicyFingerprint", "shadowPolicyFingerprint", "evaluationPolicyFingerprint",
+        "residualAlphaModelFingerprint",
     ):
         if not str(certificate.get(field) or "").strip():
             blockers.append(f"PROMOTION_CERTIFICATE_MISSING_{field.upper()}")
@@ -88,6 +99,29 @@ def promoted_correction_lineage_verdict(correction: dict[str, Any]) -> dict[str,
         blockers.append("PROMOTION_NOT_ELIGIBLE")
     if certificate.get("decision") != "READY_FOR_HUMAN_REVIEW":
         blockers.append("PROMOTION_DECISION_NOT_READY")
+    if certificate.get("version") != REQUIRED_PROMOTION_CERTIFICATE_VERSION:
+        blockers.append("PROMOTION_CERTIFICATE_VERSION_MISMATCH")
+    if certificate.get("shadowPolicyVersion") != REQUIRED_SHADOW_POLICY_VERSION:
+        blockers.append("PROMOTION_SHADOW_POLICY_VERSION_MISMATCH")
+    if certificate.get("residualAlphaPolicyVersion") != REQUIRED_RESIDUAL_ALPHA_POLICY_VERSION:
+        blockers.append("PROMOTION_RESIDUAL_ALPHA_POLICY_MISMATCH")
+    expectancy_ci = certificate.get("afterCostExpectancyBootstrapCi95")
+    uplift_ci = certificate.get("pairedUpliftCi95")
+    residual_ci = certificate.get("residualAlphaSelectedCi95")
+    if not isinstance(expectancy_ci, list) or len(expectancy_ci) < 2 or (_as_float(expectancy_ci[0]) or 0.0) <= 0:
+        blockers.append("PROMOTION_AFTER_COST_EXPECTANCY_NOT_PROVEN")
+    if not isinstance(uplift_ci, list) or len(uplift_ci) < 2 or (_as_float(uplift_ci[0]) or 0.0) <= 0:
+        blockers.append("PROMOTION_UPLIFT_NOT_PROVEN")
+    if not isinstance(residual_ci, list) or len(residual_ci) < 2 or (_as_float(residual_ci[0]) or 0.0) <= 0:
+        blockers.append("PROMOTION_RESIDUAL_ALPHA_NOT_PROVEN")
+    if (_as_float(certificate.get("profitFactor")) or 0.0) <= 1.0:
+        blockers.append("PROMOTION_PROFIT_FACTOR_NOT_ABOVE_ONE")
+    if (_as_float(certificate.get("payoffRatio")) or 0.0) < 1.0:
+        blockers.append("PROMOTION_PAYOFF_RATIO_TOO_LOW")
+    champion_dd = _as_float(certificate.get("championMaxDrawdownPct"))
+    challenger_dd = _as_float(certificate.get("challengerMaxDrawdownPct"))
+    if champion_dd is None or challenger_dd is None or challenger_dd > champion_dd:
+        blockers.append("PROMOTION_DRAWDOWN_WORSE")
     return {"valid": not blockers, "blockingReasons": blockers, "certificateHash": record_hash or None}
 
 

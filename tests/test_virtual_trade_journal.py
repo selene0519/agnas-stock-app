@@ -71,9 +71,15 @@ def _write_valid_calibration_promotion_certificate(approval: dict, suggestion: d
         "completedSignalDates": vtj.CALIBRATION_PROMOTION_MIN_SIGNAL_DATES,
         "evaluatedChallengerTrades": vtj.CALIBRATION_PROMOTION_MIN_TRADES,
         "avgAfterCostReturnPct": 0.1,
+        "afterCostExpectancyBootstrapCi95": [0.01, 0.2],
+        "profitFactor": 1.3,
+        "payoffRatio": 1.2,
         "pairedUpliftCi95": [0.01, 0.2],
         "championMaxDrawdownPct": 8.0,
         "challengerMaxDrawdownPct": 6.0,
+        "residualAlphaModelFingerprint": "residual-model-a",
+        "residualAlphaPolicyVersion": "shadow-residual-alpha-v1.1.2",
+        "residualAlphaSelectedCi95": [0.01, 0.2],
     }
     certificate["recordHash"] = vtj._promotion_certificate_hash(certificate)
     vtj.CALIBRATION_PROMOTION_JSON.parent.mkdir(parents=True, exist_ok=True)
@@ -1576,6 +1582,7 @@ def test_sealed_approval_rejects_tamper_and_regression_but_allows_newer_evidence
         "shadowPolicyFingerprint": vtj._calibration_shadow_policy_fingerprint(),
         "evaluationPolicyVersion": vtj.EVALUATION_POLICY["version"],
         "evaluationPolicyFingerprint": vtj._evaluation_policy_fingerprint(),
+        "residualAlphaModelFingerprint": "residual-model-live",
         "promotionEligible": True,
         "decision": "READY_FOR_HUMAN_REVIEW",
         "completedSignalDates": 10,
@@ -1814,15 +1821,45 @@ def test_calibration_performance_gate_flags_degraded_applied_correction(isolated
     assert "APPLICATION_RECORD_HASH_MISMATCH" in out["items"][0]["lineage"]["blockingReasons"]
 
 
+def test_post_promotion_metrics_do_not_confuse_high_win_rate_with_good_payoff() -> None:
+    rows = [
+        {"net_pnl_pct": 0.4, "outcome": "TARGET_HIT"}
+        for _ in range(9)
+    ] + [{"net_pnl_pct": -2.0, "outcome": "STOP_HIT"}]
+
+    metrics = vtj._performance_metrics(rows)
+
+    assert metrics["winRate"] == 0.9
+    assert metrics["afterCostExpectancyPct"] > 0
+    assert metrics["profitFactor"] > 1
+    assert metrics["payoffRatio"] < vtj.CALIBRATION_PERFORMANCE_POLICY["rollbackMinPayoffRatio"]
+    assert vtj._performance_objective_breaches(
+        metrics,
+        vtj.CALIBRATION_PERFORMANCE_POLICY["rollbackMinProfitFactor"],
+        vtj.CALIBRATION_PERFORMANCE_POLICY["rollbackMinPayoffRatio"],
+    ) == ["PAYOFF_RATIO_FLOOR_BREACHED"]
+
+
 def _performance_gate_promoted_correction(candidate_fingerprint: str = "candidate-live") -> dict:
     certificate = {
+        "version": vtj.CALIBRATION_PROMOTION_VERSION,
         "approvalId": "approval-live",
         "approvalRecordHash": "approval-hash-live",
         "evidenceFingerprint": "evidence-live",
         "candidateFingerprint": candidate_fingerprint,
         "calibrationPolicyFingerprint": vtj._calibration_policy_fingerprint(),
         "shadowPolicyFingerprint": vtj._calibration_shadow_policy_fingerprint(),
+        "shadowPolicyVersion": vtj.CALIBRATION_SHADOW_POLICY["version"],
         "evaluationPolicyFingerprint": vtj._evaluation_policy_fingerprint(),
+        "residualAlphaModelFingerprint": "residual-model-live",
+        "residualAlphaPolicyVersion": "shadow-residual-alpha-v1.1.2",
+        "afterCostExpectancyBootstrapCi95": [0.01, 0.2],
+        "pairedUpliftCi95": [0.01, 0.2],
+        "residualAlphaSelectedCi95": [0.01, 0.2],
+        "profitFactor": 1.3,
+        "payoffRatio": 1.2,
+        "championMaxDrawdownPct": 8.0,
+        "challengerMaxDrawdownPct": 6.0,
         "promotionEligible": True,
         "decision": "READY_FOR_HUMAN_REVIEW",
     }

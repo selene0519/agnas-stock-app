@@ -75,5 +75,9 @@ def test_quant_lab_ui_names_paper_evidence_and_user_decision_boundary() -> None:
     assert "최대 권고비중" in status
     assert "반대근거" in status
     assert "불확실성" in status
+    assert "비용차감 기대값" in status
+    assert "손익비 / PF" in status
+    assert "최대낙폭" in status
+    assert "잔차 알파 하한" in status
     assert "MONE 트레이딩" not in bottom_nav + sidebar + advanced
     assert "AI 매매일지" not in bottom_nav + advanced

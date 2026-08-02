@@ -31,6 +31,8 @@ PREDICTIONS = ROOT / "data" / "self_correction_shadow_predictions.csv"
 SETTLEMENTS = ROOT / "data" / "self_correction_shadow_settlements.csv"
 OUT = ROOT / "reports" / "self_correction_shadow.json"
 PROMOTION = ROOT / "reports" / "self_correction_promotion.json"
+RESIDUAL_ALPHA_REPORT = ROOT / "reports" / "shadow_residual_alpha.json"
+RESIDUAL_ALPHA_POLICY_VERSION = "shadow-residual-alpha-v1.1.2"
 
 POLICY_VERSION = str(vtj.CALIBRATION_SHADOW_POLICY["version"])
 INPUT_CONTRACT_VERSION = str(vtj.CALIBRATION_SHADOW_POLICY["inputContractVersion"])
@@ -46,6 +48,10 @@ INITIAL_RECORDING_GRACE_DAYS = float(vtj.CALIBRATION_SHADOW_POLICY["initialRecor
 MAX_PREDICTION_SILENCE_DAYS = float(vtj.CALIBRATION_SHADOW_POLICY["maxPredictionSilenceCalendarDays"])
 BASE_MIN_RR = dict(vtj.CALIBRATION_SHADOW_POLICY["baseMinRiskReward"])
 BASE_MAX_DISTANCE_TO_ENTRY_PCT = float(vtj.CALIBRATION_SHADOW_POLICY["baseMaxDistanceToEntryPct"])
+MIN_PAYOFF_RATIO = float(vtj.CALIBRATION_SHADOW_POLICY["minPayoffRatio"])
+MAX_PAYOFF_RELATIVE_DEGRADATION = float(
+    vtj.CALIBRATION_SHADOW_POLICY["maxPayoffRelativeDegradationVsChampion"]
+)
 
 REGISTRY_FIELDS = [
     "candidate_fingerprint", "approval_id", "approval_record_hash",
@@ -154,6 +160,14 @@ def _read_csv(path: Path) -> list[dict[str, str]]:
         except UnicodeDecodeError:
             continue
     return []
+
+
+def _read_json(path: Path) -> dict[str, Any]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        return payload if isinstance(payload, dict) else {}
+    except Exception:
+        return {}
 
 
 def _write_csv(path: Path, rows: list[dict[str, Any]], fields: list[str]) -> None:
@@ -679,16 +693,31 @@ def _max_drawdown(returns_pct: list[float]) -> float:
     return round(max_dd, 6)
 
 
-def _arm_stats(returns_pct: list[float], trades: int) -> dict[str, Any]:
-    gains = sum(value for value in returns_pct if value > 0)
-    losses = abs(sum(value for value in returns_pct if value < 0))
+def _arm_stats(
+    returns_pct: list[float],
+    trades: int,
+    trade_contributions_pct: list[float] | None = None,
+) -> dict[str, Any]:
+    payoff_sample = trade_contributions_pct if trade_contributions_pct is not None else returns_pct
+    gains = sum(value for value in payoff_sample if value > 0)
+    losses = abs(sum(value for value in payoff_sample if value < 0))
+    winning_returns = [value for value in payoff_sample if value > 0]
+    losing_returns = [value for value in payoff_sample if value < 0]
+    average_win = sum(winning_returns) / len(winning_returns) if winning_returns else None
+    average_loss = abs(sum(losing_returns) / len(losing_returns)) if losing_returns else None
+    payoff_ratio = average_win / average_loss if average_win is not None and average_loss else None
+    expectancy = sum(returns_pct) / len(returns_pct) if returns_pct else None
     nav = 1.0
     for value in returns_pct:
         nav *= 1.0 + value / 100.0
     return {
         "completeSignalDates": len(returns_pct),
         "selectedEvaluatedTrades": trades,
-        "avgDailyReturnPct": round(sum(returns_pct) / len(returns_pct), 6) if returns_pct else None,
+        "avgDailyReturnPct": round(expectancy, 6) if expectancy is not None else None,
+        "afterCostExpectancyPct": round(expectancy, 6) if expectancy is not None else None,
+        "avgWinPct": round(average_win, 6) if average_win is not None else None,
+        "avgLossPct": round(average_loss, 6) if average_loss is not None else None,
+        "payoffRatio": round(payoff_ratio, 6) if payoff_ratio is not None else None,
         "totalReturnPct": round((nav - 1.0) * 100.0, 6) if returns_pct else None,
         "profitFactor": round(gains / losses, 6) if losses > 0 else (999.0 if gains > 0 else None),
         "maxDrawdownPct": _max_drawdown(returns_pct) if returns_pct else None,
@@ -723,6 +752,8 @@ def compare_candidate(
         by_date[_text(row.get("signal_date"))[:10]].append(row)
     daily: list[dict[str, Any]] = []
     incomplete = champion_trades = challenger_trades = 0
+    champion_trade_contributions: list[float] = []
+    challenger_trade_contributions: list[float] = []
     for signal_date in sorted(date for date in by_date if date):
         rows = by_date[signal_date]
         champion = sorted(
@@ -737,14 +768,22 @@ def compare_candidate(
         if any(prediction_id not in settlement_by_prediction for prediction_id in required):
             incomplete += 1
             continue
-        champion_return = POSITION_WEIGHT * sum(
-            float(_num(settlement_by_prediction[_text(row.get("prediction_id"))].get("champion_net_pnl_pct")) or 0.0)
+        champion_contributions = [
+            POSITION_WEIGHT * float(
+                _num(settlement_by_prediction[_text(row.get("prediction_id"))].get("champion_net_pnl_pct")) or 0.0
+            )
             for row in champion
-        )
-        challenger_return = POSITION_WEIGHT * sum(
-            float(_num(settlement_by_prediction[_text(row.get("prediction_id"))].get("challenger_net_pnl_pct")) or 0.0)
+        ]
+        challenger_contributions = [
+            POSITION_WEIGHT * float(
+                _num(settlement_by_prediction[_text(row.get("prediction_id"))].get("challenger_net_pnl_pct")) or 0.0
+            )
             for row in challenger
-        )
+        ]
+        champion_return = sum(champion_contributions)
+        challenger_return = sum(challenger_contributions)
+        champion_trade_contributions.extend(champion_contributions)
+        challenger_trade_contributions.extend(challenger_contributions)
         champion_trades += len(champion)
         challenger_trades += len(challenger)
         daily.append({
@@ -758,11 +797,15 @@ def compare_candidate(
     champion_returns = [row["championReturnPct"] for row in daily]
     challenger_returns = [row["challengerReturnPct"] for row in daily]
     uplifts = [row["upliftPct"] for row in daily]
+    champion_stats = _arm_stats(champion_returns, champion_trades, champion_trade_contributions)
+    challenger_stats = _arm_stats(challenger_returns, challenger_trades, challenger_trade_contributions)
+    champion_stats["afterCostExpectancyBootstrapCi95"] = _bootstrap_ci(champion_returns)
+    challenger_stats["afterCostExpectancyBootstrapCi95"] = _bootstrap_ci(challenger_returns)
     return {
         "completedSignalDates": len(daily),
         "incompleteSignalDates": incomplete,
-        "champion": _arm_stats(champion_returns, champion_trades),
-        "challenger": _arm_stats(challenger_returns, challenger_trades),
+        "champion": champion_stats,
+        "challenger": challenger_stats,
         "pairedUplift": {
             "meanPct": round(sum(uplifts) / len(uplifts), 6) if uplifts else None,
             "bootstrapCi95": _bootstrap_ci(uplifts),
@@ -843,10 +886,42 @@ def _integrity(
     }
 
 
-def _promotion(candidate: dict[str, Any], comparison: dict[str, Any], integrity: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any] | None]:
+def _residual_alpha_gate(report: dict[str, Any]) -> dict[str, Any]:
+    validation = report.get("validation") if isinstance(report.get("validation"), dict) else {}
+    policy = report.get("policy") if isinstance(report.get("policy"), dict) else {}
+    selected_ci = validation.get("selectedBlockBootstrapCi95")
+    selected_ci = selected_ci if isinstance(selected_ci, list) and len(selected_ci) >= 2 else None
+    version_matches = _text(policy.get("version")) == RESIDUAL_ALPHA_POLICY_VERSION
+    lower_positive = bool(selected_ci) and (_num(selected_ci[0]) or 0.0) > 0
+    blockers = list(validation.get("blockingReasons") or [])
+    if validation.get("evidenceStatus") != "PASS":
+        blockers.append("RESIDUAL_ALPHA_MODEL_NOT_PROVEN")
+    if not version_matches:
+        blockers.append("RESIDUAL_ALPHA_MODEL_VERSION_MISMATCH")
+    if not lower_positive:
+        blockers.append("RESIDUAL_ALPHA_LOWER_CI_NOT_POSITIVE")
+    return {
+        "passed": not blockers,
+        "evidenceStatus": validation.get("evidenceStatus") or "MISSING",
+        "policyVersion": policy.get("version"),
+        "requiredPolicyVersion": RESIDUAL_ALPHA_POLICY_VERSION,
+        "modelFingerprint": policy.get("fingerprint"),
+        "selectedBlockBootstrapCi95": selected_ci,
+        "blockingReasons": list(dict.fromkeys(_text(reason) for reason in blockers if _text(reason))),
+    }
+
+
+def _promotion(
+    candidate: dict[str, Any],
+    comparison: dict[str, Any],
+    integrity: dict[str, Any],
+    residual_alpha_gate: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
     challenger = comparison["challenger"]
     champion = comparison["champion"]
     uplift_ci = comparison["pairedUplift"].get("bootstrapCi95")
+    expectancy_ci = challenger.get("afterCostExpectancyBootstrapCi95")
+    residual_gate = residual_alpha_gate or {"passed": False, "blockingReasons": ["RESIDUAL_ALPHA_GATE_MISSING"]}
     blockers: list[str] = []
     integrity_clean = not any(int(value or 0) > 0 for value in integrity.values())
     if not integrity_clean:
@@ -857,12 +932,28 @@ def _promotion(candidate: dict[str, Any], comparison: dict[str, Any], integrity:
         blockers.append("LOW_PROMOTION_TRADES")
     if challenger.get("avgDailyReturnPct") is None or challenger["avgDailyReturnPct"] <= 0:
         blockers.append("NON_POSITIVE_PROMOTION_RETURN")
+    if not expectancy_ci or float(expectancy_ci[0]) <= 0:
+        blockers.append("PROMOTION_AFTER_COST_EXPECTANCY_NOT_PROVEN")
+    if challenger.get("profitFactor") is None or challenger["profitFactor"] <= 1.0:
+        blockers.append("PROMOTION_PROFIT_FACTOR_NOT_ABOVE_ONE")
+    challenger_payoff = _num(challenger.get("payoffRatio"))
+    champion_payoff = _num(champion.get("payoffRatio"))
+    if challenger_payoff is None or challenger_payoff < MIN_PAYOFF_RATIO:
+        blockers.append("PROMOTION_PAYOFF_RATIO_TOO_LOW")
+    if (
+        challenger_payoff is not None
+        and champion_payoff is not None
+        and challenger_payoff < champion_payoff * (1.0 - MAX_PAYOFF_RELATIVE_DEGRADATION)
+    ):
+        blockers.append("PROMOTION_PAYOFF_RATIO_DEGRADED")
     if not uplift_ci or float(uplift_ci[0]) <= 0:
         blockers.append("PROMOTION_UPLIFT_NOT_PROVEN")
     if challenger.get("maxDrawdownPct") is None or champion.get("maxDrawdownPct") is None:
         blockers.append("DRAWDOWN_COMPARISON_NOT_READY")
     elif challenger["maxDrawdownPct"] > champion["maxDrawdownPct"]:
         blockers.append("PROMOTION_DRAWDOWN_WORSE")
+    if not residual_gate.get("passed"):
+        blockers.append("PROMOTION_RESIDUAL_ALPHA_NOT_PROVEN")
     evidence_mature = (
         comparison.get("completedSignalDates", 0) >= MIN_SIGNAL_DATES
         and challenger.get("selectedEvaluatedTrades", 0) >= MIN_CHALLENGER_TRADES
@@ -908,9 +999,15 @@ def _promotion(candidate: dict[str, Any], comparison: dict[str, Any], integrity:
         "completedSignalDates": comparison.get("completedSignalDates"),
         "evaluatedChallengerTrades": challenger.get("selectedEvaluatedTrades"),
         "avgAfterCostReturnPct": challenger.get("avgDailyReturnPct"),
+        "afterCostExpectancyBootstrapCi95": expectancy_ci,
+        "profitFactor": challenger.get("profitFactor"),
+        "payoffRatio": challenger.get("payoffRatio"),
         "pairedUpliftCi95": uplift_ci,
         "championMaxDrawdownPct": champion.get("maxDrawdownPct"),
         "challengerMaxDrawdownPct": challenger.get("maxDrawdownPct"),
+        "residualAlphaModelFingerprint": residual_gate.get("modelFingerprint"),
+        "residualAlphaPolicyVersion": residual_gate.get("policyVersion"),
+        "residualAlphaSelectedCi95": residual_gate.get("selectedBlockBootstrapCi95"),
     }
     certificate["recordHash"] = vtj._promotion_certificate_hash(certificate)
     return decision, certificate
@@ -922,6 +1019,7 @@ def build(
     settlement_path: Path = SETTLEMENTS,
     output_path: Path = OUT,
     promotion_path: Path = PROMOTION,
+    residual_path: Path = RESIDUAL_ALPHA_REPORT,
     *,
     record: bool = True,
     settle: bool = True,
@@ -983,12 +1081,13 @@ def build(
     integrity = _integrity(active_registry, active_predictions, active_settlements)
     integrity["candidateRegistryImmutableConflicts"] = int(registry_status.get("conflicts") or 0)
     integrity["predictionImmutableConflicts"] = int(prediction_status.get("conflicts") or 0)
+    residual_gate = _residual_alpha_gate(_read_json(residual_path))
     results: list[dict[str, Any]] = []
     certificates: list[dict[str, Any]] = []
     for candidate in candidates:
         fingerprint = _text(candidate.get("candidateFingerprint"))
         comparison = compare_candidate(fingerprint, active_predictions, active_settlements)
-        decision, certificate = _promotion(candidate, comparison, integrity)
+        decision, certificate = _promotion(candidate, comparison, integrity, residual_gate)
         recording_health = candidate_recording_health(
             candidate,
             active_registry,
@@ -1017,6 +1116,7 @@ def build(
             "version": candidate_status.get("policyVersion"),
             "fingerprint": candidate_status.get("policyFingerprint"),
         },
+        "residualAlphaGate": residual_gate,
         "summary": {
             "activeCandidates": len(candidates),
             "registeredCandidates": len(active_registry),
@@ -1078,10 +1178,12 @@ def main() -> int:
     parser.add_argument("--record-market", choices=("all", "kr", "us", "none"), default="all")
     parser.add_argument("--output", type=Path, default=OUT)
     parser.add_argument("--promotion-output", type=Path, default=PROMOTION)
+    parser.add_argument("--residual-report", type=Path, default=RESIDUAL_ALPHA_REPORT)
     args = parser.parse_args()
     payload = build(
         output_path=args.output,
         promotion_path=args.promotion_output,
+        residual_path=args.residual_report,
         record=not args.no_record,
         settle=not args.no_settle,
         record_market=args.record_market,

@@ -17,6 +17,17 @@ SPEC.loader.exec_module(shadow)
 from app.engine import self_correction_v2 as live_correction  # noqa: E402
 
 
+def _passing_residual_gate() -> dict:
+    return {
+        "passed": True,
+        "evidenceStatus": "PASS",
+        "policyVersion": shadow.RESIDUAL_ALPHA_POLICY_VERSION,
+        "modelFingerprint": "residual-model-a",
+        "selectedBlockBootstrapCi95": [0.01, 0.2],
+        "blockingReasons": [],
+    }
+
+
 def _candidate() -> dict:
     return {
         "candidateFingerprint": "candidate-a",
@@ -163,13 +174,24 @@ def test_live_correction_defaults_off_and_quarantines_unpromoted_legacy(monkeypa
         {"momentumScore": 60.0}, 100.0, 120.0, 90.0, "us", "balanced", "swing"
     )
     certificate = {
+        "version": live_correction.correction_store.REQUIRED_PROMOTION_CERTIFICATE_VERSION,
         "approvalId": "approval-a",
         "approvalRecordHash": "approval-hash-a",
         "evidenceFingerprint": "evidence-a",
         "candidateFingerprint": "candidate-a",
         "calibrationPolicyFingerprint": "policy-a",
         "shadowPolicyFingerprint": "shadow-a",
+        "shadowPolicyVersion": live_correction.correction_store.REQUIRED_SHADOW_POLICY_VERSION,
         "evaluationPolicyFingerprint": "evaluation-a",
+        "residualAlphaModelFingerprint": "residual-a",
+        "residualAlphaPolicyVersion": live_correction.correction_store.REQUIRED_RESIDUAL_ALPHA_POLICY_VERSION,
+        "afterCostExpectancyBootstrapCi95": [0.01, 0.2],
+        "pairedUpliftCi95": [0.01, 0.2],
+        "residualAlphaSelectedCi95": [0.01, 0.2],
+        "profitFactor": 1.3,
+        "payoffRatio": 1.2,
+        "championMaxDrawdownPct": 8.0,
+        "challengerMaxDrawdownPct": 6.0,
         "promotionEligible": True,
         "decision": "READY_FOR_HUMAN_REVIEW",
     }
@@ -566,6 +588,8 @@ def test_date_block_comparison_can_issue_exact_promotion_certificate() -> None:
             settlement = {
                 field: "" for field in shadow.SETTLEMENT_FIELDS
             }
+            champion_pnl = -1.0 if day_index % 10 == 0 else 1.0
+            challenger_pnl = -0.5 if day_index % 10 == 0 else 2.0
             settlement.update({
                 "settlement_id": f"s-{prediction_id}",
                 "prediction_id": prediction_id,
@@ -573,25 +597,46 @@ def test_date_block_comparison_can_issue_exact_promotion_certificate() -> None:
                 "signal_date": signal_date,
                 "evaluation_policy_version": shadow.vtj.EVALUATION_POLICY["version"],
                 "evaluation_policy_fingerprint": shadow.vtj._evaluation_policy_fingerprint(),
-                "champion_net_pnl_pct": 1.0,
-                "challenger_net_pnl_pct": 2.0,
+                "champion_net_pnl_pct": champion_pnl,
+                "challenger_net_pnl_pct": challenger_pnl,
             })
             settlement["record_hash"] = shadow._settlement_hash(settlement)
             settlements.append(settlement)
 
     comparison = shadow.compare_candidate("candidate-a", predictions, settlements)
     integrity = shadow._integrity([_registry_row()], predictions, settlements)
-    decision, certificate = shadow._promotion(_candidate(), comparison, integrity)
+    decision, certificate = shadow._promotion(_candidate(), comparison, integrity, _passing_residual_gate())
 
     assert comparison["completedSignalDates"] == 60
     assert comparison["challenger"]["selectedEvaluatedTrades"] == 120
     assert comparison["pairedUplift"]["bootstrapCi95"][0] > 0
+    assert comparison["challenger"]["afterCostExpectancyBootstrapCi95"][0] > 0
+    assert comparison["challenger"]["profitFactor"] > 1
+    assert comparison["challenger"]["payoffRatio"] >= 1
     assert decision["promotionEligible"] is True
     assert certificate is not None
     assert certificate["candidateFingerprint"] == "candidate-a"
     assert certificate["evaluationPolicyVersion"] == shadow.vtj.EVALUATION_POLICY["version"]
     assert certificate["evaluationPolicyFingerprint"] == shadow.vtj._evaluation_policy_fingerprint()
     assert certificate["recordHash"] == shadow.vtj._promotion_certificate_hash(certificate)
+
+    residual_blocked, residual_certificate = shadow._promotion(
+        _candidate(),
+        comparison,
+        integrity,
+        {"passed": False, "blockingReasons": ["RESIDUAL_ALPHA_LOWER_CI_NOT_POSITIVE"]},
+    )
+    assert residual_blocked["promotionEligible"] is False
+    assert "PROMOTION_RESIDUAL_ALPHA_NOT_PROVEN" in residual_blocked["blockingReasons"]
+    assert residual_certificate is None
+
+    weak_payoff = json.loads(json.dumps(comparison))
+    weak_payoff["challenger"]["payoffRatio"] = 0.8
+    payoff_blocked, payoff_certificate = shadow._promotion(
+        _candidate(), weak_payoff, integrity, _passing_residual_gate()
+    )
+    assert "PROMOTION_PAYOFF_RATIO_TOO_LOW" in payoff_blocked["blockingReasons"]
+    assert payoff_certificate is None
 
     losing_settlements = []
     for row in settlements:
@@ -600,7 +645,7 @@ def test_date_block_comparison_can_issue_exact_promotion_certificate() -> None:
         losing_settlements.append(losing)
     losing_comparison = shadow.compare_candidate("candidate-a", predictions, losing_settlements)
     rejected, rejected_certificate = shadow._promotion(
-        _candidate(), losing_comparison, shadow._integrity([_registry_row()], predictions, losing_settlements)
+        _candidate(), losing_comparison, shadow._integrity([_registry_row()], predictions, losing_settlements), _passing_residual_gate()
     )
 
     assert rejected["evidenceMature"] is True
@@ -653,7 +698,7 @@ def test_clustered_single_date_never_qualifies_for_promotion() -> None:
 
     comparison = shadow.compare_candidate("candidate-a", predictions, settlements)
     decision, certificate = shadow._promotion(
-        _candidate(), comparison, shadow._integrity([_registry_row()], predictions, settlements)
+        _candidate(), comparison, shadow._integrity([_registry_row()], predictions, settlements), _passing_residual_gate()
     )
 
     assert comparison["completedSignalDates"] == 1

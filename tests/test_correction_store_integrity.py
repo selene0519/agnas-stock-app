@@ -16,13 +16,24 @@ from app.engine import correction_store  # noqa: E402
 
 def _certificate() -> dict:
     certificate = {
+        "version": correction_store.REQUIRED_PROMOTION_CERTIFICATE_VERSION,
         "approvalId": "approval-a",
         "approvalRecordHash": "approval-hash-a",
         "evidenceFingerprint": "evidence-a",
         "candidateFingerprint": "candidate-a",
         "calibrationPolicyFingerprint": "calibration-a",
         "shadowPolicyFingerprint": "shadow-a",
+        "shadowPolicyVersion": correction_store.REQUIRED_SHADOW_POLICY_VERSION,
         "evaluationPolicyFingerprint": "evaluation-a",
+        "residualAlphaModelFingerprint": "residual-a",
+        "residualAlphaPolicyVersion": correction_store.REQUIRED_RESIDUAL_ALPHA_POLICY_VERSION,
+        "afterCostExpectancyBootstrapCi95": [0.01, 0.2],
+        "pairedUpliftCi95": [0.01, 0.2],
+        "residualAlphaSelectedCi95": [0.01, 0.2],
+        "profitFactor": 1.3,
+        "payoffRatio": 1.2,
+        "championMaxDrawdownPct": 8.0,
+        "challengerMaxDrawdownPct": 6.0,
         "promotionEligible": True,
         "decision": "READY_FOR_HUMAN_REVIEW",
     }
@@ -52,6 +63,16 @@ def test_sealed_params_detect_payload_and_certificate_tampering() -> None:
     payload_tampered = json.loads(json.dumps(params))
     payload_tampered["version"] = 2
     assert correction_store.validate_params_integrity(payload_tampered) is False
+
+    obsolete = _promoted_correction()
+    obsolete["promotionCertificate"]["version"] = "vtj-calibration-promotion-v1"
+    obsolete["promotionCertificate"]["recordHash"] = correction_store.promotion_certificate_hash(
+        obsolete["promotionCertificate"]
+    )
+    obsolete["promotionCertificateHash"] = obsolete["promotionCertificate"]["recordHash"]
+    verdict = correction_store.promoted_correction_lineage_verdict(obsolete)
+    assert verdict["valid"] is False
+    assert "PROMOTION_CERTIFICATE_VERSION_MISMATCH" in verdict["blockingReasons"]
 
     certificate_tampered = json.loads(json.dumps(params))
     certificate_tampered["markets"]["kr_balanced_swing"]["promotionCertificate"]["promotionEligible"] = False
