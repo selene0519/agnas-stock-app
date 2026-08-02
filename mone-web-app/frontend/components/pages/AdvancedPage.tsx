@@ -161,8 +161,8 @@ export default function AdvancedPage({
   }
 
   const tabs: { id: TabId; label: string }[] = [
-    { id: "paper", label: "모의투자" },
-    { id: "journal", label: "AI 매매일지" },
+    { id: "paper", label: "Paper 검증" },
+    { id: "journal", label: "AI 추천일지" },
     { id: "calculator", label: "계산기" },
     { id: "montecarlo", label: "몬테카를로" },
     { id: "backtest", label: "전략 검증" },
@@ -171,8 +171,8 @@ export default function AdvancedPage({
   return (
     <div className="space-y-5 animate-fade-in">
       <div>
-        <h1 className="text-xl font-bold text-[var(--text-primary)]">MONE 트레이딩</h1>
-        <p className="mt-1 text-xs text-slate-400">모의투자, AI 매매일지, 계산기, 몬테카를로, 전략 검증을 한 곳에서.</p>
+        <h1 className="text-xl font-bold text-[var(--text-primary)]">MONE 퀀트 랩</h1>
+        <p className="mt-1 text-xs text-slate-400">Paper 검증, AI 추천일지, 위험 계산과 전략 검증을 한 곳에서 확인합니다.</p>
       </div>
 
       <SegmentedControl<TabId> options={tabs.map((t) => ({ value: t.id, label: t.label }))} value={tab} onChange={setTab} />

@@ -37,12 +37,41 @@ def _stub_dependencies(monkeypatch, *, allowed=True, journal_status="RUNNING", r
 
 def test_governor_allows_only_when_every_gate_passes(monkeypatch) -> None:
     _stub_dependencies(monkeypatch)
-    result = governor.operating_status("kr")["markets"]["kr"]
-    assert result["operatingState"] == "TRADEABLE"
+    payload = governor.operating_status("kr")
+    result = payload["markets"]["kr"]
+    assert result["operatingState"] == "RECOMMENDATION_READY"
+    assert result["recommendationActionable"] is True
     assert result["entryAllowed"] is True
     assert result["paperEntryAllowed"] is True
     assert result["exitAllowed"] is True
     assert result["liveOrderAllowed"] is False
+    assert result["productScope"]["executionMode"] == "ADVISORY_PAPER_ONLY"
+    assert payload["recommendationReadyMarketCount"] == 1
+    assert payload["tradeableMarketCount"] == 0
+
+
+def test_governor_never_grants_live_order_authority_even_if_shadow_payload_requests_it(monkeypatch) -> None:
+    _stub_dependencies(monkeypatch)
+    monkeypatch.setattr(
+        governor.quant_shadow_status,
+        "shadow_status",
+        lambda: {
+            "status": "OK",
+            "mode": "SHADOW_ONLY",
+            "decision": "SHADOW_TAKE",
+            "decisionReasons": [],
+            "missingReports": [],
+            "staleReports": [],
+            "liveTradingAllowed": True,
+        },
+    )
+
+    result = governor.operating_status("kr")
+
+    assert result["markets"]["kr"]["recommendationActionable"] is True
+    assert result["markets"]["kr"]["liveOrderAllowed"] is False
+    assert result["markets"]["kr"]["quantShadow"]["liveTradingAllowed"] is False
+    assert result["productScope"]["liveBrokerOrdersSupported"] is False
 
 
 def test_governor_abstains_when_evidence_is_unproven(monkeypatch) -> None:

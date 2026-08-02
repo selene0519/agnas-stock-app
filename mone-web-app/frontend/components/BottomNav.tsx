@@ -23,7 +23,7 @@ const primaryTabs: { id: PageId; label: string; Icon: React.ElementType }[] = [
 ];
 
 const moreTabs: { id: PageId; label: string; desc: string; Icon: React.ElementType }[] = [
-  { id: "advanced", label: "MONE 트레이딩", desc: "모의투자, AI 매매일지, 계산기, 몬테카를로, 전략검증", Icon: Cpu },
+  { id: "advanced", label: "MONE 퀀트 랩", desc: "Paper 검증, AI 추천일지, 계산기, 몬테카를로, 전략검증", Icon: Cpu },
 ];
 
 const adminTab: { id: PageId; label: string; desc: string; Icon: React.ElementType } = {

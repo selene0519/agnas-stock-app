@@ -107,7 +107,8 @@ def test_direct_paper_buy_service_cannot_bypass_operating_authority(monkeypatch)
 def _tradeable_authority(market: str, user_id: str = "") -> dict:
     return {
         "market": market,
-        "operatingState": "TRADEABLE",
+        "operatingState": "RECOMMENDATION_READY",
+        "recommendationActionable": True,
         "entryAllowed": True,
         "paperEntryAllowed": True,
         "exitAllowed": True,

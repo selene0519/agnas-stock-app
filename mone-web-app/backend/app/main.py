@@ -8641,6 +8641,14 @@ def api_quant_shadow_status() -> dict:
     return shadow_status()
 
 
+@app.get("/api/quant/product-scope")
+def api_quant_product_scope() -> dict:
+    """Public, immutable statement of MONE's advisory-only execution boundary."""
+    from app.services.product_scope import product_scope
+
+    return product_scope()
+
+
 @app.post("/api/journal/self-learning/auto-calibrate")
 def api_journal_self_learning_auto_calibrate(payload: dict = Body(default_factory=dict)) -> dict:
     from app.services import virtual_trade_journal as vtj

@@ -651,6 +651,8 @@ export const mone = {
     apiGet<any>("/api/portfolio/risk-budget", p),
   quantOperatingStatus: (p?: { market?: Market | string }) =>
     apiGet<any>("/api/quant/operating-status", p),
+  quantProductScope: () =>
+    apiGet<any>("/api/quant/product-scope"),
   quantShadowStatus: () =>
     apiGet<QuantShadowStatus>("/api/quant/shadow-status"),
   backtestSummary: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string }) =>

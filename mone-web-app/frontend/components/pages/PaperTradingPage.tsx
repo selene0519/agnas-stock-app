@@ -427,8 +427,8 @@ export default function PaperTradingPage({
       {/* 헤더 */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-[var(--text-primary)]">모의투자</h1>
-          <p className="mt-1 text-xs text-slate-400">가상 자금으로 실전처럼 매매 연습 — 현재가 기준 자동 체결</p>
+          <h1 className="text-xl font-bold text-[var(--text-primary)]">Paper 검증 계좌</h1>
+          <p className="mt-1 text-xs text-slate-400">실제 주문 없이 추천 규칙을 가상 체결하고 손익·낙폭을 검증합니다.</p>
         </div>
         <div className="flex items-center gap-2">
           {(["kr", "us"] as Market[]).map((mk) => (
@@ -464,9 +464,9 @@ export default function PaperTradingPage({
       {/* 탭 */}
       <div className="flex w-fit gap-1 rounded-lg bg-slate-800/50 p-1">
         {([
-          { id: "positions" as TabId, label: "포지션", icon: <BarChart3 size={12} /> },
-          { id: "history" as TabId, label: "체결 내역", icon: <History size={12} /> },
-          { id: "trade" as TabId, label: "주문", icon: <Plus size={12} /> },
+          { id: "positions" as TabId, label: "가상 포지션", icon: <BarChart3 size={12} /> },
+          { id: "history" as TabId, label: "가상 체결", icon: <History size={12} /> },
+          { id: "trade" as TabId, label: "Paper 입력", icon: <Plus size={12} /> },
         ]).map(({ id, label, icon }) => (
           <button
             key={id}
@@ -485,7 +485,7 @@ export default function PaperTradingPage({
             <div className="rounded-xl border border-slate-700 bg-slate-900/50 px-4 py-8 text-center">
               <div className="text-sm font-semibold text-slate-200">보유 포지션이 없습니다</div>
               <p className="mt-1 text-xs leading-5 text-slate-400">
-                가상 매수로 주문 흐름과 손익 관리를 연습해 보세요.
+                추천 후보를 Paper 계좌에 기록해 손익과 위험을 검증해 보세요.
               </p>
               <button
                 type="button"
@@ -521,7 +521,7 @@ export default function PaperTradingPage({
                   <span
                     className={`rounded border px-1.5 py-0.5 text-[10px] font-bold ${t.action === "BUY" ? "border-emerald-500/30 text-emerald-400" : "border-red-500/30 text-red-400"}`}
                   >
-                    {t.action === "BUY" ? "매수" : "매도"}
+                    {t.action === "BUY" ? "가상 매수" : "가상 매도"}
                   </span>
                   <div>
                     <span className="text-xs font-semibold text-slate-200">{t.name}</span>
@@ -567,7 +567,7 @@ export default function PaperTradingPage({
                 }`}
               >
                 {a === "buy" ? <Plus size={13} /> : <Minus size={13} />}
-                {a === "buy" ? "매수" : "매도"}
+                {a === "buy" ? "가상 매수" : "가상 매도"}
               </button>
             ))}
           </div>

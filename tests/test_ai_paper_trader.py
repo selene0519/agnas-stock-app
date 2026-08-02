@@ -117,7 +117,7 @@ def test_run_cycle_calls_buy_leg_only_when_paper_entry_is_authorized(monkeypatch
         "entry_authority",
         lambda market: {
             "market": market,
-            "operatingState": "TRADEABLE",
+            "operatingState": "RECOMMENDATION_READY",
             "entryAllowed": True,
             "paperEntryAllowed": True,
             "exitAllowed": True,

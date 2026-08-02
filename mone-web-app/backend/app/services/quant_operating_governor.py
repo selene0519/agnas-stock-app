@@ -15,6 +15,7 @@ from app.services import (
     portfolio_risk_budget,
     quant_execution_plan,
     quant_shadow_status,
+    product_scope,
     virtual_trade_journal,
 )
 
@@ -42,7 +43,7 @@ def _decision_reason(code: str) -> str:
         "NEGATIVE_REALIZED_EXPECTANCY": "실현 평균 수익률이 양수로 확인되지 않았습니다.",
         "WALK_FORWARD_DATA_NOT_READY": "독립 워크포워드 검증 데이터가 준비되지 않았습니다.",
         "WALK_FORWARD_NOT_PROVEN": "독립 워크포워드에서 우위가 아직 증명되지 않았습니다.",
-        "JOURNAL_INTEGRITY_NOT_READY": "AI 매매일지 기록 또는 평가 무결성을 먼저 복구해야 합니다.",
+        "JOURNAL_INTEGRITY_NOT_READY": "AI 추천일지 기록 또는 평가 무결성을 먼저 복구해야 합니다.",
         "PORTFOLIO_RISK_BUDGET_EXCEEDED": "보유 포트폴리오의 손실 예산 또는 집중도가 한도를 넘었습니다.",
         "DATA_QUALITY_KILL_SWITCH": "데이터 품질 안전장치가 켜져 있어 신규 진입을 멈췄습니다.",
         "NO_ELIGIBLE_CANDIDATE": "현재 기준을 모두 통과한 후보가 없습니다.",
@@ -192,7 +193,7 @@ def _govern_market(market: str, user_id: str = "", shadow: dict[str, Any] | None
         operating_state = "WATCH"
         reasons.append("MARKET_CLOSED_REVIEW")
     else:
-        operating_state = "TRADEABLE"
+        operating_state = "RECOMMENDATION_READY"
 
     checks = [
         {"id": "evidence", "label": "실현·독립 검증", "passed": proof_ready, "detail": performance_gate.get("reason")},
@@ -202,13 +203,18 @@ def _govern_market(market: str, user_id: str = "", shadow: dict[str, Any] | None
     ]
     checks.append({"id": "quantShadow", "label": "Quant V2 evidence", "passed": shadow_signal_ready, "detail": shadow.get("decision")})
     checks.append({"id": "executionPlan", "label": "Candidate execution lineage", "passed": execution_ready, "detail": execution_plan.get("status")})
+    recommendation_actionable = operating_state == "RECOMMENDATION_READY"
+    scope = product_scope.product_scope()
     return {
         "market": market,
         "operatingState": operating_state,
-        "entryAllowed": operating_state == "TRADEABLE",
-        "paperEntryAllowed": operating_state == "TRADEABLE",
+        "recommendationActionable": recommendation_actionable,
+        # Backward-compatible advisory alias. This never grants broker authority.
+        "entryAllowed": recommendation_actionable,
+        "paperEntryAllowed": recommendation_actionable,
         "exitAllowed": True,
-        "liveOrderAllowed": operating_state == "TRADEABLE" and bool(shadow.get("liveTradingAllowed")),
+        "liveOrderAllowed": product_scope.live_order_allowed(),
+        "productScope": scope,
         "candidateCount": candidate_count if proof_ready and shadow_signal_ready else 0,
         "rawCandidateCount": raw_candidate_count,
         "reasonCodes": list(dict.fromkeys(reasons)),
@@ -240,7 +246,7 @@ def _govern_market(market: str, user_id: str = "", shadow: dict[str, Any] | None
             "decisionReasons": shadow.get("decisionReasons") or [],
             "missingReports": shadow_missing,
             "staleReports": shadow_stale,
-            "liveTradingAllowed": bool(shadow.get("liveTradingAllowed")),
+            "liveTradingAllowed": False,
         },
     }
 
@@ -258,13 +264,16 @@ def operating_status(market: str = "all", user_id: str = "") -> dict[str, Any]:
             "decisionReasons": ["SHADOW_STATUS_UNAVAILABLE"],
         }
     markets = {mk: _govern_market(mk, user_id=user_id, shadow=shadow) for mk in _market_list(market)}
+    scope = product_scope.product_scope()
     return {
         "status": "OK",
         "market": market,
-        "executionMode": "PAPER_ONLY",
-        "disclaimer": "Research and paper-trading decision aid. It does not guarantee returns or execute orders.",
+        "executionMode": scope["executionMode"],
+        "productScope": scope,
+        "disclaimer": "Quant recommendation and Paper-validation aid. MONE never sends broker orders; the user decides and executes separately.",
         "markets": markets,
-        "tradeableMarketCount": sum(1 for row in markets.values() if row["entryAllowed"]),
+        "recommendationReadyMarketCount": sum(1 for row in markets.values() if row["recommendationActionable"]),
+        "tradeableMarketCount": 0,
     }
 
 
@@ -277,10 +286,12 @@ def entry_authority(market: str, user_id: str = "") -> dict[str, Any]:
         return {
             "market": normalized,
             "operatingState": "BLOCKED",
+            "recommendationActionable": False,
             "entryAllowed": False,
             "paperEntryAllowed": False,
             "exitAllowed": True,
             "liveOrderAllowed": False,
+            "productScope": product_scope.product_scope(),
             "reasonCodes": ["OPERATING_AUTHORITY_UNAVAILABLE"],
             "reasons": [_decision_reason("OPERATING_AUTHORITY_UNAVAILABLE")],
             "error": repr(exc),
@@ -292,7 +303,9 @@ def apply_entry_authority(payload: dict[str, Any], market: str, user_id: str = "
     authority = entry_authority(market, user_id=user_id)
     payload["operatingAuthority"] = authority
     payload["entryAllowed"] = bool(authority.get("entryAllowed"))
-    payload["liveOrderAllowed"] = bool(authority.get("liveOrderAllowed"))
+    payload["recommendationActionable"] = bool(authority.get("recommendationActionable", authority.get("entryAllowed")))
+    payload["liveOrderAllowed"] = False
+    payload["productScope"] = authority.get("productScope") or product_scope.product_scope()
     if authority.get("entryAllowed"):
         return payload
 

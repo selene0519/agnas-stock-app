@@ -963,10 +963,10 @@ export default function VirtualJournalPage() {
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
               <BookOpenCheck size={17} className="text-cyan-300" />
-              <span>AI 매매일지</span>
+              <span>AI 추천 검증일지</span>
             </div>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-              추천 시점의 판단을 고정하고, 이후 체결과 결과를 보수적으로 평가합니다. 보정은 제안까지만 만들고 자동 반영하지 않습니다.
+              추천 시점의 판단을 고정하고, 실제 주문 없이 가상 체결과 결과를 보수적으로 평가합니다. 봉인된 Forward 증거와 승인을 통과한 보정만 제한적으로 반영합니다.
             </p>
           </div>
           <div className="grid grid-cols-3 gap-1.5 sm:flex sm:w-auto sm:flex-wrap sm:gap-2">
@@ -1997,7 +1997,7 @@ export default function VirtualJournalPage() {
                 <div className="flex items-center gap-3 font-mono text-[13px] leading-5 text-slate-400">
                   <span>점수 {c.modelScore}</span>
                   <span>RSI {c.rsi14}</span>
-                  <span className={c.actionable ? "text-emerald-300" : "text-slate-400"}>{c.actionable ? "실행가능" : "caution"}</span>
+                  <span className={c.actionable ? "text-emerald-300" : "text-slate-400"}>{c.actionable ? "추천 검토 가능" : "주의"}</span>
                 </div>
               </div>
             ))}
@@ -2046,7 +2046,7 @@ export default function VirtualJournalPage() {
         {diagOpen.lensPanel && (
         <>
         <p className="mt-1 max-w-3xl text-[13px] leading-5 text-slate-400">
-          장세별 셋업(약세=저점반등, 강세·횡보=돌파)을 매매일지 실측으로 자가보정합니다. ACTIVE(실행가능)만 매수 후보이며, 최근 실측이 무너진 셋업은 자동 차단(SUPPRESSED)됩니다.
+          장세별 셋업(약세=저점반등, 강세·횡보=돌파)을 추천일지 실측으로 자가보정합니다. ACTIVE(추천 검토 가능)만 후보이며, 최근 실측이 무너진 셋업은 자동 차단(SUPPRESSED)됩니다.
         </p>
         {lensData && Array.isArray(lensData.candidates) && lensData.candidates.length > 0 ? (
           <div className="mt-3 space-y-2">
@@ -2068,7 +2068,7 @@ export default function VirtualJournalPage() {
                 </div>
                 <div className="text-right">
                   <div className={`font-mono text-[11px] font-semibold ${c.actionable ? "text-emerald-300" : "text-slate-400"}`}>
-                    {c.actionable ? "실행가능" : "차단"}
+                    {c.actionable ? "추천 검토 가능" : "차단"}
                   </div>
                   <div className="font-mono text-[13px] leading-5 text-slate-400">
                     {c.calibrationGate}{c.actionable && c.sizeMultiplier ? ` · size ${Number(c.sizeMultiplier).toFixed(2)}` : ""}
@@ -2079,7 +2079,7 @@ export default function VirtualJournalPage() {
           </div>
         ) : (
           <div className="mt-3 rounded-lg bg-slate-950/55 px-3 py-6 text-center text-xs text-slate-400 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
-            {lensData?.status === "EMPTY" ? "렌즈 후보 리포트 미생성 — 파이프라인(build_lens_journal→calibration→screen) 실행 필요." : "현재 레짐에서 실행가능한 렌즈 후보가 없습니다."}
+            {lensData?.status === "EMPTY" ? "렌즈 후보 리포트 미생성 — 파이프라인(build_lens_journal→calibration→screen) 실행 필요." : "현재 레짐에서 추천 검토 가능한 렌즈 후보가 없습니다."}
           </div>
         )}
         {lensData?.disclaimer && (
