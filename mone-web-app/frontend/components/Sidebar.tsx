@@ -104,7 +104,7 @@ export default function Sidebar({ current, onChange, isAdmin = false, onAdminLog
 
         <div className="mt-auto space-y-0.5 border-t border-slate-800/40 pt-2">
           {!collapsed && (
-            <div className="flex items-center gap-1 px-2 pb-1 pt-1 text-[9px] font-semibold uppercase tracking-widest text-slate-700">
+            <div className="flex items-center gap-1 px-2 pb-1 pt-1 text-[9px] font-semibold uppercase tracking-widest text-slate-400">
               <MoreHorizontal size={10} />
               <span>더보기</span>
             </div>
@@ -151,8 +151,8 @@ export default function Sidebar({ current, onChange, isAdmin = false, onAdminLog
       </nav>
       {!collapsed && (
         <div className="border-t border-slate-800 p-3">
-          <div className="font-mono text-[10px] text-slate-600">v10.8 · MONE Stock App</div>
-          <div className="mt-0.5 text-[10px] text-slate-600">© 2026 AGNAS</div>
+          <div className="font-mono text-[10px] text-slate-400">v10.8 · MONE Stock App</div>
+          <div className="mt-0.5 text-[10px] text-slate-400">© 2026 AGNAS</div>
         </div>
       )}
     </div>

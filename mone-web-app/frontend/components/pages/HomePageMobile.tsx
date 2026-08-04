@@ -642,7 +642,7 @@ function EntryCandidateCard({ item, rank, onAnalyze, onTradePaper, marketRegime,
 
   return (
     <div className="relative w-[78vw] max-w-[300px] shrink-0 snap-start rounded-2xl border border-emerald-800/50 bg-gradient-to-br from-emerald-950/25 to-slate-950 p-3.5">
-      <div className="absolute -left-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-[11px] font-bold text-white">{rank}</div>
+      <div className="absolute -left-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-[11px] font-bold text-slate-950">{rank}</div>
       <div className="flex items-center gap-1.5">
         <span className="truncate text-sm font-semibold text-slate-100">{displayName(item)}</span>
         <span className={`rounded-full border px-1.5 py-0.5 text-[9px] font-semibold ${dataTrustBadgeClass(item)}`}>{dataTrustLabel(item)}</span>
@@ -665,7 +665,7 @@ function EntryCandidateCard({ item, rank, onAnalyze, onTradePaper, marketRegime,
           {reasons.map((r, i) => <div key={r}>{i + 1}. {r}</div>)}
         </div>
       )}
-      <div className="mt-1 text-[9px] text-slate-600">참고용 신호 — 최종 판단은 본인 책임입니다.</div>
+      <div className="mt-1 text-[9px] text-slate-400">참고용 신호 — 최종 판단은 본인 책임입니다.</div>
       <div className="mt-2.5 flex gap-1.5">
         <button onClick={() => onAnalyze(item)} className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-blue-600 px-2 py-1.5 text-xs font-semibold text-white hover:bg-blue-500">
           분석 보기 <ArrowRight size={12} />
@@ -755,7 +755,7 @@ function StrategyTile({ cell }: { cell: StrategyCell }) {
         <span className="text-slate-400">{cell.count}개</span>
       </div>
       {top.length === 0 ? (
-        <div className="mt-1.5 text-[10px] text-slate-600">조건 없음</div>
+        <div className="mt-1.5 text-[10px] text-slate-400">조건 없음</div>
       ) : (
         <div className="mt-1.5 space-y-1">
           {top.map((item) => (

@@ -33,12 +33,12 @@ function GateStep({ icon: Icon, label, value, detail, passed }: {
     <div className="relative min-w-0 px-3 py-3 sm:px-4">
       <div className="flex items-center gap-2 text-[11px] font-semibold tracking-wide text-slate-400">
         <span className={`inline-flex size-6 items-center justify-center rounded-full border ${passed ? "border-emerald-400/35 bg-emerald-400/10 text-emerald-300" : "border-amber-400/35 bg-amber-400/10 text-amber-300"}`}>
-          {passed ? <Check size={13} /> : <Icon size={13} />}
+          {passed ? <Check size={13} aria-hidden="true" /> : <Icon size={13} aria-hidden="true" />}
         </span>
         {label}
       </div>
       <div className="mt-2 font-mono text-sm font-semibold tabular-nums text-slate-100">{value}</div>
-      <p className="mt-1 text-[10px] leading-4 text-slate-500">{detail}</p>
+      <p className="mt-1 text-[10px] leading-4 text-slate-400">{detail}</p>
     </div>
   );
 }
@@ -80,25 +80,25 @@ export function ShadowCapitalGate({ market }: { market: Market }) {
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/30 bg-amber-400/10 px-2.5 py-1 text-[10px] font-bold tracking-[0.12em] text-amber-300">
-              <ShieldAlert size={12} /> SHADOW ONLY
+              <ShieldAlert size={12} aria-hidden="true" /> SHADOW ONLY
             </span>
-            <span className="text-[10px] font-medium text-slate-500">{marketLabel} · 실주문 미허용</span>
+            <span className="text-[10px] font-medium text-slate-400">{marketLabel} · 실주문 미허용</span>
           </div>
           <h2 id="quant-capital-gate-title" className="mt-3 text-base font-bold text-slate-100">{row?.decision === "SHADOW_TAKE" ? "검증용 진입 후보 있음" : "자본 투입 보류"}</h2>
           <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-400">추천 수가 아니라 독립 표본, 후보별 잔차 알파 예측, 실제 초과성과, 자본곡선과 위험예산을 모두 통과해야 진입합니다.</p>
         </div>
         <button type="button" onClick={load} disabled={loading} aria-label="퀀트 자본 게이트 새로고침" className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center self-end rounded-lg border border-slate-700 text-slate-400 transition-colors hover:border-slate-600 hover:bg-slate-800 hover:text-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-400 disabled:opacity-50 sm:self-auto">
-          <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
+          <RefreshCw size={15} className={loading ? "animate-spin" : ""} aria-hidden="true" />
         </button>
       </div>
 
       {loading && !row ? (
-        <div className="grid grid-cols-2 divide-x divide-y divide-slate-800 md:grid-cols-5 md:divide-y-0" aria-label="검증 상태 불러오는 중">
+        <div className="grid grid-cols-2 divide-x divide-y divide-slate-800 md:grid-cols-5 md:divide-y-0" aria-label="검증 상태 불러오는 중" role="status" aria-live="polite">
           {[0, 1, 2, 3, 4].map((item) => <div key={item} className="h-24 animate-pulse bg-slate-900/50" />)}
         </div>
       ) : error ? (
         <div className="flex items-start gap-3 bg-red-400/5 px-4 py-4 text-sm text-red-200" role="alert">
-          <AlertTriangle size={17} className="mt-0.5 shrink-0" />
+          <AlertTriangle size={17} className="mt-0.5 shrink-0" aria-hidden="true" />
           <div><div className="font-semibold">검증 상태 확인 실패 — 자본 투입 차단</div><p className="mt-1 text-xs leading-5 text-red-200/70">{error}</p></div>
         </div>
       ) : row && summary ? (
@@ -115,14 +115,14 @@ export function ShadowCapitalGate({ market }: { market: Market }) {
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px]">
               <span className="font-semibold text-slate-300">오늘의 결정</span>
               <span className="font-mono font-bold text-amber-300">TAKE {summary.take} · WAIT {summary.wait} · REJECT {summary.reject}</span>
-              <span className="text-slate-500">후보 {summary.candidates}개</span>
+              <span className="text-slate-400">후보 {summary.candidates}개</span>
             </div>
             {row.decisionReasons?.length > 0 && (
               <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="자본 투입 차단 근거">
                 {row.decisionReasons.map((reason) => <li key={reason} className="rounded-md border border-slate-700/80 bg-slate-900/70 px-2 py-1 text-[10px] text-slate-300">{REASON_LABELS[reason] || reason}</li>)}
               </ul>
             )}
-            <details className="mt-3 text-[10px] text-slate-500">
+            <details className="mt-3 text-[10px] text-slate-400">
               <summary className="w-fit cursor-pointer rounded-sm py-1 hover:text-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal-400">검증 원장 보기</summary>
               <div className="mt-2 grid gap-1 font-mono sm:grid-cols-2">
                 {Object.entries(row.sources || {}).map(([name, source]) => <div key={name}>{name}: {source}</div>)}

@@ -1,0 +1,146 @@
+{
+  "generatedAt": "2026-07-30T01:28:05.359830+00:00",
+  "tradesSimulated": 26360,
+  "sampleStep": 10,
+  "horizon": "mid",
+  "holdBars": 21,
+  "atrMult": {
+    "stop": 2.0,
+    "target": 5.5
+  },
+  "costPct": 0.41,
+  "method": "110개 KR 종목 15년에 대해 앱과 같은 규칙(ATR 배수 밴드, 선착순 청산, 왕복 비용)으로 전략을 재현하고, 진입일 국면으로 묶었다. 검증 기준을 '지수 향후 수익'에서 '전략 성과'로 바꿨다 — 앞선 시도가 실패한 원인이 그 기준이었다.",
+  "definitions": {
+    "current(단기2)": {
+      "cells": {
+        "BEAR": {
+          "n": 4963,
+          "winRatePct": 43.2,
+          "meanPct": 0.9992
+        },
+        "BULL": {
+          "n": 12349,
+          "winRatePct": 42.2,
+          "meanPct": 1.1814
+        },
+        "SIDE": {
+          "n": 9048,
+          "winRatePct": 40.5,
+          "meanPct": 0.4388
+        }
+      },
+      "regimeSpreadPp": 0.7426,
+      "bearIsWorst": true
+    },
+    "trend60확인": {
+      "cells": {
+        "BEAR": {
+          "n": 8090,
+          "winRatePct": 44.8,
+          "meanPct": 1.3148
+        },
+        "BULL": {
+          "n": 8992,
+          "winRatePct": 42.4,
+          "meanPct": 1.3564
+        },
+        "SIDE": {
+          "n": 9278,
+          "winRatePct": 38.6,
+          "meanPct": 0.0739
+        }
+      },
+      "regimeSpreadPp": 1.2825,
+      "bearIsWorst": true
+    },
+    "trend60단독": {
+      "cells": {
+        "BEAR": {
+          "n": 7406,
+          "winRatePct": 44.0,
+          "meanPct": 1.1001
+        },
+        "BULL": {
+          "n": 11190,
+          "winRatePct": 43.8,
+          "meanPct": 1.5467
+        },
+        "SIDE": {
+          "n": 7764,
+          "winRatePct": 36.8,
+          "meanPct": -0.2493
+        }
+      },
+      "regimeSpreadPp": 1.796,
+      "bearIsWorst": true
+    },
+    "dual(60+120)": {
+      "cells": {
+        "BEAR": {
+          "n": 7361,
+          "winRatePct": 44.7,
+          "meanPct": 1.2757
+        },
+        "BULL": {
+          "n": 10633,
+          "winRatePct": 42.9,
+          "meanPct": 1.3813
+        },
+        "SIDE": {
+          "n": 8366,
+          "winRatePct": 37.9,
+          "meanPct": -0.0668
+        }
+      },
+      "regimeSpreadPp": 1.4481,
+      "bearIsWorst": true
+    },
+    "trend60+거래량": {
+      "cells": {
+        "BEAR": {
+          "n": 6103,
+          "winRatePct": 43.6,
+          "meanPct": 1.0256
+        },
+        "BULL": {
+          "n": 9843,
+          "winRatePct": 44.7,
+          "meanPct": 1.8908
+        },
+        "SIDE": {
+          "n": 10414,
+          "winRatePct": 37.9,
+          "meanPct": -0.1298
+        }
+      },
+      "regimeSpreadPp": 2.0206,
+      "bearIsWorst": true
+    },
+    "거래량단독": {
+      "cells": {
+        "BEAR": {
+          "n": 7108,
+          "winRatePct": 41.1,
+          "meanPct": 0.5044
+        },
+        "BULL": {
+          "n": 3765,
+          "winRatePct": 45.1,
+          "meanPct": 1.7575
+        },
+        "SIDE": {
+          "n": 15487,
+          "winRatePct": 41.3,
+          "meanPct": 0.8599
+        }
+      },
+      "regimeSpreadPp": 1.2531,
+      "bearIsWorst": true
+    }
+  },
+  "caveats": [
+    "생존편향: 유니버스가 오늘 상장된 110종목이라 절대 수준은 낙관 쪽이다. 국면 간 **상대 비교**는 같은 편향을 공유하므로 유효하다.",
+    "호라이즌별로 따로 돌려야 한다(--horizon). ATR 배수와 보유 기간이 다르다.",
+    "셀 표본 200건 미만은 격차 계산에서 제외한다."
+  ]
+}

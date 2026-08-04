@@ -137,6 +137,43 @@ def run() -> dict[str, Any]:
         else "모멘텀 영향 미미"
     )
 
+    # ── 시장별 조정 ────────────────────────────────────────────────────
+    # 2026-07-29 발견: 귀속은 byMarket인데 **적용되는 조정값은 풀링**이라
+    # 국장에서 배운 계수가 미장 필터에 그대로 갔다. 시장별 회귀를 내보니
+    # rsi 계수가 KR 0.093 vs US 0.237로 2.5배 다르고, 시장별 R²(0.127/0.119)가
+    # 풀링 R²(0.062)의 2배다 — 나누는 게 설명력까지 올린다.
+    by_market: dict[str, Any] = {}
+    for _mk, _rm in (fa.get("regressionByMarket") or {}).items():
+        if _rm.get("status") != "OK" or float(_rm.get("r2") or 0) < 0.03:
+            by_market[_mk] = {"status": _rm.get("status", "LOW_R2"),
+                              "r2": _rm.get("r2"), "n": _rm.get("n"),
+                              "adjustments": {}}
+            continue
+        m_adj: dict[str, Any] = dict(existing)
+        _rc = float(_rm.get("rsi") or 0)
+        _vc = float(_rm.get("volumeRatio") or 0)
+        _dc = float(_rm.get("distToMa20") or 0)
+        for mode in ("conservative", "balanced", "aggressive"):
+            d = float(_DEFAULTS["rsi_upper"][mode])
+            if abs(_rc) > 0.05:
+                m_adj[f"rsi_upper_{mode}"] = _clamp_delta(
+                    float(m_adj.get(f"rsi_upper_{mode}", d)), d,
+                    _MAX_DELTA["rsi_upper"], _STEP["rsi_upper"], -1 if _rc < 0 else +1)
+            d = float(_DEFAULTS["min_volume_ratio"][mode])
+            if abs(_vc) > 0.05:
+                m_adj[f"min_vr_{mode}"] = _clamp_delta(
+                    float(m_adj.get(f"min_vr_{mode}", d)), d,
+                    _MAX_DELTA["min_volume_ratio"], _STEP["min_volume_ratio"],
+                    +1 if _vc > 0 else -1)
+        for horizon in ("short", "swing", "mid"):
+            d = float(_DEFAULTS["d20_max"][horizon])
+            if abs(_dc) > 0.05:
+                m_adj[f"d20_max_{horizon}"] = _clamp_delta(
+                    float(m_adj.get(f"d20_max_{horizon}", d)), d,
+                    _MAX_DELTA["d20_max"], _STEP["d20_max"], -1 if _dc < 0 else +1)
+        by_market[_mk] = {"status": "APPLIED", "r2": _rm.get("r2"),
+                          "n": _rm.get("n"), "adjustments": m_adj}
+
     result = {
         "updatedAt":      datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "basedOnR2":      round(r2, 4),
@@ -146,6 +183,7 @@ def run() -> dict[str, Any]:
         "d20Coefficient": round(d20_coef, 4),
         "mom5Coefficient": round(mom5_coef, 4),
         "adjustments":    adj,
+        "byMarket":       by_market,
         "status":         "APPLIED",
     }
     return result

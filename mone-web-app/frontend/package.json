@@ -2,6 +2,9 @@
   "name": "mone-web-app-frontend",
   "version": "3.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "scripts": {
     "dev": "next dev",
     "dev:mobile": "next dev -H 0.0.0.0 -p 3001",
@@ -18,15 +21,26 @@
     "autoprefixer": "^10.4.19",
     "lightweight-charts": "4.2.3",
     "lucide-react": "^1.17.0",
-    "next": "^14.2.5",
-    "postcss": "^8.4.39",
+    "next": "15.5.21",
+    "postcss": "8.5.23",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tailwindcss": "^4.3.0",
     "typescript": "^5.5.3"
   },
   "devDependencies": {
-    "eslint": "^9.39.4",
+    "eslint": "9.39.4",
     "eslint-config-next": "^16.2.7"
+  },
+  "overrides": {
+    "postcss": "8.5.23",
+    "sharp": "0.35.0",
+    "js-yaml": "4.3.0",
+    "minimatch@^3.0.0": {
+      "brace-expansion": "1.1.18"
+    },
+    "minimatch@^10.0.0": {
+      "brace-expansion": "5.0.9"
+    }
   }
 }

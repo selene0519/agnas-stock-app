@@ -6920,6 +6920,47 @@ def api_predictions_table(
 
 # ── 4. virtual/ledger ─────────────────────────────────────────────────
 
+@app.get("/api/edge/alpha")
+def api_edge_alpha() -> dict:
+    """추천의 시장 대비 초과수익(알파). scripts/analyze_recommendation_alpha.py 산출물.
+
+    화면이 원시 수익률만 보여주면 사용자는 "-14%"를 앱 실패로 읽는다. 그런데
+    그 구간에 KOSPI가 -24% 빠졌다면 선택은 오히려 시장을 이긴 것이다.
+    **원시·시장몫·알파를 같이 내보내야** 같은 숫자가 정직하게 읽힌다.
+
+    통계적 한계(이벤트 군집, 표본 편향)도 그대로 실어 보낸다 — 수치만 떼어
+    인용되면 안 되기 때문이다.
+    """
+    path = data.REPORT_DIR / "recommendation_alpha.json"
+    if not path.exists():
+        return {"status": "DATA_PENDING",
+                "message": "알파 분석이 아직 생성되지 않았습니다."}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as e:
+        return {"status": "ERROR", "error": str(e)}
+    if str(payload.get("status")) != "OK":
+        return {"status": "DATA_PENDING",
+                "message": "분석 가능한 이벤트가 아직 없습니다.",
+                "detail": payload.get("status")}
+
+    clustering = payload.get("clustering") or {}
+    windows = payload.get("windows") or {}
+    # 화면이 "유의하다"를 그대로 읽지 않도록, 군집이면 usable=false가 이미
+    # 각 창에 박혀 있다. 여기서는 그걸 가공하지 않고 그대로 넘긴다.
+    return {
+        "status": "OK",
+        "generatedAt": payload.get("generatedAt"),
+        "events": payload.get("events"),
+        "avgBeta": payload.get("avgBeta"),
+        "eventDateRange": payload.get("eventDateRange"),
+        "windows": windows,
+        "clustering": clustering,
+        "caveats": payload.get("caveats") or [],
+        "method": payload.get("method"),
+    }
+
+
 @app.get("/api/virtual/ledger")
 def api_virtual_ledger(
     market: str = Query("kr"),

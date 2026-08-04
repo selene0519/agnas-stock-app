@@ -21,7 +21,7 @@ const initialNotifications: { msg: string; time: string; warn: boolean }[] = [];
 const APP_SHELL_TIMEOUT_MS = 2500;
 
 function PageLoading() {
-  return <div className="py-16 text-center text-sm text-slate-500" role="status">화면을 불러오는 중…</div>;
+  return <div className="py-16 text-center text-sm text-slate-400" role="status">화면을 불러오는 중…</div>;
 }
 
 const ReportPage = dynamicImport(() => import("../components/pages/ReportPage"), { loading: () => <PageLoading /> });
@@ -367,9 +367,9 @@ export default function App() {
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
-            <span className="hidden font-mono text-xs text-slate-500 md:block">{headerDate}</span>
-            <span className="hidden text-slate-700 md:block">·</span>
-            <span className="hidden text-xs text-slate-500 md:block">{mounted ? "실시간 동기화" : "방금 전"}</span>
+            <span className="hidden font-mono text-xs text-slate-400 md:block">{headerDate}</span>
+            <span className="hidden text-slate-400 md:block">·</span>
+            <span className="hidden text-xs text-slate-400 md:block">{mounted ? "실시간 동기화" : "방금 전"}</span>
 
             <button
               type="button"
@@ -424,12 +424,12 @@ export default function App() {
                     </div>
                     <div className="divide-y divide-slate-800/50">
                       {notifications.length === 0 ? (
-                        <div className="px-3 py-6 text-center text-xs text-slate-500">새 알림이 없습니다</div>
+                        <div className="px-3 py-6 text-center text-xs text-slate-400">새 알림이 없습니다</div>
                       ) : (
                         notifications.map((item, index) => (
                           <div key={`${item.msg}-${index}`} className={`px-3 py-2.5 text-xs ${item.warn ? "text-amber-300" : "text-slate-300"}`}>
                             <div className="font-medium">{item.msg}</div>
-                            <div className="mt-0.5 text-slate-500">{item.time}</div>
+                            <div className="mt-0.5 text-slate-400">{item.time}</div>
                           </div>
                         ))
                       )}

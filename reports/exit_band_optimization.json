@@ -1,0 +1,310 @@
+{
+  "generatedAt": "2026-07-29T17:32:06.619163+00:00",
+  "method": "추천 시점 날짜순 60/40 분할. train에서 평균손익 최대인 밴드를 고르고 test에서 확인. 종목선택·진입가·진입창은 고정, 손절/목표만 변경.",
+  "roundTripCostPct": {
+    "kr": 0.41,
+    "us": 0.3
+  },
+  "entryWindowBars": {
+    "short": 2,
+    "swing": 3,
+    "mid": 4
+  },
+  "gridStops": [
+    -2.0,
+    -3.0,
+    -4.0,
+    -5.0,
+    -6.0,
+    -8.0,
+    -10.0,
+    -12.0
+  ],
+  "gridTargets": [
+    3.0,
+    4.0,
+    5.0,
+    6.0,
+    8.0,
+    10.0,
+    12.0,
+    15.0,
+    20.0,
+    25.0
+  ],
+  "minTrades": 20,
+  "cells": [
+    {
+      "market": "kr",
+      "mode": "aggressive",
+      "horizon": "mid",
+      "status": "NO_VALID_GRID"
+    },
+    {
+      "market": "kr",
+      "mode": "aggressive",
+      "horizon": "short",
+      "status": "SAMPLE_TOO_SMALL",
+      "trainN": 18,
+      "testN": 13
+    },
+    {
+      "market": "kr",
+      "mode": "aggressive",
+      "horizon": "swing",
+      "status": "NO_VALID_GRID"
+    },
+    {
+      "market": "kr",
+      "mode": "balanced",
+      "horizon": "mid",
+      "status": "NO_VALID_GRID"
+    },
+    {
+      "market": "kr",
+      "mode": "balanced",
+      "horizon": "short",
+      "status": "SAMPLE_TOO_SMALL",
+      "trainN": 18,
+      "testN": 12
+    },
+    {
+      "market": "kr",
+      "mode": "balanced",
+      "horizon": "swing",
+      "status": "OK",
+      "trainN": 63,
+      "testN": 43,
+      "bestOnTrain": {
+        "stopPct": -12.0,
+        "targetPct": 8.0
+      },
+      "trainStats": {
+        "n": 37,
+        "meanPct": -1.599,
+        "winRatePct": 54.1,
+        "avgWinPct": 7.59,
+        "avgLossPct": -12.41,
+        "payoff": 0.61
+      },
+      "testStats": {
+        "n": 32,
+        "meanPct": -0.82,
+        "winRatePct": 56.2,
+        "avgWinPct": 7.59,
+        "avgLossPct": -11.63,
+        "payoff": 0.65
+      },
+      "noBandBaselineTest": {
+        "n": 32,
+        "meanPct": -14.952,
+        "winRatePct": 21.9,
+        "avgWinPct": 13.65,
+        "avgLossPct": -22.96,
+        "payoff": 0.59
+      },
+      "confirmedOutOfSample": false
+    },
+    {
+      "market": "kr",
+      "mode": "conservative",
+      "horizon": "mid",
+      "status": "NO_VALID_GRID"
+    },
+    {
+      "market": "kr",
+      "mode": "conservative",
+      "horizon": "short",
+      "status": "SAMPLE_TOO_SMALL",
+      "trainN": 18,
+      "testN": 12
+    },
+    {
+      "market": "kr",
+      "mode": "conservative",
+      "horizon": "swing",
+      "status": "OK",
+      "trainN": 26,
+      "testN": 18,
+      "bestOnTrain": {
+        "stopPct": -12.0,
+        "targetPct": 8.0
+      },
+      "trainStats": {
+        "n": 24,
+        "meanPct": 3.043,
+        "winRatePct": 75.0,
+        "avgWinPct": 7.59,
+        "avgLossPct": -10.6,
+        "payoff": 0.72
+      },
+      "testStats": {
+        "n": 15,
+        "meanPct": -2.504,
+        "winRatePct": 40.0,
+        "avgWinPct": 7.59,
+        "avgLossPct": -9.23,
+        "payoff": 0.82
+      },
+      "noBandBaselineTest": {
+        "n": 15,
+        "meanPct": -11.261,
+        "winRatePct": 33.3,
+        "avgWinPct": 9.52,
+        "avgLossPct": -21.65,
+        "payoff": 0.44
+      },
+      "confirmedOutOfSample": false
+    },
+    {
+      "market": "us",
+      "mode": "aggressive",
+      "horizon": "mid",
+      "status": "OK",
+      "trainN": 28,
+      "testN": 19,
+      "bestOnTrain": {
+        "stopPct": -4.0,
+        "targetPct": 4.0
+      },
+      "trainStats": {
+        "n": 20,
+        "meanPct": 0.1,
+        "winRatePct": 55.0,
+        "avgWinPct": 3.7,
+        "avgLossPct": -4.3,
+        "payoff": 0.86
+      },
+      "testStats": {
+        "n": 16,
+        "meanPct": 0.7,
+        "winRatePct": 62.5,
+        "avgWinPct": 3.7,
+        "avgLossPct": -4.3,
+        "payoff": 0.86
+      },
+      "noBandBaselineTest": {
+        "n": 16,
+        "meanPct": -11.678,
+        "winRatePct": 31.2,
+        "avgWinPct": 12.04,
+        "avgLossPct": -22.46,
+        "payoff": 0.54
+      },
+      "confirmedOutOfSample": true
+    },
+    {
+      "market": "us",
+      "mode": "aggressive",
+      "horizon": "short",
+      "status": "NO_VALID_GRID"
+    },
+    {
+      "market": "us",
+      "mode": "aggressive",
+      "horizon": "swing",
+      "status": "NO_VALID_GRID"
+    },
+    {
+      "market": "us",
+      "mode": "balanced",
+      "horizon": "mid",
+      "status": "OK",
+      "trainN": 22,
+      "testN": 15,
+      "bestOnTrain": {
+        "stopPct": -12.0,
+        "targetPct": 5.0
+      },
+      "trainStats": {
+        "n": 21,
+        "meanPct": 0.652,
+        "winRatePct": 76.2,
+        "avgWinPct": 4.7,
+        "avgLossPct": -12.3,
+        "payoff": 0.38
+      },
+      "testStats": {
+        "n": 11,
+        "meanPct": 3.155,
+        "winRatePct": 90.9,
+        "avgWinPct": 4.7,
+        "avgLossPct": -12.3,
+        "payoff": 0.38
+      },
+      "noBandBaselineTest": {
+        "n": 11,
+        "meanPct": -10.515,
+        "winRatePct": 36.4,
+        "avgWinPct": 13.6,
+        "avgLossPct": -24.3,
+        "payoff": 0.56
+      },
+      "confirmedOutOfSample": true
+    },
+    {
+      "market": "us",
+      "mode": "balanced",
+      "horizon": "short",
+      "status": "NO_VALID_GRID"
+    },
+    {
+      "market": "us",
+      "mode": "balanced",
+      "horizon": "swing",
+      "status": "OK",
+      "trainN": 76,
+      "testN": 51,
+      "bestOnTrain": {
+        "stopPct": -4.0,
+        "targetPct": 3.0
+      },
+      "trainStats": {
+        "n": 39,
+        "meanPct": -0.531,
+        "winRatePct": 53.8,
+        "avgWinPct": 2.7,
+        "avgLossPct": -4.3,
+        "payoff": 0.63
+      },
+      "testStats": {
+        "n": 35,
+        "meanPct": 0.216,
+        "winRatePct": 62.9,
+        "avgWinPct": 2.7,
+        "avgLossPct": -3.99,
+        "payoff": 0.68
+      },
+      "noBandBaselineTest": {
+        "n": 35,
+        "meanPct": -2.501,
+        "winRatePct": 42.9,
+        "avgWinPct": 8.88,
+        "avgLossPct": -11.04,
+        "payoff": 0.8
+      },
+      "confirmedOutOfSample": true
+    },
+    {
+      "market": "us",
+      "mode": "conservative",
+      "horizon": "mid",
+      "status": "NO_VALID_GRID"
+    },
+    {
+      "market": "us",
+      "mode": "conservative",
+      "horizon": "short",
+      "status": "NO_VALID_GRID"
+    },
+    {
+      "market": "us",
+      "mode": "conservative",
+      "horizon": "swing",
+      "status": "NO_VALID_GRID"
+    }
+  ],
+  "cellsEvaluated": 5,
+  "cellsConfirmedOutOfSample": 3,
+  "caveat": "표본 구간이 KOSPI -24%인 한 국면뿐이다. test가 확인해도 그건 '같은 하락 국면 안에서 유지됐다'는 뜻이지 상승장에서 통한다는 뜻이 아니다."
+}

@@ -6,6 +6,7 @@ import { mone, type Horizon, type Market, type Mode } from "@/lib/api";
 import { outcomeTone, toneClassName } from "@/lib/tone";
 import { displayName } from "@/lib/moneDisplay";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import AlphaPanel from "@/components/AlphaPanel";
 
 type ScopeMarket = Extract<Market, "kr" | "us" | "all">;
 type ScopeMode = Extract<Mode, "conservative" | "balanced" | "aggressive" | "all">;
@@ -231,7 +232,7 @@ function StrategyMatrix({ strategyRows }: { strategyRows: any[] }) {
                         )}
                       </div>
                     ) : (
-                      <span className="font-mono text-slate-600">—</span>
+                      <span className="font-mono text-slate-400">—</span>
                     )}
                   </td>
                 );
@@ -958,6 +959,10 @@ export default function VirtualJournalPage() {
 
   return (
     <div className="min-w-0 max-w-full space-y-4 overflow-x-hidden">
+      {/* 원시 수익률 표 위에 둔다 — 아래 숫자들을 어떻게 읽어야 하는지가
+          먼저 와야 "-14%"를 앱 실패로 오독하지 않는다. */}
+      <AlphaPanel />
+
       <section className="rounded-lg bg-slate-900/60 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)] sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
@@ -1109,7 +1114,7 @@ export default function VirtualJournalPage() {
                         {fmtRate(ratio)}
                       </div>
                       {failureBasis !== "all" && (
-                        <div className="font-mono text-[10px] text-slate-600">전체 대비 {fmtRate(item.ratioWithinAll)}</div>
+                        <div className="font-mono text-[10px] text-slate-400">전체 대비 {fmtRate(item.ratioWithinAll)}</div>
                       )}
                     </div>
                   </div>
@@ -2148,7 +2153,7 @@ export default function VirtualJournalPage() {
                   </span>
                   <span>{item.as_of_date}</span>
                   <span className="font-mono text-[10px] text-cyan-400">{SESSION_LABEL[String(item.journal_session || item.journalSession)] ?? String(item.journal_session || item.journalSession || "AFTER_CLOSE_TRADE")}</span>
-                  <span className={`font-mono text-[10px] ${item.source_type === "MANUAL_REVIEWED" ? "text-emerald-400" : "text-slate-600"}`}>
+                  <span className={`font-mono text-[10px] ${item.source_type === "MANUAL_REVIEWED" ? "text-emerald-400" : "text-slate-400"}`}>
                     {item.source_type === "MANUAL_REVIEWED" ? "검토완료" : item.source_type === "FORWARD_PAPER_TRADE" ? "자동" : item.source_type}
                   </span>
                 </div>
@@ -2224,7 +2229,7 @@ export default function VirtualJournalPage() {
                       </div>
                       <div className="mt-1 text-[11px] text-slate-400">{item.as_of_date}</div>
                       <div className="mt-1 font-mono text-[10px] text-cyan-400">{SESSION_LABEL[String(item.journal_session || item.journalSession)] ?? String(item.journal_session || item.journalSession || "AFTER_CLOSE_TRADE")}</div>
-                      <div className={`mt-1 font-mono text-[10px] ${item.source_type === "MANUAL_REVIEWED" ? "text-emerald-400" : "text-slate-600"}`}>
+                      <div className={`mt-1 font-mono text-[10px] ${item.source_type === "MANUAL_REVIEWED" ? "text-emerald-400" : "text-slate-400"}`}>
                         {item.source_type === "MANUAL_REVIEWED" ? "검토완료" : item.source_type === "FORWARD_PAPER_TRADE" ? "자동" : item.source_type}
                       </div>
                     </td>
@@ -2685,7 +2690,7 @@ export default function VirtualJournalPage() {
                         <div className={`font-mono text-xs font-bold ${(b.avgPnlPct ?? 0) >= 0 ? "text-emerald-300" : "text-red-300"}`}>
                           {b.avgPnlPct != null ? `${b.avgPnlPct >= 0 ? "+" : ""}${b.avgPnlPct.toFixed(2)}%` : "-"}
                         </div>
-                        <div className="text-[9px] text-slate-600">n={b.n}</div>
+                        <div className="text-[9px] text-slate-400">n={b.n}</div>
                       </div>
                     ))}
                   </div>
@@ -2766,7 +2771,7 @@ export default function VirtualJournalPage() {
               <div key={row.factor} className="flex items-center justify-between gap-3 rounded-md bg-slate-950/50 px-3 py-2 text-xs">
                 <div className="min-w-0">
                   <div className="truncate font-mono text-slate-300">{row.factor}</div>
-                  <div className="text-[10px] text-slate-600">{row.group}</div>
+                  <div className="text-[10px] text-slate-400">{row.group}</div>
                 </div>
                 <div className={`font-mono font-semibold ${row.coef >= 0 ? "text-emerald-300" : "text-red-300"}`}>
                   {row.coef >= 0 ? "+" : ""}{Number(row.coef).toFixed(3)}

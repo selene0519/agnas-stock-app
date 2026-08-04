@@ -273,7 +273,7 @@ export default function AdvancedPage({
                       <path d={mkPath("p50")} fill="none" stroke="#60a5fa" strokeWidth="1.2" strokeDasharray="2 1" />
                       <path d={mkPath("p5")} fill="none" stroke="#f87171" strokeWidth="0.8" />
                     </svg>
-                    <div className="mt-1 flex justify-between text-[9px] text-slate-600">
+                    <div className="mt-1 flex justify-between text-[9px] text-slate-400">
                       <span>0일</span><span>{mcResult.inputs?.days}일</span>
                     </div>
                   </div>

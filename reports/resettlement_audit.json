@@ -1,0 +1,25 @@
+{
+  "generatedAt": "2026-07-29T17:00:59.409629+00:00",
+  "applied": false,
+  "ledger": "reports/virtual_validation_results.csv",
+  "rule": "first_touch_v2",
+  "totalRows": 834,
+  "changedRows": 0,
+  "changeKinds": {
+    "judgment": 0,
+    "costOnly": 0
+  },
+  "skipped": {
+    "pending": 14,
+    "noFields": 3,
+    "noOhlcv": 0,
+    "unchanged": 595,
+    "executionFlip": 222
+  },
+  "beforeMeanPct": -3.8752,
+  "afterMeanPct": -3.8752,
+  "beforeWinRatePct": 22.02,
+  "afterWinRatePct": 22.02,
+  "scopeNote": "원장 B(virtual_trade_evaluations)는 대상이 아니다 — 그쪽 _find_exit는 처음부터 선착순이라 이 버그가 없다. 엣지 판정·게이트는 B를 쓰므로 그 수치는 이 재정산으로 바뀌지 않는다.",
+  "changes": []
+}

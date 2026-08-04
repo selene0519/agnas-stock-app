@@ -282,6 +282,27 @@ def run(max_stale_days: float = 3.0) -> dict:
         else:
             add(name, "OK", f"{age}d, asOf={dt_str}", critical, age)
 
+    # 0) 측정 안정성 — 값이 흔들리면 나머지 신선도 검사가 의미를 잃는다.
+    #    같은 예측에 답이 두 개면 "엣지가 얼마인가"에 답할 수 없다.
+    ms = _load_json("reports/measurement_stability.json")
+    if ms is None:
+        add("measurement_stability", "MISSING",
+            "no measurement_stability.json (scripts/check_measurement_stability.py)", False)
+    else:
+        idem = (ms.get("idempotency") or {})
+        cross = (ms.get("crossLedger") or {})
+        if not idem.get("ok"):
+            add("measurement_stability", "ERROR",
+                f"정산이 멱등하지 않다 — 판정 {idem.get('judgmentChanges')}행 재변경", True)
+        elif not cross.get("ok"):
+            add("measurement_stability", "WARN",
+                f"두 원장 불일치 — 공통 {cross.get('sharedTrades')}건 중 "
+                f"일치 {cross.get('agreeShare')} (기준 {cross.get('minAgreeShare')}), "
+                f"평균차 {cross.get('meanDiffPp')}%p. 원인은 비용·창 설계 차이(사람 결정 필요)", False)
+        else:
+            add("measurement_stability", "OK",
+                f"멱등 + 두 원장 일치 {cross.get('agreeShare')}", True)
+
     # 1) KR OHLCV 최신 봉 날짜
     check_date("kr_ohlcv", _newest_csv_date("data/market/ohlcv/kr_*_daily.csv"), max_stale_days + 1, True)
     # 2) KR 추천 생성

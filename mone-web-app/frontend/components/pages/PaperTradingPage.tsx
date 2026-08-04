@@ -561,7 +561,7 @@ export default function PaperTradingPage({
                 onClick={() => setTradeAction(a)}
                 className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-bold transition-colors ${tradeAction === a
                   ? a === "buy"
-                    ? "bg-emerald-600 text-white"
+                    ? "bg-emerald-600 text-slate-950"
                     : "bg-red-600 text-white"
                   : "bg-slate-800/60 text-slate-400 hover:text-white"
                 }`}
@@ -602,7 +602,7 @@ export default function PaperTradingPage({
             />
             <button
               onClick={() => { setShowSeedInput(false); setResetConfirm(false); setSeedInput(""); }}
-              className="text-[11px] text-slate-600 hover:text-slate-400"
+              className="text-[11px] text-slate-400 hover:text-slate-200"
             >
               취소
             </button>

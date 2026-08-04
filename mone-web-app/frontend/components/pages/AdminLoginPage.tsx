@@ -81,7 +81,7 @@ export default function AdminLoginPage({ onSuccess, onUserLogin }: AdminLoginPag
 
         <div className="my-6 flex items-center gap-3">
           <span className="h-px flex-1 bg-slate-800" />
-          <span className="text-[11px] font-semibold uppercase tracking-widest text-slate-600">관리자 로그인</span>
+          <span className="text-[11px] font-semibold uppercase tracking-widest text-slate-400">관리자 로그인</span>
           <span className="h-px flex-1 bg-slate-800" />
         </div>
 
@@ -101,7 +101,7 @@ export default function AdminLoginPage({ onSuccess, onUserLogin }: AdminLoginPag
               type="text"
               value={adminId}
               onChange={(event) => setAdminId(event.target.value)}
-              className="min-h-11 min-w-0 flex-1 bg-transparent text-sm text-slate-100 outline-none placeholder:text-slate-700"
+              className="min-h-11 min-w-0 flex-1 bg-transparent text-sm text-slate-100 outline-none placeholder:text-slate-400"
               placeholder="관리자 ID"
               autoComplete="username"
             />
@@ -117,7 +117,7 @@ export default function AdminLoginPage({ onSuccess, onUserLogin }: AdminLoginPag
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="min-h-11 min-w-0 flex-1 bg-transparent text-sm text-slate-100 outline-none placeholder:text-slate-700"
+              className="min-h-11 min-w-0 flex-1 bg-transparent text-sm text-slate-100 outline-none placeholder:text-slate-400"
               placeholder="관리자 비밀번호"
               autoComplete="current-password"
             />

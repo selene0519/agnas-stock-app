@@ -76,7 +76,7 @@ function Field({
       type={type}
       onChange={(event) => onChange(event.target.value)}
       placeholder={placeholder}
-      className={`w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-blue-500 ${className}`}
+      className={`w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-400 focus:border-blue-500 ${className}`}
     />
   );
 }
@@ -283,7 +283,7 @@ export default function HoldingsWatchlistManager() {
             <button onClick={() => setHoldings((rows) => [...rows, emptyHolding("us")])} className="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-3 py-2 text-sm text-slate-200 hover:bg-slate-800">
               <Plus size={16} /> 미장 보유 추가
             </button>
-            <button onClick={saveHoldings} disabled={saving || holdingErrors.length > 0} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50">
+            <button onClick={saveHoldings} disabled={saving || holdingErrors.length > 0} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-emerald-500 disabled:opacity-50">
               <Save size={16} /> 보유종목 저장
             </button>
           </div>
@@ -327,7 +327,7 @@ export default function HoldingsWatchlistManager() {
             <button onClick={() => setWatchlist((rows) => [...rows, emptyWatch("us")])} className="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-3 py-2 text-sm text-slate-200 hover:bg-slate-800">
               <Plus size={16} /> 미장 관심 추가
             </button>
-            <button onClick={saveWatchlist} disabled={saving || watchErrors.length > 0} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50">
+            <button onClick={saveWatchlist} disabled={saving || watchErrors.length > 0} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-emerald-500 disabled:opacity-50">
               <Save size={16} /> 관심종목 저장
             </button>
           </div>

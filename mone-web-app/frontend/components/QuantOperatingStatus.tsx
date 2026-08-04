@@ -94,18 +94,18 @@ export function QuantOperatingStatus({ market }: { market: Market }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <ShieldCheck size={16} className="text-teal-300" />
+            <ShieldCheck size={16} className="text-teal-300" aria-hidden="true" />
             <h2 className="text-sm font-semibold text-slate-100">AI 퀀트 추천 판정</h2>
             {row && (
               <span className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-semibold ${state.className}`}>
-                <StateIcon size={12} /> {state.label}
+                <StateIcon size={12} aria-hidden="true" /> {state.label}
               </span>
             )}
           </div>
           <p className="mt-1 text-xs leading-5 text-slate-400">실현 성과, 독립 검증, 추천 일지, 보유 위험예산을 통과한 신호만 사용자 검토 대상으로 표시합니다.</p>
         </div>
-        <button type="button" onClick={load} disabled={loading} aria-label="운용 판정 새로고침" className="shrink-0 min-h-11 min-w-11 inline-flex items-center justify-center rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100 disabled:opacity-50">
-          <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+        <button type="button" onClick={load} disabled={loading} aria-label="운용 판정 새로고침" className="shrink-0 min-h-11 min-w-11 inline-flex items-center justify-center rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-400 disabled:opacity-50">
+          <RefreshCw size={14} className={loading ? "animate-spin" : ""} aria-hidden="true" />
         </button>
       </div>
 
@@ -120,7 +120,7 @@ export function QuantOperatingStatus({ market }: { market: Market }) {
             const status = objective[item.key]?.status ?? "WAIT";
             return (
               <div key={item.key} className="rounded-lg border border-slate-800 bg-slate-950/45 px-3 py-2">
-                <div className="flex items-center justify-between gap-2 text-[10px] text-slate-500">
+                <div className="flex items-center justify-between gap-2 text-[10px] text-slate-400">
                   <span>{item.label}</span>
                   <span className={`font-mono font-bold ${OBJECTIVE_STYLE[status] ?? OBJECTIVE_STYLE.WAIT}`}>{status}</span>
                 </div>
@@ -142,7 +142,7 @@ export function QuantOperatingStatus({ market }: { market: Market }) {
               { label: "손실 예산", value: `${Number(risk.totalLossBudgetPct ?? 0).toFixed(1)}% / ${risk.maxPortfolioLossPct ?? "-"}%` },
             ].map((item) => (
               <div key={item.label} className="rounded-md bg-slate-900/70 px-3 py-2">
-                <div className="text-[10px] text-slate-500">{item.label}</div>
+                <div className="text-[10px] text-slate-400">{item.label}</div>
                 <div className="mt-1 truncate font-mono text-xs font-semibold text-slate-200">{item.value}</div>
               </div>
             ))}
@@ -163,7 +163,7 @@ export function QuantOperatingStatus({ market }: { market: Market }) {
             <div className="mt-4 space-y-2" aria-label="AI 퀀트 추천 계약">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="text-xs font-semibold text-slate-200">검증된 추천 계약</h3>
-                <span className="font-mono text-[10px] text-slate-500">
+                <span className="font-mono text-[10px] text-slate-400">
                   TAKE {advisory?.summary?.take ?? 0} · WAIT {advisory?.summary?.wait ?? 0} · REJECT {advisory?.summary?.reject ?? 0}
                 </span>
               </div>
@@ -172,21 +172,21 @@ export function QuantOperatingStatus({ market }: { market: Market }) {
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="min-w-0">
                       <span className="text-sm font-semibold text-slate-100">{item.name || item.symbol}</span>
-                      <span className="ml-2 font-mono text-[10px] text-slate-500">{item.symbol}</span>
+                      <span className="ml-2 font-mono text-[10px] text-slate-400">{item.symbol}</span>
                     </div>
                     <span className={`rounded-md border px-2 py-0.5 font-mono text-[10px] font-bold ${DECISION_STYLE[item.decision] ?? DECISION_STYLE.REJECT}`}>
                       {item.decision}
                     </span>
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-[11px] sm:grid-cols-4">
-                    <span><span className="block text-slate-500">진입</span><span className="font-mono text-slate-200">{price(item.entryPrice, market)}</span></span>
-                    <span><span className="block text-slate-500">손절</span><span className="font-mono text-rose-300">{price(item.stopPrice, market)}</span></span>
-                    <span><span className="block text-slate-500">목표</span><span className="font-mono text-emerald-300">{price(item.targetPrice, market)}</span></span>
-                    <span><span className="block text-slate-500">최대 권고비중</span><span className="font-mono text-slate-200">{Number(item.maxRecommendedWeightPct ?? 0).toFixed(2)}%</span></span>
+                    <span><span className="block text-slate-400">진입</span><span className="font-mono text-slate-200">{price(item.entryPrice, market)}</span></span>
+                    <span><span className="block text-slate-400">손절</span><span className="font-mono text-rose-300">{price(item.stopPrice, market)}</span></span>
+                    <span><span className="block text-slate-400">목표</span><span className="font-mono text-emerald-300">{price(item.targetPrice, market)}</span></span>
+                    <span><span className="block text-slate-400">최대 권고비중</span><span className="font-mono text-slate-200">{Number(item.maxRecommendedWeightPct ?? 0).toFixed(2)}%</span></span>
                   </div>
                   <p className="mt-3 text-[11px] leading-5 text-slate-300">근거 · {item.rationale?.[0] || "검증 근거 부족"}</p>
                   <p className="mt-1 text-[11px] leading-5 text-amber-200/80">반대근거 · {item.counterEvidence?.[0] || "추가 검토 필요"}</p>
-                  <div className="mt-2 flex flex-wrap justify-between gap-2 text-[10px] text-slate-500">
+                  <div className="mt-2 flex flex-wrap justify-between gap-2 text-[10px] text-slate-400">
                     <span>불확실성 {item.uncertainty?.level || "HIGH"}</span>
                     <span>{item.validUntil ? `유효 ${new Date(item.validUntil).toLocaleString("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}까지` : "유효기간 없음"}</span>
                   </div>

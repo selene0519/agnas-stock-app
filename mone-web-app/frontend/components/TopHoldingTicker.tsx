@@ -309,7 +309,7 @@ export default function TopHoldingTicker() {
         ) : loading && displayItems.length === 0 ? (
           <div className="text-xs text-slate-400">티커 불러오는 중...</div>
         ) : displayItems.length === 0 ? (
-          <div className="text-xs text-slate-600">티커 없음</div>
+          <div className="text-xs text-slate-400">티커 없음</div>
         ) : (
           <div className="flex w-max animate-[moneTicker_45s_linear_infinite] items-center gap-5 whitespace-nowrap sm:gap-7">
             {displayItems.map((item, index) => {

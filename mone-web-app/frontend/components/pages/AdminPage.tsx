@@ -51,7 +51,7 @@ function ActionBtn({ label, onClick, loading, variant = "default" }: {
     default: "border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800",
     danger:  "border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/20",
     blue:    "border-blue-500/30 bg-blue-600 text-white hover:bg-blue-500",
-    green:   "border-emerald-500/30 bg-emerald-600 text-white hover:bg-emerald-500",
+    green:   "border-emerald-500/30 bg-emerald-600 text-slate-950 hover:bg-emerald-500",
   }[variant];
   return (
     <button onClick={onClick} disabled={loading} className={`rounded-xl border px-4 py-2 text-sm font-medium disabled:opacity-50 ${cls}`}>
@@ -509,7 +509,7 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
       {message && (
         <div className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-300">
           {message}
-          <button onClick={() => setMessage("")} className="ml-3 text-slate-600 hover:text-slate-400">✕</button>
+          <button onClick={() => setMessage("")} className="ml-3 text-slate-400 hover:text-slate-200">✕</button>
         </div>
       )}
 
@@ -584,7 +584,7 @@ export default function AdminPage({ authToken, onLogout }: AdminPageProps) {
             )}
           </div>
         )}
-        <div className="mt-2 text-xs text-slate-600">백그라운드 자동 동기화: 30분 간격 · GIT_AUTO_SYNC_INTERVAL_MIN 환경변수로 조정</div>
+        <div className="mt-2 text-xs text-slate-400">백그라운드 자동 동기화: 30분 간격 · GIT_AUTO_SYNC_INTERVAL_MIN 환경변수로 조정</div>
       </div>
 
       {/* GitHub 저장소 상태 */}

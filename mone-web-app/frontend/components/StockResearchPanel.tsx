@@ -287,7 +287,7 @@ export default function StockResearchPanel({
                   {displayData.companyProfile.businessSummary}
                 </p>
               ) : (
-                <p className="mb-2 text-[11px] text-slate-500">사업 정보가 아직 수집되지 않았습니다.</p>
+                <p className="mb-2 text-[11px] text-slate-400">사업 정보가 아직 수집되지 않았습니다.</p>
               )}
 
               {hasAnyValue(displayData.valuation as Record<string, unknown> | undefined) ? (
@@ -304,12 +304,12 @@ export default function StockResearchPanel({
                   <ValueRow label="매출성장" value={metric(displayData.valuation?.revenueGrowth, "%", 1)} />
                 </div>
               ) : (
-                <p className="text-[11px] text-slate-500">재무 데이터가 아직 수집되지 않았습니다.</p>
+                <p className="text-[11px] text-slate-400">재무 데이터가 아직 수집되지 않았습니다.</p>
               )}
 
               {/* 어느 시점 수치인지 밝힌다 — 회계연도와 시장지표 수집 시점이 다르다. */}
               {displayData.valuation?.sourceYears && (
-                <p className="mt-2 text-[10px] text-slate-500">
+                <p className="mt-2 text-[10px] text-slate-400">
                   재무 기준: {displayData.valuation.sourceYears} 수집분
                 </p>
               )}

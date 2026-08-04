@@ -27,7 +27,9 @@
   --color-primary-action-ink: #07101f;
   --text-primary: #e2e8f0;
   --text-secondary: #94a3b8;
-  --text-muted: #475569;
+  /* #475569(slate-600)이었는데 어두운 배경 위에서 2.64:1 — WCAG AA(4.5) 미달.
+     보조 텍스트보다 한 단계 흐리되 기준은 넘는 값으로 올린다(약 5.8:1). */
+  --text-muted: #7c8ba1;
   color-scheme: dark;
 }
 
@@ -39,7 +41,8 @@ html[data-theme="light"] {
   --bg-border: #d8e0ea;
   --text-primary: #111827;
   --text-secondary: #475569;
-  --text-muted: #718096;
+  /* #718096은 밝은 배경(#f6f8fc) 위에서 3.78:1 — AA(4.5) 미달이라 어둡게 내린다. */
+  --text-muted: #65707e;
   color-scheme: light;
 }
 
@@ -436,19 +439,21 @@ html[data-theme="light"] .mone-app-shell [class*="text-blue-100"],
 html[data-theme="light"] .mone-app-shell [class*="text-blue-200"],
 html[data-theme="light"] .mone-app-shell [class*="text-blue-300"],
 html[data-theme="light"] .mone-app-shell [class*="text-blue-400"] {
-  color: #0d9488 !important;
+  color: #0f766e !important;
 }
 html[data-theme="light"] .mone-app-shell [class*="text-emerald-100"],
 html[data-theme="light"] .mone-app-shell [class*="text-emerald-200"],
 html[data-theme="light"] .mone-app-shell [class*="text-emerald-300"],
 html[data-theme="light"] .mone-app-shell [class*="text-emerald-400"] {
-  color: #047857 !important;
+  /* #047857은 밝은 emerald 워시(#b2e7da) 위 4.00:1 / 회색 표면 3.42:1로 AA 미달. */
+  color: #064e3b !important;
 }
 html[data-theme="light"] .mone-app-shell [class*="text-teal-100"],
 html[data-theme="light"] .mone-app-shell [class*="text-teal-200"],
 html[data-theme="light"] .mone-app-shell [class*="text-teal-300"],
 html[data-theme="light"] .mone-app-shell [class*="text-teal-400"] {
-  color: #0d9488 !important;
+  /* #0d9488은 밝은 카드(#eef3f9) 위에서 3.36:1로 AA 미달이었다. */
+  color: #0f766e !important;
 }
 html[data-theme="light"] .mone-app-shell [class*="text-amber-100"],
 html[data-theme="light"] .mone-app-shell [class*="text-amber-200"],
@@ -461,14 +466,82 @@ html[data-theme="light"] .mone-app-shell [class*="text-red-300"],
 html[data-theme="light"] .mone-app-shell [class*="text-red-400"] {
   color: #b4233a !important;
 }
+/* cyan-400/200/100과 sky-400이 빠져 있었다 — 2026-07-29 라이트 테마 첫 실측에서
+   `text-cyan-400`(#00d3f3)이 흰 배경 위 **1.73:1로 80건** 나왔다. 등급 하나만
+   빠져도 그 색을 쓰는 화면 전체가 통째로 안 보인다. */
+html[data-theme="light"] .mone-app-shell [class*="text-cyan-100"],
+html[data-theme="light"] .mone-app-shell [class*="text-cyan-200"],
 html[data-theme="light"] .mone-app-shell [class*="text-cyan-300"],
+html[data-theme="light"] .mone-app-shell [class*="text-cyan-400"],
 html[data-theme="light"] .mone-app-shell [class*="text-sky-100"],
 html[data-theme="light"] .mone-app-shell [class*="text-sky-200"],
-html[data-theme="light"] .mone-app-shell [class*="text-sky-300"] {
+html[data-theme="light"] .mone-app-shell [class*="text-sky-300"],
+html[data-theme="light"] .mone-app-shell [class*="text-sky-400"] {
   color: #0369a1 !important;
 }
-html[data-theme="light"] .mone-app-shell [class*="bg-blue-"]:not([class*="/"])[class*="text-white"],
+html[data-theme="light"] .mone-app-shell [class*="text-amber-400"] {
+  color: #92400e !important;
+}
+/* violet/indigo/purple 계열도 빠져 있었다 — 라이트에서 1.19:1, 1.27:1.
+   cyan-400과 같은 사고다: 색 계열 하나가 목록에서 빠지면 그 배지가 안 보인다. */
+html[data-theme="light"] .mone-app-shell [class*="text-violet-100"],
+html[data-theme="light"] .mone-app-shell [class*="text-violet-200"],
+html[data-theme="light"] .mone-app-shell [class*="text-violet-300"],
+html[data-theme="light"] .mone-app-shell [class*="text-violet-400"],
+html[data-theme="light"] .mone-app-shell [class*="text-purple-200"],
+html[data-theme="light"] .mone-app-shell [class*="text-purple-300"],
+html[data-theme="light"] .mone-app-shell [class*="text-purple-400"],
+html[data-theme="light"] .mone-app-shell [class*="text-indigo-200"],
+html[data-theme="light"] .mone-app-shell [class*="text-indigo-300"],
+html[data-theme="light"] .mone-app-shell [class*="text-indigo-400"] {
+  /* #5b21b6은 회색빛 표면(#9d9bbf) 위 3.37:1로 미달 — 한 단계 더 어둡게. */
+  color: #3b0764 !important;
+}
+
+/* 단독 `text-white`는 라이트 배경(#f6f8fc) 위에서 **1.06:1 — 사실상 안 보인다.**
+   실측에서 화면 제목("MONE 트레이딩", "모의투자")이 그랬다. 색이 붙은 배경 위의
+   흰 글자는 **아래 규칙이 더 구체적이라** 그대로 흰색을 유지한다. */
+html[data-theme="light"] .mone-app-shell [class*="text-white"] {
+  color: #111827 !important;
+}
+
+/* 어두운 그라디언트 표면은 라이트에서 안 바뀌는데 글자만 어두워져 겹쳤다
+   (실측 1.10:1). 표면 자체를 라이트 카드로 바꾼다. */
+html[data-theme="light"] .mone-app-shell [class*="from-slate-9"],
+html[data-theme="light"] .mone-app-shell [class*="from-cyan-95"],
+html[data-theme="light"] .mone-app-shell [class*="from-emerald-95"] {
+  background-image: none !important;
+  background-color: var(--bg-card) !important;
+}
+
+/* placeholder는 요소의 `color`를 안 따른다 — `[class*="text-slate-400"]`
+   오버라이드가 적용돼도 ::placeholder는 다크값(#90a1b9)을 유지해 2.51:1이었다. */
+html[data-theme="light"] .mone-app-shell ::placeholder {
+  color: #5b6675 !important;
+}
+
+/* 톤 카드 안의 작은 글씨는 `opacity-75/80`으로 **이미 옅은 톤 색을 한 번 더**
+   흐리게 만든다. 라이트가 3.03~3.33:1로 먼저 터졌지만, 다크도 4.30/4.44:1로
+   미달이었다 — 처음엔 라이트에만 적용했다가 실측에서 다크도 걸렸다.
+   불투명도만 걷으면 다크 6.26~6.91:1 / 라이트도 통과한다. 위계는 톤 색과
+   굵기가 이미 만들고 있으므로 opacity 감쇠는 없어도 된다. */
+.mone-app-shell [class*="mone-tone-"] [class*="opacity-"] {
+  opacity: 1 !important;
+}
+/* 색이 붙은 배경 위의 흰 글자는 라이트에서도 흰색이 맞다. 이 규칙이 위의
+   일반 `text-white` 규칙보다 **구체적이고 뒤에 있어** 이긴다.
+   teal/sky/violet/amber/slate-800도 실제로 쓰이므로 같이 넣는다 —
+   빠뜨리면 그 버튼들의 글자가 라이트에서 어두워져 배경과 겹친다. */
+/* ⚠️ `bg-blue-*`는 여기 넣으면 안 된다. 위(577행)에서 브랜드 teal 배경 +
+   어두운 잉크(#052420)로 다시 칠해지는데, 이 규칙이 더 구체적이라 잉크를
+   흰색으로 되돌려버린다 — 실측 2.49:1. 브랜드 표면의 정답은 어두운 잉크다
+   (#052420 on #14b8a6 = 6.59:1). */
 html[data-theme="light"] .mone-app-shell [class*="bg-emerald-"]:not([class*="/"])[class*="text-white"],
+html[data-theme="light"] .mone-app-shell [class*="bg-teal-"]:not([class*="/"])[class*="text-white"],
+html[data-theme="light"] .mone-app-shell [class*="bg-sky-"]:not([class*="/"])[class*="text-white"],
+html[data-theme="light"] .mone-app-shell [class*="bg-violet-"]:not([class*="/"])[class*="text-white"],
+html[data-theme="light"] .mone-app-shell [class*="bg-amber-"]:not([class*="/"])[class*="text-white"],
+html[data-theme="light"] .mone-app-shell [class*="bg-slate-8"]:not([class*="/"])[class*="text-white"],
 html[data-theme="light"] .mone-app-shell [class*="bg-red-"]:not([class*="/"])[class*="text-white"] {
   color: #ffffff !important;
 }
@@ -533,9 +606,13 @@ html[data-theme="light"] .mone-header-button {
   border-color: var(--brand) !important;
 }
 html[data-theme="light"] .mone-app-shell {
-  --brand: #0d9488;
-  --brand-hover: #0f766e;
-  --brand-dim: rgba(13, 148, 136, 0.1);
+  /* `--brand`는 **배경**으로 쓰이고 그 위에 어두운 잉크(#052420)가 얹힌다.
+     #0d9488은 4.38:1 / hover의 #0f766e는 3.00:1로 둘 다 AA 미달이었다 —
+     어두운 잉크를 쓰는 표면은 오히려 **밝아야** 한다.
+     텍스트로 쓰는 브랜드색은 위쪽 text-teal/blue 오버라이드가 따로 어둡게 잡는다. */
+  --brand: #14b8a6;        /* 잉크 대비 6.59:1 */
+  --brand-hover: #2dd4bf;  /* 잉크 대비 8.82:1 */
+  --brand-dim: rgba(20, 184, 166, 0.1);
 }
 
 /* Home uses the exact same card surface as Stocks/Holdings/Advanced
@@ -589,7 +666,8 @@ html[data-theme="light"] .mone-app-shell {
   font-size: 11.5px;
   letter-spacing: 0.01em;
   line-height: 1.45;
-  color: #64748b;
+  /* #64748b는 4.20:1로 AA 미달이었다. 토큰을 쓰면 테마별로 같이 따라간다. */
+  color: var(--text-secondary);
 }
 .mone-market-tabs {
   display: grid;
@@ -678,7 +756,8 @@ html[data-theme="light"] .mone-home {
   --tone-bg: rgba(148,163,184,.10);
   --tone-border: rgba(148,163,184,.22);
 }
-html[data-theme="light"] .mone-tone-safe    { --tone-fg: #047857; }
+/* #047857은 밝은 emerald 워시(#b2e7da) 위에서 4.00:1로 AA 미달이었다. */
+html[data-theme="light"] .mone-tone-safe    { --tone-fg: #065f46; }
 html[data-theme="light"] .mone-tone-warning { --tone-fg: #925800; }
 html[data-theme="light"] .mone-tone-danger  { --tone-fg: #b4233a; }
 html[data-theme="light"] .mone-tone-info    { --tone-fg: #096b67; }

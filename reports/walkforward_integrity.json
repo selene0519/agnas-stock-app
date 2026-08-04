@@ -1,6 +1,6 @@
 {
   "status": "WARN",
-  "generatedAt": "2026-07-30T10:27:44.399923+00:00",
+  "generatedAt": "2026-08-04T05:33:47.963680+00:00",
   "promotionGrade": false,
   "policy": {
     "futureWindowsForbidden": true,
@@ -11,39 +11,42 @@
   "markets": {
     "kr": {
       "market": "kr",
-      "asOf": "2026-07-30",
+      "asOf": "2026-08-04",
       "status": "WARN",
       "promotionGrade": false,
       "blockingReasons": [
+        "RERUN_REQUIRED_FOR_OUTCOME_EMBARGO_PROOF",
         "SURVIVORSHIP_BIAS_RESEARCH_ONLY"
       ],
       "csv": {
         "status": "OK",
-        "totalRows": 1080,
+        "totalRows": 1062,
         "futureWindowCount": 0,
         "invalidWindowCount": 0
       },
       "comboCount": 9,
-      "outcomeEmbargoProven": true,
+      "outcomeEmbargoProven": false,
       "survivorshipBias": true,
       "pointInTimeUniverse": false
     },
     "us": {
       "market": "us",
-      "asOf": "2026-07-30",
+      "asOf": "2026-08-04",
       "status": "WARN",
       "promotionGrade": false,
       "blockingReasons": [
+        "CSV_TEMPORAL_INTEGRITY_FAILED",
+        "RERUN_REQUIRED_FOR_OUTCOME_EMBARGO_PROOF",
         "SURVIVORSHIP_BIAS_RESEARCH_ONLY"
       ],
       "csv": {
-        "status": "OK",
-        "totalRows": 1170,
-        "futureWindowCount": 0,
+        "status": "INVALID_TEMPORAL_DATA",
+        "totalRows": 1206,
+        "futureWindowCount": 18,
         "invalidWindowCount": 0
       },
       "comboCount": 9,
-      "outcomeEmbargoProven": true,
+      "outcomeEmbargoProven": false,
       "survivorshipBias": true,
       "pointInTimeUniverse": false
     }

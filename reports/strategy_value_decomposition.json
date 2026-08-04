@@ -1,0 +1,42 @@
+{
+  "generatedAt": "2026-07-29T17:20:50.509016+00:00",
+  "matchedTrades": 663,
+  "holdBars": {
+    "short": 5,
+    "swing": 10,
+    "mid": 21
+  },
+  "variants": {
+    "A_actual_strategy": {
+      "n": 663,
+      "meanPct": -3.8752,
+      "medianPct": -5.3788,
+      "winRatePct": 22.02
+    },
+    "B_no_bands_hold_to_horizon": {
+      "n": 663,
+      "meanPct": -5.9874,
+      "medianPct": -3.9536,
+      "winRatePct": 33.94
+    },
+    "C_index_same_window": {
+      "n": 663,
+      "meanPct": -6.2522,
+      "medianPct": -1.6948,
+      "winRatePct": 36.95
+    },
+    "D_ignore_entry_touch": {
+      "n": 663,
+      "meanPct": -7.0615,
+      "medianPct": -5.872,
+      "winRatePct": 30.77
+    }
+  },
+  "readingGuide": {
+    "B>A": "청산 기계가 가치를 파괴한다(휩소). 밴드 문제.",
+    "A~B~C": "선택에 스킬이 없다 — 시장을 따라간 것.",
+    "A,B<C": "선택이 시장보다 못하다. 종목 선정 문제.",
+    "D>A": "진입가 터치 조건이 좋은 거래를 걸러낸다."
+  },
+  "caveat": "표본 구간이 KOSPI -24%인 한 국면뿐이다. 여기서 나온 결론은 그 국면에 한정되며 상승장에서 뒤집힐 수 있다."
+}

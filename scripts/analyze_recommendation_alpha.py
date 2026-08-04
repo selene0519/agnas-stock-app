@@ -285,7 +285,11 @@ def _compute_v1_legacy(windows: tuple[int, ...], since: str | None) -> dict:
         if est_lo < 0 or (est_hi - est_lo) < MIN_EST_OBS:
             skipped["shortEstimation"] += 1
             continue
-        if ev + max(windows) >= len(sret):
+        # **가장 짧은 창만 만족하면 채택한다.** 예전엔 `max(windows)`를 요구해서
+        # D+20치 미래 봉이 없는 최근 시그널이 **통째로** 버려졌고, 그 결과 남은
+        # 표본이 과거 며칠에 몰려 군집이 됐다(실측: 150건 전부 2026-06의 6일).
+        # D+1·D+5는 훨씬 최근까지 계산 가능한데 D+20 요건에 끌려 같이 죽은 것이다.
+        if ev + min(windows) >= len(sret):
             skipped["shortEventWindow"] += 1
             continue
 
@@ -305,28 +309,26 @@ def _compute_v1_legacy(windows: tuple[int, ...], since: str | None) -> dict:
         alpha, beta, r2 = fit_market_model(s_arr, m_arr)
 
         # 이벤트창 초과수익
+        # 창마다 **독립적으로** 계산한다. 봉이 모자란 창만 비우고 나머지는 살린다.
         cars: dict[str, float] = {}
         raws: dict[str, float] = {}
-        ok = True
         for w in windows:
+            if ev + w >= len(sret):
+                skipped[f"shortWindow_D+{w}"] = skipped.get(f"shortWindow_D+{w}", 0) + 1
+                continue
             ar_sum = 0.0
             raw_sum = 0.0
             for k in range(0, w + 1):
                 j = ev + k
-                if j >= len(sret):
-                    ok = False
-                    break
                 d = sdates[j + 1]
                 mr = _bench_at(d)
                 if mr is None:
                     continue
                 ar_sum += float(sret[j]) - (alpha + beta * mr)
                 raw_sum += float(sret[j])
-            if not ok:
-                break
             cars[f"car{w}"] = ar_sum * 100.0
             raws[f"raw{w}"] = raw_sum * 100.0
-        if not ok:
+        if not cars:
             skipped["shortEventWindow"] += 1
             continue
 
@@ -390,12 +392,29 @@ def _compute_v1_legacy(windows: tuple[int, ...], since: str | None) -> dict:
     }
 
     for w in windows:
-        car = np.array([e[f"car{w}"] for e in events])
-        raw = np.array([e[f"raw{w}"] for e in events])
+        rows = [e for e in events if f"car{w}" in e]
+        if not rows:
+            continue
+        car = np.array([e[f"car{w}"] for e in rows])
+        raw = np.array([e[f"raw{w}"] for e in rows])
+        # **군집은 창마다 다르다.** 짧은 창일수록 최근 시그널까지 들어와
+        # 여러 날에 퍼지고, 긴 창은 과거 며칠에 몰린다. 전체 기준 하나로
+        # 판정하면 짧은 창의 결론까지 같이 못 쓰게 된다.
+        wdates = sorted(e["date"] for e in rows)
+        wdistinct = len(set(wdates))
+        wclustered = wdistinct < 10 or (len(rows) / max(wdistinct, 1)) > 10
+        wmonths: dict[str, int] = {}
+        for d in wdates:
+            wmonths[d[:7]] = wmonths.get(d[:7], 0) + 1
         t, p = _t_test(car)
         lo, hi = _bootstrap_ci(car)
         result["windows"][f"D+{w}"] = {
             "events": len(car),
+            "dateRange": {"min": wdates[0], "max": wdates[-1]},
+            "distinctEventDates": wdistinct,
+            "eventsPerDate": round(len(rows) / max(wdistinct, 1), 1),
+            "isClustered": wclustered,
+            "eventsByMonth": wmonths,
             "meanCarPct": round(float(car.mean()), 4),
             "meanRawReturnPct": round(float(raw.mean()), 4),
             # 원시수익 − 알파 = 시장이 끌고 간 몫. 이 값이 크면 "장 탓"이 크다.
@@ -407,8 +426,9 @@ def _compute_v1_legacy(windows: tuple[int, ...], since: str | None) -> dict:
             "bootstrapCi95": [round(lo, 4), round(hi, 4)],
             "sampleWarning": (None if len(car) >= MIN_TRUSTWORTHY_N
                               else f"표본 {len(car)}건 — {MIN_TRUSTWORTHY_N}건 미만이라 결론 금지"),
-            # 군집이면 significant를 그대로 읽으면 안 된다.
-            "significanceUsable": bool(p < 0.05 and not clustered),
+            # 군집이면 significant를 그대로 읽으면 안 된다. **창별 군집**으로 판정한다.
+            "significanceUsable": bool(p < 0.05 and not wclustered
+                                       and len(car) >= MIN_TRUSTWORTHY_N),
         }
     return result
 
@@ -682,13 +702,26 @@ def main() -> int:
               f"{data['events']}건이 몰려 있다 ({c['eventsPerDate']}건/일).")
         print("      독립성 가정이 깨져 p값을 근거로 쓸 수 없다.")
     print(f"  기간 {data['eventDateRange']['min']} ~ {data['eventDateRange']['max']}\n")
-    print(f"  {'창':<7}{'n':>6}{'원시%':>9}{'시장몫%':>10}{'알파(CAR)%':>12}{'p값':>9}{'유의':>6}")
+    # **`significant`(p<0.05)를 그대로 찍으면 안 된다.** 군집이면 그 p값은
+    # 독립성 가정이 깨진 상태의 값이라 근거가 못 된다. 화면에는 반드시
+    # `significanceUsable`(군집·표본수까지 통과한 것)을 찍는다 — 이 레포가
+    # 반복해서 당한 낙관 누출과 같은 형태다.
+    print(f"  {'창':<7}{'n':>6}{'날수':>6}{'원시%':>9}{'시장몫%':>10}"
+          f"{'알파(CAR)%':>12}{'p값':>9}{'쓸수있나':>9}")
     for name, w in data["windows"].items():
-        sig = "예" if w["significant"] else "아니오"
-        warn = " ⚠" if w["sampleWarning"] else ""
-        print(f"  {name:<7}{w['events']:>6}{w['meanRawReturnPct']:>9.2f}"
-              f"{w['marketComponentPct']:>10.2f}{w['meanCarPct']:>12.3f}"
-              f"{w['pValue']:>9.4f}{sig:>6}{warn}")
+        if w.get("significanceUsable"):
+            verdict = "예"
+        elif w.get("isClustered"):
+            verdict = "군집"
+        elif w.get("sampleWarning"):
+            verdict = "표본부족"
+        else:
+            verdict = "아니오"
+        print(f"  {name:<7}{w['events']:>6}{w.get('distinctEventDates', 0):>6}"
+              f"{w['meanRawReturnPct']:>9.2f}{w['marketComponentPct']:>10.2f}"
+              f"{w['meanCarPct']:>12.3f}{w['pValue']:>9.4f}{verdict:>9}")
+    print("\n  '쓸수있나' = 군집 아님 + 표본 30건 이상 + p<0.05 를 모두 통과했는가.")
+    print("  '군집'이면 p값이 아무리 작아도 근거로 쓸 수 없다.")
     return 0
 
 
