@@ -63,12 +63,13 @@ SOURCE_CALIBRATION_WEIGHTS = {
     "BACKTEST_EXPERIMENT": 0.15,
 }
 AUTO_CALIBRATION_POLICY = {
-    # Parameter suggestions are generated continuously, but automatic mutation
-    # stays frozen until a challenger has proven incremental after-cost value
-    # on an unseen, independently clustered cohort.
-    "enabled": False,
-    "mode": "SHADOW_ONLY",
-    "version": "vtj-self-calibration-v2.2.0",
+    # Suggestions automatically enter a zero-capital Forward incubation. Live
+    # recommendation parameters may change only after the exact immutable
+    # candidate earns a promotion certificate on an unseen date-blocked cohort.
+    # Broker orders remain impossible; this changes advisory parameters only.
+    "enabled": True,
+    "mode": "PROMOTION_GATED_AUTO_APPLY",
+    "version": "vtj-self-calibration-v2.3.0",
     "minEffectiveSamples": 40,
     "maxApplicationsPerRun": 1,
     "maxActiveShadowCandidates": 1,
@@ -89,7 +90,7 @@ AUTO_CALIBRATION_POLICY = {
     "currentEvidenceRevalidationRequired": True,
     "sealedApprovalRequired": True,
     "promotionCertificateRequired": True,
-    "liveCorrectionDefaultEnabled": False,
+    "liveCorrectionDefaultEnabled": True,
     "promotedLineageRequiredForLive": True,
     "minPrePostSamples": 30,
     "rollbackAvgPnlDropPct": 1.5,
@@ -123,11 +124,12 @@ CALIBRATION_PERFORMANCE_POLICY = {
     "requireCurrentApplicationLineage": True,
     "rollbackFailureAction": "QUARANTINE_ACTIVE_CORRECTION",
 }
-CALIBRATION_PROMOTION_VERSION = "vtj-calibration-promotion-v2"
+CALIBRATION_PROMOTION_VERSION = "vtj-calibration-promotion-v3"
+CALIBRATION_PROMOTION_DECISION = "READY_FOR_AUTO_PROMOTION"
 CALIBRATION_PROMOTION_MIN_SIGNAL_DATES = 60
 CALIBRATION_PROMOTION_MIN_TRADES = 120
 CALIBRATION_SHADOW_POLICY = {
-    "version": "self-correction-shadow-v1.4.0",
+    "version": "self-correction-shadow-v1.5.0",
     "inputContractVersion": "correction-shadow-input-v1",
     "maxPositions": 3,
     "maxActiveCandidates": 1,
@@ -158,8 +160,8 @@ CALIBRATION_SHADOW_POLICY = {
     "requiresDrawdownNoWorseThanChampion": True,
     "requiresValidatedResidualAlphaModel": True,
     "requiresResidualAlphaLowerCiAboveZero": True,
-    "autoPromotionAllowed": False,
-    "humanApprovalRequired": True,
+    "autoPromotionAllowed": True,
+    "humanApprovalRequired": False,
 }
 
 # Bump this value whenever the recommendation decision contract changes.  The
@@ -2661,6 +2663,12 @@ def _attach_approval_state(suggestions: list[dict[str, Any]]) -> list[dict[str, 
         work["approvalStatus"] = _text(approval.get("decision")) if approval else "PENDING_REVIEW"
         work["approvalId"] = _text(approval.get("approval_id")) if approval else ""
         work["reviewedAt"] = _text(approval.get("reviewed_at")) if approval else ""
+        approval_integrity = _approval_integrity_verdict(approval) if approval else {"eligible": False}
+        # A sealed approval from an obsolete policy must not permanently block
+        # the current policy from starting a fresh, independently fingerprinted
+        # Shadow candidate.
+        work["approvalPolicyCurrent"] = bool(approval_integrity.get("eligible"))
+        work["approvalPolicyReason"] = approval_integrity.get("reason")
         application = applications.get(work["approvalId"])
         work["applicationStatus"] = _text(application.get("status")) if application else "NOT_APPLIED"
         work["appliedAt"] = _text(application.get("applied_at")) if application else ""
@@ -2788,6 +2796,9 @@ def _calibration_ledger_integrity() -> dict[str, Any]:
         and _text(row.get("recordHash")) == _promotion_certificate_hash(row)
         and _text(row.get("version")) == CALIBRATION_PROMOTION_VERSION
         and _text(row.get("calibrationPolicyFingerprint")) == _calibration_policy_fingerprint()
+        and _text(row.get("decision")) == CALIBRATION_PROMOTION_DECISION
+        and row.get("autoPromotionAllowed") is True
+        and row.get("humanApprovalRequired") is False
     )
     return {
         "policyVersion": AUTO_CALIBRATION_POLICY.get("version"),
@@ -3121,7 +3132,8 @@ def calibration_shadow_readiness(
                 int(verdict.get("minDistinctSignalDates") or 0)
                 - int(_safe_float(item.get("distinctSignalDates")) or 0),
             ),
-            "requiresHumanReview": True,
+            "requiresHumanReview": bool(CALIBRATION_SHADOW_POLICY.get("humanApprovalRequired", True)),
+            "autoPromotionAllowed": bool(CALIBRATION_SHADOW_POLICY.get("autoPromotionAllowed", False)),
             "requiresForwardPromotion": True,
         })
     rows.sort(key=lambda row: (
@@ -3238,7 +3250,9 @@ def _calibration_promotion_verdict(
         (_text(certificate.get("approvalRecordHash")) == _text(approval.get("record_hash")), "PROMOTION_APPROVAL_HASH_MISMATCH"),
         (_text(certificate.get("evidenceFingerprint")) == evidence_fingerprint, "PROMOTION_EVIDENCE_MISMATCH"),
         (certificate.get("promotionEligible") is True, "PROMOTION_NOT_ELIGIBLE"),
-        (_text(certificate.get("decision")) == "READY_FOR_HUMAN_REVIEW", "PROMOTION_DECISION_NOT_READY"),
+        (_text(certificate.get("decision")) == CALIBRATION_PROMOTION_DECISION, "PROMOTION_DECISION_NOT_READY"),
+        (certificate.get("autoPromotionAllowed") is True, "PROMOTION_AUTO_APPLY_NOT_AUTHORIZED"),
+        (certificate.get("humanApprovalRequired") is False, "PROMOTION_HUMAN_REVIEW_STILL_REQUIRED"),
         (int(_safe_float(certificate.get("completedSignalDates")) or 0) >= CALIBRATION_PROMOTION_MIN_SIGNAL_DATES, "LOW_PROMOTION_SIGNAL_DATES"),
         (int(_safe_float(certificate.get("evaluatedChallengerTrades")) or 0) >= CALIBRATION_PROMOTION_MIN_TRADES, "LOW_PROMOTION_TRADES"),
         (float(_safe_float(certificate.get("avgAfterCostReturnPct")) or 0.0) > 0, "NON_POSITIVE_PROMOTION_RETURN"),
@@ -3501,9 +3515,14 @@ def _auto_calibration_verdict(item: dict[str, Any]) -> dict[str, Any]:
     max_share = float(AUTO_CALIBRATION_POLICY.get("maxFailureShareForAutoApply") or 0.45)
     if status != "SUGGESTED":
         return {"eligible": False, "reason": "NOT_SUGGESTED", "effectiveSamples": round(effective_samples, 3), "minRawSamples": min_raw}
-    if approval_status != "PENDING_REVIEW":
+    approval_policy_current = item.get("approvalPolicyCurrent")
+    if approval_policy_current is None:
+        # Direct callers and legacy tests that do not carry the attachment
+        # metadata keep the conservative historical behavior.
+        approval_policy_current = True
+    if approval_status != "PENDING_REVIEW" and bool(approval_policy_current):
         return {"eligible": False, "reason": f"APPROVAL_{approval_status or 'UNKNOWN'}", "effectiveSamples": round(effective_samples, 3), "minRawSamples": min_raw}
-    if application_status == "APPLIED":
+    if application_status == "APPLIED" and bool(approval_policy_current):
         return {"eligible": False, "reason": "ALREADY_APPLIED", "effectiveSamples": round(effective_samples, 3), "minRawSamples": min_raw}
     if raw_samples < min_raw:
         return {"eligible": False, "reason": "RAW_SAMPLE_GATE", "effectiveSamples": round(effective_samples, 3), "minRawSamples": min_raw}
@@ -3849,12 +3868,16 @@ def auto_self_calibrate(
         "status": "SKIPPED",
         "reason": "AUTO_APPLY_FROZEN" if not auto_apply_enabled else "APPLY_FALSE",
     }
-    if auto_apply_enabled and apply and approvals:
-        approval_ids = [_text(row.get("approval_id")) for row in approvals if _text(row.get("approval_id"))]
+    if auto_apply_enabled and apply:
+        # Scan every latest current-policy approval, not just approvals created
+        # in this run. A Forward promotion certificate necessarily arrives on
+        # a later scheduled run, after the candidate has accumulated its
+        # independent evidence. The certificate/lineage gate below remains the
+        # sole authority to mutate advisory parameters.
         apply_result = apply_approved_calibrations(
             applied_by=applied_by,
-            approval_ids=approval_ids,
-            max_applications=len(approval_ids),
+            approval_ids=None,
+            max_applications=limit,
         )
 
     result = {

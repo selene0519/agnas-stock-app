@@ -35,7 +35,9 @@ def _certificate() -> dict:
         "championMaxDrawdownPct": 8.0,
         "challengerMaxDrawdownPct": 6.0,
         "promotionEligible": True,
-        "decision": "READY_FOR_HUMAN_REVIEW",
+        "decision": correction_store.REQUIRED_PROMOTION_DECISION,
+        "autoPromotionAllowed": True,
+        "humanApprovalRequired": False,
     }
     certificate["recordHash"] = correction_store.promotion_certificate_hash(certificate)
     return certificate

@@ -960,8 +960,8 @@ def _promotion(
     )
     promotion_eligible = not blockers
     if promotion_eligible:
-        decision_name = "READY_FOR_HUMAN_REVIEW"
-        suggested_action = "HUMAN_PROMOTION_REVIEW"
+        decision_name = vtj.CALIBRATION_PROMOTION_DECISION
+        suggested_action = "AUTO_APPLY_PROMOTED_CORRECTION"
     elif evidence_mature and not integrity_clean:
         decision_name = "INVALIDATE_EXPERIMENT"
         suggested_action = "REJECT_AND_INVESTIGATE_INTEGRITY"
@@ -978,8 +978,8 @@ def _promotion(
         "evidenceMature": evidence_mature,
         "terminalFailure": evidence_mature and not promotion_eligible,
         "suggestedAction": suggested_action,
-        "autoPromotionAllowed": False,
-        "humanApprovalRequired": True,
+        "autoPromotionAllowed": bool(vtj.CALIBRATION_SHADOW_POLICY["autoPromotionAllowed"]),
+        "humanApprovalRequired": bool(vtj.CALIBRATION_SHADOW_POLICY["humanApprovalRequired"]),
     }
     if blockers:
         return decision, None
@@ -995,7 +995,9 @@ def _promotion(
         "evaluationPolicyVersion": vtj.EVALUATION_POLICY["version"],
         "evaluationPolicyFingerprint": vtj._evaluation_policy_fingerprint(),
         "promotionEligible": True,
-        "decision": "READY_FOR_HUMAN_REVIEW",
+        "decision": vtj.CALIBRATION_PROMOTION_DECISION,
+        "autoPromotionAllowed": True,
+        "humanApprovalRequired": False,
         "completedSignalDates": comparison.get("completedSignalDates"),
         "evaluatedChallengerTrades": challenger.get("selectedEvaluatedTrades"),
         "avgAfterCostReturnPct": challenger.get("avgDailyReturnPct"),

@@ -193,7 +193,9 @@ def test_live_correction_defaults_off_and_quarantines_unpromoted_legacy(monkeypa
         "championMaxDrawdownPct": 8.0,
         "challengerMaxDrawdownPct": 6.0,
         "promotionEligible": True,
-        "decision": "READY_FOR_HUMAN_REVIEW",
+        "decision": live_correction.correction_store.REQUIRED_PROMOTION_DECISION,
+        "autoPromotionAllowed": True,
+        "humanApprovalRequired": False,
     }
     certificate["recordHash"] = live_correction.correction_store.promotion_certificate_hash(certificate)
     promoted = {
@@ -614,7 +616,13 @@ def test_date_block_comparison_can_issue_exact_promotion_certificate() -> None:
     assert comparison["challenger"]["profitFactor"] > 1
     assert comparison["challenger"]["payoffRatio"] >= 1
     assert decision["promotionEligible"] is True
+    assert decision["decision"] == shadow.vtj.CALIBRATION_PROMOTION_DECISION
+    assert decision["autoPromotionAllowed"] is True
+    assert decision["humanApprovalRequired"] is False
     assert certificate is not None
+    assert certificate["decision"] == shadow.vtj.CALIBRATION_PROMOTION_DECISION
+    assert certificate["autoPromotionAllowed"] is True
+    assert certificate["humanApprovalRequired"] is False
     assert certificate["candidateFingerprint"] == "candidate-a"
     assert certificate["evaluationPolicyVersion"] == shadow.vtj.EVALUATION_POLICY["version"]
     assert certificate["evaluationPolicyFingerprint"] == shadow.vtj._evaluation_policy_fingerprint()
@@ -722,6 +730,18 @@ def test_workflows_seal_before_settlement_and_commit_all_shadow_evidence() -> No
     assert "data/self_correction_shadow_settlements.csv" in commit_script
     assert "reports/self_correction_shadow.json" in commit_script
     assert "reports/self_correction_promotion.json" in commit_script
+
+
+def test_accumulator_activates_only_promotion_gated_advisory_corrections() -> None:
+    accumulator = (ROOT / ".github" / "workflows" / "mone-auto-accumulator.yml").read_text(encoding="utf-8")
+    render = (ROOT / "render.yaml").read_text(encoding="utf-8")
+
+    assert 'SELF_CORRECTION_ENABLED: "true"' in accumulator
+    assert "auto_self_calibrate" in accumulator
+    assert "apply=True" in accumulator
+    assert "max_applications=1" in accumulator
+    assert accumulator.index("VTJ post-promotion capital guard") < accumulator.index("Generate KR recommendations")
+    assert "SELF_CORRECTION_ENABLED" in render
     assert 'calibration_performance_gate(market="all", auto_rollback=True)' in accumulator
     assert accumulator.index("VTJ post-promotion capital guard") < accumulator.index(
         "Generate KR recommendations from OHLCV"

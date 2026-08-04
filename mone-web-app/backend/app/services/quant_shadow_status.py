@@ -80,6 +80,38 @@ def _report_freshness(report: dict[str, Any], now: datetime) -> dict[str, Any]:
     }
 
 
+def _promoted_correction_status() -> dict[str, Any]:
+    """Verify whether a sealed, promotion-gated correction is already active."""
+    try:
+        from app.engine import correction_store
+
+        params = correction_store.load_params()
+        markets = params.get("markets") if isinstance(params.get("markets"), dict) else {}
+        declared_cells = [
+            str(key)
+            for key, correction in markets.items()
+            if isinstance(correction, dict) and correction.get("journalCalibrationPromoted") is True
+        ]
+        verdict = correction_store.params_lineage_verdict(params, require_integrity=True)
+        promoted_cells = list(verdict.get("promotedCells") or [])
+        active = bool(verdict.get("valid") is True and promoted_cells)
+        return {
+            "active": active,
+            "lineageValid": verdict.get("valid") is True,
+            "declaredCells": declared_cells,
+            "promotedCells": promoted_cells if active else [],
+            "blockingReasons": list(verdict.get("blockingReasons") or []) if declared_cells else [],
+        }
+    except Exception as exc:
+        return {
+            "active": False,
+            "lineageValid": False,
+            "declaredCells": [],
+            "promotedCells": [],
+            "blockingReasons": [f"PARAMS_STATUS_ERROR:{type(exc).__name__}"],
+        }
+
+
 def shadow_status() -> dict[str, Any]:
     reports = {name: _read_report(name) for name in REPORT_FILES}
     now = datetime.now(timezone.utc)
@@ -94,6 +126,8 @@ def shadow_status() -> dict[str, Any]:
     champion_challenger = reports["championChallenger"]
     self_correction = reports["selfCorrection"]
     walk_forward = reports["walkForward"]
+    promoted_correction = _promoted_correction_status()
+    has_promoted_correction = bool(promoted_correction.get("active"))
 
     missing = [name for name, report in reports.items() if report.get("status") == "MISSING"]
     summary = meta.get("summary") if isinstance(meta.get("summary"), dict) else {}
@@ -153,8 +187,11 @@ def shadow_status() -> dict[str, Any]:
         for promotion_row in self_correction_promotions
         for reason in (promotion_row.get("blockingReasons") or [])
     ))
-    if int(self_correction_summary.get("activeCandidates") or 0) <= 0:
+    if int(self_correction_summary.get("activeCandidates") or 0) <= 0 and not has_promoted_correction:
         self_correction_blockers.append("NO_ACTIVE_CANDIDATE")
+    if promoted_correction.get("declaredCells") and not promoted_correction.get("lineageValid"):
+        self_correction_blockers.extend(promoted_correction.get("blockingReasons") or [])
+        reasons.append("SELF_CORRECTION_PARAMS_INTEGRITY_FAILED")
     recording_blockers = [
         str(row.get("blockingReason"))
         for row in self_correction_recording_health
@@ -166,7 +203,7 @@ def shadow_status() -> dict[str, Any]:
         reasons.append("SELF_CORRECTION_EVIDENCE_STALLED")
     if int(self_correction_summary.get("terminalFailureCandidates") or 0) > 0:
         reasons.append("SELF_CORRECTION_CANDIDATE_FAILED")
-    if int(self_correction_summary.get("promotionEligible") or 0) <= 0:
+    if int(self_correction_summary.get("promotionEligible") or 0) <= 0 and not has_promoted_correction:
         reasons.append("SELF_CORRECTION_NOT_PROMOTABLE")
     if not bool(walk_forward.get("promotionGrade")):
         reasons.append("WALKFORWARD_NOT_PROMOTION_GRADE")
@@ -220,6 +257,9 @@ def shadow_status() -> dict[str, Any]:
             "selfCorrectionSealedPredictions": int(self_correction_summary.get("sealedPredictions") or 0),
             "selfCorrectionSettledPredictions": int(self_correction_summary.get("settledPredictions") or 0),
             "selfCorrectionPromotionEligible": int(self_correction_summary.get("promotionEligible") or 0),
+            "selfCorrectionPromotedActive": has_promoted_correction,
+            "selfCorrectionPromotedCells": promoted_correction.get("promotedCells") or [],
+            "selfCorrectionParamsLineageValid": bool(promoted_correction.get("lineageValid")),
             "selfCorrectionReadyForReview": int(self_correction_summary.get("readyForReview") or 0),
             "selfCorrectionEligibleSuggestions": int(self_correction_summary.get("eligibleSuggestions") or 0),
             "selfCorrectionRecordingHealthy": bool(self_correction_summary.get("recordingHealthy", True)),

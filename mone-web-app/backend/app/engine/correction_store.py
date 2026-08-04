@@ -16,8 +16,9 @@ from typing import Any
 
 PARAMS_INTEGRITY_VERSION = "self-correction-params-integrity-v1"
 PARAMS_INTEGRITY_FIELD = "paramsIntegrity"
-REQUIRED_PROMOTION_CERTIFICATE_VERSION = "vtj-calibration-promotion-v2"
-REQUIRED_SHADOW_POLICY_VERSION = "self-correction-shadow-v1.4.0"
+REQUIRED_PROMOTION_CERTIFICATE_VERSION = "vtj-calibration-promotion-v3"
+REQUIRED_PROMOTION_DECISION = "READY_FOR_AUTO_PROMOTION"
+REQUIRED_SHADOW_POLICY_VERSION = "self-correction-shadow-v1.5.0"
 REQUIRED_RESIDUAL_ALPHA_POLICY_VERSION = "shadow-residual-alpha-v1.1.2"
 
 
@@ -97,8 +98,12 @@ def promoted_correction_lineage_verdict(correction: dict[str, Any]) -> dict[str,
             blockers.append(f"PROMOTION_CERTIFICATE_MISSING_{field.upper()}")
     if certificate.get("promotionEligible") is not True:
         blockers.append("PROMOTION_NOT_ELIGIBLE")
-    if certificate.get("decision") != "READY_FOR_HUMAN_REVIEW":
+    if certificate.get("decision") != REQUIRED_PROMOTION_DECISION:
         blockers.append("PROMOTION_DECISION_NOT_READY")
+    if certificate.get("autoPromotionAllowed") is not True:
+        blockers.append("PROMOTION_AUTO_APPLY_NOT_AUTHORIZED")
+    if certificate.get("humanApprovalRequired") is not False:
+        blockers.append("PROMOTION_HUMAN_REVIEW_STILL_REQUIRED")
     if certificate.get("version") != REQUIRED_PROMOTION_CERTIFICATE_VERSION:
         blockers.append("PROMOTION_CERTIFICATE_VERSION_MISMATCH")
     if certificate.get("shadowPolicyVersion") != REQUIRED_SHADOW_POLICY_VERSION:

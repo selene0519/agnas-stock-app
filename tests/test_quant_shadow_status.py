@@ -126,6 +126,61 @@ def test_missing_reports_never_look_healthy(tmp_path: Path, monkeypatch) -> None
     assert "CHAMPION_RISK_ALLOCATION_NOT_PROVEN" in result["decisionReasons"]
 
 
+def test_valid_promoted_correction_replaces_active_shadow_candidate(monkeypatch) -> None:
+    generated_at = datetime.now(timezone.utc).isoformat()
+    reports = {
+        "cohort": {"summary": {"independentDecisions": 400}},
+        "alpha": {"windows": {"D+20": {"significanceUsable": True}}},
+        "residualAlpha": {
+            "policy": {},
+            "validation": {"evidenceStatus": "PASS"},
+            "researchValidation": {},
+            "forwardEvidence": {"modelRegistry": {}},
+            "predictions": [],
+        },
+        "sleeve": {
+            "ranking": ["balanced_short"],
+            "sleeves": {"balanced_short": {"totalReturnPct": 2.0, "profitFactor": 1.2}},
+        },
+        "metaGate": {"summary": {"candidates": 2, "take": 1, "wait": 1, "reject": 0, "abstain": False}},
+        "riskBudget": {
+            "grossExposurePct": 10,
+            "cashWeightPct": 90,
+            "lineage": {"valid": True},
+            "policy": {},
+        },
+        "championChallenger": {
+            "promotion": {"promotionEligible": True},
+            "comparison": {},
+            "riskAllocationGate": {"passed": True},
+        },
+        "selfCorrection": {
+            "summary": {"activeCandidates": 0, "promotionEligible": 0},
+            "candidates": [],
+        },
+        "walkForward": {"promotionGrade": True},
+    }
+    for payload in reports.values():
+        payload["generatedAt"] = generated_at
+        payload["_source"] = "test"
+    monkeypatch.setattr(status, "_read_report", lambda name: reports[name])
+    monkeypatch.setattr(status, "_promoted_correction_status", lambda: {
+        "active": True,
+        "lineageValid": True,
+        "declaredCells": ["KR_balanced_short"],
+        "promotedCells": ["KR_balanced_short"],
+        "blockingReasons": [],
+    })
+
+    result = status.shadow_status()
+
+    assert result["status"] == "OK"
+    assert "SELF_CORRECTION_NOT_PROMOTABLE" not in result["decisionReasons"]
+    assert "NO_ACTIVE_CANDIDATE" not in result["summary"]["selfCorrectionBlockingReasons"]
+    assert result["summary"]["selfCorrectionPromotedActive"] is True
+    assert result["summary"]["selfCorrectionPromotedCells"] == ["KR_balanced_short"]
+
+
 def test_report_freshness_rejects_old_or_undated_evidence(monkeypatch) -> None:
     monkeypatch.setenv("MONE_QUANT_REPORT_MAX_AGE_HOURS", "48")
     now = datetime(2026, 7, 31, 0, 0, tzinfo=timezone.utc)

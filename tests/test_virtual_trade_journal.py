@@ -67,7 +67,9 @@ def _write_valid_calibration_promotion_certificate(approval: dict, suggestion: d
         "evaluationPolicyVersion": vtj.EVALUATION_POLICY["version"],
         "evaluationPolicyFingerprint": vtj._evaluation_policy_fingerprint(),
         "promotionEligible": True,
-        "decision": "READY_FOR_HUMAN_REVIEW",
+        "decision": vtj.CALIBRATION_PROMOTION_DECISION,
+        "autoPromotionAllowed": True,
+        "humanApprovalRequired": False,
         "completedSignalDates": vtj.CALIBRATION_PROMOTION_MIN_SIGNAL_DATES,
         "evaluatedChallengerTrades": vtj.CALIBRATION_PROMOTION_MIN_TRADES,
         "avgAfterCostReturnPct": 0.1,
@@ -812,7 +814,7 @@ def test_calibration_review_records_decision_but_never_auto_applies(isolated_vtj
     assert reviewed["approval"]["decision"] == "APPROVED"
 
 
-def test_approved_calibration_can_be_manually_applied_to_self_correction_params(
+def test_approved_calibration_is_automatically_applied_after_forward_certificate(
     isolated_vtj: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -883,7 +885,8 @@ def test_approved_calibration_can_be_manually_applied_to_self_correction_params(
     assert correction_store.load_params() == before_promotion
 
     certificate = _write_valid_calibration_promotion_certificate(reviewed["approval"], target)
-    applied = vtj.apply_approved_calibrations(applied_by="pytest")
+    automated = vtj.auto_self_calibrate("kr", applied_by="pytest-auto", apply=True, max_applications=1)
+    applied = automated["applyResult"]
     correction = correction_store.load_correction("kr", "balanced", "swing")
     refreshed = vtj.calibration_suggestions("kr", "balanced", "swing", "FORWARD_PAPER_TRADE")["items"]
     refreshed_target = next(item for item in refreshed if item.get("reason") == "STOP_TOO_TIGHT")
@@ -1087,7 +1090,7 @@ def test_attribution_analysis_includes_ols_regression_when_sample_is_ready(isola
     assert out["regression"]["coefficients"]
 
 
-def test_auto_self_calibrate_runs_shadow_only_while_auto_apply_is_frozen(
+def test_auto_self_calibrate_starts_shadow_but_cannot_apply_without_certificate(
     isolated_vtj: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -1150,14 +1153,14 @@ def test_auto_self_calibrate_runs_shadow_only_while_auto_apply_is_frozen(
     correction = correction_store.load_correction("kr", "balanced", "swing")
     status = vtj.self_learning_status("kr")
 
-    assert result["status"] == "SHADOW_ONLY"
+    assert result["status"] == "OK"
     assert result["eligibleCount"] >= 1
     assert result["wouldApplyCount"] == 1
-    assert result["approvedCount"] == 0
+    assert result["approvedCount"] == 1
     assert result["applied"] == 0
     assert correction.get("journalCalibrationApplied") is not True
-    assert result["applyResult"]["reason"] == "AUTO_APPLY_FROZEN"
-    assert status["autoApprovalCount"] == 0
+    assert result["applyResult"]["skipped"][0]["reason"] == "MISSING_PROMOTION_CERTIFICATE"
+    assert status["autoApprovalCount"] == 1
     assert status["quality"]["score"] > 0
     assert status["lastSelfLearningRun"]["applied"] == 0
 
@@ -1219,9 +1222,30 @@ def test_auto_self_calibrate_blocks_when_holdout_drift_is_detected(isolated_vtj:
 
     result = vtj.auto_self_calibrate("kr", apply=True, max_applications=2)
 
-    assert result["status"] == "SHADOW_ONLY"
+    assert result["status"] == "OK"
     assert result["applied"] == 0
     assert any(row["reason"] == "HOLDOUT_DRIFT" for row in result["blocked"])
+
+
+def test_obsolete_policy_approval_cannot_block_fresh_auto_incubation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(vtj, "_holdout_validation", lambda _item: {"status": "OK", "passed": True})
+    item = {
+        "status": "SUGGESTED",
+        "approvalStatus": "APPROVED",
+        "approvalPolicyCurrent": False,
+        "applicationStatus": "APPLIED",
+        "sourceType": "FORWARD_PAPER_TRADE",
+        "sampleCount": 60,
+        "share": 0.2,
+        "reason": "STOP_TOO_TIGHT",
+    }
+
+    verdict = vtj._auto_calibration_verdict(item)
+
+    assert verdict["eligible"] is True
+    assert verdict["reason"] == "AUTO_ELIGIBLE"
 
 
 def test_clustered_same_day_samples_never_pass_strict_holdout(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1360,7 +1384,8 @@ def test_shadow_readiness_ranks_eligible_candidate_without_granting_live_authori
     assert readiness["readyForReview"] == 1
     assert readiness["eligibleSuggestions"] == 1
     assert readiness["items"][0]["suggestionId"] == "ready-a"
-    assert readiness["items"][0]["requiresHumanReview"] is True
+    assert readiness["items"][0]["requiresHumanReview"] is False
+    assert readiness["items"][0]["autoPromotionAllowed"] is True
     assert readiness["items"][0]["requiresForwardPromotion"] is True
     assert readiness["items"][1]["remainingRawSamples"] == 1
 
@@ -1584,7 +1609,9 @@ def test_sealed_approval_rejects_tamper_and_regression_but_allows_newer_evidence
         "evaluationPolicyFingerprint": vtj._evaluation_policy_fingerprint(),
         "residualAlphaModelFingerprint": "residual-model-live",
         "promotionEligible": True,
-        "decision": "READY_FOR_HUMAN_REVIEW",
+        "decision": vtj.CALIBRATION_PROMOTION_DECISION,
+        "autoPromotionAllowed": True,
+        "humanApprovalRequired": False,
         "completedSignalDates": 10,
         "evaluatedChallengerTrades": 20,
         "avgAfterCostReturnPct": 0.1,
@@ -1861,7 +1888,9 @@ def _performance_gate_promoted_correction(candidate_fingerprint: str = "candidat
         "championMaxDrawdownPct": 8.0,
         "challengerMaxDrawdownPct": 6.0,
         "promotionEligible": True,
-        "decision": "READY_FOR_HUMAN_REVIEW",
+        "decision": vtj.CALIBRATION_PROMOTION_DECISION,
+        "autoPromotionAllowed": True,
+        "humanApprovalRequired": False,
     }
     certificate["recordHash"] = correction_store.promotion_certificate_hash(certificate)
     return {

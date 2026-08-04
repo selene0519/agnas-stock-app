@@ -43,5 +43,7 @@ services:
         value: "30"
       - key: MONE_AUTO_CURATE_WATCHLIST
         value: "1"
+      - key: SELF_CORRECTION_ENABLED
+        value: "true"
       - key: ENABLE_HEAVY_JOBS
         value: "1"

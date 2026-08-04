@@ -34,6 +34,10 @@ jobs:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
       STREAMLIT_APP_ENABLE_LIVE_API: "1"
       MONE_ENABLE_LIVE_QUOTES: "1"
+      # Advisory parameters become active only when their embedded immutable
+      # Forward promotion certificate passes every lineage and risk gate.
+      # This never enables broker orders.
+      SELF_CORRECTION_ENABLED: "true"
       DART_API_KEY: ${{ secrets.DART_API_KEY }}
       FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
       GNEWS_API_KEY: ${{ secrets.GNEWS_API_KEY }}
@@ -808,11 +812,12 @@ jobs:
           status = vtj.self_learning_status(market="all")
           print("[vtj-self-learning/status]")
           print(json.dumps(status, ensure_ascii=False, indent=2))
-          # Shadow-only until an unseen independent cohort proves incremental
-          # after-cost value. Suggestions remain visible, but CI cannot mutate
-          # live correction parameters.
-          result = vtj.auto_self_calibrate(market="all", applied_by="github-actions-vtj-self-learning", apply=False, max_applications=4)
-          print("[vtj-self-learning/shadow]")
+          # Start new zero-capital candidates automatically and apply at most
+          # one existing candidate only after its exact immutable Forward
+          # promotion certificate passes. The next run's pre-generation guard
+          # rolls back or quarantines degraded promoted corrections.
+          result = vtj.auto_self_calibrate(market="all", applied_by="github-actions-vtj-self-learning", apply=True, max_applications=1)
+          print("[vtj-self-learning/promotion-gated-auto]")
           print(json.dumps(result, ensure_ascii=False, indent=2))
           PY
           echo "vtj-self-learning: exit $?"
