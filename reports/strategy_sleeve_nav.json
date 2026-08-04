@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-31T16:06:41.496635+00:00",
+  "generatedAt": "2026-08-03T23:59:27.119986+00:00",
   "basis": {
     "positionFraction": 0.1,
     "startNav": 100.0,
@@ -9,8 +9,8 @@
     "forwardSourcesOnly": true
   },
   "dataQuality": {
-    "totalTrades": 3,
-    "estimatedTimingTrades": 3,
+    "totalTrades": 7,
+    "estimatedTimingTrades": 7,
     "estimatedTimingNote": "exitDate가 없는 과거 정산분은 만기일로 실현 시점을 근사했다. 곡선의 시점 정확도만 영향받고 최종 NAV는 영향받지 않는다.",
     "excluded": {
       "nonRealized": 171,
@@ -22,18 +22,20 @@
     "regimeRecordedTrades": 0,
     "scoreRecordedTrades": 0,
     "axisCoverageNote": "finalScore/regime은 2026-07-29 캡처분부터 기록된다. 그 이전 표본은 byScoreBin에 안 들어가고 byRegime의 UNRECORDED로 모인다.",
-    "sampleWarning": "표본 3건 — 30건 미만이면 순위는 노이즈로 봐야 한다"
+    "sampleWarning": "표본 7건 — 30건 미만이면 순위는 노이즈로 봐야 한다"
   },
   "byRegime": {
     "UNRECORDED": {
-      "trades": 3,
-      "winRate": 0.0,
-      "avgReturnPct": -4.1482,
+      "trades": 7,
+      "winRate": 0.2857,
+      "avgReturnPct": -1.9402,
       "sampleWarning": "표본 30건 미만 — 순위는 노이즈"
     }
   },
   "byScoreBin": {},
   "ranking": [
+    "aggressive_short",
+    "balanced_short",
     "conservative_swing"
   ],
   "sleeves": {
@@ -96,17 +98,30 @@
       "curve": []
     },
     "balanced_short": {
-      "trades": 0,
-      "nav": 100.0,
-      "totalReturnPct": 0.0,
-      "winRate": null,
-      "avgReturnPct": null,
-      "avgGainPct": null,
-      "avgLossPct": null,
-      "payoffRatio": null,
-      "maxDrawdownPct": 0.0,
-      "estimatedTimingTrades": 0,
-      "curve": []
+      "trades": 2,
+      "nav": 99.9366,
+      "totalReturnPct": -0.0634,
+      "winRate": 0.5,
+      "avgReturnPct": -0.3172,
+      "avgGainPct": 0.0613,
+      "avgLossPct": -0.6957,
+      "payoffRatio": 0.088,
+      "maxDrawdownPct": 0.07,
+      "estimatedTimingTrades": 2,
+      "curve": [
+        {
+          "date": "2026-08-04",
+          "nav": 100.0061,
+          "symbol": "CEG",
+          "returnPct": 0.0613
+        },
+        {
+          "date": "2026-08-04",
+          "nav": 99.9366,
+          "symbol": "HPE",
+          "returnPct": -0.6957
+        }
+      ]
     },
     "balanced_swing": {
       "trades": 0,
@@ -135,17 +150,30 @@
       "curve": []
     },
     "aggressive_short": {
-      "trades": 0,
-      "nav": 100.0,
-      "totalReturnPct": 0.0,
-      "winRate": null,
-      "avgReturnPct": null,
-      "avgGainPct": null,
-      "avgLossPct": null,
-      "payoffRatio": null,
-      "maxDrawdownPct": 0.0,
-      "estimatedTimingTrades": 0,
-      "curve": []
+      "trades": 2,
+      "nav": 99.9497,
+      "totalReturnPct": -0.0503,
+      "winRate": 0.5,
+      "avgReturnPct": -0.2513,
+      "avgGainPct": 0.356,
+      "avgLossPct": -0.8586,
+      "payoffRatio": 0.415,
+      "maxDrawdownPct": 0.09,
+      "estimatedTimingTrades": 2,
+      "curve": [
+        {
+          "date": "2026-08-04",
+          "nav": 99.9141,
+          "symbol": "F",
+          "returnPct": -0.8586
+        },
+        {
+          "date": "2026-08-04",
+          "nav": 99.9497,
+          "symbol": "JNJ",
+          "returnPct": 0.356
+        }
+      ]
     },
     "aggressive_swing": {
       "trades": 0,
