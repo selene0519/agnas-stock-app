@@ -1,23 +1,139 @@
 {
-  "generatedAt": "2026-08-04T06:50:05.108714+00:00",
-  "since": "2026-07-10",
+  "generatedAt": "2026-08-04T10:42:40.960222+00:00",
+  "since": null,
   "market": "all",
   "strategyFingerprint": "LEGACY_UNFINGERPRINTED",
   "sampleUnit": "UNIQUE_AS_OF_DATE_MARKET_SYMBOL",
   "method": "Pre-event market-model CAR. KR uses KOSPI/KOSDAQ by listing market; US uses SPY. Inference resamples equal-weight market-date blocks instead of recommendation rows.",
   "reference": "virattt/ai-hedge-fund v2/event_study (recommendation date as event)",
-  "events": 0,
+  "events": 256,
   "skipped": {
     "noOhlcv": 0,
     "noBenchmark": 0,
-    "shortEstimation": 3,
+    "shortEstimation": 10,
     "noBenchmarkDate": 0,
-    "shortEventWindow": 95,
+    "shortEventWindow": 131,
     "replaySource": 1298,
-    "beforeSince": 721,
+    "beforeSince": 0,
     "marketMismatch": 0,
-    "duplicateDecision": 61
+    "duplicateDecision": 483
   },
-  "windows": {},
-  "status": "NO_EVENTS"
+  "windows": {
+    "D+1": {
+      "events": 256,
+      "independentMarketDateBlocks": 17,
+      "meanCarPct": -0.5155,
+      "blockMeanCarPct": 0.3887,
+      "meanRawReturnPct": -0.696,
+      "marketComponentPct": -0.1805,
+      "positiveShare": 0.4844,
+      "tStat": 0.359,
+      "pValue": 0.71959,
+      "significant": false,
+      "bootstrapCi95": [
+        -1.5695,
+        2.6045
+      ],
+      "naiveRowInference": {
+        "tStat": -1.376,
+        "pValue": 0.16882,
+        "bootstrapCi95": [
+          -1.2646,
+          0.1999
+        ],
+        "usableForPromotion": false
+      },
+      "sampleWarning": "Only 17 independent market-date blocks; need 30.",
+      "significanceUsable": false
+    },
+    "D+5": {
+      "events": 256,
+      "independentMarketDateBlocks": 17,
+      "meanCarPct": -2.1668,
+      "blockMeanCarPct": -1.7779,
+      "meanRawReturnPct": -1.699,
+      "marketComponentPct": 0.4678,
+      "positiveShare": 0.4648,
+      "tStat": -1.402,
+      "pValue": 0.16101,
+      "significant": false,
+      "bootstrapCi95": [
+        -4.2882,
+        0.5209
+      ],
+      "naiveRowInference": {
+        "tStat": -3.128,
+        "pValue": 0.00176,
+        "bootstrapCi95": [
+          -3.5404,
+          -0.8665
+        ],
+        "usableForPromotion": false
+      },
+      "sampleWarning": "Only 17 independent market-date blocks; need 30.",
+      "significanceUsable": false
+    },
+    "D+20": {
+      "events": 256,
+      "independentMarketDateBlocks": 17,
+      "meanCarPct": -7.2464,
+      "blockMeanCarPct": -5.9789,
+      "meanRawReturnPct": -9.2199,
+      "marketComponentPct": -1.9735,
+      "positiveShare": 0.4062,
+      "tStat": -2.763,
+      "pValue": 0.00573,
+      "significant": false,
+      "bootstrapCi95": [
+        -10.1075,
+        -1.895
+      ],
+      "naiveRowInference": {
+        "tStat": -5.956,
+        "pValue": 0.0,
+        "bootstrapCi95": [
+          -9.699,
+          -4.9565
+        ],
+        "usableForPromotion": false
+      },
+      "sampleWarning": "Only 17 independent market-date blocks; need 30.",
+      "significanceUsable": false
+    }
+  },
+  "status": "OK",
+  "avgBeta": 1.646,
+  "eventsByMarket": {
+    "kr": 60,
+    "us": 196
+  },
+  "benchmarks": [
+    "kr:KOSDAQ",
+    "kr:KOSPI",
+    "us:SPY"
+  ],
+  "eventDateRange": {
+    "min": "2026-06-18",
+    "max": "2026-07-06"
+  },
+  "eventsByMonth": {
+    "2026-06": 223,
+    "2026-07": 33
+  },
+  "caveats": [
+    "Long event windows exclude recent signals and bias the sample toward older cohorts.",
+    "Pre-event beta can be stale during abrupt regime changes.",
+    "Positive CAR does not imply positive account PnL; raw return must also be positive.",
+    "US sector benchmarks are not yet applied; US residuals currently use SPY."
+  ],
+  "clustering": {
+    "distinctEventDates": 12,
+    "distinctMarketDateBlocks": 17,
+    "calendarSpanDays": 19,
+    "eventsPerDate": 15.1,
+    "isClustered": true,
+    "inferenceMethod": "EQUAL_MARKET_DATE_BLOCK_BOOTSTRAP",
+    "minBlocksForUse": 30,
+    "note": "Signals from one market-date share a shock. Row-level inference is diagnostic only; promotion uses equal market-date block means and block bootstrap confidence intervals."
+  }
 }
