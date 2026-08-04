@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-04T10:42:44.849068+00:00",
+  "generatedAt": "2026-08-04T16:18:14.258277+00:00",
   "overall": "ERROR",
   "criticalFailures": 1,
   "hardFailures": 0,
@@ -15,16 +15,16 @@
     {
       "name": "kr_ohlcv",
       "status": "OK",
-      "detail": "0.45d, asOf=2026-08-04",
+      "detail": "0.68d, asOf=2026-08-04",
       "critical": true,
-      "ageDays": 0.45
+      "ageDays": 0.68
     },
     {
       "name": "kr_recommendations",
       "status": "OK",
-      "detail": "0.02d, asOf=2026-08-04T10:15:53.205579+00:00",
+      "detail": "0.1d, asOf=2026-08-04T14:01:08.691577+00:00",
       "critical": true,
-      "ageDays": 0.02
+      "ageDays": 0.1
     },
     {
       "name": "collector_steps",
@@ -36,37 +36,37 @@
     {
       "name": "collector_run",
       "status": "STALE",
-      "detail": "6.75d old (>3.0d), asOf=2026-07-28T16:40:53.766520",
+      "detail": "6.98d old (>3.0d), asOf=2026-07-28T16:40:53.766520",
       "critical": true,
-      "ageDays": 6.75
+      "ageDays": 6.98
     },
     {
       "name": "vtj_journal",
       "status": "OK",
-      "detail": "0.02d, asOf=2026-08-04T19:16:59+09:00",
+      "detail": "0.09d, asOf=2026-08-04T23:02:28+09:00",
       "critical": false,
-      "ageDays": 0.02
+      "ageDays": 0.09
     },
     {
       "name": "live_calibration",
       "status": "OK",
-      "detail": "0.45d, asOf=2026-08-04",
+      "detail": "0.68d, asOf=2026-08-04",
       "critical": false,
-      "ageDays": 0.45
+      "ageDays": 0.68
     },
     {
       "name": "strategy_win_rates",
       "status": "OK",
-      "detail": "-0.37d, asOf=2026-08-04 19:42:38",
+      "detail": "-0.37d, asOf=2026-08-05 01:18:08",
       "critical": false,
       "ageDays": -0.37
     },
     {
       "name": "prediction_capture",
       "status": "OK",
-      "detail": "0.45d, asOf=2026-08-04",
+      "detail": "0.68d, asOf=2026-08-04",
       "critical": true,
-      "ageDays": 0.45
+      "ageDays": 0.68
     },
     {
       "name": "capture_continuity",
@@ -78,14 +78,14 @@
     {
       "name": "settlement_backlog",
       "status": "OK",
-      "detail": "만기경과 미정산 0건 / 대기중 225건",
+      "detail": "만기경과 미정산 0건 / 대기중 231건",
       "critical": false,
       "ageDays": null
     },
     {
       "name": "clean_window_samples",
       "status": "WARN",
-      "detail": "clean window(2026-07-10) 정산표본 7건 / 전체 정산 667건 / 원장 1052행 — 표본 부족(30건 미만)",
+      "detail": "clean window(2026-07-10) 정산표본 14건 / 전체 정산 674건 / 원장 1065행 — 표본 부족(30건 미만)",
       "critical": false,
       "ageDays": null
     },
