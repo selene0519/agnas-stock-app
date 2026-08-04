@@ -1,7 +1,7 @@
 {
-  "updatedAt": "2026-08-04 21:50:46",
-  "totalRows": 2362,
-  "olsSampleSize": 1807,
+  "updatedAt": "2026-08-04 23:02:36",
+  "totalRows": 2365,
+  "olsSampleSize": 1810,
   "byStrategy": {
     "conservative_short": {
       "total": 240,
@@ -81,26 +81,26 @@
       "probAccuracy": -0.389
     },
     "aggressive_swing": {
-      "total": 276,
+      "total": 277,
       "wins": 63,
-      "losses": 213,
-      "winRate": 0.2283,
+      "losses": 214,
+      "winRate": 0.2274,
       "avgWinPct": 9.027,
-      "avgLossPct": 7.81,
-      "payoffRatio": 1.156,
+      "avgLossPct": 7.791,
+      "payoffRatio": 1.159,
       "avgProbability": 63.9,
       "probAccuracy": -0.411
     },
     "aggressive_mid": {
-      "total": 297,
+      "total": 299,
       "wins": 60,
-      "losses": 237,
-      "winRate": 0.202,
+      "losses": 239,
+      "winRate": 0.2007,
       "avgWinPct": 14.164,
-      "avgLossPct": 10.324,
-      "payoffRatio": 1.372,
+      "avgLossPct": 10.268,
+      "payoffRatio": 1.379,
       "avgProbability": 72.9,
-      "probAccuracy": -0.527
+      "probAccuracy": -0.528
     }
   },
   "byMarket": {
@@ -112,11 +112,11 @@
       "payoffRatio": 1.273
     },
     "us": {
-      "total": 1243,
-      "winRate": 0.2607,
+      "total": 1246,
+      "winRate": 0.26,
       "avgWinPct": 9.316,
-      "avgLossPct": 7.435,
-      "payoffRatio": 1.253
+      "avgLossPct": 7.422,
+      "payoffRatio": 1.255
     }
   },
   "byProbBand": {
@@ -125,52 +125,52 @@
       "actualWinRate": 0.1753
     },
     "mid_60-75": {
-      "count": 877,
-      "actualWinRate": 0.236
+      "count": 879,
+      "actualWinRate": 0.2355
     },
     "high_75+": {
-      "count": 1137,
-      "actualWinRate": 0.2911
+      "count": 1138,
+      "actualWinRate": 0.2909
     }
   },
   "regressionFactors": {
     "intercept": {
-      "coefficient": -15.9698,
-      "r2": 0.063
+      "coefficient": -15.9533,
+      "r2": 0.0629
     },
     "rsi": {
-      "coefficient": 0.2477,
-      "r2": 0.063,
+      "coefficient": 0.2474,
+      "r2": 0.0629,
       "description": "RSI14 — 높을수록 과매수 (보통 음의 계수)"
     },
     "volumeRatio": {
-      "coefficient": 0.1514,
-      "r2": 0.063,
+      "coefficient": 0.1552,
+      "r2": 0.0629,
       "description": "거래량비율 — 높을수록 모멘텀 강함 (보통 양의 계수)"
     },
     "distToMa20": {
-      "coefficient": -0.0839,
-      "r2": 0.063,
+      "coefficient": -0.0835,
+      "r2": 0.0629,
       "description": "MA20 이격도% — 너무 높으면 리스크 증가"
     },
     "probability": {
-      "coefficient": -1.563,
-      "r2": 0.063,
+      "coefficient": -1.5706,
+      "r2": 0.0629,
       "description": "확률 (0~1) — 모델 신뢰도"
     },
     "momentum5": {
-      "coefficient": -0.0954,
-      "r2": 0.063,
+      "coefficient": -0.0955,
+      "r2": 0.0629,
       "description": "5일 모멘텀% — 단기 추세"
     },
     "_winRateRegression": {
-      "r2": 0.0488,
-      "sampleSize": 1807,
+      "r2": 0.0487,
+      "sampleSize": 1810,
       "factors": {
         "rsi": 0.0128,
-        "volumeRatio": 0.0118,
-        "distToMa20": -0.012,
-        "probability": -0.2238,
+        "volumeRatio": 0.0124,
+        "distToMa20": -0.0119,
+        "probability": -0.2211,
         "momentum5": 0.0036
       }
     }
@@ -189,21 +189,21 @@
     },
     "us": {
       "status": "OK",
-      "n": 983,
+      "n": 986,
       "r2": 0.1185,
-      "intercept": -12.5907,
-      "rsi": 0.2443,
-      "volumeRatio": 4.0454,
-      "distToMa20": -0.1263,
-      "probability": -10.4889,
-      "momentum5": -0.0686
+      "intercept": -12.5357,
+      "rsi": 0.2442,
+      "volumeRatio": 4.0329,
+      "distToMa20": -0.1259,
+      "probability": -10.537,
+      "momentum5": -0.0687
     }
   },
   "insight": [
     "호라이즌: short 전략 평균 승률 30.2%로 최고",
     "모드: balanced 전략 평균 payoff 1.39x로 최고",
-    "마켓: US 승률 26.1%로 우위",
-    "회귀분석: intercept 낮을수록 수익률 향상 (β=-15.970)",
+    "마켓: US 승률 26.0%로 우위",
+    "회귀분석: intercept 낮을수록 수익률 향상 (β=-15.953)",
     "전체 팩터 설명력 R²=0.061 (0~1, 높을수록 예측력 강함)",
     "Kelly 최대: conservative_short → 포트폴리오 0.0% 권장"
   ]
