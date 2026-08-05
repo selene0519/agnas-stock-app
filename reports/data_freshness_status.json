@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-05T10:39:00.469476+00:00",
+  "generatedAt": "2026-08-05T16:04:53.954216+00:00",
   "overall": "WARN",
   "criticalFailures": 0,
   "hardFailures": 0,
@@ -15,16 +15,16 @@
     {
       "name": "kr_ohlcv",
       "status": "OK",
-      "detail": "0.44d, asOf=2026-08-05",
+      "detail": "0.67d, asOf=2026-08-05",
       "critical": true,
-      "ageDays": 0.44
+      "ageDays": 0.67
     },
     {
       "name": "kr_recommendations",
       "status": "OK",
-      "detail": "0.02d, asOf=2026-08-05T10:14:46.798487+00:00",
+      "detail": "0.09d, asOf=2026-08-05T14:02:08.683116+00:00",
       "critical": true,
-      "ageDays": 0.02
+      "ageDays": 0.09
     },
     {
       "name": "collector_steps",
@@ -36,44 +36,44 @@
     {
       "name": "collector_run",
       "status": "OK",
-      "detail": "0.02d, asOf=2026-08-05T19:14:57+09:00, source=cloud:us_close, reportedAt=2026-08-05T19:14:57",
+      "detail": "0.09d, asOf=2026-08-05T23:02:20+09:00, source=cloud:us_close, reportedAt=2026-08-05T23:02:20",
       "critical": true,
-      "ageDays": 0.02
+      "ageDays": 0.09
     },
     {
       "name": "local_collector_run",
       "status": "STALE",
-      "detail": "optional local collector 8.12d old; cloud source remains authoritative",
+      "detail": "optional local collector 8.35d old; cloud source remains authoritative",
       "critical": false,
-      "ageDays": 8.12
+      "ageDays": 8.35
     },
     {
       "name": "vtj_journal",
       "status": "OK",
-      "detail": "0.02d, asOf=2026-08-05T19:16:29+09:00",
+      "detail": "0.08d, asOf=2026-08-05T23:04:12+09:00",
       "critical": false,
-      "ageDays": 0.02
+      "ageDays": 0.08
     },
     {
       "name": "live_calibration",
       "status": "OK",
-      "detail": "0.44d, asOf=2026-08-05",
+      "detail": "0.67d, asOf=2026-08-05",
       "critical": false,
-      "ageDays": 0.44
+      "ageDays": 0.67
     },
     {
       "name": "strategy_win_rates",
       "status": "OK",
-      "detail": "-0.37d, asOf=2026-08-05 19:38:55",
+      "detail": "-0.37d, asOf=2026-08-06 01:04:47",
       "critical": false,
       "ageDays": -0.37
     },
     {
       "name": "prediction_capture",
       "status": "OK",
-      "detail": "0.44d, asOf=2026-08-05",
+      "detail": "0.67d, asOf=2026-08-05",
       "critical": true,
-      "ageDays": 0.44
+      "ageDays": 0.67
     },
     {
       "name": "capture_continuity",
@@ -85,14 +85,14 @@
     {
       "name": "settlement_backlog",
       "status": "OK",
-      "detail": "만기경과 미정산 0건 / 대기중 252건",
+      "detail": "만기경과 미정산 0건 / 대기중 242건",
       "critical": false,
       "ageDays": null
     },
     {
       "name": "clean_window_samples",
-      "status": "WARN",
-      "detail": "clean window(2026-07-10) 정산표본 14건 / 전체 정산 674건 / 원장 1086행 — 표본 부족(30건 미만)",
+      "status": "OK",
+      "detail": "clean window(2026-07-10) 정산표본 41건 / 전체 정산 701건 / 원장 1104행",
       "critical": false,
       "ageDays": null
     },
