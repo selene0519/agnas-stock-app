@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-05T07:15:46.843769+00:00",
+  "generatedAt": "2026-08-05T10:15:29.667883+00:00",
   "asOfDate": "2026-08-05",
   "market": "kr",
   "marketRegime": "BEAR",
@@ -7,14 +7,14 @@
   "featureCount": 14,
   "provenEdge": {
     "split": "2025-09-01",
-    "oosTrades": 23301,
+    "oosTrades": 23303,
     "topQuintileNetPct": -0.59,
     "bottomQuintileNetPct": -0.008,
-    "spreadPct": -0.582,
+    "spreadPct": -0.583,
     "ic": -0.026,
     "topQuintileByRegime": {
-      "BULL": -0.898,
-      "SIDE": 0.576,
+      "BULL": -0.9,
+      "SIDE": 0.585,
       "BEAR": 1.847
     }
   },
@@ -36,12 +36,12 @@
   },
   "note": "다중신호 ML 순위(선별 두뇌). OOS 검증 통과. 약세장은 상위픽도 (−)라 caution. 가격신호만 사용 — 수급/뉴스/섹터/공시 추가 시 개선 여지.",
   "actionableCount": 0,
-  "candidateCount": 100,
+  "candidateCount": 101,
   "candidates": [
     {
       "symbol": "277810",
       "name": "레인보우로보틱스",
-      "modelScore": 0.168,
+      "modelScore": 0.169,
       "close": 484000.0,
       "rsi14": 55.3,
       "entryRef": 484000.0,
@@ -54,7 +54,7 @@
     {
       "symbol": "247540",
       "name": "에코프로비엠",
-      "modelScore": 0.152,
+      "modelScore": 0.153,
       "close": 101700.0,
       "rsi14": 38.7,
       "entryRef": 101700.0,
@@ -80,13 +80,26 @@
     {
       "symbol": "131970",
       "name": "두산테스나",
-      "modelScore": 0.092,
+      "modelScore": 0.093,
       "close": 69100.0,
       "rsi14": 32.9,
       "entryRef": 69100.0,
       "stop": 66336,
       "target": 74628,
       "supplySignal": "기관 순매수",
+      "rankBucket": "TOP20",
+      "actionable": false
+    },
+    {
+      "symbol": "000990",
+      "name": "DB하이텍",
+      "modelScore": -0.021,
+      "close": 90000.0,
+      "rsi14": 32.7,
+      "entryRef": 90000.0,
+      "stop": 86400,
+      "target": 97200,
+      "supplySignal": "기관+외국인 순매도",
       "rankBucket": "TOP20",
       "actionable": false
     },
@@ -100,19 +113,6 @@
       "stop": 79008,
       "target": 88884,
       "supplySignal": "기관+외국인 순매수",
-      "rankBucket": "TOP20",
-      "actionable": false
-    },
-    {
-      "symbol": "000990",
-      "name": "DB하이텍",
-      "modelScore": -0.022,
-      "close": 90000.0,
-      "rsi14": 32.7,
-      "entryRef": 90000.0,
-      "stop": 86400,
-      "target": 97200,
-      "supplySignal": "기관+외국인 순매도",
       "rankBucket": "TOP20",
       "actionable": false
     },
@@ -184,7 +184,7 @@
     {
       "symbol": "240810",
       "name": "원익IPS",
-      "modelScore": -0.089,
+      "modelScore": -0.088,
       "close": 97700.0,
       "rsi14": 29.9,
       "entryRef": 97700.0,
