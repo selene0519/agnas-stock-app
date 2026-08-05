@@ -1,7 +1,7 @@
 {
   "status": "OK",
   "market": "all",
-  "sampleCount": 665,
+  "sampleCount": 675,
   "excludedInconsistentOutcomeCount": 3,
   "excludedBySourcePolicyCount": 1298,
   "calibrationBasis": "forward_only(SOURCE_CALIBRATION_WEIGHTS>0)",
@@ -18,20 +18,20 @@
       "sourceType": "FORWARD_PAPER_TRADE",
       "calibrationWeight": 1.0,
       "admissible": true,
-      "n": 668,
-      "winRate": 0.2036,
-      "avgPnlPct": -5.505
+      "n": 678,
+      "winRate": 0.2094,
+      "avgPnlPct": -5.263
     }
   ],
-  "baseWinRate": 0.2,
-  "baseAvgPnlPct": -5.535,
-  "generatedAt": "2026-08-05T21:51:23",
+  "baseWinRate": 0.2059,
+  "baseAvgPnlPct": -5.291,
+  "generatedAt": "2026-08-05T23:04:25",
   "autoApplied": false,
   "manualApprovalRequired": true,
   "calibrationSummary": {
-    "suggestedCount": 17,
+    "suggestedCount": 18,
     "approvedCount": 0,
-    "pendingReviewCount": 40,
+    "pendingReviewCount": 41,
     "applyEndpoint": "/api/journal/calibration/apply-approved"
   },
   "adjustments": [
@@ -62,14 +62,14 @@
       "manualApprovalRequired": true
     },
     {
-      "feedbackId": "e29af6a04c841e4f4d0c",
+      "feedbackId": "3f1233b1a3ea50af5659",
       "market": "all",
       "mode": "conservative",
       "horizon": "mid",
-      "n": 76,
-      "winRate": 0.0921,
-      "avgPnlPct": -7.015,
-      "multiplier": 0.5,
+      "n": 78,
+      "winRate": 0.1154,
+      "avgPnlPct": -6.212,
+      "multiplier": 0.534,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true
@@ -101,14 +101,14 @@
       "manualApprovalRequired": true
     },
     {
-      "feedbackId": "67e1a206d7c148141a8f",
+      "feedbackId": "d1682d85f1c0b492aa40",
       "market": "all",
       "mode": "balanced",
       "horizon": "mid",
-      "n": 87,
-      "winRate": 0.1034,
-      "avgPnlPct": -6.947,
-      "multiplier": 0.5,
+      "n": 90,
+      "winRate": 0.1111,
+      "avgPnlPct": -6.573,
+      "multiplier": 0.518,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true
@@ -127,26 +127,26 @@
       "manualApprovalRequired": true
     },
     {
-      "feedbackId": "f48254ebd158e98f19e1",
+      "feedbackId": "ccd1e7eabeb72edb7962",
       "market": "all",
       "mode": "aggressive",
       "horizon": "swing",
-      "n": 96,
-      "winRate": 0.1354,
-      "avgPnlPct": -7.08,
-      "multiplier": 0.51,
+      "n": 97,
+      "winRate": 0.1443,
+      "avgPnlPct": -6.92,
+      "multiplier": 0.52,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true
     },
     {
-      "feedbackId": "4aaa6967f7fb432ccb09",
+      "feedbackId": "65e0441dc3cd54e2f846",
       "market": "all",
       "mode": "aggressive",
       "horizon": "mid",
-      "n": 107,
-      "winRate": 0.028,
-      "avgPnlPct": -10.118,
+      "n": 111,
+      "winRate": 0.045,
+      "avgPnlPct": -9.398,
       "multiplier": 0.5,
       "direction": "REDUCE",
       "suggestedOnly": true,
