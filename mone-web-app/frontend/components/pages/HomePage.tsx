@@ -4038,21 +4038,30 @@ export default function HomePage({
     if (!result) return false;
     const matrixResult = normalizeStrategyMatrix(result.matrix, market);
     const homeHoldings = extractHoldingsFromHome(result);
-    const personalHoldings = await fetchPersonalHomeHoldings(market);
-    const holdingItems = personalHoldings?.items?.length ? personalHoldings.items : homeHoldings.items;
-    const holdingSummary = personalHoldings?.summary || homeHoldings.summary;
     const regime = normalizeMarketRegime(result.marketRegime, market);
     const health = normalizeDataHealth(result.dataHealth);
     const allItemsFlat = matrixResult.flatMap((cell) => cell.items);
-    setHoldings(holdingItems);
-    setSummary(holdingSummary);
+
+    // Seed every shared home section before waiting on the authenticated holdings request.
+    // The launch overlay stays mounted while this runs, so its dismissal reveals a complete page.
+    setHoldings(homeHoldings.items);
+    setSummary(homeHoldings.summary);
     setMatrix(matrixResult);
     setMarketRegime(regime);
     setDataHealth(health);
     setAllItems(allItemsFlat);
-    writeHomeCache(market, { matrix: matrixResult, holdings: holdingItems, summary: holdingSummary, marketRegime: regime, dataHealth: health, allItems: allItemsFlat });
+    writeHomeCache(market, { matrix: matrixResult, holdings: homeHoldings.items, summary: homeHoldings.summary, marketRegime: regime, dataHealth: health, allItems: allItemsFlat });
     setLoading(false);
     setRefreshWarning("");
+
+    const personalHoldings = await fetchPersonalHomeHoldings(market);
+    if (personalHoldings) {
+      const holdingItems = personalHoldings.items;
+      const holdingSummary = personalHoldings.summary || homeHoldings.summary;
+      setHoldings(holdingItems);
+      setSummary(holdingSummary);
+      writeHomeCache(market, { matrix: matrixResult, holdings: holdingItems, summary: holdingSummary, marketRegime: regime, dataHealth: health, allItems: allItemsFlat });
+    }
     return true;
   }, [bootData]);
 
@@ -4115,18 +4124,18 @@ export default function HomePage({
   }, []);
 
   useEffect(() => {
-    // Don't fetch while the boot overlay is still showing — boot data will seed us on dismiss
-    if (clientReady && !booting) {
+    // Seed the page behind the launch overlay; start live revalidation only after dismissal.
+    if (clientReady) {
       let active = true;
       applyCachedOrBootState(selectedMarket).then((hadCache) => {
-        if (!active) return;
+        if (!active || booting) return;
         // 캐시로 먼저 그리되 항상 라이브로 재검증한다(stale-while-revalidate).
         // 캐시만 믿고 끝내면 홈 게이트/레짐이 탐색·분석과 다른 시점 값으로 갈라진다.
         load({ background: hadCache });
       });
       return () => { active = false; };
     }
-  }, [clientReady, selectedMarket, booting]);
+  }, [applyCachedOrBootState, clientReady, selectedMarket, booting]);
 
   useEffect(() => {
     if (!clientReady) return;
@@ -4551,9 +4560,9 @@ export default function HomePage({
         </div>
       </div>
 
-      {(refreshWarning || (bootStatus === "degraded" && loading && allItems.length === 0)) && (
+      {(refreshWarning || bootStatus === "degraded") && (
         <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-          {refreshWarning || "일부 초기 데이터를 불러오지 못해 사용 가능한 캐시와 기본 화면을 먼저 표시합니다."}
+          {refreshWarning || "일부 초기 데이터를 불러오지 못했습니다. 준비된 데이터는 표시하고 누락 항목은 새로고침에서 다시 확인합니다."}
         </div>
       )}
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { clearApiSnapshots, writeApiSnapshot } from "./api";
+import { getAuthenticatedUserId, getUserToken } from "./userId";
 
 export type BootStatus = "idle" | "loading" | "ready" | "degraded";
 
@@ -34,7 +35,7 @@ type StoredCache = BootPreloadState & {
 type JsonResult = { ok: true; value: any } | { ok: false; error: string };
 type HomeSnapshotResult = { ok: true; value: any; stocksCache: any } | { ok: false; error: string };
 
-const BOOT_CACHE_KEY = "mone:boot-preload:v5";
+const BOOT_CACHE_KEY = "mone:boot-preload:v6";
 const BOOT_FALLBACK_TTL_MS = 24 * 60 * 60 * 1000;
 const HEALTH_CHECK_TIMEOUT_MS = 8000;
 const SNAPSHOT_FETCH_TIMEOUT_MS = 12000;
@@ -79,11 +80,24 @@ export function getCachedBootPreload(): BootPreloadState {
   return stored;
 }
 
+function bootRequestHeaders(): Record<string, string> {
+  try {
+    const userId = getAuthenticatedUserId();
+    const token = getUserToken();
+    return {
+      ...(userId ? { "x-mone-user": userId } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+  } catch {
+    return {};
+  }
+}
+
 async function fetchWithTimeout(path: string, timeoutMs: number): Promise<any> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(path, { cache: "no-store", signal: controller.signal });
+    const res = await fetch(path, { cache: "no-store", headers: bootRequestHeaders(), signal: controller.signal });
     clearTimeout(timer);
     if (!res.ok) throw new Error(`${res.status} ${path}`);
     return res.json();
@@ -178,6 +192,7 @@ async function fetchAuxiliarySnapshots(market: "kr" | "us") {
   const jobs = [
     fetchApiSnapshot("/api/market/fear-greed", { market }, 12000),
     fetchApiSnapshot("/api/final/operation-summary", { market, mode: "balanced", horizon: "swing" }, 25000),
+    fetchApiSnapshot("/api/holdings-clean", { market, limit: 500 }, 12000),
     fetchApiSnapshot("/api/earnings-calendar", { market, days: 14 }, 12000),
     fetchApiSnapshot("/api/calendar/today", { market }, 12000),
     fetchApiSnapshot("/api/risk/near-alerts", { market, thresholdPct: 5 }, 12000),
@@ -186,7 +201,7 @@ async function fetchAuxiliarySnapshots(market: "kr" | "us") {
     fetchApiSnapshot("/api/watchlist/groups", { market }, 12000),
     fetchApiSnapshot("/api/sectors", { market }, 12000),
   ];
-  return Promise.allSettled(jobs);
+  return Promise.all(jobs);
 }
 
 async function fetchChartSnapshot(market: "kr" | "us", homeSummary: any) {
@@ -205,7 +220,26 @@ async function fetchChartSnapshot(market: "kr" | "us", homeSummary: any) {
     fetchApiSnapshot(`/api/chart/similar-pattern/${symbol}`, { market }, 20000),
     fetchApiSnapshot(`/api/symbol/${symbol}/events`, { market }, 12000),
   ];
-  return Promise.allSettled(jobs);
+  return Promise.all(jobs);
+}
+
+function snapshotErrors(results: JsonResult[]): string[] {
+  return results.flatMap((result) => result.ok === false ? [result.error] : []);
+}
+
+async function preloadSupportingSnapshots(krHomeSummary: any, usHomeSummary: any): Promise<string[]> {
+  const [krAuxiliary, usAuxiliary, krChart, usChart] = await Promise.all([
+    fetchAuxiliarySnapshots("kr"),
+    fetchAuxiliarySnapshots("us"),
+    krHomeSummary ? fetchChartSnapshot("kr", krHomeSummary) : Promise.resolve([]),
+    usHomeSummary ? fetchChartSnapshot("us", usHomeSummary) : Promise.resolve([]),
+  ]);
+  return [
+    ...snapshotErrors(krAuxiliary),
+    ...snapshotErrors(usAuxiliary),
+    ...snapshotErrors(krChart),
+    ...snapshotErrors(usChart),
+  ];
 }
 
 export async function runBootPreload(onProgress?: (progress: BootProgress) => void): Promise<BootPreloadState> {
@@ -217,8 +251,17 @@ export async function runBootPreload(onProgress?: (progress: BootProgress) => vo
   const usDataVersion = healthResult.ok ? marketDataVersion(healthResult.value, "us") : stored?.usDataVersion ?? null;
 
   if (stored?.hasBootData && stored.krDataVersion === krDataVersion && stored.usDataVersion === usDataVersion) {
+    const supportErrors = await preloadSupportingSnapshots(
+      stored.bootData.krHomeSummary,
+      stored.bootData.usHomeSummary,
+    );
+    const errors = [resultError(healthResult), ...supportErrors].filter(Boolean);
     onProgress?.({ progress: 100, message: "저장된 예측 스냅샷을 여는 중...", step: "done" });
-    return { ...stored, bootStatus: healthResult.ok ? "ready" : "degraded" };
+    return {
+      ...stored,
+      bootStatus: errors.length === 0 ? "ready" : "degraded",
+      errors,
+    };
   }
 
   if (stored?.hasBootData && (!healthResult.ok || (!krDataVersion && !usDataVersion))) {
@@ -241,18 +284,22 @@ export async function runBootPreload(onProgress?: (progress: BootProgress) => vo
   onProgress?.({ progress: 66, message: "미장 예측 스냅샷을 받는 중...", step: "stocks" });
 
   onProgress?.({ progress: 84, message: "보조 화면 데이터를 저장하는 중...", step: "stocks" });
-  void Promise.allSettled([fetchAuxiliarySnapshots("kr"), fetchAuxiliarySnapshots("us")]);
-
-  onProgress?.({ progress: 92, message: "대표 차트 분석을 저장하는 중...", step: "stocks" });
-  void Promise.allSettled([
+  const [krAuxiliary, usAuxiliary, krChart, usChart] = await Promise.all([
+    fetchAuxiliarySnapshots("kr"),
+    fetchAuxiliarySnapshots("us"),
     krHome.ok ? fetchChartSnapshot("kr", krHome.value) : Promise.resolve([]),
     usHome.ok ? fetchChartSnapshot("us", usHome.value) : Promise.resolve([]),
   ]);
 
+  onProgress?.({ progress: 92, message: "대표 차트 분석을 저장하는 중...", step: "stocks" });
   const errors = [
     resultError(healthResult),
     resultError(krHome),
     resultError(usHome),
+    ...snapshotErrors(krAuxiliary),
+    ...snapshotErrors(usAuxiliary),
+    ...snapshotErrors(krChart),
+    ...snapshotErrors(usChart),
   ].filter(Boolean);
 
   const state: BootPreloadState = {

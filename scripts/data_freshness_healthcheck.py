@@ -36,6 +36,8 @@ def _parse_dt(s: str) -> datetime | None:
     s = str(s or "").strip()
     if not s:
         return None
+    if s.upper().endswith(" KST"):
+        s = f"{s[:-4].strip()}+09:00"
     s = s.replace("Z", "+00:00")
     for fmt in (None, "%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d", "%Y/%m/%d"):
         try:
@@ -45,6 +47,21 @@ def _parse_dt(s: str) -> datetime | None:
             continue
     return None
 
+
+def _parse_collector_dt(s: str) -> datetime | None:
+    """Collector reports are written by KST runners unless an offset is explicit."""
+    raw = str(s or "").strip()
+    if not raw:
+        return None
+    if raw.upper().endswith(" KST") or raw.endswith("Z"):
+        return _parse_dt(raw)
+    try:
+        parsed = datetime.fromisoformat(raw)
+        if parsed.tzinfo is None:
+            return parsed.replace(tzinfo=timezone(timedelta(hours=9)))
+    except ValueError:
+        pass
+    return _parse_dt(raw)
 
 def _age_days(dt: datetime | None) -> float | None:
     if dt is None:
@@ -310,15 +327,71 @@ def run(max_stale_days: float = 3.0) -> dict:
     check_date("kr_recommendations", (gen or {}).get("generatedAt"), max_stale_days, True)
     # 3) 로컬/CI 수집기 스텝 에러(조용한 실패)
     lc = _load_json("reports/local_collector_status.json")
-    if lc is None:
-        add("collector_steps", "MISSING", "no local_collector_status.json", False)
+    cloud_reports = {
+        "kis_live": _load_json("reports/kis_live_refresh_status.json"),
+        "kr_close": _load_json("reports/kr_close_ohlcv_refresh_status.json"),
+        "us_close": _load_json("reports/us_close_ohlcv_refresh_status.json"),
+    }
+    available_cloud = {name: report for name, report in cloud_reports.items() if isinstance(report, dict)}
+    cloud_errors = [
+        f"{name}:{error}"
+        for name, report in available_cloud.items()
+        for error in _find_error_steps(report)
+    ]
+    if available_cloud and cloud_errors:
+        add("collector_steps", "ERROR", "; ".join(cloud_errors[:5]), True)
+    elif available_cloud:
+        add("collector_steps", "OK", "cloud collector reports contain no error steps", True)
+    elif lc is None:
+        add("collector_steps", "MISSING", "no cloud or local collector status", True)
     else:
         errs = _find_error_steps(lc)
         if errs:
             add("collector_steps", "ERROR", "; ".join(errs[:5]), True)
         else:
-            add("collector_steps", "OK", "no error steps", True)
-        check_date("collector_run", lc.get("completedAt") or lc.get("startedAt"), max_stale_days, True)
+            add("collector_steps", "OK", "local collector reports contain no error steps", True)
+
+    collector_timestamps: list[tuple[datetime, str, str]] = []
+    for source, report in available_cloud.items():
+        candidates = [report.get("updatedAt"), report.get("completedAt"), report.get("startedAt")]
+        markets = report.get("markets") if isinstance(report.get("markets"), dict) else {}
+        candidates.extend(
+            market_row.get("updatedAt")
+            for market_row in markets.values()
+            if isinstance(market_row, dict)
+        )
+        for raw in candidates:
+            parsed = _parse_collector_dt(raw) if raw else None
+            if parsed is not None:
+                collector_timestamps.append((parsed, str(raw), f"cloud:{source}"))
+    if isinstance(lc, dict):
+        raw = lc.get("completedAt") or lc.get("startedAt")
+        parsed = _parse_collector_dt(raw) if raw else None
+        if parsed is not None:
+            collector_timestamps.append((parsed, str(raw), "local"))
+
+    if collector_timestamps:
+        freshest_dt, freshest_raw, freshest_source = max(collector_timestamps, key=lambda row: row[0])
+        check_date("collector_run", freshest_dt.isoformat(), max_stale_days, True)
+        checks[-1]["detail"] += f", source={freshest_source}, reportedAt={freshest_raw}"
+    else:
+        add("collector_run", "MISSING", "no parseable cloud or local collector timestamp", True)
+
+    if lc is None:
+        add("local_collector_run", "WARN", "optional local collector status unavailable", False)
+    else:
+        local_errors = _find_error_steps(lc)
+        local_raw = lc.get("completedAt") or lc.get("startedAt")
+        local_dt = _parse_collector_dt(local_raw) if local_raw else None
+        local_age = _age_days(local_dt)
+        if local_errors:
+            add("local_collector_run", "WARN", f"optional local collector errors: {'; '.join(local_errors[:3])}", False, local_age)
+        elif local_age is None:
+            add("local_collector_run", "WARN", "optional local collector date unavailable", False)
+        elif local_age > max_stale_days:
+            add("local_collector_run", "STALE", f"optional local collector {local_age}d old; cloud source remains authoritative", False, local_age)
+        else:
+            add("local_collector_run", "OK", f"optional local collector {local_age}d, asOf={local_raw}", False, local_age)
     # 4) VTJ 정산
     vtj = _load_json("reports/virtual_trade_journal_status.json")
     check_date("vtj_journal", (vtj or {}).get("lastRunAt"), max_stale_days, False)

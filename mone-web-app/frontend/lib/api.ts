@@ -175,7 +175,7 @@ const configuredTimeout = Number(process.env.NEXT_PUBLIC_API_TIMEOUT_MS || 12000
 const API_TIMEOUT_MS = Number.isFinite(configuredTimeout) && configuredTimeout > 0
   ? configuredTimeout
   : 120000;
-const API_SNAPSHOT_PREFIX = "mone:api-snapshot:v5:";
+const API_SNAPSHOT_PREFIX = "mone:api-snapshot:v6:";
 // 스냅샷은 두 단계로 쓴다: FRESH 창 안에서는 네트워크 없이 그대로 서빙(즉시 페인트),
 // 그 이후에는 라이브 조회가 원본이고 스냅샷은 네트워크 실패 시 폴백으로만 쓴다.
 // 이전에는 18시간 내내 스냅샷을 그대로 반환해 홈·탐색·분석이 서로 다른 시점의
@@ -224,8 +224,14 @@ function isSnapshotCacheablePath(path: string) {
   return SNAPSHOT_CACHEABLE_PATHS.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 }
 
+function apiSnapshotScope(path: string) {
+  const isUserScoped = path === "/api/holdings" || path.startsWith("/api/holdings-")
+    || path === "/api/watchlist" || path.startsWith("/api/watchlist-") || path.startsWith("/api/watchlist/");
+  return isUserScoped ? getAuthenticatedUserId() || "anonymous" : "shared";
+}
+
 function snapshotCacheKey(path: string, params?: Record<string, string | number | boolean | undefined | null>) {
-  return `${API_SNAPSHOT_PREFIX}${path}?${JSON.stringify(normalizeParams(params))}`;
+  return `${API_SNAPSHOT_PREFIX}${apiSnapshotScope(path)}:${path}?${JSON.stringify(normalizeParams(params))}`;
 }
 
 export function readApiSnapshot<T = any>(

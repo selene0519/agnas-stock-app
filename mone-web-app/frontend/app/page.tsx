@@ -18,7 +18,6 @@ import { getCachedBootPreload, runBootPreload, type BootPreloadState } from "../
 import { useFocusTrap } from "../lib/useFocusTrap";
 
 const initialNotifications: { msg: string; time: string; warn: boolean }[] = [];
-const APP_SHELL_TIMEOUT_MS = 2500;
 
 function PageLoading() {
   return <div className="py-16 text-center text-sm text-slate-400" role="status">화면을 불러오는 중…</div>;
@@ -90,7 +89,6 @@ export default function App() {
     const cachedBoot = getCachedBootPreload();
     if (cachedBoot.hasBootData) {
       setBootState(cachedBoot);
-      setBooting(false);
     }
     setAdminTokenState(getAdminToken());
     setUserProfile(getUserProfile());
@@ -133,24 +131,16 @@ export default function App() {
 
     let cancelled = false;
     const cachedBoot = getCachedBootPreload();
-    const showLaunchLoading = !cachedBoot.hasBootData;
-    if (!showLaunchLoading) {
+    const showLaunchLoading = true;
+    if (cachedBoot.hasBootData) {
       setBootState(cachedBoot);
-      setBooting(false);
-    } else {
-      setBooting(true);
-      setBootState({ bootStatus: "loading", bootData: {}, hasBootData: false });
     }
+    setBooting(true);
+    if (!cachedBoot.hasBootData) setBootState({ bootStatus: "loading", bootData: {}, hasBootData: false });
 
     const delayTimer = window.setTimeout(() => {
       if (!cancelled && showLaunchLoading) setBootDelayed(true);
     }, 5000); // 5초 후 "서버 응답이 늦어지고 있어요" 표시
-
-    // Do not block navigation on a slow first snapshot. Page-level views can
-    // consume the same preload once it resolves after the app shell is visible.
-    const maxBootTimer = window.setTimeout(() => {
-      if (!cancelled && showLaunchLoading) setBooting(false);
-    }, APP_SHELL_TIMEOUT_MS);
 
     const updateBoot = (progress: number, message: string, step: "server" | "home" | "stocks" | "done") => {
       if (cancelled) return;
@@ -194,7 +184,6 @@ export default function App() {
         }
       } finally {
         window.clearTimeout(delayTimer);
-        window.clearTimeout(maxBootTimer);
       }
     }
 
@@ -203,7 +192,6 @@ export default function App() {
     return () => {
       cancelled = true;
       window.clearTimeout(delayTimer);
-      window.clearTimeout(maxBootTimer);
     };
   }, [mounted]);
 

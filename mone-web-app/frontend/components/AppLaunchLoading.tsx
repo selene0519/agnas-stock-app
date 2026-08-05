@@ -108,7 +108,7 @@ export default function AppLaunchLoading({
             {/* 진행바 */}
             <div className="mt-4 h-[6px] w-full overflow-hidden rounded-full bg-white/10">
               <div
-                className="h-full rounded-full bg-[#3dd8d0] shadow-[0_0_10px_rgba(61,216,208,0.7)] transition-all duration-500 ease-out"
+                className="h-full rounded-full bg-[#3dd8d0] shadow-[0_0_10px_rgba(61,216,208,0.7)] transition-[width] duration-500 ease-out"
                 style={{ width: `${safeProgress}%` }}
               />
             </div>
