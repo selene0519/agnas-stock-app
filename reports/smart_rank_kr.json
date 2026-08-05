@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-05T21:56:12.419325+00:00",
+  "generatedAt": "2026-08-05T23:30:32.267552+00:00",
   "asOfDate": "2026-08-05",
   "market": "kr",
   "marketRegime": "BEAR",
@@ -7,15 +7,15 @@
   "featureCount": 14,
   "provenEdge": {
     "split": "2025-09-01",
-    "oosTrades": 23303,
+    "oosTrades": 23302,
     "topQuintileNetPct": -0.59,
     "bottomQuintileNetPct": -0.008,
-    "spreadPct": -0.583,
+    "spreadPct": -0.582,
     "ic": -0.026,
     "topQuintileByRegime": {
       "BULL": -0.9,
       "SIDE": 0.585,
-      "BEAR": 1.847
+      "BEAR": 1.854
     }
   },
   "featureWeights": {
@@ -36,7 +36,7 @@
   },
   "note": "다중신호 ML 순위(선별 두뇌). OOS 검증 통과. 약세장은 상위픽도 (−)라 caution. 가격신호만 사용 — 수급/뉴스/섹터/공시 추가 시 개선 여지.",
   "actionableCount": 0,
-  "candidateCount": 101,
+  "candidateCount": 100,
   "candidates": [
     {
       "symbol": "277810",
@@ -234,6 +234,19 @@
       "actionable": false
     },
     {
+      "symbol": "058470",
+      "name": "리노공업",
+      "modelScore": -0.105,
+      "close": 66900.0,
+      "rsi14": 39.4,
+      "entryRef": 66900.0,
+      "stop": 64224,
+      "target": 72252,
+      "supplySignal": "기관 순매수",
+      "rankBucket": "TOP20",
+      "actionable": false
+    },
+    {
       "symbol": "001440",
       "name": "대한전선",
       "modelScore": -0.105,
@@ -243,19 +256,6 @@
       "stop": 27312,
       "target": 30726,
       "supplySignal": "외국인 순매수",
-      "rankBucket": "TOP20",
-      "actionable": false
-    },
-    {
-      "symbol": "058470",
-      "name": "리노공업",
-      "modelScore": -0.106,
-      "close": 66900.0,
-      "rsi14": 39.4,
-      "entryRef": 66900.0,
-      "stop": 64224,
-      "target": 72252,
-      "supplySignal": "기관 순매수",
       "rankBucket": "TOP20",
       "actionable": false
     },
@@ -275,7 +275,7 @@
     {
       "symbol": "042700",
       "name": "한미반도체",
-      "modelScore": -0.115,
+      "modelScore": -0.114,
       "close": 209000.0,
       "rsi14": 33.4,
       "entryRef": 209000.0,
