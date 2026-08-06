@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-06T22:10:30.012236+00:00",
+  "generatedAt": "2026-08-06T23:31:38.127554+00:00",
   "asOfDate": "2026-08-06",
   "market": "kr",
   "marketRegime": "BEAR",
@@ -7,15 +7,15 @@
   "featureCount": 14,
   "provenEdge": {
     "split": "2025-09-01",
-    "oosTrades": 23404,
-    "topQuintileNetPct": -0.607,
+    "oosTrades": 23403,
+    "topQuintileNetPct": -0.608,
     "bottomQuintileNetPct": 0.005,
-    "spreadPct": -0.612,
+    "spreadPct": -0.613,
     "ic": -0.027,
     "topQuintileByRegime": {
       "BULL": -0.903,
       "SIDE": 0.344,
-      "BEAR": 1.911
+      "BEAR": 1.908
     }
   },
   "featureWeights": {
@@ -36,7 +36,7 @@
   },
   "note": "다중신호 ML 순위(선별 두뇌). OOS 검증 통과. 약세장은 상위픽도 (−)라 caution. 가격신호만 사용 — 수급/뉴스/섹터/공시 추가 시 개선 여지.",
   "actionableCount": 0,
-  "candidateCount": 101,
+  "candidateCount": 100,
   "candidates": [
     {
       "symbol": "247540",
@@ -119,7 +119,7 @@
     {
       "symbol": "329180",
       "name": "HD현대중공업",
-      "modelScore": -0.015,
+      "modelScore": -0.016,
       "close": 507000.0,
       "rsi14": 54.6,
       "entryRef": 507000.0,
