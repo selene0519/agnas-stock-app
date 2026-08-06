@@ -1,27 +1,14 @@
 {
   "version": "leader-breakout-v1",
   "market": "us",
-  "asOf": "2026-08-05",
+  "asOf": "2026-08-06",
   "status": "OK",
   "usBackdropFavorable": true,
-  "scanned": 130,
+  "scanned": 122,
   "validatedEdge": {
     "note": "leader breakout only holds up on SPY>MA50; deep 2014-2026 train+OOS forward-return, not cost/trade-sim"
   },
-  "candidates": [
-    {
-      "symbol": "ANET",
-      "asOf": "2026-08-05",
-      "entry": 197.31,
-      "stop": 156.84,
-      "target": 278.25,
-      "rrRatio": 2.0,
-      "ret60Pct": 39.18,
-      "posRange250": 1.0,
-      "volRatio50": 2.4,
-      "setup": "LEADER_BREAKOUT"
-    }
-  ],
+  "candidates": [],
   "heldForUnfavorableBackdrop": [],
   "note": "Research/paper only. Feed the paper loop for live proof before promotion."
 }
