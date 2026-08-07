@@ -1,6 +1,6 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-08-06T23:31:09.619462+00:00",
+  "generatedAt": "2026-08-07T01:40:28.217446+00:00",
   "policy": {
     "version": "shadow-residual-alpha-v1.1.2",
     "label": "POST_SIGNAL_PRE_EVENT_MARKET_MODEL_CAR_BY_HORIZON",
@@ -113,7 +113,7 @@
   },
   "forwardEvidence": {
     "modelFingerprint": "7f3642213237690bb880",
-    "predictionJournalRows": 4,
+    "predictionJournalRows": 0,
     "settlementJournalRows": 0,
     "settledCurrentModelEconomicEvents": 0,
     "journalIntegrity": {
@@ -141,23 +141,23 @@
     "predictionJournal": {
       "path": "data/shadow_residual_alpha_predictions.csv",
       "existingRows": 0,
-      "appendedRows": 4,
+      "appendedRows": 0,
       "duplicateRows": 0,
       "lateCandidatesSkipped": 0,
       "missingGeneratedAtSkipped": 0,
       "futureGeneratedAtSkipped": 0,
       "immutableConflicts": 0,
       "schemaError": null,
-      "recordMarket": "all",
-      "candidateRowsConsidered": 4
+      "recordMarket": "none",
+      "candidateRowsConsidered": 0
     },
     "settlementJournal": {
       "path": "data/shadow_residual_alpha_settlements.csv",
-      "predictionRows": 4,
+      "predictionRows": 0,
       "existingRows": 0,
       "appendedRows": 0,
       "duplicateRows": 0,
-      "unresolvedPredictions": 4,
+      "unresolvedPredictions": 0,
       "immutableConflicts": 0,
       "schemaError": null
     },
@@ -190,7 +190,7 @@
       "predictionLower90Pct": -12.315135,
       "baselinePredictionPct": -4.308883,
       "predictionId": "376f9c143cdea4bf4bf56038c927",
-      "forwardSealStatus": "SEALED_FORWARD"
+      "forwardSealStatus": "UNSEALED"
     },
     {
       "candidateKey": "bbf572313892019084c4a9a3",
@@ -212,7 +212,7 @@
       "predictionLower90Pct": -32.488935,
       "baselinePredictionPct": -4.308883,
       "predictionId": "ee059ac593208b17e3453df81ad8",
-      "forwardSealStatus": "SEALED_FORWARD"
+      "forwardSealStatus": "UNSEALED"
     },
     {
       "candidateKey": "69c6150e1a8f88e102cce65b",
@@ -234,7 +234,7 @@
       "predictionLower90Pct": -9.951428,
       "baselinePredictionPct": -4.308883,
       "predictionId": "0d8361de375f76a34505b1fd324a",
-      "forwardSealStatus": "SEALED_FORWARD"
+      "forwardSealStatus": "UNSEALED"
     },
     {
       "candidateKey": "55e50929af2c3cbd1fe90a5a",
@@ -256,7 +256,7 @@
       "predictionLower90Pct": -9.300849,
       "baselinePredictionPct": -4.308883,
       "predictionId": "fa35d91f63bf5b5c557a7594f630",
-      "forwardSealStatus": "SEALED_FORWARD"
+      "forwardSealStatus": "UNSEALED"
     }
   ],
   "forwardOosAudit": [],
