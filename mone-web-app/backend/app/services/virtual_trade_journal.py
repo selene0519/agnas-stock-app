@@ -1761,16 +1761,28 @@ def _filter_rows(
     return out
 
 
-def _merge_evaluations(journal_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    eval_rows = _read_rows(EVALUATION_CSV, EVALUATION_COLS)
-    latest: dict[str, dict[str, Any]] = {}
-    for row in eval_rows:
+def _normalize_evaluation_rows(
+    rows: list[dict[str, Any]],
+    valid_journal_ids: set[str] | None = None,
+) -> list[dict[str, Any]]:
+    """Keep the newest evaluation per journal and optionally remove orphans."""
+    selected: dict[str, tuple[str, int]] = {}
+    for index, row in enumerate(rows):
         jid = _text(row.get("journal_id"))
-        if not jid:
+        if not jid or (valid_journal_ids is not None and jid not in valid_journal_ids):
             continue
-        old = latest.get(jid)
-        if old is None or _text(row.get("evaluated_at")) >= _text(old.get("evaluated_at")):
-            latest[jid] = row
+        key = (_text(row.get("evaluated_at")), index)
+        if jid not in selected or key >= selected[jid]:
+            selected[jid] = key
+    chosen_indexes = {index for _evaluated_at, index in selected.values()}
+    # Preserve physical order so repairing a few defects does not rewrite the entire CSV.
+    return [row for index, row in enumerate(rows) if index in chosen_indexes]
+
+
+def _merge_evaluations(journal_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    journal_ids = {_text(row.get("journal_id")) for row in journal_rows if _text(row.get("journal_id"))}
+    eval_rows = _normalize_evaluation_rows(_read_rows(EVALUATION_CSV, EVALUATION_COLS), journal_ids)
+    latest = {_text(row.get("journal_id")): row for row in eval_rows}
     merged: list[dict[str, Any]] = []
     for row in journal_rows:
         jid = _text(row.get("journal_id"))
@@ -1804,12 +1816,16 @@ def evaluate(
         scope = [row for row in scope if _upper(row.get("status") or "OPEN") not in {"EVALUATED", "CANCELLED", "DATA_INVALID"}]
     safe_limit = max(1, min(int(limit or 200), 1000))
     scope = scope[:safe_limit]
-    existing_eval = _read_rows(EVALUATION_CSV, EVALUATION_COLS)
+    raw_existing_eval = _read_rows(EVALUATION_CSV, EVALUATION_COLS)
+    journal_ids = {_text(row.get("journal_id")) for row in journal_rows if _text(row.get("journal_id"))}
+    existing_eval = _normalize_evaluation_rows(raw_existing_eval, journal_ids)
+    repaired_rows = len(raw_existing_eval) - len(existing_eval)
     replaced = {_text(row.get("journal_id")) for row in scope}
     kept_eval = [row for row in existing_eval if _text(row.get("journal_id")) not in replaced]
     evaluated = [_evaluate_one(row) for row in scope]
-    if evaluated:
+    if evaluated or repaired_rows:
         _write_rows(EVALUATION_CSV, kept_eval + evaluated, EVALUATION_COLS)
+    if evaluated:
         # A loss gets one immutable entry-time event snapshot for postmortem.
         # The postmortem service de-duplicates journal/date/failure keys, so
         # force-evaluation cannot create duplicate explanations.
@@ -1843,6 +1859,7 @@ def evaluate(
         "status": "OK",
         "source": _relative(EVALUATION_CSV),
         "evaluated": len(evaluated),
+        "repairedEvaluationRows": repaired_rows,
         "outcomes": dict(counts),
         "items": evaluated,
     }
@@ -4343,6 +4360,7 @@ def _journal_operational_verdict(
     self_status: dict[str, Any],
     perf_gate: dict[str, Any],
 ) -> dict[str, Any]:
+    auto_status = _read_auto_status()
     integrity = _journal_integrity(raw_journal_rows, evaluation_rows)
     status_counts = Counter(_upper(row.get("status") or "OPEN") for row in merged_rows)
     outcome_counts = Counter(_upper(row.get("outcome") or "UNKNOWN") for row in merged_rows)
@@ -4376,7 +4394,18 @@ def _journal_operational_verdict(
         and integrity["evaluationDuplicateIds"]["extraRows"] == 0
         and integrity["orphanEvaluationRows"] == 0
     )
-    recording_ok = file_ok and len(raw_journal_rows) > 0 and duplicate_ok
+    runs = [row for row in (auto_status.get("runs") or []) if isinstance(row, dict)]
+    run_statuses = {_upper(row.get("status")) for row in runs}
+    allowed_run_statuses = {"OK", "NO_CANDIDATES", "SKIPPED_MARKET_CLOSED"}
+    auto_ok = (
+        bool(auto_status.get("enabled", True))
+        and _upper(auto_status.get("status") or "UNKNOWN") == "OK"
+        and bool(runs)
+        and run_statuses.issubset(allowed_run_statuses)
+    )
+    added = sum(int(float(row.get("added") or 0)) for row in runs)
+    capture_activity = "CAPTURED" if added else ("NO_ELIGIBLE_CANDIDATES" if "NO_CANDIDATES" in run_statuses else "MARKET_CLOSED")
+    recording_ok = file_ok and len(raw_journal_rows) > 0 and duplicate_ok and auto_ok
     evaluation_ok = (
         len(evaluation_rows) > 0
         and integrity["missingEvaluationRows"] == 0
@@ -4397,6 +4426,10 @@ def _journal_operational_verdict(
         caveats.append("Some rows are DATA_PENDING because required future OHLCV is not available yet.")
     if warnings:
         next_actions.append("Restore required journal/evaluation files before using self-learning decisions.")
+    if auto_ok and capture_activity == "NO_ELIGIBLE_CANDIDATES":
+        caveats.append("The latest capture run completed but no recommendation passed the existing quality gates.")
+    if not auto_ok:
+        next_actions.append("Restore the scheduled journal capture run before relying on recording status.")
     if unexpected_open:
         next_actions.append("Review unexpected open rows before applying new calibration.")
     if perf_status == "ROLLBACK_READY":
@@ -4416,6 +4449,13 @@ def _journal_operational_verdict(
         "evaluationStatus": "OK" if evaluation_ok else "CHECK",
         "selfLearningStatus": self_status_code,
         "performanceGateStatus": perf_status,
+        "captureActivity": {
+            "status": capture_activity if auto_ok else "CHECK",
+            "pipelineStatus": "OK" if auto_ok else "CHECK",
+            "lastRunAt": auto_status.get("lastRunAt"),
+            "runStatuses": sorted(run_statuses),
+            "added": added,
+        },
         "summary": (
             "Journal capture and evaluation are operating normally; open rows are expected pending evaluations."
             if status == "RUNNING"

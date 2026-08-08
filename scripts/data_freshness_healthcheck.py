@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -99,6 +100,37 @@ def _newest_csv_date(rel_glob: str, sample: int = 5) -> str | None:
             continue
     return newest
 
+
+def _benchmark_ohlcv_state(symbol: str) -> tuple[str, str | None, str]:
+    """Validate the exact regime benchmark, including its trailing bar."""
+    path = ROOT / "data" / "market" / "ohlcv" / f"kr_{symbol}_daily.csv"
+    if not path.exists() or path.stat().st_size == 0:
+        return "MISSING", None, f"{path.name} unavailable"
+    try:
+        with path.open(encoding="utf-8-sig", newline="") as handle:
+            rows = list(csv.DictReader(handle))
+    except Exception as exc:
+        return "ERROR", None, f"{path.name} unreadable: {exc}"
+    if not rows:
+        return "MISSING", None, f"{path.name} has no rows"
+    row = rows[-1]
+    day = str(row.get("date") or row.get("Date") or "")[:10] or None
+    try:
+        open_, high, low, close = (
+            float(row.get(key) or row.get(key.title()) or "nan")
+            for key in ("open", "high", "low", "close")
+        )
+    except (TypeError, ValueError):
+        return "ERROR", day, f"{path.name} trailing bar is non-numeric, asOf={day}"
+    values = (open_, high, low, close)
+    valid = (
+        all(math.isfinite(value) and value > 0 for value in values)
+        and high >= max(open_, close, low)
+        and low <= min(open_, close, high)
+    )
+    if not valid:
+        return "ERROR", day, f"{path.name} trailing bar is invalid, asOf={day}"
+    return "OK", day, f"{path.name} trailing OHLC is valid"
 
 def _read_csv_rows(rel: str) -> list[dict]:
     p = ROOT / rel
@@ -322,6 +354,15 @@ def run(max_stale_days: float = 3.0) -> dict:
 
     # 1) KR OHLCV 최신 봉 날짜
     check_date("kr_ohlcv", _newest_csv_date("data/market/ohlcv/kr_*_daily.csv"), max_stale_days + 1, True)
+    # A fresh stock universe must not hide a stopped or NaN regime benchmark.
+    for benchmark in ("KOSPI", "KOSDAQ"):
+        state, day, detail = _benchmark_ohlcv_state(benchmark)
+        if state != "OK":
+            add(f"kr_{benchmark.lower()}_ohlcv", state, detail, True)
+        else:
+            check_date(f"kr_{benchmark.lower()}_ohlcv", day, max_stale_days + 1, True)
+            checks[-1]["detail"] += f", {detail}"
+
     # 2) KR 추천 생성
     gen = _load_json("reports/kr_recommendation_gen_status.json")
     check_date("kr_recommendations", (gen or {}).get("generatedAt"), max_stale_days, True)
@@ -331,6 +372,7 @@ def run(max_stale_days: float = 3.0) -> dict:
         "kis_live": _load_json("reports/kis_live_refresh_status.json"),
         "kr_close": _load_json("reports/kr_close_ohlcv_refresh_status.json"),
         "us_close": _load_json("reports/us_close_ohlcv_refresh_status.json"),
+        "benchmarks": _load_json("reports/benchmark_fetch_status.json"),
     }
     available_cloud = {name: report for name, report in cloud_reports.items() if isinstance(report, dict)}
     cloud_errors = [

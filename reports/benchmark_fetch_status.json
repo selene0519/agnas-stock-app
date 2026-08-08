@@ -1,34 +1,72 @@
 {
-  "updatedAt": "2026-07-21T20:56:13",
+  "status": "OK",
+  "updatedAt": "2026-08-08T17:21:15",
+  "criticalFailures": 0,
   "benchmarks": [
     {
       "symbol": "KOSPI",
-      "rows": 3681,
+      "market": "kr",
+      "rows": 3687,
+      "fetchedRows": 3682,
+      "latestDate": "2026-08-07",
+      "source": "yfinance",
+      "removedInvalidRows": 0,
+      "critical": true,
       "ok": true
     },
     {
       "symbol": "KOSDAQ",
-      "rows": 3681,
+      "market": "kr",
+      "rows": 3683,
+      "fetchedRows": 3683,
+      "latestDate": "2026-08-07",
+      "source": "yfinance",
+      "removedInvalidRows": 0,
+      "critical": true,
       "ok": true
     },
     {
       "symbol": "SPY",
-      "rows": 3770,
+      "market": "us",
+      "rows": 3772,
+      "fetchedRows": 3772,
+      "latestDate": "2026-08-07",
+      "source": "yfinance",
+      "removedInvalidRows": 0,
+      "critical": false,
       "ok": true
     },
     {
       "symbol": "QQQ",
-      "rows": 3770,
+      "market": "us",
+      "rows": 3772,
+      "fetchedRows": 3772,
+      "latestDate": "2026-08-07",
+      "source": "yfinance",
+      "removedInvalidRows": 0,
+      "critical": false,
       "ok": true
     },
     {
       "symbol": "SP500",
-      "rows": 3770,
+      "market": "us",
+      "rows": 3772,
+      "fetchedRows": 3772,
+      "latestDate": "2026-08-07",
+      "source": "yfinance",
+      "removedInvalidRows": 0,
+      "critical": false,
       "ok": true
     },
     {
       "symbol": "USDKRW",
+      "market": "fx",
       "rows": 3904,
+      "fetchedRows": 3493,
+      "latestDate": "2026-08-07",
+      "source": "yfinance",
+      "removedInvalidRows": 1,
+      "critical": false,
       "ok": true
     }
   ]

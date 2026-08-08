@@ -2034,6 +2034,53 @@ def test_ops_dashboard_reports_journal_and_file_health(isolated_vtj: Path) -> No
     assert any(str(item["path"]).endswith("journal.csv") and item["exists"] for item in out["files"])
 
 
+def test_evaluate_repairs_duplicate_and_orphan_evaluation_rows(
+    isolated_vtj: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    journal = {
+        **vtj._snapshot_from_item(_valid_recommendation("REPAIR"), "FORWARD_PAPER_TRADE", "2026-06-18", "AFTER_CLOSE_TRADE"),
+        "journal_id": "repair-1",
+    }
+    vtj._write_rows(vtj.JOURNAL_CSV, [journal], vtj.JOURNAL_COLS)
+    base = {column: "" for column in vtj.EVALUATION_COLS}
+    vtj._write_rows(
+        vtj.EVALUATION_CSV,
+        [
+            {**base, "journal_id": "repair-1", "status": "PENDING", "outcome": "PENDING", "evaluated_at": "2026-08-01T01:00:00"},
+            {**base, "journal_id": "repair-1", "status": "EVALUATED", "outcome": "STOP", "evaluated_at": "2026-08-02T01:00:00"},
+            {**base, "journal_id": "orphan", "status": "EVALUATED", "outcome": "STOP", "evaluated_at": "2026-08-02T01:00:00"},
+        ],
+        vtj.EVALUATION_COLS,
+    )
+    monkeypatch.setattr(vtj, "_evaluate_one", lambda row: {
+        **base,
+        "journal_id": row["journal_id"],
+        "status": "PENDING",
+        "outcome": "PENDING",
+        "evaluated_at": "2026-08-03T01:00:00",
+    })
+
+    result = vtj.evaluate(limit=10, force=True)
+    repaired = vtj._read_rows(vtj.EVALUATION_CSV, vtj.EVALUATION_COLS)
+
+    assert result["repairedEvaluationRows"] == 2
+    assert len(repaired) == 1
+    assert repaired[0]["journal_id"] == "repair-1"
+
+
+def test_ops_dashboard_distinguishes_no_candidates_from_capture_failure(isolated_vtj: Path) -> None:
+    row = {
+        **vtj._snapshot_from_item(_valid_recommendation("OPS-NONE"), "FORWARD_PAPER_TRADE", "2026-06-18", "AFTER_CLOSE_TRADE"),
+        "journal_id": "ops-none-1",
+    }
+    vtj._write_rows(vtj.JOURNAL_CSV, [row], vtj.JOURNAL_COLS)
+    vtj.AUTO_CAPTURE_STATUS_JSON.write_text(json.dumps({"status": "OK", "enabled": True, "lastRunAt": "2026-08-08T07:10:00+09:00", "runs": [{"status": "NO_CANDIDATES", "added": 0}]}), encoding="utf-8")
+    out = vtj.ops_dashboard("kr")
+    assert out["operational"]["captureActivity"]["pipelineStatus"] == "OK"
+    assert out["operational"]["captureActivity"]["status"] == "NO_ELIGIBLE_CANDIDATES"
+
+
 def test_historical_strategy_calibration_keeps_historical_research_out_of_forward_gate(isolated_vtj: Path) -> None:
     history_rows = []
     eval_rows = []

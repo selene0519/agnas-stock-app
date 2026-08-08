@@ -51,7 +51,7 @@ stage_app_data() {
   git add reports/high_conviction_ledger_kr.csv reports/high_conviction_pnl_kr.json 2>/dev/null || true
   git add data/sector_map_kr.csv data/sector_map_us.csv 2>/dev/null || true
   git add data/kr_supply_flow.csv data/kr_excluded_symbols.csv 2>/dev/null || true
-  git add reports/kr_close_ohlcv_refresh_status.json reports/kr_close_ohlcv_coverage_audit.csv reports/kr_close_validation_status.json 2>/dev/null || true
+  git add reports/kr_close_ohlcv_refresh_status.json reports/kr_close_ohlcv_coverage_audit.csv reports/kr_close_validation_status.json reports/benchmark_fetch_status.json 2>/dev/null || true
   git add reports/us_close_ohlcv_refresh_status.json 2>/dev/null || true
   python scripts/guard_ohlcv_no_shrink.py || true
   git add data/market/ohlcv/kr_*_daily.csv 2>/dev/null || true

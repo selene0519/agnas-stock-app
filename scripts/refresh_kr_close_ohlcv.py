@@ -201,6 +201,33 @@ def _merge_daily(symbol: str, new_row: dict) -> None:
 
 
 def main() -> None:
+    # A scheduled weekend run is a clean market-closed skip, not data damage.
+    try:
+        target_day = datetime.strptime(TARGET_DATE, "%Y-%m-%d")
+    except ValueError:
+        target_day = datetime.now()
+    if target_day.weekday() >= 5:
+        REPORTS.mkdir(parents=True, exist_ok=True)
+        _write_csv(
+            REPORTS / "kr_close_ohlcv_coverage_audit.csv",
+            [],
+            ["market", "symbol", "name", "sources", "date", "status", "dataStatus", "missingReason", "ohlcvSource"],
+        )
+        status = {
+            "status": "SKIP",
+            "market": "kr",
+            "date": TARGET_DATE,
+            "reason": "SKIPPED_MARKET_CLOSED",
+            "targetCount": 0,
+            "successCount": 0,
+            "failedCount": 0,
+            "workers": 0,
+            "message": "KR market is closed; existing OHLCV was preserved.",
+            "updatedAt": datetime.now().isoformat(timespec="seconds"),
+        }
+        (REPORTS / "kr_close_ohlcv_refresh_status.json").write_text(json.dumps(status, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(json.dumps(status, ensure_ascii=False, indent=2))
+        return
     REPORTS.mkdir(parents=True, exist_ok=True)
     OHLCV_DIR.mkdir(parents=True, exist_ok=True)
     limit = int(os.environ.get("MONE_KR_CLOSE_OHLCV_LIMIT", "120"))
