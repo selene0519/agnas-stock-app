@@ -4,7 +4,7 @@
   "baseline20dPct": {
     "BULL": 2.09,
     "SIDE": 1.203,
-    "BEAR": 2.219
+    "BEAR": 2.177
   },
   "method": "geometric=train/OOS trade-sim qualified; engine=excess over survivorship baseline",
   "patterns": {
@@ -38,8 +38,8 @@
         "source": "geo_tradesim",
         "tier": "WEAK",
         "qualified": false,
-        "oosN": 100,
-        "oosEvPct": 0.903
+        "oosN": 107,
+        "oosEvPct": 1.731
       },
       "SIDE": {
         "source": "geo_tradesim",
@@ -61,8 +61,8 @@
         "source": "geo_tradesim",
         "tier": "NONE",
         "qualified": false,
-        "oosN": 195,
-        "oosEvPct": -0.39
+        "oosN": 199,
+        "oosEvPct": -0.371
       },
       "SIDE": {
         "source": "geo_tradesim",
@@ -87,7 +87,7 @@
         "tier": "WEAK",
         "qualified": false,
         "oosN": 186,
-        "oosEvPct": 1.677
+        "oosEvPct": 1.76
       },
       "SIDE": {
         "source": "geo_tradesim",
@@ -103,7 +103,7 @@
         "tier": "WEAK",
         "qualified": false,
         "oosN": 33,
-        "oosEvPct": 1.28
+        "oosEvPct": 1.454
       }
     },
     "FAILED_BREAKDOWN": {
@@ -133,14 +133,14 @@
       "SIDE": {
         "source": "engine_excess",
         "tier": "NONE",
-        "excessPct": -0.083,
-        "n": 3884
+        "excessPct": -0.093,
+        "n": 3885
       },
       "BEAR": {
         "source": "engine_excess",
         "tier": "NONE",
-        "excessPct": -0.199,
-        "n": 3057
+        "excessPct": -0.157,
+        "n": 3064
       }
     },
     "trend_up_pullback": {
@@ -159,8 +159,8 @@
       "BEAR": {
         "source": "engine_excess",
         "tier": "NONE",
-        "excessPct": -0.739,
-        "n": 1238
+        "excessPct": -0.697,
+        "n": 1241
       }
     },
     "structure_breakdown_risk": {
@@ -173,14 +173,14 @@
       "SIDE": {
         "source": "engine_excess",
         "tier": "NONE",
-        "excessPct": -0.753,
-        "n": 4696
+        "excessPct": -0.763,
+        "n": 4699
       },
       "BEAR": {
         "source": "engine_excess",
         "tier": "NONE",
-        "excessPct": 0.931,
-        "n": 9504
+        "excessPct": 0.923,
+        "n": 9571
       }
     },
     "overheated_pullback_risk": {
@@ -199,7 +199,7 @@
       "BEAR": {
         "source": "engine_excess",
         "tier": "WEAK",
-        "excessPct": 2.631,
+        "excessPct": 2.673,
         "n": 753
       }
     },
@@ -214,13 +214,13 @@
         "source": "engine_excess",
         "tier": "NONE",
         "excessPct": -0.543,
-        "n": 1973
+        "n": 1974
       },
       "BEAR": {
         "source": "engine_excess",
         "tier": "NONE",
-        "excessPct": -0.429,
-        "n": 2140
+        "excessPct": -0.397,
+        "n": 2144
       }
     },
     "resistance_breakout": {
@@ -239,7 +239,7 @@
       "BEAR": {
         "source": "engine_excess",
         "tier": "NONE",
-        "excessPct": 0.141,
+        "excessPct": 0.183,
         "n": 127
       }
     },
@@ -259,8 +259,8 @@
       "BEAR": {
         "source": "engine_excess",
         "tier": "NONE",
-        "excessPct": 0.891,
-        "n": 939
+        "excessPct": 0.813,
+        "n": 958
       }
     },
     "overheated_chase_risk": {
@@ -279,7 +279,7 @@
       "BEAR": {
         "source": "engine_excess",
         "tier": "WEAK",
-        "excessPct": 4.511,
+        "excessPct": 4.553,
         "n": 137
       }
     }
