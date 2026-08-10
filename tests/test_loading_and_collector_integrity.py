@@ -109,7 +109,7 @@ def test_weekend_kr_close_refresh_is_clean_skip(tmp_path, monkeypatch) -> None:
     assert status["failedCount"] == 0
 
 
-def test_launch_overlay_waits_for_supporting_snapshots_and_seeds_home() -> None:
+def test_launch_overlay_waits_only_for_critical_home_snapshots() -> None:
     page = (ROOT / "mone-web-app" / "frontend" / "app" / "page.tsx").read_text(encoding="utf-8")
     preload = (ROOT / "mone-web-app" / "frontend" / "lib" / "bootPreload.ts").read_text(encoding="utf-8")
     api = (ROOT / "mone-web-app" / "frontend" / "lib" / "api.ts").read_text(encoding="utf-8")
@@ -121,10 +121,12 @@ def test_launch_overlay_waits_for_supporting_snapshots_and_seeds_home() -> None:
     ).read_text(encoding="utf-8")
 
     assert "APP_SHELL_TIMEOUT_MS" not in page
-    assert "const showLaunchLoading = true;" in page
-    assert "void Promise.allSettled" not in preload
-    assert "await preloadSupportingSnapshots" in preload
-    assert "const [krAuxiliary, usAuxiliary, krChart, usChart] = await Promise.all" in preload
+    assert "const showLaunchLoading = !cachedBoot.hasBootData;" in page
+    assert "void preloadSupportingSnapshots()" in preload
+    assert "await preloadSupportingSnapshots" not in preload
+    assert "fetchChartSnapshot" not in preload
+    assert 'fetchApiSnapshot("/api/final/operation-summary"' not in preload
+    assert 'fetchApiSnapshot("/api/risk/near-alerts"' not in preload
     assert 'const BOOT_CACHE_KEY = "mone:boot-preload:v6";' in preload
     assert "headers: bootRequestHeaders()" in preload
     assert 'fetchApiSnapshot("/api/holdings-clean", { market, limit: 500 }' in preload

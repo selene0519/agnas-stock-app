@@ -131,11 +131,11 @@ export default function App() {
 
     let cancelled = false;
     const cachedBoot = getCachedBootPreload();
-    const showLaunchLoading = true;
+    const showLaunchLoading = !cachedBoot.hasBootData;
     if (cachedBoot.hasBootData) {
       setBootState(cachedBoot);
     }
-    setBooting(true);
+    setBooting(showLaunchLoading);
     if (!cachedBoot.hasBootData) setBootState({ bootStatus: "loading", bootData: {}, hasBootData: false });
 
     const delayTimer = window.setTimeout(() => {

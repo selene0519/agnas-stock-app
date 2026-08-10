@@ -107,6 +107,56 @@ def _parse_date_str(s: str | None) -> str | None:
         return None
 
 
+def _last_csv_record_date(path: Path) -> str | None:
+    """Read only the header and final chunk of a daily CSV."""
+    if not path.exists() or path.stat().st_size <= 0:
+        return None
+    try:
+        with path.open("rb") as handle:
+            header_bytes = handle.readline()
+            header_end = handle.tell()
+            handle.seek(0, 2)
+            size = handle.tell()
+            start = max(header_end, size - 8192)
+            handle.seek(start)
+            tail_bytes = handle.read()
+    except OSError:
+        return None
+
+    for encoding in ("utf-8-sig", "utf-8", "cp949"):
+        try:
+            headers = next(csv.reader([header_bytes.decode(encoding)]) )
+            lowered = [str(value).strip().lower() for value in headers]
+            date_index = next((lowered.index(name.lower()) for name in _DATE_COLS if name.lower() in lowered), None)
+            if date_index is None:
+                continue
+            lines = tail_bytes.decode(encoding).splitlines()
+            if start > header_end and lines:
+                lines = lines[1:]
+            for line in reversed(lines):
+                if not line.strip():
+                    continue
+                values = next(csv.reader([line]))
+                if date_index < len(values):
+                    day = _parse_date_str(values[date_index])
+                    if day:
+                        return day
+        except (UnicodeDecodeError, csv.Error, StopIteration, ValueError):
+            continue
+    return None
+
+
+def latest_ohlcv_date(market: str) -> str | None:
+    normalized_market = normalize_market(market)
+    latest: str | None = None
+    directory = _repo_path("data", "market", "ohlcv")
+    for path in directory.glob(f"{normalized_market}_*_daily.csv"):
+        day = _last_csv_record_date(path)
+        if day and (latest is None or day > latest):
+            latest = day
+    return latest
+
+
 def _deep_csv_inspect(path: Path, market: str) -> dict[str, Any]:
     """CSV 내부 데이터 품질을 상세 검사한다."""
     if not path.is_file():
@@ -763,7 +813,7 @@ def _data_quality_inner(market: str, mode: str) -> dict[str, Any]:
 
 def admin_pipeline(market: str = "kr") -> dict[str, Any]:
     normalized_market = normalize_market(market)
-    quality = data_quality(normalized_market)
+    quality = data_quality(normalized_market, mode="quick")
     status = quality.get("dataStatus", "NO_DATA")
     files = quality.get("files", [])
 
@@ -792,17 +842,6 @@ def admin_pipeline(market: str = "kr") -> dict[str, Any]:
             matches.extend(_repo_path(*pattern.split("/")).parent.glob(Path(pattern).name))
         newest = max((path.stat().st_mtime for path in matches if path.exists()), default=0)
         return datetime.fromtimestamp(newest, session.KST).date().isoformat() if newest else None
-
-    def latest_ohlcv_date() -> str | None:
-        latest: str | None = None
-        for path in _repo_path("data", "market", "ohlcv").glob(f"{normalized_market}_*_daily.csv"):
-            rows = _read_csv_safe(path)
-            if not rows:
-                continue
-            day = _parse_date_str(rows[-1].get("date") or rows[-1].get("Date"))
-            if day and (latest is None or day > latest):
-                latest = day
-        return latest
 
     collector_path = _repo_path("reports", "local_collector_status.json")
     collector = read_json_status(collector_path)
@@ -845,7 +884,7 @@ def admin_pipeline(market: str = "kr") -> dict[str, Any]:
         f"data/current_prices_{normalized_market}.csv",
         f"cache/quotes_cache.json",
     ])
-    ohlcv_latest_date = latest_ohlcv_date()
+    ohlcv_latest_date = latest_ohlcv_date(normalized_market)
     render_latest_file_date = latest_file_date([
         f"reports/mone_v36_final_recommendations_{normalized_market}_*.csv",
         f"reports/mone_v36_final_trade_validation_{normalized_market}_*.csv",

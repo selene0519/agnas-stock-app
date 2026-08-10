@@ -38,7 +38,7 @@ type HomeSnapshotResult = { ok: true; value: any; stocksCache: any } | { ok: fal
 const BOOT_CACHE_KEY = "mone:boot-preload:v6";
 const BOOT_FALLBACK_TTL_MS = 24 * 60 * 60 * 1000;
 const HEALTH_CHECK_TIMEOUT_MS = 8000;
-const SNAPSHOT_FETCH_TIMEOUT_MS = 12000;
+const SNAPSHOT_FETCH_TIMEOUT_MS = 20000;
 
 const EMPTY_BOOT_STATE: BootPreloadState = {
   bootStatus: "idle",
@@ -191,34 +191,12 @@ async function fetchApiSnapshot(
 async function fetchAuxiliarySnapshots(market: "kr" | "us") {
   const jobs = [
     fetchApiSnapshot("/api/market/fear-greed", { market }, 12000),
-    fetchApiSnapshot("/api/final/operation-summary", { market, mode: "balanced", horizon: "swing" }, 25000),
     fetchApiSnapshot("/api/holdings-clean", { market, limit: 500 }, 12000),
     fetchApiSnapshot("/api/earnings-calendar", { market, days: 14 }, 12000),
     fetchApiSnapshot("/api/calendar/today", { market }, 12000),
-    fetchApiSnapshot("/api/risk/near-alerts", { market, thresholdPct: 5 }, 12000),
     fetchApiSnapshot("/api/signals/ledger", { market, limit: 12 }, 12000),
-    fetchApiSnapshot("/api/watchlist-edit", { market: "all" }, 12000),
     fetchApiSnapshot("/api/watchlist/groups", { market }, 12000),
     fetchApiSnapshot("/api/sectors", { market }, 12000),
-  ];
-  return Promise.all(jobs);
-}
-
-async function fetchChartSnapshot(market: "kr" | "us", homeSummary: any) {
-  const symbol = String(extractBalancedSwingItems(homeSummary)[0]?.symbol || "").toUpperCase();
-  if (!symbol) return [];
-  const indexSymbol = market === "us" ? "SPY" : "KOSPI";
-  const jobs = [
-    fetchApiSnapshot("/api/ohlcv", { market, symbol, limit: 260, futureProjectionBars: 12 }, 30000),
-    fetchApiSnapshot("/api/final/recommendation-detail", { market, symbol }, 30000),
-    fetchApiSnapshot("/api/news", { market, limit: 200 }, 12000),
-    fetchApiSnapshot("/api/disclosures", { market, limit: 200, watchOnly: false }, 12000),
-    fetchApiSnapshot("/api/company-analysis", { market, q: symbol, limit: 20 }, 20000),
-    fetchApiSnapshot("/api/pattern/strategy", { market, symbol }, 20000),
-    fetchApiSnapshot(`/api/chart/index/${indexSymbol}`, { market, limit: 520 }, 20000),
-    fetchApiSnapshot(`/api/chart/analysis/${symbol}`, { market }, 20000),
-    fetchApiSnapshot(`/api/chart/similar-pattern/${symbol}`, { market }, 20000),
-    fetchApiSnapshot(`/api/symbol/${symbol}/events`, { market }, 12000),
   ];
   return Promise.all(jobs);
 }
@@ -227,19 +205,23 @@ function snapshotErrors(results: JsonResult[]): string[] {
   return results.flatMap((result) => result.ok === false ? [result.error] : []);
 }
 
-async function preloadSupportingSnapshots(krHomeSummary: any, usHomeSummary: any): Promise<string[]> {
-  const [krAuxiliary, usAuxiliary, krChart, usChart] = await Promise.all([
+async function preloadSupportingSnapshots(): Promise<string[]> {
+  const [krAuxiliary, usAuxiliary] = await Promise.all([
     fetchAuxiliarySnapshots("kr"),
     fetchAuxiliarySnapshots("us"),
-    krHomeSummary ? fetchChartSnapshot("kr", krHomeSummary) : Promise.resolve([]),
-    usHomeSummary ? fetchChartSnapshot("us", usHomeSummary) : Promise.resolve([]),
   ]);
   return [
     ...snapshotErrors(krAuxiliary),
     ...snapshotErrors(usAuxiliary),
-    ...snapshotErrors(krChart),
-    ...snapshotErrors(usChart),
   ];
+}
+
+function queueSupportingSnapshots() {
+  // 홈 화면에 필요하지 않은 보조 데이터는 로딩 오버레이를 막지 않는다.
+  // 차트/분석 데이터는 해당 화면 진입 시 API 스냅샷 계층이 가져온다.
+  void preloadSupportingSnapshots().catch((error) => {
+    console.warn("MONE supporting snapshot preload failed:", error);
+  });
 }
 
 export async function runBootPreload(onProgress?: (progress: BootProgress) => void): Promise<BootPreloadState> {
@@ -251,15 +233,12 @@ export async function runBootPreload(onProgress?: (progress: BootProgress) => vo
   const usDataVersion = healthResult.ok ? marketDataVersion(healthResult.value, "us") : stored?.usDataVersion ?? null;
 
   if (stored?.hasBootData && stored.krDataVersion === krDataVersion && stored.usDataVersion === usDataVersion) {
-    const supportErrors = await preloadSupportingSnapshots(
-      stored.bootData.krHomeSummary,
-      stored.bootData.usHomeSummary,
-    );
-    const errors = [resultError(healthResult), ...supportErrors].filter(Boolean);
+    queueSupportingSnapshots();
+    const errors = [resultError(healthResult)].filter(Boolean);
     onProgress?.({ progress: 100, message: "저장된 예측 스냅샷을 여는 중...", step: "done" });
     return {
       ...stored,
-      bootStatus: errors.length === 0 ? "ready" : "degraded",
+      bootStatus: healthResult.ok ? "ready" : "degraded",
       errors,
     };
   }
@@ -283,23 +262,11 @@ export async function runBootPreload(onProgress?: (progress: BootProgress) => vo
 
   onProgress?.({ progress: 66, message: "미장 예측 스냅샷을 받는 중...", step: "stocks" });
 
-  onProgress?.({ progress: 84, message: "보조 화면 데이터를 저장하는 중...", step: "stocks" });
-  const [krAuxiliary, usAuxiliary, krChart, usChart] = await Promise.all([
-    fetchAuxiliarySnapshots("kr"),
-    fetchAuxiliarySnapshots("us"),
-    krHome.ok ? fetchChartSnapshot("kr", krHome.value) : Promise.resolve([]),
-    usHome.ok ? fetchChartSnapshot("us", usHome.value) : Promise.resolve([]),
-  ]);
-
-  onProgress?.({ progress: 92, message: "대표 차트 분석을 저장하는 중...", step: "stocks" });
+  onProgress?.({ progress: 92, message: "필수 화면 데이터를 준비하는 중...", step: "stocks" });
   const errors = [
     resultError(healthResult),
     resultError(krHome),
     resultError(usHome),
-    ...snapshotErrors(krAuxiliary),
-    ...snapshotErrors(usAuxiliary),
-    ...snapshotErrors(krChart),
-    ...snapshotErrors(usChart),
   ].filter(Boolean);
 
   const state: BootPreloadState = {
@@ -317,6 +284,7 @@ export async function runBootPreload(onProgress?: (progress: BootProgress) => vo
   };
 
   writeStoredCache({ ...state, krDataVersion, usDataVersion });
+  queueSupportingSnapshots();
   onProgress?.({ progress: 100, message: "오늘의 예측 화면을 여는 중...", step: "done" });
   return state;
 }

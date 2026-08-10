@@ -4423,61 +4423,74 @@ def _latest_data_maps(patterns: tuple[str, ...], market: str, exclude: tuple[str
 def github_actions_status() -> dict[str, Any]:
     repo = os.environ.get("GITHUB_REPOSITORY") or os.environ.get("MONE_GITHUB_REPOSITORY") or "selene0519/agnas-stock-app"
     token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN") or os.environ.get("MONE_GITHUB_TOKEN")
-    headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
+    public_headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
+    headers = dict(public_headers)
     if token:
         headers["Authorization"] = f"Bearer {token}"
     api_base = f"https://api.github.com/repos/{repo}"
+
+    def load(api_headers: dict[str, str]):
+        workflows_response = requests.get(f"{api_base}/actions/workflows", headers=api_headers, timeout=8)
+        runs_response = requests.get(f"{api_base}/actions/runs?per_page=8", headers=api_headers, timeout=8)
+        return workflows_response, runs_response
+
     try:
-        wf_res = requests.get(f"{api_base}/actions/workflows", headers=headers, timeout=8)
-        runs_res = requests.get(f"{api_base}/actions/runs?per_page=8", headers=headers, timeout=8)
+        wf_res, runs_res = load(headers)
+        token_rejected = bool(token and (wf_res.status_code in {401, 403} or runs_res.status_code in {401, 403}))
+        if token_rejected:
+            # A stale Render token must not take a public repository monitor down.
+            wf_res, runs_res = load(public_headers)
         if wf_res.status_code == 404 and not token:
             return {
                 "status": "NEED_TOKEN",
                 "repo": repo,
-                "message": "private repo이거나 인증이 없어 GitHub Actions를 조회할 수 없습니다. GITHUB_TOKEN 또는 MONE_GITHUB_TOKEN을 .env에 넣으면 연결됩니다.",
+                "message": "Private repository or unavailable public endpoint. Configure GITHUB_TOKEN or MONE_GITHUB_TOKEN.",
                 "workflows": [],
                 "runs": [],
             }
         if wf_res.status_code >= 400:
-            return {"status": "ERROR", "repo": repo, "message": f"workflow 조회 실패 HTTP {wf_res.status_code}", "workflows": [], "runs": []}
-        workflows = []
-        for wf in wf_res.json().get("workflows", []):
-            workflows.append({
-                "name": wf.get("name", ""),
-                "path": wf.get("path", ""),
-                "state": wf.get("state", ""),
-                "id": wf.get("id", ""),
-            })
+            return {
+                "status": "DEGRADED" if wf_res.status_code in {401, 403, 429} else "ERROR",
+                "repo": repo,
+                "message": f"GitHub Actions workflow lookup failed HTTP {wf_res.status_code}",
+                "workflows": [],
+                "runs": [],
+                "authMode": "public_fallback" if token_rejected else ("token" if token else "public"),
+                "tokenRejected": token_rejected,
+            }
+        workflows = [
+            {"name": wf.get("name", ""), "path": wf.get("path", ""), "state": wf.get("state", ""), "id": wf.get("id", "")}
+            for wf in wf_res.json().get("workflows", [])
+        ]
         runs = []
         if runs_res.status_code < 400:
             for run in runs_res.json().get("workflow_runs", []):
                 runs.append({
-                    "name": run.get("name", ""),
-                    "event": run.get("event", ""),
-                    "status": run.get("status", ""),
-                    "conclusion": run.get("conclusion", ""),
-                    "created_at": run.get("created_at", ""),
-                    "updated_at": run.get("updated_at", ""),
-                    "head_branch": run.get("head_branch", ""),
+                    "name": run.get("name", ""), "event": run.get("event", ""), "status": run.get("status", ""),
+                    "conclusion": run.get("conclusion", ""), "created_at": run.get("created_at", ""),
+                    "updated_at": run.get("updated_at", ""), "head_branch": run.get("head_branch", ""),
                     "html_url": run.get("html_url", ""),
                 })
-        schedule_runs = [r for r in runs if r.get("event") == "schedule"]
-        dispatch_runs = [r for r in runs if r.get("event") == "workflow_dispatch"]
-        successful_runs = [r for r in runs if r.get("conclusion") == "success" and str(r.get("name", "")).lower() == "mone auto accumulator"]
+        schedule_runs = [run for run in runs if run.get("event") == "schedule"]
+        dispatch_runs = [run for run in runs if run.get("event") == "workflow_dispatch"]
+        successful_runs = [
+            run for run in runs
+            if run.get("conclusion") == "success" and str(run.get("name", "")).lower() == "mone auto accumulator"
+        ]
         latest_automation = (schedule_runs[0] if schedule_runs else None) or (dispatch_runs[0] if dispatch_runs else None) or (successful_runs[0] if successful_runs else None)
+        auth_mode = "public_fallback" if token_rejected else ("token" if token else "public")
         return {
-            "status": "OK",
-            "repo": repo,
-            "message": "GitHub Actions API 연결됨" if token else "공개 API로 조회됨",
-            "workflows": workflows,
-            "runs": runs,
+            "status": "OK", "repo": repo,
+            "message": "GitHub Actions public API fallback connected." if token_rejected else "GitHub Actions API connected.",
+            "workflows": workflows, "runs": runs,
             "latestScheduled": schedule_runs[0] if schedule_runs else None,
             "latestWorkflowDispatch": dispatch_runs[0] if dispatch_runs else None,
             "latestAutomationRun": latest_automation,
             "automationMode": "github_schedule" if schedule_runs else ("external_workflow_dispatch" if dispatch_runs else "unknown"),
+            "authMode": auth_mode, "tokenRejected": token_rejected,
         }
     except Exception as exc:
-        return {"status": "ERROR", "repo": repo, "message": f"GitHub Actions 조회 실패: {exc}", "workflows": [], "runs": []}
+        return {"status": "ERROR", "repo": repo, "message": f"GitHub Actions lookup failed: {exc}", "workflows": [], "runs": []}
 
 
 def chart_data(symbol: str, market: str, tail_rows: int = 160) -> dict[str, Any]:

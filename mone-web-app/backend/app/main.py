@@ -7696,10 +7696,14 @@ def api_home_summary(
             name = str(row.get("name") or row.get("displayName") or "").lower()
             return any(token in name for token in ("etf", "kodex", "tiger", "kbstar", "ace ", "arirang", "hanaro", "sol "))
 
+        ohlcv_change_refs: dict[str, dict] = {}
+
         def _ohlcv_change_ref(symbol: str) -> dict:
             sym = str(symbol or "").strip().upper()
             if not sym:
                 return {}
+            if sym in ohlcv_change_refs:
+                return ohlcv_change_refs[sym]
             rows = _read_csv_safe(_OHLCV_DIR / f"{mk}_{sym}_daily.csv")
             closes: list[tuple[str, float]] = []
             for row in rows:
@@ -7708,22 +7712,23 @@ def api_home_summary(
                 if close and date:
                     closes.append((date, close))
             closes.sort(key=lambda item: item[0])
-            if len(closes) < 2:
-                return {}
-            prev_date, prev_close = closes[-2]
-            latest_date, latest_close = closes[-1]
-            if prev_close <= 0:
-                return {}
-            change_pct = (latest_close - prev_close) / prev_close * 100
-            return {
-                "currentPrice": latest_close,
-                "prevClose": prev_close,
-                "prevCloseDate": prev_date,
-                "ohlcvLatestDate": latest_date,
-                "changePct": change_pct,
-                "changePctText": f"{change_pct:+.2f}%",
-                "changePctSource": "ohlcv_latest_vs_previous_close",
-            }
+            result: dict = {}
+            if len(closes) >= 2:
+                prev_date, prev_close = closes[-2]
+                latest_date, latest_close = closes[-1]
+                if prev_close > 0:
+                    change_pct = (latest_close - prev_close) / prev_close * 100
+                    result = {
+                        "currentPrice": latest_close,
+                        "prevClose": prev_close,
+                        "prevCloseDate": prev_date,
+                        "ohlcvLatestDate": latest_date,
+                        "changePct": change_pct,
+                        "changePctText": f"{change_pct:+.2f}%",
+                        "changePctSource": "ohlcv_latest_vs_previous_close",
+                    }
+            ohlcv_change_refs[sym] = result
+            return result
 
         def _enrich_home_matrix_row(row: dict) -> dict:
             out = dict(row or {})
@@ -8076,24 +8081,7 @@ def api_home_summary(
                 import json as _dh_json
                 _cov = _scan_coverage(mk)
                 _repo = _stab_root()
-                _ohlcv_dates: list[str] = []
-                _ohlcv_dir = _repo / "data" / "market" / "ohlcv"
-                if _ohlcv_dir.exists():
-                    for _p in _ohlcv_dir.glob(f"{mk}_*_daily.csv"):
-                        try:
-                            import csv as _dh_csv
-                            # utf-8-sig: BOM 있는 CSV도 첫 컬럼명 'date' 로 정상 파싱
-                            with _p.open("r", encoding="utf-8-sig") as _f:
-                                _rows = list(_dh_csv.DictReader(_f))
-                            if _rows:
-                                # 마지막 행부터 역순으로 유효한 날짜 탐색
-                                for _row in reversed(_rows):
-                                    _d = str(_row.get("date") or _row.get("Date") or "").strip()[:10]
-                                    if _d and len(_d) == 10 and _d[4] == "-":
-                                        _ohlcv_dates.append(_d)
-                                        break
-                        except Exception:
-                            pass
+                _ohlcv_latest = data_quality.latest_ohlcv_date(mk)
                 _reco_gen: str | None = None
                 for _sp in [_repo / "reports" / f"{mk}_recommendation_gen_status.json", _repo / f"{mk}_recommendation_gen_status.json"]:
                     if _sp.exists():
@@ -8107,7 +8095,7 @@ def api_home_summary(
                     "kisLiveCount":    _cov.get("quoteCoverageCount", 0),
                     "kisTargetCount":  _cov.get("quoteTargetCount", 0),
                     "ohlcvCount":      _cov.get("ohlcvSymbolCount", 0),
-                    "ohlcvLatestDate": max(_ohlcv_dates) if _ohlcv_dates else None,
+                    "ohlcvLatestDate": _ohlcv_latest,
                     "recoGeneratedAt": _reco_gen,
                     "scanScope":       _cov.get("universeScope", "CURATED_UNIVERSE"),
                 }
