@@ -1,6 +1,6 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-08-10T14:02:58.389897+00:00",
+  "generatedAt": "2026-08-10T23:18:28.488991+00:00",
   "policy": {
     "version": "self-correction-shadow-v1.5.0",
     "inputContractVersion": "correction-shadow-input-v1",
@@ -101,13 +101,7 @@
     "appended": 0,
     "conflicts": 0,
     "total": 0,
-    "recordMarket": "all",
-    "skippedInputContract": 0,
-    "skippedForwardSeal": 0,
-    "skippedBeforeSignalClose": 0,
-    "skippedAfterNextSessionOpen": 0,
-    "runAt": "2026-08-10T14:02:58.389551+00:00",
-    "candidateDiagnostics": []
+    "recordMarket": "none"
   },
   "lastRecordingRun": {
     "appended": 0,
@@ -241,7 +235,7 @@
       "eligibleSuggestions": 11,
       "items": [
         {
-          "suggestionId": "40e4bef6089c6d97489b",
+          "suggestionId": "624e2f9d1c733b5ff826",
           "sourceSummaryId": "b67e5b1b0e0cff6e",
           "market": "us",
           "mode": "aggressive",
@@ -249,19 +243,19 @@
           "sourceType": "FORWARD_PAPER_TRADE",
           "journalSession": "AFTER_CLOSE_TRADE",
           "reason": "STOP_TOO_TIGHT",
-          "sampleCount": 101,
+          "sampleCount": 102,
           "distinctSignalDates": 19,
-          "share": 0.4851,
+          "share": 0.4804,
           "approvalStatus": "PENDING_REVIEW",
           "applicationStatus": "NOT_APPLIED",
           "shadowEligible": true,
           "shadowGateReason": "SHADOW_INCUBATION_ELIGIBLE",
-          "estimatedAffectedSamples": 48.995,
+          "estimatedAffectedSamples": 49.001,
           "historicalHoldoutPassed": false,
           "validation": {
             "status": "LOW_HOLDOUT",
             "passed": false,
-            "total": 101,
+            "total": 102,
             "holdoutSamples": 0,
             "distinctSignalDates": 19,
             "requiredDistinctSignalDates": 30,
