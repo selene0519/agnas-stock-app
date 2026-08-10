@@ -23,14 +23,20 @@ function PageLoading() {
   return <div className="py-16 text-center text-sm text-slate-400" role="status">화면을 불러오는 중…</div>;
 }
 
+const loadStocksPage = () => import("../components/pages/StocksPage");
+const loadHoldingsPage = () => import("../components/pages/HoldingsPage");
+const loadChartPage = () => import("../components/pages/ChartPage");
+const loadAdvancedPage = () => import("../components/pages/AdvancedPage");
+const loadPaperTradingPage = () => import("../components/pages/PaperTradingPage");
+
 const ReportPage = dynamicImport(() => import("../components/pages/ReportPage"), { loading: () => <PageLoading /> });
-const StocksPage = dynamicImport(() => import("../components/pages/StocksPage"), { loading: () => <PageLoading /> });
-const HoldingsPage = dynamicImport(() => import("../components/pages/HoldingsPage"), { loading: () => <PageLoading /> });
-const ChartPage = dynamicImport(() => import("../components/pages/ChartPage"), { loading: () => <PageLoading /> });
+const StocksPage = dynamicImport(loadStocksPage, { loading: () => <PageLoading /> });
+const HoldingsPage = dynamicImport(loadHoldingsPage, { loading: () => <PageLoading /> });
+const ChartPage = dynamicImport(loadChartPage, { loading: () => <PageLoading /> });
 const NewsPage = dynamicImport(() => import("../components/pages/NewsPage"), { loading: () => <PageLoading /> });
 const PredictionPage = dynamicImport(() => import("../components/pages/PredictionPage"), { loading: () => <PageLoading /> });
-const AdvancedPage = dynamicImport(() => import("../components/pages/AdvancedPage"), { loading: () => <PageLoading /> });
-const PaperTradingPage = dynamicImport(() => import("../components/pages/PaperTradingPage"), { loading: () => <PageLoading /> });
+const AdvancedPage = dynamicImport(loadAdvancedPage, { loading: () => <PageLoading /> });
+const PaperTradingPage = dynamicImport(loadPaperTradingPage, { loading: () => <PageLoading /> });
 const VirtualJournalPage = dynamicImport(() => import("../components/pages/VirtualJournalPage"), { loading: () => <PageLoading /> });
 const AdminPage = dynamicImport(() => import("../components/pages/AdminPage"), { loading: () => <PageLoading /> });
 const AdminLoginPage = dynamicImport(() => import("../components/pages/AdminLoginPage"), { loading: () => <PageLoading /> });
@@ -196,6 +202,22 @@ export default function App() {
   }, [mounted]);
 
   // 실적 일정 + 진입 근접 알림 로드
+  useEffect(() => {
+    if (!mounted || booting) return;
+    const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+    if (connection?.saveData || connection?.effectiveType?.includes("2g")) return;
+    const primaryTimer = window.setTimeout(() => {
+      void Promise.allSettled([loadStocksPage(), loadHoldingsPage()]);
+    }, 700);
+    const secondaryTimer = window.setTimeout(() => {
+      void Promise.allSettled([loadChartPage(), loadAdvancedPage(), loadPaperTradingPage()]);
+    }, 2200);
+    return () => {
+      window.clearTimeout(primaryTimer);
+      window.clearTimeout(secondaryTimer);
+    };
+  }, [booting, mounted]);
+
   useEffect(() => {
     if (!notifOpen) return;
     async function loadNotifications() {

@@ -408,7 +408,7 @@ async function fetchJson<T>(url: string, externalSignal?: AbortSignal, retryCoun
   }
 }
 
-export async function apiGet<T = any>(
+async function apiGetNetwork<T = any>(
   path: string,
   params?: Record<string, string | number | boolean | undefined | null>,
   signal?: AbortSignal
@@ -457,6 +457,24 @@ export async function apiGet<T = any>(
   }
 
   return directResult as T;
+}
+
+const inFlightGets = new Map<string, Promise<any>>();
+
+export function apiGet<T = any>(
+  path: string,
+  params?: Record<string, string | number | boolean | undefined | null>,
+  signal?: AbortSignal,
+): Promise<T> {
+  if (signal) return apiGetNetwork<T>(path, params, signal);
+  const key = `${apiSnapshotScope(path)}:${path}?${JSON.stringify(normalizeParams(params))}`;
+  const existing = inFlightGets.get(key);
+  if (existing) return existing as Promise<T>;
+  const request = apiGetNetwork<T>(path, params).finally(() => {
+    if (inFlightGets.get(key) === request) inFlightGets.delete(key);
+  });
+  inFlightGets.set(key, request);
+  return request;
 }
 
 export function money(value: number | string | null | undefined, market: Market = "kr") {
@@ -694,8 +712,8 @@ export const mone = {
     apiGet<ApiList>("/api/insights/trendline-anchor-learning", p),
   holdings: (p?: { market?: Market; limit?: number }) =>
     apiGet<ApiList>("/api/holdings", p),
-  holdingsClean: (p?: { market?: Market; limit?: number }) =>
-    apiGet<ApiList>("/api/holdings-clean", p),
+  holdingsClean: (p?: { market?: Market; limit?: number }, signal?: AbortSignal) =>
+    apiGet<ApiList>("/api/holdings-clean", p, signal),
   holdingsEdit: (p?: { market?: Market }) =>
     apiGet<ApiList>("/api/holdings-edit", p),
   saveHoldingsEdit: (body: { items: any[] }) =>

@@ -299,6 +299,23 @@ def startup_sync() -> None:
         print(f"[AutoSync] Supabase pull 실패: {exc}")
 
 
+def start_startup_sync(delay_seconds: float = 8.0) -> None:
+    """Run the optional startup refresh without blocking ASGI application startup."""
+    if os.environ.get("MONE_STARTUP_SYNC") != "1":
+        return
+    if os.environ.get("GITHUB_ACTIONS_RUN") == "true":
+        return
+
+    def _run() -> None:
+        if delay_seconds > 0:
+            time.sleep(delay_seconds)
+        startup_sync()
+
+    thread = threading.Thread(target=_run, daemon=True, name="mone-startup-sync")
+    thread.start()
+    print(f"[AutoSync] startup refresh queued in {delay_seconds:g}s")
+
+
 def register_auto_sync_routes(app: Any) -> None:
     @app.post("/api/admin/sync")
     def admin_sync(background_tasks: BackgroundTasks) -> dict[str, Any]:

@@ -15,7 +15,7 @@ type Market = "all" | "kr" | "us";
 type MarketMode = "all" | "kr" | "us";
 type PortfolioAnalysisTab = "benchmark" | "correlation" | "sector" | "optimize";
 type RiskFocus = "all" | "stop" | "rebalance" | "price";
-const HOLDINGS_API_TIMEOUT_MS = 90000;
+const HOLDINGS_API_TIMEOUT_MS = 15000;
 
 function koreanSectorLabel(value: any, symbols: any[] = []) {
   const raw = String(value || "").trim();
@@ -813,10 +813,14 @@ function AddHoldingForm({ onSave, onCancel, saving }: { onSave: (d: EditableHold
 export default function HoldingsPage({ userToken, onNavigate, bootData }: HoldingsPageProps) {
   const hasHoldingsAuth = Boolean(userToken);
   const _bootHoldings = (() => {
-    if (!hasHoldingsAuth) return null;
+    if (!hasHoldingsAuth) return emptyHoldingsPayload("all", true);
+    const cached = readHoldingsCache("all")?.data;
+    if (cached) return cached;
+    const localItems = loadHoldingsFromLocalStorage();
+    if (localItems.length > 0) return localHoldingsPayload(localItems, "all");
     const bc = bootData?.holdingsCache;
     if (bc && Array.isArray(bc.items) && bc.items.length > 0) return bc;
-    return readHoldingsCache("all")?.data ?? null;
+    return null;
   })();
 
   const [marketMode, setMarketMode] = useState<MarketMode>("all");
@@ -911,7 +915,15 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
       setLoading(true);
     }
     try {
-      const result = await getJson(`/api/holdings-clean?market=${market}&limit=500`);
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), HOLDINGS_API_TIMEOUT_MS);
+      let result: any;
+      try {
+        result = await mone.holdingsClean({ market, limit: 500 }, controller.signal);
+      } finally {
+        window.clearTimeout(timeout);
+      }
+      if (result?.status === "ERROR") throw new Error(result.error || "holdings refresh failed");
       const serverItems = Array.isArray(result.items) ? result.items : [];
       const localItems = loadHoldingsFromLocalStorage();
       let finalData: any;

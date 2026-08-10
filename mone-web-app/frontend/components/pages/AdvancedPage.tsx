@@ -1,16 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import dynamicImport from "next/dynamic";
 import { mone, type Market, type Mode, type Horizon } from "@/lib/api";
 import { getDefaultMarketBySession } from "@/lib/marketSession";
 import { toNumber } from "@/lib/moneDisplay";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { MetricCard } from "@/components/ui/MetricCard";
-import BacktestComparePanel from "@/components/BacktestComparePanel";
-import PaperTradingPage from "@/components/pages/PaperTradingPage";
-import VirtualJournalPage from "@/components/pages/VirtualJournalPage";
-
 type TabId = "paper" | "journal" | "calculator" | "montecarlo" | "backtest";
+
+const TabLoading = () => <div className="py-10 text-center text-sm text-slate-400" role="status">화면을 준비하는 중...</div>;
+const BacktestComparePanel = dynamicImport(() => import("@/components/BacktestComparePanel"), { loading: TabLoading });
+const PaperTradingPage = dynamicImport(() => import("@/components/pages/PaperTradingPage"), { loading: TabLoading });
+const VirtualJournalPage = dynamicImport(() => import("@/components/pages/VirtualJournalPage"), { loading: TabLoading });
 
 function Card({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -116,6 +118,7 @@ export default function AdvancedPage({
   }, [capital, entry, stop, riskPct, kelly, mode]);
 
   useEffect(() => {
+    if (tab !== "calculator") return;
     let active = true;
     Promise.allSettled([
       mone.calculatorKelly({ winRate, payoffRatio: rr, capital }),
@@ -128,7 +131,7 @@ export default function AdvancedPage({
       });
     });
     return () => { active = false; };
-  }, [entry, stop, target, winRate, rr, capital]);
+  }, [tab, entry, stop, target, winRate, rr, capital]);
 
 
   async function runMonteCarlo() {

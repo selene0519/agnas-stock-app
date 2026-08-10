@@ -35,10 +35,10 @@ _HEALTH_CACHE: dict[str, object] = {"ts": 0.0, "payload": None}
 
 # 자동 동기화 초기화
 try:
-    from app.engine.auto_sync import register_auto_sync_routes, start_background_sync, startup_sync
+    from app.engine.auto_sync import register_auto_sync_routes, start_background_sync, start_startup_sync
     register_auto_sync_routes(app)
     if runtime_limits.heavy_jobs_enabled():
-        startup_sync()           # MONE_STARTUP_SYNC=1 환경변수 설정 시 시작 시 pull
+        start_startup_sync()     # MONE_STARTUP_SYNC=1 환경변수 설정 시 시작 시 pull
         start_background_sync()  # 백그라운드 5분마다 pull (GIT_AUTO_SYNC_INTERVAL_MIN 환경변수로 조정)
 except Exception as _auto_sync_err:
     print("[AutoSync] 초기화 실패:", _auto_sync_err)
@@ -295,6 +295,18 @@ def _build_health_payload() -> dict:
     _HEALTH_CACHE["ts"] = now
     _HEALTH_CACHE["payload"] = payload
     return payload
+
+
+@app.get("/health/bootstrap")
+def health_bootstrap() -> dict:
+    """Cheap boot probe: no data-quality scans, network calls, or database access."""
+    return {
+        "status": "OK",
+        "app": "mone-web-app",
+        "uptimeSeconds": round(max(time.time() - _APP_STARTED_AT, 0.0), 1),
+        "generatedAt": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+        "dataVersions": _get_recommendation_data_versions(),
+    }
 
 
 @app.get("/health")

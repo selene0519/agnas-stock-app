@@ -228,7 +228,7 @@ export async function runBootPreload(onProgress?: (progress: BootProgress) => vo
   onProgress?.({ progress: 12, message: "서버와 데이터 버전을 확인하는 중...", step: "server" });
 
   const stored = readStoredCache();
-  const healthResult = await settleJson("/mone-api/health", HEALTH_CHECK_TIMEOUT_MS);
+  const healthResult = await settleJson("/mone-api/health/bootstrap", HEALTH_CHECK_TIMEOUT_MS);
   const krDataVersion = healthResult.ok ? marketDataVersion(healthResult.value, "kr") : stored?.krDataVersion ?? null;
   const usDataVersion = healthResult.ok ? marketDataVersion(healthResult.value, "us") : stored?.usDataVersion ?? null;
 

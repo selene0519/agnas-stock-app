@@ -503,7 +503,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   // 시장 환경 게이트용 전역 레짐/데이터헬스 (홈과 동일 소스). 실패해도 카드는 그냥 게이트만 "확인 중".
   useEffect(() => {
     let active = true;
-    mone.homeSummary({ market: resolvedMarket })
+    mone.homeSummary({ market: resolvedMarket, limit: 12 })
       .then((res: any) => {
         if (!active) return;
         setMarketRegime(normalizeMarketRegime(res?.marketRegime, resolvedMarket));

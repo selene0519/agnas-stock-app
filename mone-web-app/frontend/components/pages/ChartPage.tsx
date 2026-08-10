@@ -2348,7 +2348,7 @@ export default function ChartPage() {
   useEffect(() => {
     let active = true;
     const gateMarket = market === "us" ? "us" : "kr";
-    mone.homeSummary({ market: gateMarket })
+    mone.homeSummary({ market: gateMarket, limit: 12 })
       .then((res: any) => {
         if (!active) return;
         setMarketRegime(normalizeMarketRegime(res?.marketRegime, gateMarket));
@@ -2460,8 +2460,8 @@ export default function ChartPage() {
   }, [selected?.symbol, selected?.market]);
 
   useEffect(() => {
-    if (!selected) {
-      setStrategyRefreshStatus("idle");
+    if (!selected || normalizeSymbol(levels) !== selected.symbol) {
+      setStrategyRefreshStatus(selected ? "loading" : "idle");
       return;
     }
     let active = true;
@@ -2516,7 +2516,7 @@ export default function ChartPage() {
         if (active) setStrategyRefreshStatus("detail");
       });
     return () => { active = false; };
-  }, [selected?.symbol, selected?.market, atrMode, atrHorizon]);
+  }, [selected?.symbol, selected?.market, levels?.symbol, atrMode, atrHorizon]);
 
   function applyPrecisionEvidence(next: boolean) {
     setPrecisionEvidence(next);
@@ -2580,73 +2580,95 @@ export default function ChartPage() {
     let active = true;
     const controller = new AbortController();
     const hasCoreSnapshot = Boolean(
-      readApiSnapshot("/api/ohlcv", { market: selected.market, symbol: selected.symbol, limit: 260, futureProjectionBars }) &&
-      readApiSnapshot("/api/final/recommendation-detail", { market: selected.market, symbol: selected.symbol })
+      readApiSnapshot("/api/ohlcv", { market: selected.market, symbol: selected.symbol, limit: 260, futureProjectionBars })
     );
     setLoading(!hasCoreSnapshot);
-    setLoadState((prev) => ({ ...prev, errors: [], updatedAt: "" }));
+    setNews([]);
+    setDisclosures([]);
+    setCompany(null);
+    setLoadState((prev) => ({
+      ...prev, newsStatus: "LOADING", disclosureStatus: "LOADING", companyStatus: "LOADING", errors: [], updatedAt: "",
+    }));
+
+    withTimeout(
+      mone.ohlcv({ market: selected.market, symbol: selected.symbol, limit: 260, futureProjectionBars }, controller.signal),
+      35000,
+      { status: "TIMEOUT", items: [] },
+    ).then((cd: any) => {
+      if (!active) return;
+      const chartRows = Array.isArray(cd.items) ? cd.items : [];
+      setRows(chartRows);
+      setChartMeta(cd || null);
+      const chartError = cd?.status === "ERROR" ? cd.error || "OHLCV API 오류" : "";
+      setLoadState((prev) => ({
+        ...prev,
+        ohlcvStatus: cd.status || (chartRows.length ? "OK" : "NO_DATA"),
+        ohlcvCount: chartRows.length,
+        errors: chartError ? Array.from(new Set([...prev.errors, chartError])) : prev.errors,
+        updatedAt: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+      }));
+    }).finally(() => { if (active) setLoading(false); });
+
+    withTimeout(
+      mone.recommendationDetail({ market: selected.market, symbol: selected.symbol }, controller.signal),
+      35000,
+      { status: "TIMEOUT", items: [] },
+    ).then((rd: any) => {
+      if (!active) return;
+      const recItems = Array.isArray(rd.items) ? rd.items : [];
+      const selectedFallback = selected && Object.keys(selected).length > 0 ? selected : null;
+      const fetchedDetail = rd?.item || recItems.find((item: any) => normalizeSymbol(item) === selected.symbol) || null;
+      const detailItem = fetchedDetail && selectedFallback ? { ...fetchedDetail, ...selectedFallback } : fetchedDetail || selectedFallback || null;
+      const matched = detailItem && normalizeSymbol(detailItem) === selected.symbol ? detailItem : null;
+      setLevels(matched);
+      setCompany(companyFallback(matched));
+      const recError = rd?.status === "ERROR" ? rd.error || "추천 상세 API 오류" : "";
+      const recoDate = String(rd?.item?.generatedAt || rd?.generatedAt || rd?.dataHealth?.recoGeneratedAt || "").slice(0, 10);
+      setLoadState((prev) => ({
+        ...prev,
+        recStatus: rd.status || (matched ? "OK" : "NO_DATA"),
+        recCount: Number(rd.count ?? recItems.length ?? (matched ? 1 : 0)),
+        errors: recError ? Array.from(new Set([...prev.errors, recError])) : prev.errors,
+        recoDate,
+      }));
+    });
+
     Promise.allSettled([
-      withTimeout(mone.ohlcv({ market: selected.market, symbol: selected.symbol, limit: 260, futureProjectionBars }, controller.signal), 35000, { status: "TIMEOUT", items: [] }),
-      withTimeout(mone.recommendationDetail({ market: selected.market, symbol: selected.symbol }, controller.signal), 35000, { status: "TIMEOUT", items: [] }),
       withTimeout(mone.news({ market: selected.market, limit: 200 }, controller.signal), 12000, { status: "TIMEOUT", items: [] }),
       withTimeout(mone.disclosures({ market: selected.market, limit: 200, watchOnly: false }, controller.signal), 12000, { status: "TIMEOUT", items: [] }),
       withTimeout(mone.companyAnalysis({ market: selected.market, q: selected.symbol, limit: 20 }, controller.signal), 20000, { status: "TIMEOUT", items: [] }),
       withTimeout(mone.patternStrategy({ market: selected.market, symbol: selected.symbol }, controller.signal), 20000, { status: "TIMEOUT" }),
     ]).then((results) => {
       if (!active) return;
-      const [cd, rd, nd, dd, company_d, pattern_d] = results.map((r) => r.status === "fulfilled" ? r.value : { items: [] }) as any[];
-      const chartRows = Array.isArray(cd.items) ? cd.items : [];
-      const recItems = Array.isArray(rd.items) ? rd.items : [];
+      const [nd, dd, companyData, patternData] = results.map((result) => result.status === "fulfilled" ? result.value : { status: "ERROR", items: [] }) as any[];
       const newsItems = Array.isArray(nd.items) ? nd.items : [];
       const disclosureItems = Array.isArray(dd.items) ? dd.items : [];
-      const errors = [cd, rd, nd, dd, company_d, pattern_d]
-        .map((item: any) => item?.status === "ERROR" ? item.error || "API 오류" : "")
-        .filter(Boolean);
-      setRows(chartRows);
-      setChartMeta(cd || null);
-      const selectedFallback = selected && Object.keys(selected).length > 0 ? selected : null;
-      const fetchedDetail = rd?.item || recItems.find((item: any) => normalizeSymbol(item) === selected.symbol) || null;
-      const detailItem = fetchedDetail && selectedFallback
-        ? { ...fetchedDetail, ...selectedFallback }
-        : fetchedDetail || selectedFallback || null;
-      const matched = detailItem && normalizeSymbol(detailItem) === selected.symbol ? detailItem : null;
-      const patternStrategy = pattern_d?.status === "OK" ? pattern_d : null;
-      const existingPatternStrategy = matched?.patternStrategy && typeof matched.patternStrategy === "object" ? matched.patternStrategy : null;
-      const mergedPatternStrategy = (patternStrategy || existingPatternStrategy)
-        ? { ...(existingPatternStrategy || {}), ...(patternStrategy || {}) }
-        : null;
-      const mergedLevels = matched
-        ? { ...matched, patternStrategy: mergedPatternStrategy }
-        : patternStrategy
-          ? { symbol: selected.symbol, market: selected.market, name: selected.name, patternStrategy, dataStatus: "PATTERN_ONLY" }
-          : null;
-      setLevels(mergedLevels);
       const displayNews = relatedItems(newsItems, selected);
       const displayDisclosures = relatedItems(disclosureItems, selected);
       setNews(displayNews);
       setDisclosures(displayDisclosures);
-      const cm = Array.isArray(company_d.items) ? company_d.items.find((item: any) => normalizeSymbol(item) === selected.symbol) || company_d.items[0] : null;
-      const fallbackCompany = companyFallback(mergedLevels);
-      setCompany(cm || fallbackCompany);
-      // 추천 생성일: dataHealth.recoGeneratedAt (날짜 부분만)
-      const recoDate = String(rd?.item?.generatedAt || rd?.generatedAt || rd?.dataHealth?.recoGeneratedAt || "").slice(0, 10);
-      setLoadState({
-        ohlcvStatus: cd.status || (chartRows.length ? "OK" : "NO_DATA"),
-        ohlcvCount: chartRows.length,
-        recStatus: rd.status || (matched ? "OK" : "NO_DATA"),
-        recCount: Number(rd.count ?? recItems.length ?? (matched ? 1 : 0)),
+      const companyMatch = Array.isArray(companyData.items) ? companyData.items.find((item: any) => normalizeSymbol(item) === selected.symbol) || companyData.items[0] : null;
+      if (companyMatch) setCompany(companyMatch);
+      const patternStrategy = patternData?.status === "OK" ? patternData : null;
+      if (patternStrategy) {
+        setLevels((previous: any) => previous
+          ? { ...previous, patternStrategy: { ...(previous.patternStrategy || {}), ...patternStrategy } }
+          : { symbol: selected.symbol, market: selected.market, name: selected.name, patternStrategy, dataStatus: "PATTERN_ONLY" });
+      }
+      const supportErrors = [nd, dd, companyData, patternData].map((item: any) => item?.status === "ERROR" ? item.error || "API 오류" : "").filter(Boolean);
+      setLoadState((prev) => ({
+        ...prev,
         newsStatus: nd.status || (newsItems.length ? "OK" : "NO_DATA"),
         newsCount: displayNews.length,
         newsSourceCount: newsItems.length,
         disclosureStatus: dd.status || (disclosureItems.length ? "OK" : "NO_DATA"),
         disclosureCount: displayDisclosures.length,
         disclosureSourceCount: disclosureItems.length,
-        companyStatus: company_d.status || (cm ? (cm.dataStatus || "OK") : fallbackCompany ? "REPORT_FALLBACK" : "NO_DATA"),
-        errors,
-        updatedAt: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-        recoDate,
-      });
-    }).finally(() => active && setLoading(false));
+        companyStatus: companyData.status || (companyMatch ? companyMatch.dataStatus || "OK" : "NO_DATA"),
+        errors: Array.from(new Set([...prev.errors, ...supportErrors])),
+      }));
+    });
+
     return () => { active = false; controller.abort(); };
   }, [selected, reloadKey, futureProjectionBars]);
 
