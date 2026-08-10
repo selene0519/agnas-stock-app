@@ -1,5 +1,13 @@
-const CACHE = "mone-v12";
-const STATIC = ["/manifest.json", "/brand/mone-logo-192.png", "/brand/mone-logo.png"];
+const CACHE = "mone-v13";
+const STATIC = [
+  "/manifest.json",
+  "/loading/mone-logo.png",
+  "/icons/splash-logo-v2-192.png",
+  "/icons/splash-logo-v2-512.png",
+  "/icons/splash-maskable-v2-192.png",
+  "/icons/splash-maskable-v2-512.png",
+  "/icons/apple-touch-logo-v2.png",
+];
 const OFFLINE_FALLBACK = "/__offline";
 
 self.addEventListener("install", (event) => {

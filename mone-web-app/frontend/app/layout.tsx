@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   description: '국장·미장 의사결정 운용 보드 · 장전·장중·장마감 기준 실전 운용',
   icons: {
     icon: '/favicon.png',
-    apple: '/brand/mone-logo-192.png',
+    apple: '/icons/apple-touch-logo-v2.png',
   },
   manifest: '/manifest.json',
   appleWebApp: {
@@ -28,7 +28,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#0a0f1a',
+  themeColor: '#0b1220',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -39,7 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="MONE" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-logo-v2.png" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -79,6 +79,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* JS 로드 전 인라인 스플래시 — React 마운트 시 자동 제거 */}
         <div
           id="mone-html-splash"
+          aria-hidden="true"
           style={{
             position: "fixed", inset: 0, zIndex: 99999,
             background: "#0b1220",
@@ -88,17 +89,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         >
           <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 90% 45% at 50% 0%, rgba(20,180,175,0.18), transparent)", pointerEvents: "none" }} />
-          <img src="/loading/mone-logo.png" alt="" style={{ width: "160px", objectFit: "contain", filter: "drop-shadow(0 0 28px rgba(66,223,212,0.28))" }} />
-          <p style={{ marginTop: 4, letterSpacing: "0.35em", color: "#fff", fontWeight: 300, fontSize: "clamp(22px,7vw,32px)", textShadow: "0 0 18px rgba(66,223,212,0.25)" }}>MONE</p>
-          <p style={{ marginTop: 4, letterSpacing: "0.25em", color: "rgba(61,216,208,0.6)", fontWeight: 300, fontSize: "clamp(7px,2vw,9px)" }}>WHERE MOMENTUM BEGINS.</p>
-          <img src="/loading/mone-bear.png" alt="MONE bear" style={{ position: "relative", zIndex: 1, width: "min(40vw, 165px)", marginTop: 36, marginBottom: -18, objectFit: "contain", filter: "drop-shadow(0 10px 28px rgba(0,0,0,0.65))" }} />
-          <div style={{ width: "min(74vw, 320px)", borderRadius: 18, background: "#1a2a3a", padding: "22px 20px", boxShadow: "0 4px 40px rgba(0,0,0,0.55)" }}>
-            <p style={{ margin: 0, color: "#fff", fontSize: 18, fontWeight: 800 }}>MONE 준비 중...</p>
-            <p style={{ margin: "5px 0 0", color: "rgba(255,255,255,0.55)", fontSize: 12, fontWeight: 500 }}>시장 데이터를 확인하고 있어요</p>
-            <div style={{ height: 6, marginTop: 16, overflow: "hidden", borderRadius: 999, background: "rgba(255,255,255,0.1)" }}>
-              <div style={{ width: "38%", height: "100%", borderRadius: 999, background: "#3dd8d0", boxShadow: "0 0 10px rgba(61,216,208,0.7)" }} />
-            </div>
-          </div>
+          {/* A raw image keeps the pre-React launch mark available without waiting for Next.js hydration. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/loading/mone-logo.png"
+            alt=""
+            width={180}
+            height={95}
+            style={{
+              display: "block",
+              width: "min(48vw, 180px)",
+              height: "auto",
+              objectFit: "contain",
+              background: "transparent",
+              filter: "drop-shadow(0 0 28px rgba(66,223,212,0.28))",
+            }}
+          />
         </div>
         {/* React가 마운트되면 page.tsx에서 제거 (removeHtmlSplash()) */}
         {children}
