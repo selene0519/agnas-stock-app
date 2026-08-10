@@ -1,7 +1,7 @@
 {
   "status": "OK",
   "market": "all",
-  "sampleCount": 692,
+  "sampleCount": 693,
   "excludedInconsistentOutcomeCount": 3,
   "excludedBySourcePolicyCount": 1298,
   "calibrationBasis": "forward_only(SOURCE_CALIBRATION_WEIGHTS>0)",
@@ -18,14 +18,14 @@
       "sourceType": "FORWARD_PAPER_TRADE",
       "calibrationWeight": 1.0,
       "admissible": true,
-      "n": 695,
-      "winRate": 0.2273,
-      "avgPnlPct": -4.696
+      "n": 696,
+      "winRate": 0.2284,
+      "avgPnlPct": -4.669
     }
   ],
-  "baseWinRate": 0.224,
-  "baseAvgPnlPct": -4.721,
-  "generatedAt": "2026-08-10T21:49:26",
+  "baseWinRate": 0.2251,
+  "baseAvgPnlPct": -4.694,
+  "generatedAt": "2026-08-10T23:04:21",
   "autoApplied": false,
   "manualApprovalRequired": true,
   "calibrationSummary": {
@@ -127,14 +127,14 @@
       "manualApprovalRequired": true
     },
     {
-      "feedbackId": "6731cef9f301b84eadea",
+      "feedbackId": "045db5cd46d2cfd268e2",
       "market": "all",
       "mode": "aggressive",
       "horizon": "swing",
-      "n": 99,
-      "winRate": 0.1616,
-      "avgPnlPct": -6.281,
-      "multiplier": 0.555,
+      "n": 100,
+      "winRate": 0.17,
+      "avgPnlPct": -6.08,
+      "multiplier": 0.567,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true
