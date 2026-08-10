@@ -109,7 +109,7 @@ def test_weekend_kr_close_refresh_is_clean_skip(tmp_path, monkeypatch) -> None:
     assert status["failedCount"] == 0
 
 
-def test_launch_overlay_waits_only_for_critical_home_snapshots() -> None:
+def test_launch_overlay_waits_for_home_and_light_supporting_snapshots() -> None:
     page = (ROOT / "mone-web-app" / "frontend" / "app" / "page.tsx").read_text(encoding="utf-8")
     preload = (ROOT / "mone-web-app" / "frontend" / "lib" / "bootPreload.ts").read_text(encoding="utf-8")
     api = (ROOT / "mone-web-app" / "frontend" / "lib" / "api.ts").read_text(encoding="utf-8")
@@ -123,6 +123,7 @@ def test_launch_overlay_waits_only_for_critical_home_snapshots() -> None:
     assert "APP_SHELL_TIMEOUT_MS" not in page
     assert "const showLaunchLoading = !cachedBoot.hasBootData;" in page
     assert "void preloadSupportingSnapshots()" in preload
+    assert "const [krHome, usHome, supportErrors] = await Promise.all" in preload
     assert "await preloadSupportingSnapshots" not in preload
     assert "fetchChartSnapshot" not in preload
     assert 'fetchApiSnapshot("/api/final/operation-summary"' not in preload
