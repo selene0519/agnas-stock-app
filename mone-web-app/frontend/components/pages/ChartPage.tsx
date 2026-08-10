@@ -59,8 +59,8 @@ function toSymbol(item: any, index = 0): MoneSymbol | null {
   return { id: String(item?.id || `${market}-${symbol}-${index}`), symbol, name, market, label: `${name} (${symbol})`, isWatch: Boolean(item?.isWatch || item?.watch) };
 }
 function fallbackSymbol(market: Market): MoneSymbol {
-  if (market === "us") return { id: "us-NVDA", symbol: "NVDA", name: "NVIDIA", market: "us", label: "NVIDIA (NVDA)", isWatch: true };
-  return { id: "kr-005930", symbol: "005930", name: "삼성전자", market: "kr", label: "삼성전자 (005930)", isWatch: true };
+  if (market === "us") return { id: "fallback-us-NVDA", symbol: "NVDA", name: "NVIDIA", market: "us", label: "NVIDIA (NVDA)", isWatch: true };
+  return { id: "fallback-kr-005930", symbol: "005930", name: "삼성전자", market: "kr", label: "삼성전자 (005930)", isWatch: true };
 }
 
 // MACD(26봉) 기준. 이걸 넘겨야 MA20·볼린저·RSI·MACD가 전부 산출된다.
@@ -2460,8 +2460,8 @@ export default function ChartPage() {
   }, [selected?.symbol, selected?.market]);
 
   useEffect(() => {
-    if (!selected || normalizeSymbol(levels) !== selected.symbol) {
-      setStrategyRefreshStatus(selected ? "loading" : "idle");
+    if (!selected || selected.id.startsWith("fallback-") || normalizeSymbol(levels) !== selected.symbol) {
+      setStrategyRefreshStatus(selected?.id.startsWith("fallback-") ? "missing" : selected ? "loading" : "idle");
       return;
     }
     let active = true;
@@ -2609,29 +2609,40 @@ export default function ChartPage() {
       }));
     }).finally(() => { if (active) setLoading(false); });
 
-    withTimeout(
-      mone.recommendationDetail({ market: selected.market, symbol: selected.symbol }, controller.signal),
-      35000,
-      { status: "TIMEOUT", items: [] },
-    ).then((rd: any) => {
-      if (!active) return;
-      const recItems = Array.isArray(rd.items) ? rd.items : [];
-      const selectedFallback = selected && Object.keys(selected).length > 0 ? selected : null;
-      const fetchedDetail = rd?.item || recItems.find((item: any) => normalizeSymbol(item) === selected.symbol) || null;
-      const detailItem = fetchedDetail && selectedFallback ? { ...fetchedDetail, ...selectedFallback } : fetchedDetail || selectedFallback || null;
-      const matched = detailItem && normalizeSymbol(detailItem) === selected.symbol ? detailItem : null;
-      setLevels(matched);
-      setCompany(companyFallback(matched));
-      const recError = rd?.status === "ERROR" ? rd.error || "추천 상세 API 오류" : "";
-      const recoDate = String(rd?.item?.generatedAt || rd?.generatedAt || rd?.dataHealth?.recoGeneratedAt || "").slice(0, 10);
+    if (selected.id.startsWith("fallback-")) {
+      setLevels(selected);
+      setCompany(companyFallback(selected));
       setLoadState((prev) => ({
         ...prev,
-        recStatus: rd.status || (matched ? "OK" : "NO_DATA"),
-        recCount: Number(rd.count ?? recItems.length ?? (matched ? 1 : 0)),
-        errors: recError ? Array.from(new Set([...prev.errors, recError])) : prev.errors,
-        recoDate,
+        recStatus: "NO_DATA",
+        recCount: 0,
+        recoDate: "",
       }));
-    });
+    } else {
+      withTimeout(
+        mone.recommendationDetail({ market: selected.market, symbol: selected.symbol }, controller.signal),
+        35000,
+        { status: "TIMEOUT", items: [] },
+      ).then((rd: any) => {
+        if (!active) return;
+        const recItems = Array.isArray(rd.items) ? rd.items : [];
+        const selectedFallback = selected && Object.keys(selected).length > 0 ? selected : null;
+        const fetchedDetail = rd?.item || recItems.find((item: any) => normalizeSymbol(item) === selected.symbol) || null;
+        const detailItem = fetchedDetail && selectedFallback ? { ...fetchedDetail, ...selectedFallback } : fetchedDetail || selectedFallback || null;
+        const matched = detailItem && normalizeSymbol(detailItem) === selected.symbol ? detailItem : null;
+        setLevels(matched);
+        setCompany(companyFallback(matched));
+        const recError = rd?.status === "ERROR" ? rd.error || "추천 상세 API 오류" : "";
+        const recoDate = String(rd?.item?.generatedAt || rd?.generatedAt || rd?.dataHealth?.recoGeneratedAt || "").slice(0, 10);
+        setLoadState((prev) => ({
+          ...prev,
+          recStatus: rd.status || (matched ? "OK" : "NO_DATA"),
+          recCount: Number(rd.count ?? recItems.length ?? (matched ? 1 : 0)),
+          errors: recError ? Array.from(new Set([...prev.errors, recError])) : prev.errors,
+          recoDate,
+        }));
+      });
+    }
 
     Promise.allSettled([
       withTimeout(mone.news({ market: selected.market, limit: 200 }, controller.signal), 12000, { status: "TIMEOUT", items: [] }),

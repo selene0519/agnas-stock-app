@@ -3347,6 +3347,26 @@ def _recommendations_payload(market: str, mode: str, horizon: str, cash: float, 
     normalized_horizon = _horizon_norm(horizon)
     _ver = _reco_file_version(normalized_market, normalized_mode, normalized_horizon)
     payload = json.loads(json.dumps(_recommendations_payload_cached(market, mode, horizon, limit, watch_only, _ver), ensure_ascii=False))
+    if not payload.get("items"):
+        # An empty current recommendation set is already fail-closed. Avoid the
+        # expensive data-quality/performance/governor stack, which cannot make
+        # an absent candidate safer and used to add ~13 seconds on BEAR days.
+        payload["status"] = "NO_DATA"
+        payload["reviewOnly"] = True
+        payload["tradeSafety"] = {
+            "status": "NO_DATA",
+            "reviewOnly": True,
+            "isTradeBlocked": True,
+            "reason": "No current recommendation passed the market and EV gates.",
+        }
+        payload["performanceSafety"] = {
+            "status": "NO_DATA",
+            "reviewOnly": True,
+            "isTradeBlocked": True,
+            "reason": "No candidate is available for performance-gate evaluation.",
+        }
+        payload["noDataReason"] = "MARKET_OR_EXPECTED_VALUE_GATE"
+        return payload
     try:
         _record_virtual_ledger(payload.get("items", []), "api/final/recommendations")
     except Exception:

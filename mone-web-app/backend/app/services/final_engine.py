@@ -2317,14 +2317,19 @@ def recommendation_detail(market: str = "kr", symbol: str = "") -> dict[str, Any
             "item": None,
             "generatedAt": _now(),
         }
-    enriched_rows = [_enrich_recommendation_detail_item(row, market, target) for row in rows[:9]]
-    best = enriched_rows[0]
+    # Full chart/pattern/event enrichment is deliberately expensive. The UI
+    # displays one primary detail row; remaining strategy/horizon rows are only
+    # used for switching the plan. Enriching all nine multiplied first-load time
+    # without changing the selected primary decision.
+    best = _enrich_recommendation_detail_item(rows[0], market, target)
+    detail_rows = [best, *[dict(row) for row in rows[1:9]]]
     return {
         "status": "OK",
         "market": market,
         "symbol": target,
         "count": len(rows),
-        "items": enriched_rows,
+        "enrichedItemCount": 1,
+        "items": detail_rows,
         "item": best,
         "source": best.get("sourceFile", ""),
         "generatedAt": _now(),
