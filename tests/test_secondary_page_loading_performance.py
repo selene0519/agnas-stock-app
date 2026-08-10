@@ -112,3 +112,9 @@ def test_recommendation_detail_enriches_only_primary_row(monkeypatch) -> None:
     assert len(result["items"]) == 9
     assert result["item"]["enriched"] is True
     assert "enriched" not in result["items"][1]
+
+
+def test_health_bootstrap_proxy_keeps_root_health_path() -> None:
+    route = read("mone-web-app/frontend/app/mone-api/[...path]/route.ts")
+    assert 'joinedPath.startsWith("health/")' in route
+    assert '? `/${joinedPath}`' in route
