@@ -1,8 +1,8 @@
 {
   "version": 393,
-  "generatedAt": "2026-07-30T23:29:13.708494+00:00",
+  "generatedAt": "2026-08-11T21:56:35.190824+00:00",
   "market": "kr",
-  "totalSamples": 5507,
+  "totalSamples": 5580,
   "markets": {
     "kr_balanced_swing": {
       "market": "kr",
@@ -35,7 +35,7 @@
         "GOOD_SIGNAL_WEAK_EXIT": 5,
         "DATA_STALE": 508
       },
-      "appliedAt": "2026-07-30T23:29:13.707603+00:00"
+      "appliedAt": "2026-08-11T21:56:35.189087+00:00"
     },
     "kr_conservative_swing": {
       "market": "kr",
@@ -68,7 +68,7 @@
         "GOOD_SIGNAL_WEAK_EXIT": 3,
         "DATA_STALE": 537
       },
-      "appliedAt": "2026-07-30T23:29:13.707718+00:00"
+      "appliedAt": "2026-08-11T21:56:35.189319+00:00"
     },
     "kr_conservative_short": {
       "market": "kr",
@@ -99,40 +99,38 @@
         "GOOD": 7,
         "DATA_STALE": 389
       },
-      "appliedAt": "2026-07-30T23:29:13.707794+00:00"
+      "appliedAt": "2026-08-11T21:56:35.189461+00:00"
     },
     "kr_conservative_mid": {
       "market": "kr",
       "mode": "conservative",
       "horizon": "mid",
-      "sampleCount": 783,
-      "learnableSampleCount": 28,
+      "sampleCount": 801,
+      "learnableSampleCount": 30,
       "confidence": 0.9,
-      "weightAdjustments": {
-        "riskPenalty": 0.536
-      },
+      "weightAdjustments": {},
       "priceAdjustments": {
-        "entryAggressiveness": 0.057,
+        "entryAggressiveness": 0.107,
         "targetMultiplier": 0.0,
         "stopAtrMultiplier": 0.0
       },
       "filterAdjustments": {
-        "maxDistanceToEntryPct": 0.143,
+        "maxDistanceToEntryPct": 0.267,
         "minRiskRewardRatio": 0.0
       },
       "topFailureReasons": [
-        "ENTRY_TOO_AGGRESSIVE",
         "MISS_ENTRY_TOO_LOW",
+        "ENTRY_TOO_AGGRESSIVE",
         "GOOD_SIGNAL_WEAK_EXIT"
       ],
       "reasonCounts": {
         "GOOD_SIGNAL_WEAK_EXIT": 4,
-        "MISS_ENTRY_TOO_LOW": 11,
+        "MISS_ENTRY_TOO_LOW": 13,
         "GOOD": 1,
         "ENTRY_TOO_AGGRESSIVE": 12,
-        "DATA_STALE": 755
+        "DATA_STALE": 771
       },
-      "appliedAt": "2026-07-30T23:29:13.707930+00:00"
+      "appliedAt": "2026-08-11T21:56:35.189703+00:00"
     },
     "kr_balanced_short": {
       "market": "kr",
@@ -165,7 +163,7 @@
         "MISS_ENTRY_TOO_LOW": 2,
         "DATA_STALE": 403
       },
-      "appliedAt": "2026-07-30T23:29:13.708007+00:00"
+      "appliedAt": "2026-08-11T21:56:35.189863+00:00"
     },
     "kr_balanced_mid": {
       "market": "kr",
@@ -196,7 +194,7 @@
         "GOOD": 1,
         "DATA_STALE": 754
       },
-      "appliedAt": "2026-07-30T23:29:13.708150+00:00"
+      "appliedAt": "2026-08-11T21:56:35.190156+00:00"
     },
     "kr_aggressive_short": {
       "market": "kr",
@@ -229,7 +227,7 @@
         "MISS_ENTRY_TOO_LOW": 1,
         "DATA_STALE": 419
       },
-      "appliedAt": "2026-07-30T23:29:13.708234+00:00"
+      "appliedAt": "2026-08-11T21:56:35.190331+00:00"
     },
     "kr_aggressive_swing": {
       "market": "kr",
@@ -262,13 +260,13 @@
         "GOOD_SIGNAL_WEAK_EXIT": 6,
         "DATA_STALE": 549
       },
-      "appliedAt": "2026-07-30T23:29:13.708339+00:00"
+      "appliedAt": "2026-08-11T21:56:35.190524+00:00"
     },
     "kr_aggressive_mid": {
       "market": "kr",
       "mode": "aggressive",
       "horizon": "mid",
-      "sampleCount": 896,
+      "sampleCount": 951,
       "learnableSampleCount": 33,
       "confidence": 0.9,
       "weightAdjustments": {},
@@ -291,10 +289,14 @@
         "GOOD_SIGNAL_WEAK_EXIT": 6,
         "MISS_ENTRY_TOO_LOW": 13,
         "GOOD": 1,
-        "DATA_STALE": 863
+        "DATA_STALE": 918
       },
-      "appliedAt": "2026-07-30T23:29:13.708493+00:00"
+      "appliedAt": "2026-08-11T21:56:35.190820+00:00"
     }
   },
-  "savedAt": "2026-07-30T23:29:13.708840+00:00"
+  "savedAt": "2026-08-11T21:56:35.192417+00:00",
+  "paramsIntegrity": {
+    "version": "self-correction-params-integrity-v1",
+    "payloadHash": "6d4459a9161c3deb297b6074cab69d838443a62dbba7a256fe33ff8a4b150c63"
+  }
 }

@@ -1,6 +1,6 @@
 {
-  "updatedAt": "2026-08-11 23:04:53",
-  "totalRows": 2401,
+  "updatedAt": "2026-08-12 06:56:48",
+  "totalRows": 2402,
   "olsSampleSize": 1841,
   "byStrategy": {
     "conservative_short": {
@@ -37,15 +37,15 @@
       "probAccuracy": -0.378
     },
     "balanced_short": {
-      "total": 202,
+      "total": 203,
       "wins": 65,
-      "losses": 137,
-      "winRate": 0.3218,
+      "losses": 138,
+      "winRate": 0.3202,
       "avgWinPct": 5.451,
-      "avgLossPct": 3.968,
-      "payoffRatio": 1.374,
+      "avgLossPct": 3.991,
+      "payoffRatio": 1.366,
       "avgProbability": 58.8,
-      "probAccuracy": -0.266
+      "probAccuracy": -0.268
     },
     "balanced_swing": {
       "total": 335,
@@ -112,17 +112,17 @@
       "payoffRatio": 1.331
     },
     "us": {
-      "total": 1276,
-      "winRate": 0.268,
+      "total": 1277,
+      "winRate": 0.2678,
       "avgWinPct": 10.084,
       "avgLossPct": 7.396,
-      "payoffRatio": 1.363
+      "payoffRatio": 1.364
     }
   },
   "byProbBand": {
     "low_50-60": {
-      "count": 353,
-      "actualWinRate": 0.1728
+      "count": 354,
+      "actualWinRate": 0.1723
     },
     "mid_60-75": {
       "count": 896,
@@ -200,7 +200,7 @@
     }
   },
   "insight": [
-    "호라이즌: short 전략 평균 승률 30.0%로 최고",
+    "호라이즌: short 전략 평균 승률 29.9%로 최고",
     "모드: conservative 전략 평균 payoff 1.40x로 최고",
     "마켓: US 승률 26.8%로 우위",
     "회귀분석: intercept 낮을수록 수익률 향상 (β=-16.935)",
