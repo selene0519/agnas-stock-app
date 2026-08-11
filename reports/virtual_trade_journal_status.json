@@ -2,7 +2,7 @@
   "status": "OK",
   "enabled": true,
   "source": "github-actions",
-  "lastRunAt": "2026-08-11T08:35:41+09:00",
+  "lastRunAt": "2026-08-11T16:16:59+09:00",
   "timezone": "Asia/Seoul",
   "includeEngine": false,
   "evaluateAfter": true,
@@ -13,7 +13,8 @@
     "evaluated": 122,
     "repairedEvaluationRows": 0,
     "outcomes": {
-      "PENDING": 122
+      "PENDING": 116,
+      "TARGET_HIT": 6
     },
     "items": [
       {
@@ -31,7 +32,7 @@
         "net_pnl_pct": "",
         "mfe_pct": 12.2894,
         "mae_pct": -11.3974,
-        "bars_held": 35,
+        "bars_held": 36,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
         "target_progress": 0.348,
@@ -46,7 +47,7 @@
         "stopTouchDate": "",
         "maxFavorableExcursion": 12.2894,
         "maxAdverseExcursion": -11.3974,
-        "holdingDays": 35,
+        "holdingDays": 36,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -56,7 +57,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:43"
+        "evaluated_at": "2026-08-11T16:17:00"
       },
       {
         "journal_id": "1e69ee1d019711ccfa708789",
@@ -73,7 +74,7 @@
         "net_pnl_pct": "",
         "mfe_pct": 22.868,
         "mae_pct": -8.4018,
-        "bars_held": 35,
+        "bars_held": 36,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
         "target_progress": 0.6131,
@@ -88,7 +89,7 @@
         "stopTouchDate": "",
         "maxFavorableExcursion": 22.868,
         "maxAdverseExcursion": -8.4018,
-        "holdingDays": 35,
+        "holdingDays": 36,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -98,7 +99,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:43"
+        "evaluated_at": "2026-08-11T16:17:00"
       },
       {
         "journal_id": "b875c42dd1927f18da1b22a3",
@@ -115,7 +116,7 @@
         "net_pnl_pct": "",
         "mfe_pct": 12.2894,
         "mae_pct": -11.3974,
-        "bars_held": 35,
+        "bars_held": 36,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
         "target_progress": 0.348,
@@ -130,7 +131,7 @@
         "stopTouchDate": "",
         "maxFavorableExcursion": 12.2894,
         "maxAdverseExcursion": -11.3974,
-        "holdingDays": 35,
+        "holdingDays": 36,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -140,7 +141,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:43"
+        "evaluated_at": "2026-08-11T16:17:00"
       },
       {
         "journal_id": "c94dccdeb77c399680311c9e",
@@ -182,7 +183,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:43"
+        "evaluated_at": "2026-08-11T16:17:00"
       },
       {
         "journal_id": "7aaeda7e8b2a6ef9d4ca39f9",
@@ -199,7 +200,7 @@
         "net_pnl_pct": "",
         "mfe_pct": 12.2894,
         "mae_pct": -11.3974,
-        "bars_held": 34,
+        "bars_held": 35,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
         "target_progress": 0.3624,
@@ -214,7 +215,7 @@
         "stopTouchDate": "",
         "maxFavorableExcursion": 12.2894,
         "maxAdverseExcursion": -11.3974,
-        "holdingDays": 34,
+        "holdingDays": 35,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -224,7 +225,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:43"
+        "evaluated_at": "2026-08-11T16:17:00"
       },
       {
         "journal_id": "beb543fce6dca64bdcb5ae78",
@@ -239,12 +240,12 @@
         "exit_price": "",
         "gross_pnl_pct": "",
         "net_pnl_pct": "",
-        "mfe_pct": 14.6288,
+        "mfe_pct": 18.1223,
         "mae_pct": -8.4425,
-        "bars_held": 34,
+        "bars_held": 35,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
-        "target_progress": 0.5877,
+        "target_progress": 0.7281,
         "stop_progress": 0.9328,
         "failure_reason": "",
         "entryTouched": true,
@@ -254,9 +255,9 @@
         "entryTouchDate": "2026-06-23",
         "targetTouchDate": "",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 14.6288,
+        "maxFavorableExcursion": 18.1223,
         "maxAdverseExcursion": -8.4425,
-        "holdingDays": 34,
+        "holdingDays": 35,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -266,7 +267,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:43"
+        "evaluated_at": "2026-08-11T16:17:00"
       },
       {
         "journal_id": "4a80e1e83c4a112c0ceb6f4c",
@@ -281,12 +282,12 @@
         "exit_price": "",
         "gross_pnl_pct": "",
         "net_pnl_pct": "",
-        "mfe_pct": 21.6216,
+        "mfe_pct": 25.3282,
         "mae_pct": -2.8571,
-        "bars_held": 33,
+        "bars_held": 34,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
-        "target_progress": 0.7467,
+        "target_progress": 0.8747,
         "stop_progress": 0.2713,
         "failure_reason": "",
         "entryTouched": true,
@@ -296,9 +297,9 @@
         "entryTouchDate": "2026-06-24",
         "targetTouchDate": "",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 21.6216,
+        "maxFavorableExcursion": 25.3282,
         "maxAdverseExcursion": -2.8571,
-        "holdingDays": 33,
+        "holdingDays": 34,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -308,7 +309,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:43"
+        "evaluated_at": "2026-08-11T16:17:00"
       },
       {
         "journal_id": "0c656e2b0eb8b512966919f2",
@@ -350,7 +351,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:43"
+        "evaluated_at": "2026-08-11T16:17:00"
       },
       {
         "journal_id": "252afb684357da8d45535d12",
@@ -367,7 +368,7 @@
         "net_pnl_pct": "",
         "mfe_pct": 21.9008,
         "mae_pct": -10.5372,
-        "bars_held": 32,
+        "bars_held": 33,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
         "target_progress": 0.5633,
@@ -382,7 +383,7 @@
         "stopTouchDate": "",
         "maxFavorableExcursion": 21.9008,
         "maxAdverseExcursion": -10.5372,
-        "holdingDays": 32,
+        "holdingDays": 33,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -392,7 +393,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:43"
+        "evaluated_at": "2026-08-11T16:17:00"
       },
       {
         "journal_id": "6c7618c0d7954bc59ae44954",
@@ -407,12 +408,12 @@
         "exit_price": "",
         "gross_pnl_pct": "",
         "net_pnl_pct": "",
-        "mfe_pct": 23.7235,
+        "mfe_pct": 27.4941,
         "mae_pct": 2.4352,
-        "bars_held": 32,
+        "bars_held": 33,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
-        "target_progress": 0.7154,
+        "target_progress": 0.8291,
         "stop_progress": 0.202,
         "failure_reason": "",
         "entryTouched": true,
@@ -422,9 +423,9 @@
         "entryTouchDate": "2026-06-25",
         "targetTouchDate": "",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 23.7235,
+        "maxFavorableExcursion": 27.4941,
         "maxAdverseExcursion": 2.4352,
-        "holdingDays": 32,
+        "holdingDays": 33,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -434,7 +435,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:43"
+        "evaluated_at": "2026-08-11T16:17:00"
       },
       {
         "journal_id": "e05b3a8b11c71809a334bd59",
@@ -476,7 +477,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:43"
+        "evaluated_at": "2026-08-11T16:17:00"
       },
       {
         "journal_id": "5d2e6011924bf01d19d12943",
@@ -518,7 +519,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:43"
+        "evaluated_at": "2026-08-11T16:17:00"
       },
       {
         "journal_id": "d9f1ac84a5ac680cc2692cb4",
@@ -560,7 +561,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:43"
+        "evaluated_at": "2026-08-11T16:17:00"
       },
       {
         "journal_id": "8d99a2d90d5b0daccbef3278",
@@ -575,12 +576,12 @@
         "exit_price": "",
         "gross_pnl_pct": "",
         "net_pnl_pct": "",
-        "mfe_pct": 13.7184,
+        "mfe_pct": 17.1841,
         "mae_pct": -5.8484,
-        "bars_held": 31,
+        "bars_held": 32,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
-        "target_progress": 0.4501,
+        "target_progress": 0.5638,
         "stop_progress": 0.5277,
         "failure_reason": "",
         "entryTouched": true,
@@ -590,9 +591,9 @@
         "entryTouchDate": "2026-06-26",
         "targetTouchDate": "",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 13.7184,
+        "maxFavorableExcursion": 17.1841,
         "maxAdverseExcursion": -5.8484,
-        "holdingDays": 31,
+        "holdingDays": 32,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -602,133 +603,133 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:43"
+        "evaluated_at": "2026-08-11T16:17:00"
       },
       {
         "journal_id": "4f80c0c3fdba180a66b0cdfd",
         "evaluation_policy_version": "vtj-evaluation-v2.0.0",
         "evaluation_policy_fingerprint": "811f3ad6438ee650b036",
-        "status": "PENDING",
-        "outcome": "PENDING",
+        "status": "EVALUATED",
+        "outcome": "TARGET_HIT",
         "filled": true,
         "fill_date": "2026-06-26",
         "fill_price": 319819.5,
-        "exit_date": "",
-        "exit_price": "",
-        "gross_pnl_pct": "",
-        "net_pnl_pct": "",
-        "mfe_pct": 28.9515,
+        "exit_date": "2026-08-11",
+        "exit_price": 429539.2875,
+        "gross_pnl_pct": 34.8592,
+        "net_pnl_pct": 34.3068,
+        "mfe_pct": 37.4022,
         "mae_pct": -5.9468,
-        "bars_held": 31,
+        "bars_held": 32,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
-        "target_progress": 0.8305,
+        "target_progress": 1.073,
         "stop_progress": 0.4691,
-        "failure_reason": "",
+        "failure_reason": "NONE",
         "entryTouched": true,
-        "targetTouched": false,
+        "targetTouched": true,
         "stopTouched": false,
-        "targetBeforeStop": "",
+        "targetBeforeStop": true,
         "entryTouchDate": "2026-06-26",
-        "targetTouchDate": "",
+        "targetTouchDate": "2026-08-11",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 28.9515,
+        "maxFavorableExcursion": 37.4022,
         "maxAdverseExcursion": -5.9468,
-        "holdingDays": 31,
-        "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
-        "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
+        "holdingDays": 32,
+        "failureReason": "TARGET_BEFORE_STOP",
+        "diagnosticReason": "NONE",
         "unknownDetail": "",
         "secondary_tags": "",
         "regime_at_entry": "횡보장",
-        "regime_at_exit": "",
+        "regime_at_exit": "RISK_ON",
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
-        "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:43"
+        "review_text": "추천 당시 중간 신호 신뢰도 (횡보장 환경)로 진입 검토됐습니다. 목표가에 도달하며 성공 종료됐습니다, 손익 +34.31% (MFE +37.40% / MAE -5.95%). [NONE] 유형으로 기록합니다.",
+        "evaluated_at": "2026-08-11T16:17:00"
       },
       {
         "journal_id": "3a1f8f22033a9d9206af14fd",
         "evaluation_policy_version": "vtj-evaluation-v2.0.0",
         "evaluation_policy_fingerprint": "811f3ad6438ee650b036",
-        "status": "PENDING",
-        "outcome": "PENDING",
+        "status": "EVALUATED",
+        "outcome": "TARGET_HIT",
         "filled": true,
         "fill_date": "2026-06-26",
         "fill_price": 322822.5,
-        "exit_date": "",
-        "exit_price": "",
-        "gross_pnl_pct": "",
-        "net_pnl_pct": "",
-        "mfe_pct": 27.7519,
+        "exit_date": "2026-08-11",
+        "exit_price": 434292.5067,
+        "gross_pnl_pct": 35.0831,
+        "net_pnl_pct": 34.5298,
+        "mfe_pct": 36.124,
         "mae_pct": -6.8217,
-        "bars_held": 31,
+        "bars_held": 32,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
-        "target_progress": 0.791,
+        "target_progress": 1.0297,
         "stop_progress": 0.5347,
-        "failure_reason": "",
+        "failure_reason": "NONE",
         "entryTouched": true,
-        "targetTouched": false,
+        "targetTouched": true,
         "stopTouched": false,
-        "targetBeforeStop": "",
+        "targetBeforeStop": true,
         "entryTouchDate": "2026-06-26",
-        "targetTouchDate": "",
+        "targetTouchDate": "2026-08-11",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 27.7519,
+        "maxFavorableExcursion": 36.124,
         "maxAdverseExcursion": -6.8217,
-        "holdingDays": 31,
-        "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
-        "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
+        "holdingDays": 32,
+        "failureReason": "TARGET_BEFORE_STOP",
+        "diagnosticReason": "NONE",
         "unknownDetail": "",
         "secondary_tags": "",
         "regime_at_entry": "횡보장",
-        "regime_at_exit": "",
+        "regime_at_exit": "RISK_ON",
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
-        "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:43"
+        "review_text": "추천 당시 중간 신호 신뢰도 (횡보장 환경)로 진입 검토됐습니다. 목표가에 도달하며 성공 종료됐습니다, 손익 +34.53% (MFE +36.12% / MAE -6.82%). [NONE] 유형으로 기록합니다.",
+        "evaluated_at": "2026-08-11T16:17:00"
       },
       {
         "journal_id": "fcdfac6bfff23563efeaca15",
         "evaluation_policy_version": "vtj-evaluation-v2.0.0",
         "evaluation_policy_fingerprint": "811f3ad6438ee650b036",
-        "status": "PENDING",
-        "outcome": "PENDING",
+        "status": "EVALUATED",
+        "outcome": "TARGET_HIT",
         "filled": true,
         "fill_date": "2026-07-06",
         "fill_price": 322822.5,
-        "exit_date": "",
-        "exit_price": "",
-        "gross_pnl_pct": "",
-        "net_pnl_pct": "",
-        "mfe_pct": 27.7519,
+        "exit_date": "2026-08-11",
+        "exit_price": 434292.5067,
+        "gross_pnl_pct": 35.0831,
+        "net_pnl_pct": 34.5298,
+        "mfe_pct": 36.124,
         "mae_pct": -6.8217,
-        "bars_held": 25,
+        "bars_held": 26,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
-        "target_progress": 0.791,
+        "target_progress": 1.0297,
         "stop_progress": 0.5347,
-        "failure_reason": "",
+        "failure_reason": "NONE",
         "entryTouched": true,
-        "targetTouched": false,
+        "targetTouched": true,
         "stopTouched": false,
-        "targetBeforeStop": "",
+        "targetBeforeStop": true,
         "entryTouchDate": "2026-07-06",
-        "targetTouchDate": "",
+        "targetTouchDate": "2026-08-11",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 27.7519,
+        "maxFavorableExcursion": 36.124,
         "maxAdverseExcursion": -6.8217,
-        "holdingDays": 25,
-        "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
-        "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
+        "holdingDays": 26,
+        "failureReason": "TARGET_BEFORE_STOP",
+        "diagnosticReason": "NONE",
         "unknownDetail": "",
         "secondary_tags": "",
         "regime_at_entry": "횡보장",
-        "regime_at_exit": "",
+        "regime_at_exit": "RISK_ON",
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
-        "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:43"
+        "review_text": "추천 당시 중간 신호 신뢰도 (횡보장 환경)로 진입 검토됐습니다. 목표가에 도달하며 성공 종료됐습니다, 손익 +34.53% (MFE +36.12% / MAE -6.82%). [NONE] 유형으로 기록합니다.",
+        "evaluated_at": "2026-08-11T16:17:00"
       },
       {
         "journal_id": "ac489b3341cd8c727c3504fd",
@@ -743,12 +744,12 @@
         "exit_price": "",
         "gross_pnl_pct": "",
         "net_pnl_pct": "",
-        "mfe_pct": 13.6364,
+        "mfe_pct": 17.0996,
         "mae_pct": -5.9163,
-        "bars_held": 30,
+        "bars_held": 31,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
-        "target_progress": 0.4528,
+        "target_progress": 0.5678,
         "stop_progress": 0.5402,
         "failure_reason": "",
         "entryTouched": true,
@@ -758,9 +759,9 @@
         "entryTouchDate": "2026-06-29",
         "targetTouchDate": "",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 13.6364,
+        "maxFavorableExcursion": 17.0996,
         "maxAdverseExcursion": -5.9163,
-        "holdingDays": 30,
+        "holdingDays": 31,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -770,7 +771,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:43"
+        "evaluated_at": "2026-08-11T16:17:00"
       },
       {
         "journal_id": "f03381ae4bab6c62077ff6a4",
@@ -812,7 +813,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:43"
+        "evaluated_at": "2026-08-11T16:17:00"
       },
       {
         "journal_id": "0fca5b955525f87583ef074f",
@@ -854,7 +855,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:43"
+        "evaluated_at": "2026-08-11T16:17:00"
       },
       {
         "journal_id": "a81ce85b2eff838faf0a3c77",
@@ -896,7 +897,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:43"
+        "evaluated_at": "2026-08-11T16:17:00"
       },
       {
         "journal_id": "4fa1110d9ab255dbbafb4873",
@@ -938,7 +939,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:43"
+        "evaluated_at": "2026-08-11T16:17:00"
       },
       {
         "journal_id": "28538b07b64f47fc89a53d2d",
@@ -980,7 +981,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:43"
+        "evaluated_at": "2026-08-11T16:17:00"
       },
       {
         "journal_id": "91d4a0c2a884c1f8a3343026",
@@ -1022,7 +1023,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:43"
+        "evaluated_at": "2026-08-11T16:17:00"
       },
       {
         "journal_id": "2d7ed046aa491a37a658a1bb",
@@ -1064,7 +1065,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:43"
+        "evaluated_at": "2026-08-11T16:17:00"
       },
       {
         "journal_id": "ebf75f93bcb5473f2412acbf",
@@ -1106,7 +1107,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:43"
+        "evaluated_at": "2026-08-11T16:17:00"
       },
       {
         "journal_id": "86145a27b7efa59703719510",
@@ -1148,7 +1149,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:43"
+        "evaluated_at": "2026-08-11T16:17:00"
       },
       {
         "journal_id": "77a4ecf13cd24c8b410eb145",
@@ -1190,7 +1191,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:43"
+        "evaluated_at": "2026-08-11T16:17:00"
       },
       {
         "journal_id": "e34ca0db8042d7a183175c23",
@@ -1232,7 +1233,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:43"
+        "evaluated_at": "2026-08-11T16:17:00"
       },
       {
         "journal_id": "bcc8103db076a687ff9532f9",
@@ -1274,7 +1275,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:43"
+        "evaluated_at": "2026-08-11T16:17:00"
       },
       {
         "journal_id": "ae56c20b6dc76de8bd511e66",
@@ -1316,7 +1317,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:43"
+        "evaluated_at": "2026-08-11T16:17:00"
       },
       {
         "journal_id": "ae221542eeb77dc10dbd936d",
@@ -1358,7 +1359,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:43"
+        "evaluated_at": "2026-08-11T16:17:00"
       },
       {
         "journal_id": "a84da538f394ef36b1f90dcd",
@@ -1400,7 +1401,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:43"
+        "evaluated_at": "2026-08-11T16:17:00"
       },
       {
         "journal_id": "3a3978aa34e875768828b00b",
@@ -1442,7 +1443,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:43"
+        "evaluated_at": "2026-08-11T16:17:00"
       },
       {
         "journal_id": "f4084f0638feb655facd60cc",
@@ -1484,7 +1485,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "2134d0447d972da61eb1c1e0",
@@ -1526,7 +1527,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "b0a38db3d503abbcd1564024",
@@ -1568,7 +1569,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "d80daf0447cc0c3799bdc870",
@@ -1610,7 +1611,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "33ec5cb561c2da8f75ccd3dd",
@@ -1652,7 +1653,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "6724a7ce1d92cb9af1563fc7",
@@ -1694,7 +1695,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "134704b1424314aca6e58a32",
@@ -1736,7 +1737,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "04724bc050724f4fa2ebf602",
@@ -1778,7 +1779,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "606610799620cfeb322157f4",
@@ -1820,7 +1821,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "2154ec8edab27e4f458b186f",
@@ -1862,7 +1863,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "52bdfc4d10c95b6ca346fe65",
@@ -1904,7 +1905,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "b358a38042c7f364e787baee",
@@ -1946,7 +1947,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "3372b32f877c8d9acbaf7274",
@@ -1961,12 +1962,12 @@
         "exit_price": "",
         "gross_pnl_pct": "",
         "net_pnl_pct": "",
-        "mfe_pct": 7.6936,
+        "mfe_pct": 7.7441,
         "mae_pct": -1.8519,
         "bars_held": 25,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
-        "target_progress": 0.6924,
+        "target_progress": 0.697,
         "stop_progress": 0.4583,
         "failure_reason": "",
         "entryTouched": true,
@@ -1976,7 +1977,7 @@
         "entryTouchDate": "2026-07-07",
         "targetTouchDate": "",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 7.6936,
+        "maxFavorableExcursion": 7.7441,
         "maxAdverseExcursion": -1.8519,
         "holdingDays": 25,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
@@ -1988,7 +1989,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "238769c07d3df8299c92cc7d",
@@ -2030,7 +2031,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "4dcd7366c95b45cb4994d86d",
@@ -2072,7 +2073,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "1828a9b1070e13f0d158babf",
@@ -2114,7 +2115,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "18ebaae7a978e65ddc76f308",
@@ -2129,12 +2130,12 @@
         "exit_price": "",
         "gross_pnl_pct": "",
         "net_pnl_pct": "",
-        "mfe_pct": 14.5247,
+        "mfe_pct": 15.8999,
         "mae_pct": -7.1585,
         "bars_held": 24,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
-        "target_progress": 0.591,
+        "target_progress": 0.647,
         "stop_progress": 0.8397,
         "failure_reason": "",
         "entryTouched": true,
@@ -2144,7 +2145,7 @@
         "entryTouchDate": "2026-07-08",
         "targetTouchDate": "",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 14.5247,
+        "maxFavorableExcursion": 15.8999,
         "maxAdverseExcursion": -7.1585,
         "holdingDays": 24,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
@@ -2156,7 +2157,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "fb201d75f4f66ae21351e66b",
@@ -2198,7 +2199,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "a3f61038c76965926d06b091",
@@ -2213,12 +2214,12 @@
         "exit_price": "",
         "gross_pnl_pct": "",
         "net_pnl_pct": "",
-        "mfe_pct": 9.0894,
+        "mfe_pct": 9.1405,
         "mae_pct": -0.3922,
         "bars_held": 23,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
-        "target_progress": 0.8381,
+        "target_progress": 0.8428,
         "stop_progress": 0.0871,
         "failure_reason": "",
         "entryTouched": true,
@@ -2228,7 +2229,7 @@
         "entryTouchDate": "2026-07-09",
         "targetTouchDate": "",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 9.0894,
+        "maxFavorableExcursion": 9.1405,
         "maxAdverseExcursion": -0.3922,
         "holdingDays": 23,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
@@ -2240,7 +2241,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "e185fe8bd56aea07607fb19f",
@@ -2255,12 +2256,12 @@
         "exit_price": "",
         "gross_pnl_pct": "",
         "net_pnl_pct": "",
-        "mfe_pct": 18.7371,
+        "mfe_pct": 20.1629,
         "mae_pct": -3.7437,
         "bars_held": 23,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
-        "target_progress": 0.6867,
+        "target_progress": 0.739,
         "stop_progress": 0.3929,
         "failure_reason": "",
         "entryTouched": true,
@@ -2270,7 +2271,7 @@
         "entryTouchDate": "2026-07-09",
         "targetTouchDate": "",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 18.7371,
+        "maxFavorableExcursion": 20.1629,
         "maxAdverseExcursion": -3.7437,
         "holdingDays": 23,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
@@ -2282,7 +2283,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "8d0300f0d84623d0b1787056",
@@ -2297,12 +2298,12 @@
         "exit_price": "",
         "gross_pnl_pct": "",
         "net_pnl_pct": "",
-        "mfe_pct": 16.6956,
+        "mfe_pct": 22.4726,
         "mae_pct": -2.8307,
-        "bars_held": 20,
+        "bars_held": 21,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
-        "target_progress": 0.5255,
+        "target_progress": 0.7073,
         "stop_progress": 0.245,
         "failure_reason": "",
         "entryTouched": true,
@@ -2312,9 +2313,9 @@
         "entryTouchDate": "2026-07-13",
         "targetTouchDate": "",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 16.6956,
+        "maxFavorableExcursion": 22.4726,
         "maxAdverseExcursion": -2.8307,
-        "holdingDays": 20,
+        "holdingDays": 21,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -2324,7 +2325,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "e886c3d9b7125052e43fa4e4",
@@ -2341,7 +2342,7 @@
         "net_pnl_pct": "",
         "mfe_pct": 21.2,
         "mae_pct": -2.4,
-        "bars_held": 20,
+        "bars_held": 21,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
         "target_progress": 0.6276,
@@ -2356,7 +2357,7 @@
         "stopTouchDate": "",
         "maxFavorableExcursion": 21.2,
         "maxAdverseExcursion": -2.4,
-        "holdingDays": 20,
+        "holdingDays": 21,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -2366,7 +2367,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "aae981ea03fd5a56c73a06fd",
@@ -2383,7 +2384,7 @@
         "net_pnl_pct": "",
         "mfe_pct": 7.9048,
         "mae_pct": -8.8571,
-        "bars_held": 20,
+        "bars_held": 21,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
         "target_progress": 0.2906,
@@ -2398,7 +2399,7 @@
         "stopTouchDate": "",
         "maxFavorableExcursion": 7.9048,
         "maxAdverseExcursion": -8.8571,
-        "holdingDays": 20,
+        "holdingDays": 21,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -2408,7 +2409,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "91f91ff2e8fe12272ccb09f2",
@@ -2425,7 +2426,7 @@
         "net_pnl_pct": "",
         "mfe_pct": 16.2316,
         "mae_pct": -4.0783,
-        "bars_held": 20,
+        "bars_held": 21,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
         "target_progress": 0.6052,
@@ -2440,7 +2441,7 @@
         "stopTouchDate": "",
         "maxFavorableExcursion": 16.2316,
         "maxAdverseExcursion": -4.0783,
-        "holdingDays": 20,
+        "holdingDays": 21,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -2450,7 +2451,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "17b234b931cf9eafbc536a06",
@@ -2492,7 +2493,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "7b783f8e96d626e9611a84eb",
@@ -2534,7 +2535,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "9125232437c84a649365b275",
@@ -2549,12 +2550,12 @@
         "exit_price": "",
         "gross_pnl_pct": "",
         "net_pnl_pct": "",
-        "mfe_pct": 7.9116,
+        "mfe_pct": 7.9622,
         "mae_pct": -1.029,
         "bars_held": 22,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
-        "target_progress": 0.6979,
+        "target_progress": 0.7024,
         "stop_progress": 0.2675,
         "failure_reason": "",
         "entryTouched": true,
@@ -2564,7 +2565,7 @@
         "entryTouchDate": "2026-07-10",
         "targetTouchDate": "",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 7.9116,
+        "maxFavorableExcursion": 7.9622,
         "maxAdverseExcursion": -1.029,
         "holdingDays": 22,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
@@ -2576,7 +2577,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "48d620e4616fec9205cb9b9d",
@@ -2618,7 +2619,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "ff064bc1e2067e76151a70f5",
@@ -2660,7 +2661,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "70bc993cb3f7031149519eef",
@@ -2702,7 +2703,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "0f019632b80f1a2eb66591ee",
@@ -2717,12 +2718,12 @@
         "exit_price": "",
         "gross_pnl_pct": "",
         "net_pnl_pct": "",
-        "mfe_pct": 13.1019,
+        "mfe_pct": 18.701,
         "mae_pct": -5.8231,
-        "bars_held": 19,
+        "bars_held": 20,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
-        "target_progress": 0.4319,
+        "target_progress": 0.6165,
         "stop_progress": 0.5279,
         "failure_reason": "",
         "entryTouched": true,
@@ -2732,9 +2733,9 @@
         "entryTouchDate": "2026-07-14",
         "targetTouchDate": "",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 13.1019,
+        "maxFavorableExcursion": 18.701,
         "maxAdverseExcursion": -5.8231,
-        "holdingDays": 19,
+        "holdingDays": 20,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -2744,7 +2745,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "ad985bd10ac5db2c83f370ed",
@@ -2761,7 +2762,7 @@
         "net_pnl_pct": "",
         "mfe_pct": 7.2158,
         "mae_pct": -3.5398,
-        "bars_held": 19,
+        "bars_held": 20,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
         "target_progress": 0.3559,
@@ -2776,7 +2777,7 @@
         "stopTouchDate": "",
         "maxFavorableExcursion": 7.2158,
         "maxAdverseExcursion": -3.5398,
-        "holdingDays": 19,
+        "holdingDays": 20,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -2786,7 +2787,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "bad557cb167d53c289a11d89",
@@ -2801,12 +2802,12 @@
         "exit_price": "",
         "gross_pnl_pct": "",
         "net_pnl_pct": "",
-        "mfe_pct": 15.3626,
+        "mfe_pct": 21.0737,
         "mae_pct": -3.9406,
-        "bars_held": 18,
+        "bars_held": 19,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
-        "target_progress": 0.4898,
+        "target_progress": 0.6719,
         "stop_progress": 0.3455,
         "failure_reason": "",
         "entryTouched": true,
@@ -2816,9 +2817,9 @@
         "entryTouchDate": "2026-07-15",
         "targetTouchDate": "",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 15.3626,
+        "maxFavorableExcursion": 21.0737,
         "maxAdverseExcursion": -3.9406,
-        "holdingDays": 18,
+        "holdingDays": 19,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -2828,7 +2829,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "7ff5d9a94cf35943c681d593",
@@ -2845,7 +2846,7 @@
         "net_pnl_pct": "",
         "mfe_pct": 13.0435,
         "mae_pct": -1.7391,
-        "bars_held": 18,
+        "bars_held": 19,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
         "target_progress": 0.5396,
@@ -2860,7 +2861,7 @@
         "stopTouchDate": "",
         "maxFavorableExcursion": 13.0435,
         "maxAdverseExcursion": -1.7391,
-        "holdingDays": 18,
+        "holdingDays": 19,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -2870,7 +2871,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "3beb661dc36949c655567222",
@@ -2887,7 +2888,7 @@
         "net_pnl_pct": "",
         "mfe_pct": 8.3964,
         "mae_pct": -2.4776,
-        "bars_held": 18,
+        "bars_held": 19,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
         "target_progress": 0.3971,
@@ -2902,7 +2903,7 @@
         "stopTouchDate": "",
         "maxFavorableExcursion": 8.3964,
         "maxAdverseExcursion": -2.4776,
-        "holdingDays": 18,
+        "holdingDays": 19,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -2912,7 +2913,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "1d17c915f112a486f1401391",
@@ -2954,7 +2955,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "f296b83b8724aa030154c4d5",
@@ -2969,12 +2970,12 @@
         "exit_price": "",
         "gross_pnl_pct": "",
         "net_pnl_pct": "",
-        "mfe_pct": 15.3626,
+        "mfe_pct": 21.0737,
         "mae_pct": -3.9406,
-        "bars_held": 18,
+        "bars_held": 19,
         "entry_window_days": 5,
         "evaluation_window_days": 20,
-        "target_progress": 0.5986,
+        "target_progress": 0.8212,
         "stop_progress": 0.4606,
         "failure_reason": "",
         "entryTouched": true,
@@ -2984,9 +2985,9 @@
         "entryTouchDate": "2026-07-15",
         "targetTouchDate": "",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 15.3626,
+        "maxFavorableExcursion": 21.0737,
         "maxAdverseExcursion": -3.9406,
-        "holdingDays": 18,
+        "holdingDays": 19,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -2996,7 +2997,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "79c3b72bd8207a616407a6b9",
@@ -3013,7 +3014,7 @@
         "net_pnl_pct": "",
         "mfe_pct": 4.1746,
         "mae_pct": -2.6565,
-        "bars_held": 18,
+        "bars_held": 19,
         "entry_window_days": 5,
         "evaluation_window_days": 20,
         "target_progress": 0.2229,
@@ -3028,7 +3029,7 @@
         "stopTouchDate": "",
         "maxFavorableExcursion": 4.1746,
         "maxAdverseExcursion": -2.6565,
-        "holdingDays": 18,
+        "holdingDays": 19,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -3038,7 +3039,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:44"
+        "evaluated_at": "2026-08-11T16:17:01"
       },
       {
         "journal_id": "0aaa17b7c4a5a4af0513000c",
@@ -3080,7 +3081,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "387995299424d2ba35a42f8b",
@@ -3097,7 +3098,7 @@
         "net_pnl_pct": "",
         "mfe_pct": 11.8421,
         "mae_pct": -2.7834,
-        "bars_held": 17,
+        "bars_held": 18,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
         "target_progress": 0.4993,
@@ -3112,7 +3113,7 @@
         "stopTouchDate": "",
         "maxFavorableExcursion": 11.8421,
         "maxAdverseExcursion": -2.7834,
-        "holdingDays": 17,
+        "holdingDays": 18,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -3122,7 +3123,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "6f82e44e64aa3b6bf719c052",
@@ -3164,7 +3165,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "bab4b90199d7c381e8769014",
@@ -3179,12 +3180,12 @@
         "exit_price": "",
         "gross_pnl_pct": "",
         "net_pnl_pct": "",
-        "mfe_pct": 5.9281,
+        "mfe_pct": 5.9778,
         "mae_pct": -0.5299,
         "bars_held": 19,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
-        "target_progress": 0.5416,
+        "target_progress": 0.5461,
         "stop_progress": 0.1339,
         "failure_reason": "",
         "entryTouched": true,
@@ -3194,7 +3195,7 @@
         "entryTouchDate": "2026-07-15",
         "targetTouchDate": "",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 5.9281,
+        "maxFavorableExcursion": 5.9778,
         "maxAdverseExcursion": -0.5299,
         "holdingDays": 19,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
@@ -3206,7 +3207,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "cb10bc7507c10edd63988228",
@@ -3248,7 +3249,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "fc70982cb599e77e762e86c0",
@@ -3263,12 +3264,12 @@
         "exit_price": "",
         "gross_pnl_pct": "",
         "net_pnl_pct": "",
-        "mfe_pct": 14.9687,
+        "mfe_pct": 20.6602,
         "mae_pct": -4.2686,
-        "bars_held": 16,
+        "bars_held": 17,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
-        "target_progress": 0.5284,
+        "target_progress": 0.7293,
         "stop_progress": 0.4144,
         "failure_reason": "",
         "entryTouched": true,
@@ -3278,9 +3279,9 @@
         "entryTouchDate": "2026-07-20",
         "targetTouchDate": "",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 14.9687,
+        "maxFavorableExcursion": 20.6602,
         "maxAdverseExcursion": -4.2686,
-        "holdingDays": 16,
+        "holdingDays": 17,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -3290,7 +3291,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "5e7a7f7592abb529638d4d03",
@@ -3332,7 +3333,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "c086ac3636278114efb5d0bc",
@@ -3347,12 +3348,12 @@
         "exit_price": "",
         "gross_pnl_pct": "",
         "net_pnl_pct": "",
-        "mfe_pct": 14.9687,
+        "mfe_pct": 20.6602,
         "mae_pct": -4.2686,
-        "bars_held": 16,
+        "bars_held": 17,
         "entry_window_days": 5,
         "evaluation_window_days": 20,
-        "target_progress": 0.6458,
+        "target_progress": 0.8913,
         "stop_progress": 0.5525,
         "failure_reason": "",
         "entryTouched": true,
@@ -3362,9 +3363,9 @@
         "entryTouchDate": "2026-07-20",
         "targetTouchDate": "",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 14.9687,
+        "maxFavorableExcursion": 20.6602,
         "maxAdverseExcursion": -4.2686,
-        "holdingDays": 16,
+        "holdingDays": 17,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -3374,7 +3375,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "d3f938f39dd5004ec7f31fc3",
@@ -3416,7 +3417,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "88476fa5367a9671c064dac3",
@@ -3431,12 +3432,12 @@
         "exit_price": "",
         "gross_pnl_pct": "",
         "net_pnl_pct": "",
-        "mfe_pct": 3.9655,
+        "mfe_pct": 4.0143,
         "mae_pct": -2.3728,
         "bars_held": 18,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
-        "target_progress": 0.3266,
+        "target_progress": 0.3307,
         "stop_progress": 0.5771,
         "failure_reason": "",
         "entryTouched": true,
@@ -3446,7 +3447,7 @@
         "entryTouchDate": "2026-07-16",
         "targetTouchDate": "",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 3.9655,
+        "maxFavorableExcursion": 4.0143,
         "maxAdverseExcursion": -2.3728,
         "holdingDays": 18,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
@@ -3458,7 +3459,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "5453035f4d4b2205ced3228a",
@@ -3500,7 +3501,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "5b01052daf601895af8febf1",
@@ -3542,7 +3543,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "cb84996bda53e15dfc2d9c6f",
@@ -3584,7 +3585,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "5e71b9b117d893a832ad6089",
@@ -3599,12 +3600,12 @@
         "exit_price": "",
         "gross_pnl_pct": "",
         "net_pnl_pct": "",
-        "mfe_pct": 4.1687,
+        "mfe_pct": 4.2176,
         "mae_pct": -2.1821,
         "bars_held": 18,
         "entry_window_days": 5,
         "evaluation_window_days": 20,
-        "target_progress": 0.458,
+        "target_progress": 0.4633,
         "stop_progress": 0.9504,
         "failure_reason": "",
         "entryTouched": true,
@@ -3614,7 +3615,7 @@
         "entryTouchDate": "2026-07-16",
         "targetTouchDate": "",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 4.1687,
+        "maxFavorableExcursion": 4.2176,
         "maxAdverseExcursion": -2.1821,
         "holdingDays": 18,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
@@ -3626,7 +3627,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "c0b1eeb3e81b078fc1dfb0b0",
@@ -3641,12 +3642,12 @@
         "exit_price": "",
         "gross_pnl_pct": "",
         "net_pnl_pct": "",
-        "mfe_pct": 4.3216,
+        "mfe_pct": 4.3705,
         "mae_pct": -2.0385,
         "bars_held": 18,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
-        "target_progress": 0.3451,
+        "target_progress": 0.349,
         "stop_progress": 0.5388,
         "failure_reason": "",
         "entryTouched": true,
@@ -3656,7 +3657,7 @@
         "entryTouchDate": "2026-07-16",
         "targetTouchDate": "",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 4.3216,
+        "maxFavorableExcursion": 4.3705,
         "maxAdverseExcursion": -2.0385,
         "holdingDays": 18,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
@@ -3668,7 +3669,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "c3baba9548ff6733ac66bd83",
@@ -3683,12 +3684,12 @@
         "exit_price": "",
         "gross_pnl_pct": "",
         "net_pnl_pct": "",
-        "mfe_pct": 4.1687,
+        "mfe_pct": 4.2176,
         "mae_pct": -2.1821,
         "bars_held": 18,
         "entry_window_days": 5,
         "evaluation_window_days": 20,
-        "target_progress": 0.458,
+        "target_progress": 0.4633,
         "stop_progress": 0.9504,
         "failure_reason": "",
         "entryTouched": true,
@@ -3698,7 +3699,7 @@
         "entryTouchDate": "2026-07-16",
         "targetTouchDate": "",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 4.1687,
+        "maxFavorableExcursion": 4.2176,
         "maxAdverseExcursion": -2.1821,
         "holdingDays": 18,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
@@ -3710,49 +3711,49 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "90215f9df7acda4a4309a14f",
         "evaluation_policy_version": "vtj-evaluation-v2.0.0",
         "evaluation_policy_fingerprint": "811f3ad6438ee650b036",
-        "status": "PENDING",
-        "outcome": "PENDING",
+        "status": "EVALUATED",
+        "outcome": "TARGET_HIT",
         "filled": true,
         "fill_date": "2026-07-16",
         "fill_price": 223.88366,
-        "exit_date": "",
-        "exit_price": "",
-        "gross_pnl_pct": "",
-        "net_pnl_pct": "",
-        "mfe_pct": 20.7905,
+        "exit_date": "2026-08-10",
+        "exit_price": 271.456,
+        "gross_pnl_pct": 21.6132,
+        "net_pnl_pct": 21.2487,
+        "mfe_pct": 22.1184,
         "mae_pct": -5.714,
         "bars_held": 18,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
-        "target_progress": 0.9619,
+        "target_progress": 1.0234,
         "stop_progress": 0.7671,
-        "failure_reason": "",
+        "failure_reason": "NONE",
         "entryTouched": true,
-        "targetTouched": false,
+        "targetTouched": true,
         "stopTouched": false,
-        "targetBeforeStop": "",
+        "targetBeforeStop": true,
         "entryTouchDate": "2026-07-16",
-        "targetTouchDate": "",
+        "targetTouchDate": "2026-08-10",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 20.7905,
+        "maxFavorableExcursion": 22.1184,
         "maxAdverseExcursion": -5.714,
         "holdingDays": 18,
-        "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
-        "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
+        "failureReason": "TARGET_BEFORE_STOP",
+        "diagnosticReason": "NONE",
         "unknownDetail": "",
         "secondary_tags": "",
         "regime_at_entry": "BULL",
-        "regime_at_exit": "",
+        "regime_at_exit": "RISK_ON",
         "signal_confidence": "MED",
         "data_confidence": "MED",
-        "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "review_text": "추천 당시 중간 신호 신뢰도 (BULL 환경)로 진입 검토됐습니다. 목표가에 도달하며 성공 종료됐습니다, 손익 +21.25% (MFE +22.12% / MAE -5.71%). [NONE] 유형으로 기록합니다.",
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "4eeeb3a319fc72d901aea903",
@@ -3767,12 +3768,12 @@
         "exit_price": "",
         "gross_pnl_pct": "",
         "net_pnl_pct": "",
-        "mfe_pct": 12.8223,
+        "mfe_pct": 16.2607,
         "mae_pct": -3.9398,
-        "bars_held": 16,
+        "bars_held": 17,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
-        "target_progress": 0.4616,
+        "target_progress": 0.5854,
         "stop_progress": 0.3901,
         "failure_reason": "",
         "entryTouched": true,
@@ -3782,9 +3783,9 @@
         "entryTouchDate": "2026-07-20",
         "targetTouchDate": "",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 12.8223,
+        "maxFavorableExcursion": 16.2607,
         "maxAdverseExcursion": -3.9398,
-        "holdingDays": 16,
+        "holdingDays": 17,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -3794,7 +3795,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "5dba16ec104c302be0bb93bb",
@@ -3809,12 +3810,12 @@
         "exit_price": "",
         "gross_pnl_pct": "",
         "net_pnl_pct": "",
-        "mfe_pct": 14.9033,
+        "mfe_pct": 20.5916,
         "mae_pct": -4.3231,
-        "bars_held": 16,
+        "bars_held": 17,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
-        "target_progress": 0.5544,
+        "target_progress": 0.766,
         "stop_progress": 0.4422,
         "failure_reason": "",
         "entryTouched": true,
@@ -3824,9 +3825,9 @@
         "entryTouchDate": "2026-07-20",
         "targetTouchDate": "",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 14.9033,
+        "maxFavorableExcursion": 20.5916,
         "maxAdverseExcursion": -4.3231,
-        "holdingDays": 16,
+        "holdingDays": 17,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -3836,7 +3837,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "896e61c118bc55e7e1b75bc2",
@@ -3878,7 +3879,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "5c1012f5731a1310adc6e4c4",
@@ -3893,12 +3894,12 @@
         "exit_price": "",
         "gross_pnl_pct": "",
         "net_pnl_pct": "",
-        "mfe_pct": 12.8223,
+        "mfe_pct": 16.2607,
         "mae_pct": -3.9398,
-        "bars_held": 16,
+        "bars_held": 17,
         "entry_window_days": 5,
         "evaluation_window_days": 20,
-        "target_progress": 0.5642,
+        "target_progress": 0.7155,
         "stop_progress": 0.5201,
         "failure_reason": "",
         "entryTouched": true,
@@ -3908,9 +3909,9 @@
         "entryTouchDate": "2026-07-20",
         "targetTouchDate": "",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 12.8223,
+        "maxFavorableExcursion": 16.2607,
         "maxAdverseExcursion": -3.9398,
-        "holdingDays": 16,
+        "holdingDays": 17,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -3920,7 +3921,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "f3cebe5973e9e2870dee9b77",
@@ -3935,12 +3936,12 @@
         "exit_price": "",
         "gross_pnl_pct": "",
         "net_pnl_pct": "",
-        "mfe_pct": 14.9033,
+        "mfe_pct": 20.5916,
         "mae_pct": -4.3231,
-        "bars_held": 16,
+        "bars_held": 17,
         "entry_window_days": 5,
         "evaluation_window_days": 20,
-        "target_progress": 0.6776,
+        "target_progress": 0.9362,
         "stop_progress": 0.5897,
         "failure_reason": "",
         "entryTouched": true,
@@ -3950,9 +3951,9 @@
         "entryTouchDate": "2026-07-20",
         "targetTouchDate": "",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 14.9033,
+        "maxFavorableExcursion": 20.5916,
         "maxAdverseExcursion": -4.3231,
-        "holdingDays": 16,
+        "holdingDays": 17,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -3962,7 +3963,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "9293832e911e7b14bf9d4cb1",
@@ -4004,7 +4005,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "8f5f7d47fc1bc039decc9cbd",
@@ -4046,7 +4047,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "1687574851d051f061006c55",
@@ -4061,12 +4062,12 @@
         "exit_price": "",
         "gross_pnl_pct": "",
         "net_pnl_pct": "",
-        "mfe_pct": 4.3386,
+        "mfe_pct": 4.3875,
         "mae_pct": -2.0225,
         "bars_held": 17,
         "entry_window_days": 5,
         "evaluation_window_days": 20,
-        "target_progress": 0.4675,
+        "target_progress": 0.4728,
         "stop_progress": 0.9466,
         "failure_reason": "",
         "entryTouched": true,
@@ -4076,7 +4077,7 @@
         "entryTouchDate": "2026-07-17",
         "targetTouchDate": "",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 4.3386,
+        "maxFavorableExcursion": 4.3875,
         "maxAdverseExcursion": -2.0225,
         "holdingDays": 17,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
@@ -4088,7 +4089,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "1395d42f4f97348c6edf7c51",
@@ -4130,7 +4131,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "a449a25a2fc74dc4afdb8ac0",
@@ -4172,7 +4173,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "7684991a24e714181d8952b3",
@@ -4214,7 +4215,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "93ffedaa5ee69191df3ffcbb",
@@ -4256,7 +4257,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "175053976018b2cbea40cacf",
@@ -4273,7 +4274,7 @@
         "net_pnl_pct": "",
         "mfe_pct": 7.4002,
         "mae_pct": -6.816,
-        "bars_held": 15,
+        "bars_held": 16,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
         "target_progress": 0.2421,
@@ -4288,7 +4289,7 @@
         "stopTouchDate": "",
         "maxFavorableExcursion": 7.4002,
         "maxAdverseExcursion": -6.816,
-        "holdingDays": 15,
+        "holdingDays": 16,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -4298,7 +4299,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "222a42f9f851a9409783d1fd",
@@ -4313,12 +4314,12 @@
         "exit_price": "",
         "gross_pnl_pct": "",
         "net_pnl_pct": "",
-        "mfe_pct": 14.7959,
+        "mfe_pct": 18.2945,
         "mae_pct": -1.895,
-        "bars_held": 15,
+        "bars_held": 16,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
-        "target_progress": 0.5532,
+        "target_progress": 0.6841,
         "stop_progress": 0.1949,
         "failure_reason": "",
         "entryTouched": true,
@@ -4328,9 +4329,9 @@
         "entryTouchDate": "2026-07-21",
         "targetTouchDate": "",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 14.7959,
+        "maxFavorableExcursion": 18.2945,
         "maxAdverseExcursion": -1.895,
-        "holdingDays": 15,
+        "holdingDays": 16,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -4340,7 +4341,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "e238c2b20c01cad931fc79eb",
@@ -4355,12 +4356,12 @@
         "exit_price": "",
         "gross_pnl_pct": "",
         "net_pnl_pct": "",
-        "mfe_pct": 17.1014,
+        "mfe_pct": 22.8986,
         "mae_pct": -2.4928,
-        "bars_held": 15,
+        "bars_held": 16,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
-        "target_progress": 0.6795,
+        "target_progress": 0.9099,
         "stop_progress": 0.2724,
         "failure_reason": "",
         "entryTouched": true,
@@ -4370,9 +4371,9 @@
         "entryTouchDate": "2026-07-21",
         "targetTouchDate": "",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 17.1014,
+        "maxFavorableExcursion": 22.8986,
         "maxAdverseExcursion": -2.4928,
-        "holdingDays": 15,
+        "holdingDays": 16,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -4382,7 +4383,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "10a0e2d917d23b56be528a2f",
@@ -4399,7 +4400,7 @@
         "net_pnl_pct": "",
         "mfe_pct": 12.5828,
         "mae_pct": 0.7132,
-        "bars_held": 15,
+        "bars_held": 16,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
         "target_progress": 0.5679,
@@ -4414,7 +4415,7 @@
         "stopTouchDate": "",
         "maxFavorableExcursion": 12.5828,
         "maxAdverseExcursion": 0.7132,
-        "holdingDays": 15,
+        "holdingDays": 16,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -4424,7 +4425,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "0b377bb974a5e8ac7560792a",
@@ -4441,7 +4442,7 @@
         "net_pnl_pct": "",
         "mfe_pct": 11.8881,
         "mae_pct": -2.2727,
-        "bars_held": 15,
+        "bars_held": 16,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
         "target_progress": 0.4931,
@@ -4456,7 +4457,7 @@
         "stopTouchDate": "",
         "maxFavorableExcursion": 11.8881,
         "maxAdverseExcursion": -2.2727,
-        "holdingDays": 15,
+        "holdingDays": 16,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -4466,7 +4467,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "068dfcee48974d11ba355c2e",
@@ -4481,12 +4482,12 @@
         "exit_price": "",
         "gross_pnl_pct": "",
         "net_pnl_pct": "",
-        "mfe_pct": 25.228,
+        "mfe_pct": 33.4347,
         "mae_pct": -2.5836,
-        "bars_held": 15,
+        "bars_held": 16,
         "entry_window_days": 5,
         "evaluation_window_days": 20,
-        "target_progress": 0.6596,
+        "target_progress": 0.8741,
         "stop_progress": 0.2026,
         "failure_reason": "",
         "entryTouched": true,
@@ -4496,9 +4497,9 @@
         "entryTouchDate": "2026-07-21",
         "targetTouchDate": "",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 25.228,
+        "maxFavorableExcursion": 33.4347,
         "maxAdverseExcursion": -2.5836,
-        "holdingDays": 15,
+        "holdingDays": 16,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -4508,7 +4509,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "d476a8fa85841f5105758456",
@@ -4523,12 +4524,12 @@
         "exit_price": "",
         "gross_pnl_pct": "",
         "net_pnl_pct": "",
-        "mfe_pct": 14.7959,
+        "mfe_pct": 18.2945,
         "mae_pct": -1.895,
-        "bars_held": 15,
+        "bars_held": 16,
         "entry_window_days": 5,
         "evaluation_window_days": 20,
-        "target_progress": 0.6762,
+        "target_progress": 0.8361,
         "stop_progress": 0.2598,
         "failure_reason": "",
         "entryTouched": true,
@@ -4538,9 +4539,9 @@
         "entryTouchDate": "2026-07-21",
         "targetTouchDate": "",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 14.7959,
+        "maxFavorableExcursion": 18.2945,
         "maxAdverseExcursion": -1.895,
-        "holdingDays": 15,
+        "holdingDays": 16,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -4550,49 +4551,49 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "5d429f50055ae0943ef3b0f2",
         "evaluation_policy_version": "vtj-evaluation-v2.0.0",
         "evaluation_policy_fingerprint": "811f3ad6438ee650b036",
-        "status": "PENDING",
-        "outcome": "PENDING",
+        "status": "EVALUATED",
+        "outcome": "TARGET_HIT",
         "filled": true,
         "fill_date": "2026-07-21",
         "fill_price": 171571.4,
-        "exit_date": "",
-        "exit_price": "",
-        "gross_pnl_pct": "",
-        "net_pnl_pct": "",
-        "mfe_pct": 17.1014,
+        "exit_date": "2026-08-11",
+        "exit_price": 207373.1442,
+        "gross_pnl_pct": 21.3641,
+        "net_pnl_pct": 20.867,
+        "mfe_pct": 22.8986,
         "mae_pct": -2.4928,
-        "bars_held": 15,
+        "bars_held": 16,
         "entry_window_days": 5,
         "evaluation_window_days": 20,
-        "target_progress": 0.8306,
+        "target_progress": 1.1121,
         "stop_progress": 0.3632,
-        "failure_reason": "",
+        "failure_reason": "NONE",
         "entryTouched": true,
-        "targetTouched": false,
+        "targetTouched": true,
         "stopTouched": false,
-        "targetBeforeStop": "",
+        "targetBeforeStop": true,
         "entryTouchDate": "2026-07-21",
-        "targetTouchDate": "",
+        "targetTouchDate": "2026-08-11",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 17.1014,
+        "maxFavorableExcursion": 22.8986,
         "maxAdverseExcursion": -2.4928,
-        "holdingDays": 15,
-        "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
-        "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
+        "holdingDays": 16,
+        "failureReason": "TARGET_BEFORE_STOP",
+        "diagnosticReason": "NONE",
         "unknownDetail": "",
         "secondary_tags": "",
         "regime_at_entry": "약세장",
-        "regime_at_exit": "",
+        "regime_at_exit": "RISK_ON",
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
-        "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "review_text": "추천 당시 높은 신호 신뢰도 (약세장 환경)로 진입 검토됐습니다. 목표가에 도달하며 성공 종료됐습니다, 손익 +20.87% (MFE +22.90% / MAE -2.49%). [NONE] 유형으로 기록합니다.",
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "b6677f933825b80d9ae333ab",
@@ -4609,7 +4610,7 @@
         "net_pnl_pct": "",
         "mfe_pct": 12.5828,
         "mae_pct": 0.7132,
-        "bars_held": 15,
+        "bars_held": 16,
         "entry_window_days": 5,
         "evaluation_window_days": 20,
         "target_progress": 0.6942,
@@ -4624,7 +4625,7 @@
         "stopTouchDate": "",
         "maxFavorableExcursion": 12.5828,
         "maxAdverseExcursion": 0.7132,
-        "holdingDays": 15,
+        "holdingDays": 16,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -4634,7 +4635,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "a3c9a4dd0f5e256cf2c4b147",
@@ -4651,7 +4652,7 @@
         "net_pnl_pct": "",
         "mfe_pct": 8.3497,
         "mae_pct": -5.9921,
-        "bars_held": 14,
+        "bars_held": 15,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
         "target_progress": 0.2642,
@@ -4666,7 +4667,7 @@
         "stopTouchDate": "",
         "maxFavorableExcursion": 8.3497,
         "maxAdverseExcursion": -5.9921,
-        "holdingDays": 14,
+        "holdingDays": 15,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -4676,7 +4677,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "958679a273cf4e102e093f9f",
@@ -4693,7 +4694,7 @@
         "net_pnl_pct": "",
         "mfe_pct": 6.6943,
         "mae_pct": -7.5829,
-        "bars_held": 14,
+        "bars_held": 15,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
         "target_progress": 0.2055,
@@ -4708,7 +4709,7 @@
         "stopTouchDate": "",
         "maxFavorableExcursion": 6.6943,
         "maxAdverseExcursion": -7.5829,
-        "holdingDays": 14,
+        "holdingDays": 15,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -4718,7 +4719,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "48640d13558540f0f7be013a",
@@ -4733,12 +4734,12 @@
         "exit_price": "",
         "gross_pnl_pct": "",
         "net_pnl_pct": "",
-        "mfe_pct": 17.0336,
+        "mfe_pct": 22.8273,
         "mae_pct": -1.5064,
-        "bars_held": 14,
+        "bars_held": 15,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
-        "target_progress": 0.6736,
+        "target_progress": 0.9027,
         "stop_progress": 0.1638,
         "failure_reason": "",
         "entryTouched": true,
@@ -4748,9 +4749,9 @@
         "entryTouchDate": "2026-07-22",
         "targetTouchDate": "",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 17.0336,
+        "maxFavorableExcursion": 22.8273,
         "maxAdverseExcursion": -1.5064,
-        "holdingDays": 14,
+        "holdingDays": 15,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -4760,7 +4761,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "7ee5a658027c356374d215ac",
@@ -4777,7 +4778,7 @@
         "net_pnl_pct": "",
         "mfe_pct": 9.6774,
         "mae_pct": -1.8859,
-        "bars_held": 14,
+        "bars_held": 15,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
         "target_progress": 0.4404,
@@ -4792,7 +4793,7 @@
         "stopTouchDate": "",
         "maxFavorableExcursion": 9.6774,
         "maxAdverseExcursion": -1.8859,
-        "holdingDays": 14,
+        "holdingDays": 15,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -4802,7 +4803,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "90309bf111d2af005efd2f20",
@@ -4844,7 +4845,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "be57cce09d3bae67dbf961d1",
@@ -4861,7 +4862,7 @@
         "net_pnl_pct": "",
         "mfe_pct": 8.3497,
         "mae_pct": -5.9921,
-        "bars_held": 14,
+        "bars_held": 15,
         "entry_window_days": 5,
         "evaluation_window_days": 20,
         "target_progress": 0.3229,
@@ -4876,7 +4877,7 @@
         "stopTouchDate": "",
         "maxFavorableExcursion": 8.3497,
         "maxAdverseExcursion": -5.9921,
-        "holdingDays": 14,
+        "holdingDays": 15,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
         "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
         "unknownDetail": "",
@@ -4886,49 +4887,49 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "2cbb80e51451fe107503bff7",
         "evaluation_policy_version": "vtj-evaluation-v2.0.0",
         "evaluation_policy_fingerprint": "811f3ad6438ee650b036",
-        "status": "PENDING",
-        "outcome": "PENDING",
+        "status": "EVALUATED",
+        "outcome": "TARGET_HIT",
         "filled": true,
         "fill_date": "2026-07-22",
         "fill_price": 172972.8,
-        "exit_date": "",
-        "exit_price": "",
-        "gross_pnl_pct": "",
-        "net_pnl_pct": "",
-        "mfe_pct": 17.0336,
+        "exit_date": "2026-08-11",
+        "exit_price": 207665.2359,
+        "gross_pnl_pct": 20.5503,
+        "net_pnl_pct": 20.0566,
+        "mfe_pct": 22.8273,
         "mae_pct": -1.5064,
-        "bars_held": 14,
+        "bars_held": 15,
         "entry_window_days": 5,
         "evaluation_window_days": 20,
-        "target_progress": 0.8233,
+        "target_progress": 1.1033,
         "stop_progress": 0.2184,
-        "failure_reason": "",
+        "failure_reason": "NONE",
         "entryTouched": true,
-        "targetTouched": false,
+        "targetTouched": true,
         "stopTouched": false,
-        "targetBeforeStop": "",
+        "targetBeforeStop": true,
         "entryTouchDate": "2026-07-22",
-        "targetTouchDate": "",
+        "targetTouchDate": "2026-08-11",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 17.0336,
+        "maxFavorableExcursion": 22.8273,
         "maxAdverseExcursion": -1.5064,
-        "holdingDays": 14,
-        "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
-        "diagnosticReason": "ENTRY_TOUCHED_BUT_NO_EXIT",
+        "holdingDays": 15,
+        "failureReason": "TARGET_BEFORE_STOP",
+        "diagnosticReason": "NONE",
         "unknownDetail": "",
         "secondary_tags": "",
         "regime_at_entry": "약세장",
-        "regime_at_exit": "",
+        "regime_at_exit": "RISK_ON",
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
-        "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "review_text": "추천 당시 높은 신호 신뢰도 (약세장 환경)로 진입 검토됐습니다. 목표가에 도달하며 성공 종료됐습니다, 손익 +20.06% (MFE +22.83% / MAE -1.51%). [NONE] 유형으로 기록합니다.",
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "7102edb318fc62c9504de350",
@@ -4943,12 +4944,12 @@
         "exit_price": "",
         "gross_pnl_pct": "",
         "net_pnl_pct": "",
-        "mfe_pct": 5.4566,
+        "mfe_pct": 5.5061,
         "mae_pct": -0.9726,
         "bars_held": 15,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
-        "target_progress": 0.451,
+        "target_progress": 0.455,
         "stop_progress": 0.2218,
         "failure_reason": "",
         "entryTouched": true,
@@ -4958,7 +4959,7 @@
         "entryTouchDate": "2026-07-21",
         "targetTouchDate": "",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 5.4566,
+        "maxFavorableExcursion": 5.5061,
         "maxAdverseExcursion": -0.9726,
         "holdingDays": 15,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
@@ -4970,7 +4971,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "d7d4b9a3a921b816a397973b",
@@ -5012,7 +5013,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "a1d219028557f991f67a3dfa",
@@ -5054,7 +5055,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "47c1060d721f812f71719828",
@@ -5096,7 +5097,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       },
       {
         "journal_id": "ed4c9eaa2fcfe26bf9ecc086",
@@ -5111,12 +5112,12 @@
         "exit_price": "",
         "gross_pnl_pct": "",
         "net_pnl_pct": "",
-        "mfe_pct": 5.8794,
+        "mfe_pct": 6.5008,
         "mae_pct": -2.2945,
         "bars_held": 12,
         "entry_window_days": 10,
         "evaluation_window_days": 60,
-        "target_progress": 0.3705,
+        "target_progress": 0.4097,
         "stop_progress": 0.4268,
         "failure_reason": "",
         "entryTouched": true,
@@ -5126,7 +5127,7 @@
         "entryTouchDate": "2026-07-24",
         "targetTouchDate": "",
         "stopTouchDate": "",
-        "maxFavorableExcursion": 5.8794,
+        "maxFavorableExcursion": 6.5008,
         "maxAdverseExcursion": -2.2945,
         "holdingDays": 12,
         "failureReason": "INSUFFICIENT_HOLDING_PERIOD",
@@ -5138,7 +5139,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-11T08:35:45"
+        "evaluated_at": "2026-08-11T16:17:02"
       }
     ]
   },
@@ -5218,169 +5219,15 @@
       "market": "kr",
       "tradeDate": "2026-08-11",
       "journalSession": "AFTER_CLOSE_TRADE",
-      "status": "NO_CANDIDATES",
-      "runKey": "kr:2026-08-11:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
-      "selected": 0,
-      "added": 0,
-      "rejected": {},
-      "items": [
-        {
-          "mode": "aggressive",
-          "horizon": "mid",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "aggressive",
-          "horizon": "short",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "aggressive",
-          "horizon": "swing",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "balanced",
-          "horizon": "mid",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "balanced",
-          "horizon": "short",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "balanced",
-          "horizon": "swing",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "conservative",
-          "horizon": "mid",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "conservative",
-          "horizon": "short",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "conservative",
-          "horizon": "swing",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        }
-      ]
+      "status": "SKIPPED_DUPLICATE",
+      "runKey": "kr:2026-08-11:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE"
     },
     {
       "market": "us",
       "tradeDate": "2026-08-10",
       "journalSession": "AFTER_CLOSE_TRADE",
-      "status": "NO_CANDIDATES",
-      "runKey": "us:2026-08-10:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
-      "selected": 0,
-      "added": 0,
-      "rejected": {},
-      "items": [
-        {
-          "mode": "aggressive",
-          "horizon": "mid",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "aggressive",
-          "horizon": "short",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "aggressive",
-          "horizon": "swing",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "balanced",
-          "horizon": "mid",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "balanced",
-          "horizon": "short",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "balanced",
-          "horizon": "swing",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "conservative",
-          "horizon": "mid",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "conservative",
-          "horizon": "short",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "conservative",
-          "horizon": "swing",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        }
-      ]
+      "status": "SKIPPED_DUPLICATE",
+      "runKey": "us:2026-08-10:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE"
     }
   ],
   "windows": {

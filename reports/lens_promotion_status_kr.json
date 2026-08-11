@@ -8,7 +8,7 @@
     "minWinRate": 0.5,
     "minAvgNetPnlPct": 0.0
   },
-  "totalSettledTrades": 20,
+  "totalSettledTrades": 21,
   "promotable": [],
   "verdicts": {
     "BEAR|BOTTOM_CATCH": {
@@ -24,13 +24,13 @@
       ]
     },
     "BEAR|BREAKOUT": {
-      "sampleCount": 3,
-      "winRatePct": 66.7,
-      "profitFactor": 3.33,
-      "avgNetPnlPct": 3.5,
+      "sampleCount": 4,
+      "winRatePct": 50.0,
+      "profitFactor": 1.67,
+      "avgNetPnlPct": 1.5,
       "status": "STAY_PAPER",
       "blockingReasons": [
-        "SAMPLES_3_BELOW_12"
+        "SAMPLES_4_BELOW_12"
       ]
     }
   },
