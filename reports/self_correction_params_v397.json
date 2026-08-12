@@ -1,8 +1,8 @@
 {
   "version": 397,
-  "generatedAt": "2026-07-31T07:17:29.566325+00:00",
+  "generatedAt": "2026-08-12T07:16:52.600247+00:00",
   "market": "kr",
-  "totalSamples": 5509,
+  "totalSamples": 5587,
   "markets": {
     "kr_balanced_swing": {
       "market": "kr",
@@ -35,7 +35,7 @@
         "GOOD_SIGNAL_WEAK_EXIT": 5,
         "DATA_STALE": 508
       },
-      "appliedAt": "2026-07-31T07:17:29.564360+00:00"
+      "appliedAt": "2026-08-12T07:16:52.598628+00:00"
     },
     "kr_conservative_swing": {
       "market": "kr",
@@ -68,7 +68,7 @@
         "GOOD_SIGNAL_WEAK_EXIT": 3,
         "DATA_STALE": 537
       },
-      "appliedAt": "2026-07-31T07:17:29.564611+00:00"
+      "appliedAt": "2026-08-12T07:16:52.598844+00:00"
     },
     "kr_conservative_short": {
       "market": "kr",
@@ -99,40 +99,38 @@
         "GOOD": 7,
         "DATA_STALE": 389
       },
-      "appliedAt": "2026-07-31T07:17:29.564774+00:00"
+      "appliedAt": "2026-08-12T07:16:52.598975+00:00"
     },
     "kr_conservative_mid": {
       "market": "kr",
       "mode": "conservative",
       "horizon": "mid",
-      "sampleCount": 785,
-      "learnableSampleCount": 28,
+      "sampleCount": 801,
+      "learnableSampleCount": 30,
       "confidence": 0.9,
-      "weightAdjustments": {
-        "riskPenalty": 0.536
-      },
+      "weightAdjustments": {},
       "priceAdjustments": {
-        "entryAggressiveness": 0.057,
+        "entryAggressiveness": 0.107,
         "targetMultiplier": 0.0,
         "stopAtrMultiplier": 0.0
       },
       "filterAdjustments": {
-        "maxDistanceToEntryPct": 0.143,
+        "maxDistanceToEntryPct": 0.267,
         "minRiskRewardRatio": 0.0
       },
       "topFailureReasons": [
-        "ENTRY_TOO_AGGRESSIVE",
         "MISS_ENTRY_TOO_LOW",
+        "ENTRY_TOO_AGGRESSIVE",
         "GOOD_SIGNAL_WEAK_EXIT"
       ],
       "reasonCounts": {
         "GOOD_SIGNAL_WEAK_EXIT": 4,
-        "MISS_ENTRY_TOO_LOW": 11,
+        "MISS_ENTRY_TOO_LOW": 13,
         "GOOD": 1,
         "ENTRY_TOO_AGGRESSIVE": 12,
-        "DATA_STALE": 757
+        "DATA_STALE": 771
       },
-      "appliedAt": "2026-07-31T07:17:29.565057+00:00"
+      "appliedAt": "2026-08-12T07:16:52.599260+00:00"
     },
     "kr_balanced_short": {
       "market": "kr",
@@ -165,7 +163,7 @@
         "MISS_ENTRY_TOO_LOW": 2,
         "DATA_STALE": 403
       },
-      "appliedAt": "2026-07-31T07:17:29.565224+00:00"
+      "appliedAt": "2026-08-12T07:16:52.599401+00:00"
     },
     "kr_balanced_mid": {
       "market": "kr",
@@ -196,7 +194,7 @@
         "GOOD": 1,
         "DATA_STALE": 754
       },
-      "appliedAt": "2026-07-31T07:17:29.565547+00:00"
+      "appliedAt": "2026-08-12T07:16:52.599631+00:00"
     },
     "kr_aggressive_short": {
       "market": "kr",
@@ -229,7 +227,7 @@
         "MISS_ENTRY_TOO_LOW": 1,
         "DATA_STALE": 419
       },
-      "appliedAt": "2026-07-31T07:17:29.565731+00:00"
+      "appliedAt": "2026-08-12T07:16:52.599780+00:00"
     },
     "kr_aggressive_swing": {
       "market": "kr",
@@ -262,13 +260,13 @@
         "GOOD_SIGNAL_WEAK_EXIT": 6,
         "DATA_STALE": 549
       },
-      "appliedAt": "2026-07-31T07:17:29.565972+00:00"
+      "appliedAt": "2026-08-12T07:16:52.599962+00:00"
     },
     "kr_aggressive_mid": {
       "market": "kr",
       "mode": "aggressive",
       "horizon": "mid",
-      "sampleCount": 896,
+      "sampleCount": 958,
       "learnableSampleCount": 33,
       "confidence": 0.9,
       "weightAdjustments": {},
@@ -291,10 +289,14 @@
         "GOOD_SIGNAL_WEAK_EXIT": 6,
         "MISS_ENTRY_TOO_LOW": 13,
         "GOOD": 1,
-        "DATA_STALE": 863
+        "DATA_STALE": 925
       },
-      "appliedAt": "2026-07-31T07:17:29.566322+00:00"
+      "appliedAt": "2026-08-12T07:16:52.600243+00:00"
     }
   },
-  "savedAt": "2026-07-31T07:17:29.566923+00:00"
+  "savedAt": "2026-08-12T07:16:52.601853+00:00",
+  "paramsIntegrity": {
+    "version": "self-correction-params-integrity-v1",
+    "payloadHash": "dc479ed952edf89388070cf4d78147a8c51d83b12c55fb066e16096eb58a4ae3"
+  }
 }

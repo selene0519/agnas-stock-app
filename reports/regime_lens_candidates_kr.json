@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-08-11T23:40:32.934033+00:00",
-  "asOfDate": "2026-08-11",
+  "generatedAt": "2026-08-12T07:15:49.490494+00:00",
+  "asOfDate": "2026-08-12",
   "market": "kr",
   "marketRegime": "BEAR",
-  "breadthAboveMa60": 0.324,
+  "breadthAboveMa60": 0.28,
   "activeLens": "BOTTOM_CATCH",
   "activeSetupByRegime": {
     "BULL": [
@@ -20,41 +20,8 @@
   "selfCalibrated": true,
   "liveSamplesTotal": 21,
   "universeSize": 106,
-  "candidateCount": 2,
+  "candidateCount": 0,
   "actionableCount": 0,
   "disclaimer": "생존편향(현상장 glob만)로 백테스트 낙관. actionable(ACTIVE)만 자가보정 통과 — 실사이징은 라이브 VTJ forward 검증 후.",
-  "candidates": [
-    {
-      "symbol": "207940",
-      "name": "삼성바이오로직스",
-      "setup": "BREAKOUT",
-      "asOfDate": "2026-08-11",
-      "close": 1609000.0,
-      "entryRef": 1609000.0,
-      "stop": 1544640,
-      "target": 1737720,
-      "rrRatio": 2.0,
-      "rsi14": 70.3,
-      "distMa20Pct": 9.5,
-      "calibrationGate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "actionable": false
-    },
-    {
-      "symbol": "068270",
-      "name": "셀트리온",
-      "setup": "BREAKOUT",
-      "asOfDate": "2026-08-11",
-      "close": 210500.0,
-      "entryRef": 210500.0,
-      "stop": 202080,
-      "target": 227340,
-      "rrRatio": 2.0,
-      "rsi14": 84.5,
-      "distMa20Pct": 14.9,
-      "calibrationGate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "actionable": false
-    }
-  ]
+  "candidates": []
 }
