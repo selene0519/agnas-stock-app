@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-12T15:05:52.548666+00:00",
+  "generatedAt": "2026-08-12T23:30:17.958403+00:00",
   "overall": "WARN",
   "criticalFailures": 0,
   "hardFailures": 0,
@@ -15,30 +15,30 @@
     {
       "name": "kr_ohlcv",
       "status": "OK",
-      "detail": "0.63d, asOf=2026-08-12",
+      "detail": "0.98d, asOf=2026-08-12",
       "critical": true,
-      "ageDays": 0.63
+      "ageDays": 0.98
     },
     {
       "name": "kr_kospi_ohlcv",
       "status": "OK",
-      "detail": "0.63d, asOf=2026-08-12, kr_KOSPI_daily.csv trailing OHLC is valid",
+      "detail": "0.98d, asOf=2026-08-12, kr_KOSPI_daily.csv trailing OHLC is valid",
       "critical": true,
-      "ageDays": 0.63
+      "ageDays": 0.98
     },
     {
       "name": "kr_kosdaq_ohlcv",
       "status": "OK",
-      "detail": "0.63d, asOf=2026-08-12, kr_KOSDAQ_daily.csv trailing OHLC is valid",
+      "detail": "0.98d, asOf=2026-08-12, kr_KOSDAQ_daily.csv trailing OHLC is valid",
       "critical": true,
-      "ageDays": 0.63
+      "ageDays": 0.98
     },
     {
       "name": "kr_recommendations",
       "status": "OK",
-      "detail": "0.1d, asOf=2026-08-12T12:48:59.150651+00:00",
+      "detail": "0.45d, asOf=2026-08-12T12:48:59.150651+00:00",
       "critical": true,
-      "ageDays": 0.1
+      "ageDays": 0.45
     },
     {
       "name": "collector_steps",
@@ -50,44 +50,44 @@
     {
       "name": "collector_run",
       "status": "OK",
-      "detail": "0.09d, asOf=2026-08-12T21:50:18+09:00, source=cloud:benchmarks, reportedAt=2026-08-12T21:50:18",
+      "detail": "0.44d, asOf=2026-08-12T21:50:18+09:00, source=cloud:benchmarks, reportedAt=2026-08-12T21:50:18",
       "critical": true,
-      "ageDays": 0.09
+      "ageDays": 0.44
     },
     {
       "name": "local_collector_run",
       "status": "STALE",
-      "detail": "optional local collector 15.31d old; cloud source remains authoritative",
+      "detail": "optional local collector 15.66d old; cloud source remains authoritative",
       "critical": false,
-      "ageDays": 15.31
+      "ageDays": 15.66
     },
     {
       "name": "vtj_journal",
       "status": "OK",
-      "detail": "0.09d, asOf=2026-08-12T21:50:24+09:00",
+      "detail": "0.44d, asOf=2026-08-12T21:50:24+09:00",
       "critical": false,
-      "ageDays": 0.09
+      "ageDays": 0.44
     },
     {
       "name": "live_calibration",
       "status": "OK",
-      "detail": "0.63d, asOf=2026-08-12",
+      "detail": "0.98d, asOf=2026-08-12",
       "critical": false,
-      "ageDays": 0.63
+      "ageDays": 0.98
     },
     {
       "name": "strategy_win_rates",
       "status": "OK",
-      "detail": "-0.37d, asOf=2026-08-13 00:05:47",
+      "detail": "-0.37d, asOf=2026-08-13 08:30:13",
       "critical": false,
       "ageDays": -0.37
     },
     {
       "name": "prediction_capture",
       "status": "OK",
-      "detail": "0.63d, asOf=2026-08-12",
+      "detail": "0.98d, asOf=2026-08-12",
       "critical": true,
-      "ageDays": 0.63
+      "ageDays": 0.98
     },
     {
       "name": "capture_continuity",
