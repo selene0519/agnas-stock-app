@@ -1,28 +1,28 @@
 {
   "table": {
     "0-72|SIDE": {
-      "winRate": 16.1,
+      "winRate": 16.2,
       "rawWinRate": 12.0,
       "avgPnl": -7.226,
-      "effN": 26.5,
+      "effN": 25.9,
       "priorWinRate": 21.7
     },
     "72-76|SIDE": {
-      "winRate": 18.5,
+      "winRate": 18.6,
       "rawWinRate": 13.2,
       "avgPnl": -7.309,
-      "effN": 11.8,
+      "effN": 11.5,
       "priorWinRate": 21.7
     },
     "76-80|SIDE": {
       "winRate": 19.6,
       "rawWinRate": 8.4,
       "avgPnl": -7.84,
-      "effN": 3.8,
+      "effN": 3.7,
       "priorWinRate": 21.7
     },
     "80-84|BULL": {
-      "winRate": 23.4,
+      "winRate": 23.3,
       "rawWinRate": 36.9,
       "avgPnl": -1.595,
       "effN": 2.4,
@@ -32,7 +32,7 @@
       "winRate": 22.9,
       "rawWinRate": 31.4,
       "avgPnl": -1.984,
-      "effN": 2.9,
+      "effN": 2.8,
       "priorWinRate": 21.7
     },
     "72-76|BULL": {
@@ -60,14 +60,14 @@
       "winRate": 20.4,
       "rawWinRate": 0.0,
       "avgPnl": -6.22,
-      "effN": 1.3,
+      "effN": 1.2,
       "priorWinRate": 21.7
     },
     "0-72|BEAR": {
       "winRate": 26.4,
       "rawWinRate": 38.2,
       "avgPnl": -0.753,
-      "effN": 8.1,
+      "effN": 7.9,
       "priorWinRate": 21.7
     },
     "84-88|SIDE": {
@@ -78,17 +78,17 @@
       "priorWinRate": 21.7
     },
     "72-76|BEAR": {
-      "winRate": 28.5,
+      "winRate": 28.4,
       "rawWinRate": 57.6,
       "avgPnl": -0.46,
-      "effN": 4.7,
+      "effN": 4.6,
       "priorWinRate": 21.7
     },
     "76-80|BEAR": {
-      "winRate": 25.4,
+      "winRate": 25.3,
       "rawWinRate": 70.4,
       "avgPnl": 10.91,
-      "effN": 1.7,
+      "effN": 1.6,
       "priorWinRate": 21.7
     },
     "80-84|BEAR": {
@@ -102,7 +102,7 @@
   "global": {
     "winRate": 21.7,
     "avgPnl": -4.891,
-    "effN": 67.3
+    "effN": 65.8
   },
   "bins": [
     "0-72",
@@ -115,7 +115,7 @@
   "params": {
     "halfLifeDays": 30.0,
     "shrinkK": 20.0,
-    "asOf": "2026-08-13"
+    "asOf": "2026-08-14"
   },
   "market": "kr",
   "source": "live_vtj_rolling_pooled",
