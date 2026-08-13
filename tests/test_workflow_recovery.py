@@ -75,3 +75,63 @@ def test_commit_workflows_rebase_restage_and_retry():
     stage = walkforward.index("stage_backtest_results", reset)
     commit = walkforward.index('git commit -m "chore: weekly walk-forward', stage)
     assert loop < reset < stage < commit
+
+
+def _write_gzip_ledger(path: Path, rows: list[dict[str, str]]) -> None:
+    import csv
+
+    with gzip.open(path, "wt", encoding="utf-8-sig", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def test_operation_history_limit_is_memory_bounded_and_keeps_newest(tmp_path, monkeypatch):
+    from app.services import operation_history
+
+    ledger = tmp_path / "virtual_operation_history.csv.gz"
+    rows = [
+        {
+            "created_at": f"2026-08-{day:02d} 16:30:00",
+            "market": "kr" if day % 2 else "us",
+            "mode": "balanced",
+            "symbol": f"{day:06d}",
+        }
+        for day in range(1, 21)
+    ]
+    _write_gzip_ledger(ledger, rows)
+    monkeypatch.setattr(operation_history, "VIRTUAL_HISTORY_FILE", ledger)
+
+    payload = operation_history.virtual_operation_history("kr", "balanced", limit=3)
+    assert payload["count"] == 10
+    assert [row["created_at"] for row in payload["items"]] == [
+        "2026-08-19 16:30:00",
+        "2026-08-17 16:30:00",
+        "2026-08-15 16:30:00",
+    ]
+
+
+def test_virtual_summary_uses_recent_window_and_avoids_duplicate_history(tmp_path, monkeypatch):
+    from app.engine import mone_v61_virtual_summary as summary
+
+    history_dir = tmp_path / "data" / "history"
+    history_dir.mkdir(parents=True)
+    evaluation = history_dir / "virtual_operation_evaluation.csv.gz"
+    operation = history_dir / "virtual_operation_history.csv.gz"
+    rows = [
+        {"evaluated_at": f"2026-08-{day:02d}", "market": "kr", "symbol": f"{day:06d}"}
+        for day in range(1, 21)
+    ]
+    _write_gzip_ledger(evaluation, rows)
+    _write_gzip_ledger(operation, rows)
+    monkeypatch.setattr(summary, "_root", lambda: tmp_path)
+
+    recent = summary._read_csv_recent(evaluation, limit=3)
+    assert [row["evaluated_at"] for row in recent] == [
+        "2026-08-20",
+        "2026-08-19",
+        "2026-08-18",
+    ]
+    paths = summary._virtual_paths()
+    assert evaluation in paths
+    assert operation not in paths

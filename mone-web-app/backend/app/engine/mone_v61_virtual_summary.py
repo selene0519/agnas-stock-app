@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import csv
 import gzip
+import heapq
 import json
 import math
 import re
@@ -163,9 +164,8 @@ def _name(row: Dict[str, Any], sym: str) -> str:
 
 
 def _virtual_paths() -> List[Path]:
-    return _glob_existing([
+    patterns = [
         "data/history/virtual_operation_evaluation.csv.gz",
-        "data/history/virtual_operation_history.csv.gz",
         "data/history/outcome_history.csv",
         "data/history/prediction_history.csv",
         "data/history/prediction_snapshot_history.csv",
@@ -179,7 +179,11 @@ def _virtual_paths() -> List[Path]:
         "*virtual*.csv",
         "*backtest*.csv",
         "*trading*.csv",
-    ])
+    ]
+    evaluation = _root() / "data/history/virtual_operation_evaluation.csv.gz"
+    if not evaluation.exists():
+        patterns.insert(1, "data/history/virtual_operation_history.csv.gz")
+    return _glob_existing(patterns)
 
 
 def _summary_json_paths() -> List[Path]:
@@ -192,10 +196,32 @@ def _summary_json_paths() -> List[Path]:
     ])
 
 
+def _read_csv_recent(path: Path, limit: int) -> List[Dict[str, Any]]:
+    """Return the newest bounded window without materializing a whole ledger."""
+    for enc in ("utf-8-sig", "utf-8", "cp949"):
+        heap: List[tuple[str, int, Dict[str, Any]]] = []
+        try:
+            opener = gzip.open if path.suffix == ".gz" else Path.open
+            open_args = (path, "rt") if path.suffix == ".gz" else (path, "r")
+            with opener(*open_args, encoding=enc, newline="") as handle:
+                for index, row in enumerate(csv.DictReader(handle)):
+                    item = (_row_date_value(row), index, row)
+                    if len(heap) < limit:
+                        heapq.heappush(heap, item)
+                    elif item[:2] > heap[0][:2]:
+                        heapq.heapreplace(heap, item)
+            return [item[2] for item in sorted(heap, key=lambda item: item[:2], reverse=True)]
+        except UnicodeDecodeError:
+            continue
+        except Exception:
+            return []
+    return []
+
+
 def _load_virtual_rows() -> List[Dict[str, Any]]:
     rows: List[Dict[str, Any]] = []
     for path in _virtual_paths():
-        for r in _read_csv(path, limit=50000):
+        for r in _read_csv_recent(path, limit=10000):
             row = dict(r)
             row["_source_file"] = path.name
             rows.append(row)

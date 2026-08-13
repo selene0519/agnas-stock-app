@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import csv
+import gzip
+import heapq
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -43,6 +46,47 @@ def _read_csv(path: Path) -> pd.DataFrame:
 def _records(path: Path) -> list[dict[str, Any]]:
     df = _read_csv(path)
     return data.dataframe_records(df) if not df.empty else []
+
+
+def _recent_records(
+    path: Path,
+    *,
+    limit: int,
+    market: str | None = None,
+    mode: str | None = None,
+    date_fields: tuple[str, ...] = ("created_at", "evaluated_at", "date"),
+) -> tuple[int, list[dict[str, Any]]]:
+    """Scan a ledger while retaining only the newest requested rows in memory."""
+    if not path.exists() or path.stat().st_size <= 0:
+        return 0, []
+
+    for encoding in ("utf-8-sig", "utf-8", "cp949"):
+        heap: list[tuple[str, int, dict[str, Any]]] = []
+        count = 0
+        try:
+            opener = gzip.open if path.suffix == ".gz" else Path.open
+            open_args = (path, "rt") if path.suffix == ".gz" else (path, "r")
+            with opener(*open_args, encoding=encoding, newline="") as handle:
+                for index, raw in enumerate(csv.DictReader(handle)):
+                    row = {str(key): ("" if value is None else str(value)) for key, value in raw.items() if key is not None}
+                    if market in MARKETS and str(row.get("market", "")).lower() != market:
+                        continue
+                    if mode in MODES and str(row.get("mode", "")).lower() != mode:
+                        continue
+                    count += 1
+                    sort_key = next((str(row.get(field, "")) for field in date_fields if row.get(field)), "")
+                    item = (sort_key, index, row)
+                    if len(heap) < limit:
+                        heapq.heappush(heap, item)
+                    elif item[:2] > heap[0][:2]:
+                        heapq.heapreplace(heap, item)
+            newest = [item[2] for item in sorted(heap, key=lambda item: item[:2], reverse=True)]
+            return count, newest
+        except UnicodeDecodeError:
+            continue
+        except Exception:
+            return 0, []
+    return 0, []
 
 
 def _write_rows(path: Path, rows: list[dict[str, Any]]) -> None:
@@ -330,25 +374,26 @@ def history_file_summary() -> dict[str, Any]:
     files = [VIRTUAL_HISTORY_FILE, PREDICTION_SNAPSHOT_FILE, VIRTUAL_EVALUATION_FILE, AUTO_CORRECTION_FILE]
     items = []
     for path in files:
-        rows = _records(path)
+        count, preview = _recent_records(path, limit=5)
         items.append({
             "path": _rel(path),
             "exists": path.exists(),
-            "rows": len(rows),
+            "rows": count,
             "updatedAt": data.file_mtime(path) if path.exists() else "",
-            "preview": rows[-5:] if rows else [],
+            "preview": preview,
         })
     return {"status": "OK", "items": items}
 
 
 def virtual_operation_history(market: str | None = None, mode: str | None = None, limit: int = 250) -> dict[str, Any]:
-    rows = _records(VIRTUAL_HISTORY_FILE)
-    if market in MARKETS:
-        rows = [r for r in rows if str(r.get("market", "")).lower() == market]
-    if mode in MODES:
-        rows = [r for r in rows if str(r.get("mode", "")).lower() == mode]
-    rows = sorted(rows, key=lambda r: str(r.get("created_at", "")), reverse=True)
-    return {"status": "OK", "source": _rel(VIRTUAL_HISTORY_FILE), "count": len(rows), "items": rows[:limit]}
+    count, rows = _recent_records(
+        VIRTUAL_HISTORY_FILE,
+        limit=limit,
+        market=market,
+        mode=mode,
+        date_fields=("created_at", "snapshot_at", "date"),
+    )
+    return {"status": "OK", "source": _rel(VIRTUAL_HISTORY_FILE), "count": count, "items": rows}
 
 
 def prediction_snapshot_history(market: str | None = None, limit: int = 250) -> dict[str, Any]:
