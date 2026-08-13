@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import csv
+import gzip
 import json
 import math
 import re
@@ -28,7 +29,7 @@ def _read_csv(path: Optional[Path], limit: int = 50000) -> List[Dict[str, Any]]:
     for enc in ("utf-8-sig", "utf-8", "cp949"):
         try:
             rows = []
-            with path.open("r", encoding=enc, newline="") as f:
+            with (gzip.open(path, "rt", encoding=enc, newline="") if path.suffix == ".gz" else path.open("r", encoding=enc, newline="")) as f:
                 reader = csv.DictReader(f)
                 for i, row in enumerate(reader):
                     rows.append(row)
@@ -163,8 +164,8 @@ def _name(row: Dict[str, Any], sym: str) -> str:
 
 def _virtual_paths() -> List[Path]:
     return _glob_existing([
-        "data/history/virtual_operation_evaluation.csv",
-        "data/history/virtual_operation_history.csv",
+        "data/history/virtual_operation_evaluation.csv.gz",
+        "data/history/virtual_operation_history.csv.gz",
         "data/history/outcome_history.csv",
         "data/history/prediction_history.csv",
         "data/history/prediction_snapshot_history.csv",

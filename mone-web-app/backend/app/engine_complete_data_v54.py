@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import gzip
 import json
 import math
 import re
@@ -45,7 +46,7 @@ def read_csv(path: Path, hard_limit: int = 2000) -> List[Dict[str, Any]]:
     for enc in ["utf-8-sig", "utf-8", "cp949"]:
         try:
             rows: List[Dict[str, Any]] = []
-            with path.open("r", encoding=enc, newline="") as f:
+            with (gzip.open(path, "rt", encoding=enc, newline="") if path.suffix == ".gz" else path.open("r", encoding=enc, newline="")) as f:
                 reader = csv.DictReader(f)
                 for idx, row in enumerate(reader):
                     rows.append(row)
@@ -320,7 +321,7 @@ def holding_items(market: str) -> List[Dict[str, Any]]:
 
 def virtual_items(market: str) -> List[Dict[str, Any]]:
     root = repo_root()
-    rows = read_csv(root / "data/history/virtual_operation_evaluation.csv", hard_limit=1000)
+    rows = read_csv(root / "data/history/virtual_operation_evaluation.csv.gz", hard_limit=1000)
     out = []
     for i, r in enumerate(rows):
         if text(r, ["market"], market).lower() != market:
@@ -375,7 +376,7 @@ def status_counts() -> Dict[str, Any]:
         "companyKR": len(company_items("kr")),
         "companyUS": len(company_items("us")),
         "ohlcvFiles": len(list((root / "data/market/ohlcv").glob("*.csv"))) if (root / "data/market/ohlcv").exists() else 0,
-        "virtualRows": len(read_csv(root / "data/history/virtual_operation_evaluation.csv", hard_limit=10000)),
+        "virtualRows": len(read_csv(root / "data/history/virtual_operation_evaluation.csv.gz", hard_limit=10000)),
     }
 
 

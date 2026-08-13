@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import csv
+import gzip
 import json
 import math
 import re
@@ -27,7 +28,7 @@ def _read_csv(path: Path, limit: int = 1000) -> List[Dict[str, Any]]:
     for enc in ("utf-8-sig", "utf-8", "cp949"):
         try:
             rows: List[Dict[str, Any]] = []
-            with path.open("r", encoding=enc, newline="") as f:
+            with (gzip.open(path, "rt", encoding=enc, newline="") if path.suffix == ".gz" else path.open("r", encoding=enc, newline="")) as f:
                 reader = csv.DictReader(f)
                 for i, row in enumerate(reader):
                     rows.append(row)
@@ -327,8 +328,8 @@ def _company(market: str, limit: int) -> Dict[str, Any]:
 
 def _holdings(market: str, limit: int) -> Dict[str, Any]:
     paths = [
-        _root() / "data/history/virtual_operation_history.csv",
-        _root() / "data/history/virtual_operation_evaluation.csv",
+        _root() / "data/history/virtual_operation_history.csv.gz",
+        _root() / "data/history/virtual_operation_evaluation.csv.gz",
         _root() / "paper_trading_log.csv",
     ]
     p = next((x for x in paths if x.exists() and x.stat().st_size > 0), None)
@@ -337,7 +338,7 @@ def _holdings(market: str, limit: int) -> Dict[str, Any]:
 
 
 def _validation(market: str, mode: str, horizon: str) -> Dict[str, Any]:
-    p = _root() / "data/history/virtual_operation_evaluation.csv"
+    p = _root() / "data/history/virtual_operation_evaluation.csv.gz"
     rows = _read_csv(p, limit=2000) if p.exists() else []
     m = "us" if str(market).lower() == "us" else "kr"
     filtered = [r for r in rows if str(_text(r, ["market"], "")).lower() in {m, m.upper()}]

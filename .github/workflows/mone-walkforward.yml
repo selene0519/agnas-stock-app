@@ -120,27 +120,36 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add reports/walkforward_results_kr.csv reports/walkforward_summary_kr.json 2>/dev/null || true
-          git add reports/walkforward_results_us.csv reports/walkforward_summary_us.json 2>/dev/null || true
-          git add reports/ensemble_calibration_*.json 2>/dev/null || true
-          git add reports/pattern_walkforward_kr.json reports/pattern_walkforward_us.json 2>/dev/null || true
-          git add reports/walkforward_integrity.json 2>/dev/null || true
+          stage_backtest_results() {
+            git add reports/walkforward_results_kr.csv reports/walkforward_summary_kr.json 2>/dev/null || true
+            git add reports/walkforward_results_us.csv reports/walkforward_summary_us.json 2>/dev/null || true
+            git add reports/ensemble_calibration_*.json 2>/dev/null || true
+            git add reports/pattern_walkforward_kr.json reports/pattern_walkforward_us.json 2>/dev/null || true
+            git add reports/walkforward_integrity.json 2>/dev/null || true
+          }
 
-          if git diff --cached --quiet; then
-            echo "No backtest changes to commit."
-            exit 0
-          fi
+          max_attempts=8
+          for attempt in $(seq 1 "${max_attempts}"); do
+            echo "Commit attempt ${attempt}/${max_attempts}: align with origin/main and restage results."
+            git fetch origin main
+            git reset --mixed origin/main
+            stage_backtest_results
 
-          for attempt in 1 2 3; do
+            if git diff --cached --quiet; then
+              echo "No backtest changes to commit."
+              exit 0
+            fi
+
             git commit -m "chore: weekly walk-forward backtest results [skip ci]"
             if git push origin "HEAD:main"; then
               exit 0
             fi
-            echo "Push failed, retrying ($attempt/3)..."
-            sleep 5
+
+            echo "Push race detected; retrying from latest origin/main."
+            sleep $((attempt * 3))
           done
 
-          echo "Failed to push backtest results after retries."
+          echo "Failed to push backtest results after ${max_attempts} attempts."
           exit 1
 
       - name: 실패 시 텔레그램 알림

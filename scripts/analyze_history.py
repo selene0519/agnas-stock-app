@@ -10,6 +10,7 @@ reports/strategy_performance_report.json 으로 저장합니다.
 from __future__ import annotations
 
 import csv
+import gzip
 import json
 import math
 import sys
@@ -34,7 +35,7 @@ def _read(path: Path) -> list[dict[str, str]]:
         return []
     for enc in ("utf-8-sig", "utf-8", "cp949"):
         try:
-            with path.open(encoding=enc) as f:
+            with (gzip.open(path, "rt", encoding=enc, newline="") if path.suffix == ".gz" else path.open("r", encoding=enc, newline="")) as f:
                 return list(csv.DictReader(f))
         except Exception:
             continue
@@ -141,7 +142,7 @@ def analyze_virtual_eval(market: str = "kr") -> dict[str, Any]:
         by_mode[m]["swing_count"]      = by_mode[m].get("swing_count", 0)
 
     # 레거시 virtual_operation_evaluation 기반 총계도 병합
-    legacy = _read(HIST / "virtual_operation_evaluation.csv")
+    legacy = _read(HIST / "virtual_operation_evaluation.csv.gz")
     total_legacy = len(legacy)
     pending_legacy = sum(1 for r in legacy
                          if str(r.get("execution_status") or "").strip() in {"대기", "체결 판단 불가"})

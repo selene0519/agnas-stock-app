@@ -9,9 +9,9 @@ import pandas as pd
 
 from app.services import data_loader as data
 
-VIRTUAL_HISTORY_FILE = data.HISTORY_DIR / "virtual_operation_history.csv"
+VIRTUAL_HISTORY_FILE = data.HISTORY_DIR / "virtual_operation_history.csv.gz"
 PREDICTION_SNAPSHOT_FILE = data.HISTORY_DIR / "prediction_snapshot_history.csv"
-VIRTUAL_EVALUATION_FILE = data.HISTORY_DIR / "virtual_operation_evaluation.csv"
+VIRTUAL_EVALUATION_FILE = data.HISTORY_DIR / "virtual_operation_evaluation.csv.gz"
 AUTO_CORRECTION_FILE = data.HISTORY_DIR / "auto_correction_summary.csv"
 
 MARKETS = ("kr", "us")
@@ -47,7 +47,8 @@ def _records(path: Path) -> list[dict[str, Any]]:
 
 def _write_rows(path: Path, rows: list[dict[str, Any]]) -> None:
     _ensure_history_dir()
-    pd.DataFrame(rows).to_csv(path, index=False, encoding="utf-8-sig")
+    compression = {"method": "gzip", "compresslevel": 6, "mtime": 0} if path.suffix == ".gz" else None
+    pd.DataFrame(rows).to_csv(path, index=False, encoding="utf-8-sig", compression=compression)
 
 
 def _append_rows(path: Path, rows: list[dict[str, Any]], key_fields: list[str]) -> dict[str, Any]:

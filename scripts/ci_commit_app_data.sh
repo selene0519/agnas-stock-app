@@ -11,11 +11,13 @@
 #
 # --verify-vtj : VTJ 산출물이 변경됐는데 stage 안 됐으면 실패시킨다
 #                (VTJ를 생성하는 워크플로에서만 의미가 있다)
-set -uo pipefail
+set -euo pipefail
 
 COMMIT_MESSAGE="${1:?commit message required}"
 VERIFY_VTJ=0
 [ "${2:-}" = "--verify-vtj" ] && VERIFY_VTJ=1
+MAX_PUSH_ATTEMPTS="${MONE_CI_PUSH_ATTEMPTS:-8}"
+GIT_BLOB_LIMIT_BYTES="${MONE_GIT_BLOB_LIMIT_BYTES:-99614720}"
 
 : "${GITHUB_REF_NAME:?GITHUB_REF_NAME required}"
 
@@ -139,7 +141,12 @@ verify_vtj_outputs_staged() {
   return "${failed}"
 }
 
-for attempt in 1 2 3; do
+if ! [[ "${MAX_PUSH_ATTEMPTS}" =~ ^[1-9][0-9]*$ ]]; then
+  echo "::error::MONE_CI_PUSH_ATTEMPTS must be a positive integer."
+  exit 1
+fi
+
+for attempt in $(seq 1 "${MAX_PUSH_ATTEMPTS}"); do
   echo "Commit attempt ${attempt}: align HEAD with origin/${GITHUB_REF_NAME} before staging generated data."
   git fetch origin "${GITHUB_REF_NAME}"
   git reset --mixed "origin/${GITHUB_REF_NAME}"
@@ -156,14 +163,25 @@ for attempt in 1 2 3; do
     exit 0
   fi
 
+  oversized=0
+  while IFS= read -r path; do
+    [ -f "${path}" ] || continue
+    size=$(wc -c < "${path}")
+    if [ "${size}" -ge "${GIT_BLOB_LIMIT_BYTES}" ]; then
+      echo "::error::Refusing oversized Git blob: ${path} (${size} bytes). Compress or shard it first."
+      oversized=1
+    fi
+  done < <(git diff --cached --name-only --diff-filter=ACM)
+  [ "${oversized}" = "0" ] || exit 1
+
   git commit -m "${COMMIT_MESSAGE}"
   if git push origin "HEAD:${GITHUB_REF_NAME}"; then
     exit 0
   fi
 
-  echo "Push race detected; retrying from latest origin/${GITHUB_REF_NAME}."
-  sleep 5
+  echo "Push race detected; retrying from latest origin/${GITHUB_REF_NAME} (${attempt}/${MAX_PUSH_ATTEMPTS})."
+  sleep $((attempt * 3))
 done
 
-echo "Failed to push generated data after retries."
+echo "Failed to push generated data after ${MAX_PUSH_ATTEMPTS} attempts."
 exit 1

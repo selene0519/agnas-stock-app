@@ -125,6 +125,10 @@ reports/backtest_summary*.csv
 
 # runtime-generated data files (not secrets but not for git)
 data/history/
+!data/history/
+data/history/*
+!data/history/virtual_operation_history.csv.gz
+!data/history/virtual_operation_evaluation.csv.gz
 data/stockapp/kis_current_price_*.csv
 
 # 개인 포트폴리오/관심종목 (퍼블릭 저장소 보호)

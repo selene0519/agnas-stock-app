@@ -274,6 +274,9 @@ jobs:
           )
           PY
 
+      - name: Migrate large virtual operation ledgers
+        run: python scripts/migrate_virtual_operation_history.py --remove-source
+
       - name: Record virtual operation history
         working-directory: mone-web-app/backend
         env:

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 import csv
+import gzip
+import io
 import json
 import math
 import os
@@ -61,9 +63,9 @@ REPO_ROOT = find_repo_root()
 DATA_DIR = REPO_ROOT / "data"
 REPORTS_DIR = REPO_ROOT / "reports"
 HISTORY_DIR = DATA_DIR / "history"
-VIRTUAL_HISTORY_FILE = HISTORY_DIR / "virtual_operation_history.csv"
+VIRTUAL_HISTORY_FILE = HISTORY_DIR / "virtual_operation_history.csv.gz"
 PREDICTION_SNAPSHOT_FILE = HISTORY_DIR / "prediction_snapshot_history.csv"
-VIRTUAL_EVALUATION_FILE = HISTORY_DIR / "virtual_operation_evaluation.csv"
+VIRTUAL_EVALUATION_FILE = HISTORY_DIR / "virtual_operation_evaluation.csv.gz"
 AUTO_CORRECTION_FILE = HISTORY_DIR / "auto_correction_summary.csv"
 
 
@@ -74,13 +76,23 @@ def rel(path: Path) -> str:
         return path.as_posix()
 
 
+def open_csv_text(path: Path, mode: str, encoding: str):
+    """Open CSV and CSV.GZ files through the same text interface."""
+    if path.suffix == ".gz":
+        raw_mode = "rb" if mode == "r" else "wb"
+        raw = path.open(raw_mode)
+        gz = gzip.GzipFile(fileobj=raw, mode=raw_mode, mtime=0 if mode == "w" else None)
+        return io.TextIOWrapper(gz, encoding=encoding, newline="")
+    return path.open(mode, encoding=encoding, newline="")
+
+
 def read_csv_rows(path: Path, limit: int | None = None) -> list[dict[str, Any]]:
     if not path.exists() or not path.is_file():
         return []
     encodings = ["utf-8-sig", "utf-8", "cp949", "euc-kr"]
     for enc in encodings:
         try:
-            with path.open("r", encoding=enc, newline="") as f:
+            with open_csv_text(path, "r", enc) as f:
                 reader = csv.DictReader(f)
                 rows = []
                 for i, row in enumerate(reader):
@@ -104,7 +116,7 @@ def write_csv_rows(path: Path, rows: list[dict[str, Any]]) -> None:
             if key not in seen:
                 seen.add(key)
                 fieldnames.append(key)
-    with path.open("w", encoding="utf-8-sig", newline="") as f:
+    with open_csv_text(path, "w", "utf-8-sig") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         for row in rows:
