@@ -13,6 +13,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterable
 
+from app.services.operation_history_storage import write_sidecar_from_rows
+
 MARKETS = ("kr", "us")
 MODES = ("conservative", "balanced", "aggressive")
 MODE_LABELS = {"conservative": "보수", "balanced": "균형", "aggressive": "공격"}
@@ -64,8 +66,12 @@ DATA_DIR = REPO_ROOT / "data"
 REPORTS_DIR = REPO_ROOT / "reports"
 HISTORY_DIR = DATA_DIR / "history"
 VIRTUAL_HISTORY_FILE = HISTORY_DIR / "virtual_operation_history.csv.gz"
+VIRTUAL_HISTORY_RECENT_FILE = HISTORY_DIR / "virtual_operation_history_recent.csv"
+VIRTUAL_HISTORY_INDEX_FILE = HISTORY_DIR / "virtual_operation_history_index.json"
 PREDICTION_SNAPSHOT_FILE = HISTORY_DIR / "prediction_snapshot_history.csv"
 VIRTUAL_EVALUATION_FILE = HISTORY_DIR / "virtual_operation_evaluation.csv.gz"
+VIRTUAL_EVALUATION_RECENT_FILE = HISTORY_DIR / "virtual_operation_evaluation_recent.csv"
+VIRTUAL_EVALUATION_INDEX_FILE = HISTORY_DIR / "virtual_operation_evaluation_index.json"
 AUTO_CORRECTION_FILE = HISTORY_DIR / "auto_correction_summary.csv"
 
 
@@ -121,6 +127,11 @@ def write_csv_rows(path: Path, rows: list[dict[str, Any]]) -> None:
         writer.writeheader()
         for row in rows:
             writer.writerow(row)
+
+    if path == VIRTUAL_HISTORY_FILE:
+        write_sidecar_from_rows(path, rows, VIRTUAL_HISTORY_RECENT_FILE, VIRTUAL_HISTORY_INDEX_FILE)
+    elif path == VIRTUAL_EVALUATION_FILE:
+        write_sidecar_from_rows(path, rows, VIRTUAL_EVALUATION_RECENT_FILE, VIRTUAL_EVALUATION_INDEX_FILE)
 
 
 def first_value(row: dict[str, Any], aliases: Iterable[str], default: str = "") -> str:

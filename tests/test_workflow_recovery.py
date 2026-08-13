@@ -100,7 +100,13 @@ def test_operation_history_limit_is_memory_bounded_and_keeps_newest(tmp_path, mo
         for day in range(1, 21)
     ]
     _write_gzip_ledger(ledger, rows)
+    recent = tmp_path / "virtual_operation_history_recent.csv"
+    index = tmp_path / "virtual_operation_history_index.json"
+    from app.services.operation_history_storage import rebuild_sidecar
+    rebuild_sidecar(ledger, recent, index, rows_per_cell=3)
     monkeypatch.setattr(operation_history, "VIRTUAL_HISTORY_FILE", ledger)
+    monkeypatch.setattr(operation_history, "VIRTUAL_HISTORY_RECENT_FILE", recent)
+    monkeypatch.setattr(operation_history, "VIRTUAL_HISTORY_INDEX_FILE", index)
 
     payload = operation_history.virtual_operation_history("kr", "balanced", limit=3)
     assert payload["count"] == 10

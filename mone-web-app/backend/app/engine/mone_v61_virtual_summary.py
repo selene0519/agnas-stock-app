@@ -164,8 +164,14 @@ def _name(row: Dict[str, Any], sym: str) -> str:
 
 
 def _virtual_paths() -> List[Path]:
+    evaluation_recent = _root() / "data/history/virtual_operation_evaluation_recent.csv"
+    evaluation_pattern = (
+        "data/history/virtual_operation_evaluation_recent.csv"
+        if evaluation_recent.exists()
+        else "data/history/virtual_operation_evaluation.csv.gz"
+    )
     patterns = [
-        "data/history/virtual_operation_evaluation.csv.gz",
+        evaluation_pattern,
         "data/history/outcome_history.csv",
         "data/history/prediction_history.csv",
         "data/history/prediction_snapshot_history.csv",
@@ -181,8 +187,14 @@ def _virtual_paths() -> List[Path]:
         "*trading*.csv",
     ]
     evaluation = _root() / "data/history/virtual_operation_evaluation.csv.gz"
-    if not evaluation.exists():
-        patterns.insert(1, "data/history/virtual_operation_history.csv.gz")
+    if not evaluation.exists() and not evaluation_recent.exists():
+        history_recent = _root() / "data/history/virtual_operation_history_recent.csv"
+        patterns.insert(
+            1,
+            "data/history/virtual_operation_history_recent.csv"
+            if history_recent.exists()
+            else "data/history/virtual_operation_history.csv.gz",
+        )
     return _glob_existing(patterns)
 
 

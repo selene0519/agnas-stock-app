@@ -11,10 +11,15 @@ from typing import Any
 import pandas as pd
 
 from app.services import data_loader as data
+from app.services.operation_history_storage import write_sidecar_from_rows
 
 VIRTUAL_HISTORY_FILE = data.HISTORY_DIR / "virtual_operation_history.csv.gz"
+VIRTUAL_HISTORY_RECENT_FILE = data.HISTORY_DIR / "virtual_operation_history_recent.csv"
+VIRTUAL_HISTORY_INDEX_FILE = data.HISTORY_DIR / "virtual_operation_history_index.json"
 PREDICTION_SNAPSHOT_FILE = data.HISTORY_DIR / "prediction_snapshot_history.csv"
 VIRTUAL_EVALUATION_FILE = data.HISTORY_DIR / "virtual_operation_evaluation.csv.gz"
+VIRTUAL_EVALUATION_RECENT_FILE = data.HISTORY_DIR / "virtual_operation_evaluation_recent.csv"
+VIRTUAL_EVALUATION_INDEX_FILE = data.HISTORY_DIR / "virtual_operation_evaluation_index.json"
 AUTO_CORRECTION_FILE = data.HISTORY_DIR / "auto_correction_summary.csv"
 
 MARKETS = ("kr", "us")
@@ -93,6 +98,10 @@ def _write_rows(path: Path, rows: list[dict[str, Any]]) -> None:
     _ensure_history_dir()
     compression = {"method": "gzip", "compresslevel": 6, "mtime": 0} if path.suffix == ".gz" else None
     pd.DataFrame(rows).to_csv(path, index=False, encoding="utf-8-sig", compression=compression)
+    if path == VIRTUAL_HISTORY_FILE:
+        write_sidecar_from_rows(path, rows, VIRTUAL_HISTORY_RECENT_FILE, VIRTUAL_HISTORY_INDEX_FILE)
+    elif path == VIRTUAL_EVALUATION_FILE:
+        write_sidecar_from_rows(path, rows, VIRTUAL_EVALUATION_RECENT_FILE, VIRTUAL_EVALUATION_INDEX_FILE)
 
 
 def _append_rows(path: Path, rows: list[dict[str, Any]], key_fields: list[str]) -> dict[str, Any]:
@@ -373,8 +382,18 @@ def save_current_snapshot(market: str = "all", modes: str = "all", source: str =
 def history_file_summary() -> dict[str, Any]:
     files = [VIRTUAL_HISTORY_FILE, PREDICTION_SNAPSHOT_FILE, VIRTUAL_EVALUATION_FILE, AUTO_CORRECTION_FILE]
     items = []
+    sidecars = {
+        VIRTUAL_HISTORY_FILE: (VIRTUAL_HISTORY_RECENT_FILE, VIRTUAL_HISTORY_INDEX_FILE),
+        VIRTUAL_EVALUATION_FILE: (VIRTUAL_EVALUATION_RECENT_FILE, VIRTUAL_EVALUATION_INDEX_FILE),
+    }
     for path in files:
-        count, preview = _recent_records(path, limit=5)
+        recent_path, index_path = sidecars.get(path, (path, None))
+        if index_path is not None and recent_path.exists() and index_path.exists():
+            index = data.read_json(index_path)
+            count = int(index.get("totalRows", 0))
+            preview = _records(recent_path)[:5]
+        else:
+            count, preview = _recent_records(path, limit=5)
         items.append({
             "path": _rel(path),
             "exists": path.exists(),
@@ -386,6 +405,31 @@ def history_file_summary() -> dict[str, Any]:
 
 
 def virtual_operation_history(market: str | None = None, mode: str | None = None, limit: int = 250) -> dict[str, Any]:
+    if VIRTUAL_HISTORY_RECENT_FILE.exists():
+        rows = _records(VIRTUAL_HISTORY_RECENT_FILE)
+        if market in MARKETS:
+            rows = [row for row in rows if str(row.get("market", "")).lower() == market]
+        if mode in MODES:
+            rows = [row for row in rows if str(row.get("mode", "")).lower() == mode]
+        rows.sort(key=lambda row: str(row.get("created_at", "")), reverse=True)
+        index = data.read_json(VIRTUAL_HISTORY_INDEX_FILE)
+        counts = index.get("counts", {}) if isinstance(index, dict) else {}
+        if market in MARKETS and mode in MODES:
+            count = int(counts.get("marketMode", {}).get(f"{market}|{mode}", len(rows)))
+        elif market in MARKETS:
+            count = int(counts.get("market", {}).get(market, len(rows)))
+        elif mode in MODES:
+            count = int(counts.get("mode", {}).get(mode, len(rows)))
+        else:
+            count = int(counts.get("all", len(rows)))
+        return {
+            "status": "OK",
+            "source": _rel(VIRTUAL_HISTORY_RECENT_FILE),
+            "ledgerSource": _rel(VIRTUAL_HISTORY_FILE),
+            "count": count,
+            "items": rows[:limit],
+        }
+
     count, rows = _recent_records(
         VIRTUAL_HISTORY_FILE,
         limit=limit,

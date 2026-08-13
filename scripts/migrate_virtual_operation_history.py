@@ -64,6 +64,29 @@ def main() -> int:
     args = parser.parse_args()
     for ledger in LEDGERS:
         print(migrate(ledger, remove_source=args.remove_source))
+
+    backend_dir = REPO_ROOT / "mone-web-app" / "backend"
+    import sys
+    if str(backend_dir) not in sys.path:
+        sys.path.insert(0, str(backend_dir))
+    from app.services.operation_history_storage import rebuild_sidecar
+
+    history_source = REPO_ROOT / "data/history/virtual_operation_history.csv.gz"
+    evaluation_source = REPO_ROOT / "data/history/virtual_operation_evaluation.csv.gz"
+    if history_source.exists():
+        metadata = rebuild_sidecar(
+            history_source,
+            REPO_ROOT / "data/history/virtual_operation_history_recent.csv",
+            REPO_ROOT / "data/history/virtual_operation_history_index.json",
+        )
+        print(f"history sidecar: {metadata['recentRows']} recent / {metadata['totalRows']} total")
+    if evaluation_source.exists():
+        metadata = rebuild_sidecar(
+            evaluation_source,
+            REPO_ROOT / "data/history/virtual_operation_evaluation_recent.csv",
+            REPO_ROOT / "data/history/virtual_operation_evaluation_index.json",
+        )
+        print(f"evaluation sidecar: {metadata['recentRows']} recent / {metadata['totalRows']} total")
     return 0
 
 
