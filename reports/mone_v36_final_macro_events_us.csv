@@ -1,6 +1,6 @@
 ﻿market,sourceType,symbol,name,date,title,badges,badgeText,riskScore,action,source,dday
-us,뉴스,SCHD,SCHD,1783468362,If I Could Only Buy Two High-Yield Stocks In July 2026,"['매크로 주의', '실적 이벤트']",매크로 주의 · 실적 이벤트,35,신규 진입 기준 강화,reports/news_summary_us.csv,
-us,뉴스,LRCX,LRCX,1784030220,Dow opens higher after soft CPI and good bank earnings offset IBM shocker,"['매크로 주의', '실적 이벤트']",매크로 주의 · 실적 이벤트,35,신규 진입 기준 강화,reports/news_summary_us.csv,
+us,뉴스,AI,AI,1784977200,"Big Tech Earnings, Fed's Interest Rate Decision To Keep Next Week Busy","['매크로 주의', '실적 이벤트', '재료 소멸 주의']",매크로 주의 · 실적 이벤트 · 재료 소멸 주의,51,신규 진입 기준 강화,reports/news_summary_us.csv,
+us,뉴스,AAOI,AAOI,1784120518,"Memory-Chip Selloff Drags Nasdaq 100 Lower, SanDisk Sinks 13%: Stock Market Today","['매크로 주의', '실적 이벤트']",매크로 주의 · 실적 이벤트,35,신규 진입 기준 강화,reports/news_summary_us.csv,
 us,일정,,CPI,2026-06-10,CPI,['매크로 주의'],매크로 주의 D-65,24,근거 확인 후 유지,data/calendar/macro_calendar.csv,-65.0
 us,일정,,CPI s.a,2026-06-10,CPI s.a,['매크로 주의'],매크로 주의 D-65,24,근거 확인 후 유지,data/calendar/macro_calendar.csv,-65.0
 us,일정,,Core PPI MoM,2026-06-11,Core PPI MoM,['매크로 주의'],매크로 주의 D-64,24,근거 확인 후 유지,data/calendar/macro_calendar.csv,-64.0
@@ -19,57 +19,41 @@ us,일정,,PCE Price Index YoY,2026-06-25,PCE Price Index YoY,['매크로 주의
 us,일정,,PCE Prices QoQ Final,2026-06-25,PCE Prices QoQ Final,['매크로 주의'],매크로 주의 D-50,24,근거 확인 후 유지,data/calendar/macro_calendar.csv,-50.0
 us,일정,CPIX,CPIX,2026-08-03,CPIX,['매크로 주의'],매크로 주의 D-11,24,근거 확인 후 유지,data/calendar/earnings_calendar.csv,-11.0
 us,일정,SPCE,SPCE,2026-08-04,SPCE,['매크로 주의'],매크로 주의 D-10,24,근거 확인 후 유지,data/calendar/earnings_calendar.csv,-10.0
-us,뉴스,ASML,ASML,1784208063,"Bernstein sets Street-high ASML target as capacity, pricing and margins all beat",['매크로 주의'],매크로 주의,20,신규 진입 기준 강화,reports/news_summary_us.csv,
-us,뉴스,ASML,ASML,1784214979,Intel (INTC) Reaches High NA EUV Milestone And Brings YOLO26 To OpenVINO,['매크로 주의'],매크로 주의,20,신규 진입 기준 강화,reports/news_summary_us.csv,
-us,뉴스,BAC,BAC,1784676602,This High-Yield Bank Stock Just Raised Its Dividend by 11%,['매크로 주의'],매크로 주의,20,신규 진입 기준 강화,reports/news_summary_us.csv,
-us,뉴스,BAC,BAC,1784730000,NFL Raises More Than $600 Million With High-Grade Private Bonds,['매크로 주의'],매크로 주의,20,신규 진입 기준 강화,reports/news_summary_us.csv,
-us,뉴스,BAC,BAC,1784784600,Why Bank Stocks May Beat REITs for Dividends,['매크로 주의'],매크로 주의,20,신규 진입 기준 강화,reports/news_summary_us.csv,
-us,뉴스,SCHD,SCHD,1782839911,"Building A $100,000 Dividend Portfolio With SCHD And July's Top High-Yield Picks",['매크로 주의'],매크로 주의,20,신규 진입 기준 강화,reports/news_summary_us.csv,
-us,뉴스,SCHD,SCHD,1782874510,Top 25 High-Yield Dividend Stocks For July 2026,['매크로 주의'],매크로 주의,20,신규 진입 기준 강화,reports/news_summary_us.csv,
-us,뉴스,SCHD,SCHD,1782897300,Two 7%+ Yielding Retirement Picks That I'd Buy For Income Growth,['매크로 주의'],매크로 주의,20,신규 진입 기준 강화,reports/news_summary_us.csv,
-us,뉴스,SCHD,SCHD,1783149515,SCHD's Yield Isn't Worth The Awful Disappointment,['매크로 주의'],매크로 주의,20,신규 진입 기준 강화,reports/news_summary_us.csv,
-us,뉴스,SCHD,SCHD,1783436425,Piedmont Realty Trust: This Office REIT's Dividend Comeback Is Taking Shape,['매크로 주의'],매크로 주의,20,신규 진입 기준 강화,reports/news_summary_us.csv,
-us,뉴스,SCHD,SCHD,1783670400,Start Investing At 60 And Retire On Dividends Forever,['매크로 주의'],매크로 주의,20,신규 진입 기준 강화,reports/news_summary_us.csv,
+us,뉴스,AAPL,AAPL,1786039775,Qualcomm's Largest Revenue Line Is Shrinking From Both Sides,['매크로 주의'],매크로 주의,20,신규 진입 기준 강화,reports/news_summary_us.csv,
+us,뉴스,ALAB,ALAB,1782838234,What Astera Labs Stock Was Telling You About Its AI Fabric Ambitions,['매크로 주의'],매크로 주의,20,신규 진입 기준 강화,reports/news_summary_us.csv,
+us,뉴스,AMD,AMD,1785969717,"Dow closes at record on Mideast optimism; SpaceX, AMD drag Nasdaq",['매크로 주의'],매크로 주의,20,신규 진입 기준 강화,reports/news_summary_us.csv,
+us,뉴스,AMZN,AMZN,1786124799,How Whatnot’s founders turned 100 investor rejections into an $20 billion live-shopping rocket ship,['매크로 주의'],매크로 주의,20,신규 진입 기준 강화,reports/news_summary_us.csv,
 us,뉴스,,종목,2026-07-21T06:15:00Z,Should You Buy SpaceX Stock 11% Below Its IPO Price?,['재료 소멸 주의'],재료 소멸 주의,16,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,CRM,CRM,1784908045,I Haven’t Stopped Buying Salesforce For This Reason,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,CRM,CRM,1785058208,"Consumer Tech (July 20-24): AI Boom Drives Big Tech Earnings, Oracle Grabs $7B Defense Deal & More",['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,ASML,ASML,1784200200,3 Reasons Why Micron Stock Keeps Falling,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,ASML,ASML,1784203903,"Dow Jones Futures Rise But AI Woes Continue; Taiwan Semi, GE, UnitedHealth Are Key Earnings Movers",['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,ASML,ASML,1784207127,TSMC Q2: Still One Of The Best AI Stocks To Own,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,ASML,ASML,1784210040,"ASML Holding's Q2 Earnings Beat Estimates, Revenues Rise Y/Y",['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,ASML,ASML,1784210400,ASML Q2 Earnings Call Lifts Outlook on AI-Driven Demand,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,ASML,ASML,1784211511,Korea Drives Semi Stocks Lower Despite Solid Taiwan Semi Earnings; Apple Boosts China AI Models,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,ASML,ASML,1784212506,"Price Prediction: ASML Could Hit $2,000+ in 12 Months With AI Demand Fueling Lithography Growth",['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,ASML,ASML,1784224200,"Should You Buy, Sell or Hold ASML Stock Post Q2 Earnings?",['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,BAC,BAC,1784675669,Bank of America (BAC) Preferred Dividend Update Keeps Valuation In Focus,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,BAC,BAC,1784715028,Stumbling Stock Rally Looks to Earnings for Second Half Boost,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,BAC,BAC,1784716500,What Bank Earnings Just Revealed About the Health of the American Consumer,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,BAC,BAC,1784746620,Amazon heads into earnings with Wall Street betting big on AWS,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,BAC,BAC,1784747580,Bank of America doubles down on Micron stock after AI bombshell,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,RXRX,RXRX,1785328200,Recursion to Report Second Quarter 2026 Business Updates and Financial Results on August 5th,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,RXRX,RXRX,1785911460,"Recursion Pharmaceuticals Q2 EPS $(0.25) Misses $(0.22) Estimate, Sales $7.670M Miss $11.947M Estimate",['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,RXRX,RXRX,1785930305,"Recursion Pharmaceuticals (RXRX) Reports Q2 Loss, Misses Revenue Estimates",['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,RXRX,RXRX,1785933602,"Recursion Pharmaceuticals, Inc. (RXRX) Q2 2026 Earnings Call Transcript",['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,RXRX,RXRX,1785956642,Recursion Pharmaceuticals Q2 Earnings Call Highlights,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,RXRX,RXRX,1785968811,"Recursion Pharmaceuticals, Inc. Q2 2026 Earnings Call Summary",['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,LYFT,LYFT,1785854972,Uber Earnings Prediction Market Preview: What Will Dara Khosrowshahi Say?,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,LYFT,LYFT,1785990656,Stock Market: Will S&P 500 Open Up or Down Today?,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,LYFT,LYFT,1786013106,Lyft Earnings Prediction Market Preview: What Will David Risher Say?,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,LYFT,LYFT,1786032394,"Lyft Q2 EPS $0.13 Misses $0.15 Estimate, Sales $1.844B Beat $1.807B Estimate",['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,LYFT,LYFT,1786035164,"Lyft Reports Mixed Q2: Earnings Miss, Revenue Beats, Record Active Riders",['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,MU,MU,1785997036,"Bigger Earnings, Bigger Drop: The Sandisk Selloff Explained",['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,MU,MU,1785999282,Micron Technology Stock Is Falling Thursday: What's Going On?,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,MU,MU,1786009447,AI momentum stocks tumble as earnings season shakes the tech sector,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,MU,MU,1786010288,Western Digital Stock’s Worst Drop Since March 2020: History Offers a Bullish Signal,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,MU,MU,1786012440,"Zacks Earnings Trends Highlights: Micron's , Alphabet's and Nvidia",['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,MU,MU,1786012778,AI momentum stocks retreat as earnings season sparks technology selloff,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,MU,MU,1786012920,"Sandisk, AppLovin, Moderna, and More Stocks That Explain Today’s Market",['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,MU,MU,1786015200,This Comment From Apple CEO Tim Cook Supports Buying the Dip in Micron Stock,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,MU,MU,1786016640,Why Micron and Other Memory Stocks Are Taking Another Hit,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,MU,MU,1786020780,"Sandisk, Western Digital, D-Wave, IonQ, AppLovin, Datadog, and More Stocks That Explain Today’s Market",['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,LRCX,LRCX,1784033296,"Update: US Equity Futures Mixed Pre-Bell as Middle East Tensions Intensify, Major US Banks Post Earnings",['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,LRCX,LRCX,1784115311,Chip stocks rise on ASML earnings despite U.S. strikes on Iran,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
-us,뉴스,LRCX,LRCX,1784127506,"TD Cowen Raises PT on Lam Research (LRCX), Keeps a Buy",['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
+us,뉴스,ALAB,ALAB,1782911160,"6 Market Experts Sound Off On AI, Tech, Hot IPOs, And Top Stocks For 2026",['재료 소멸 주의'],재료 소멸 주의,16,근거 확인 후 유지,reports/news_summary_us.csv,
+us,뉴스,ALAB,ALAB,1783084980,"US IPO Weekly Recap: Bending Spoons Shines In IPO, While Cumberland Farms And Jersey Mike's Join The Pipeline",['재료 소멸 주의'],재료 소멸 주의,16,근거 확인 후 유지,reports/news_summary_us.csv,
+us,뉴스,AAOI,AAOI,1784017088,Applied Optoelectronics' Worst Fears Return - I'm Still Buying,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
+us,뉴스,AAOI,AAOI,1784032717,"Goldman Sachs Posts Upbeat Q2 Earnings, Joins SK Hynix, Tower Semiconductor And Other Big Stocks Moving Higher On Tuesday",['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
+us,뉴스,AAOI,AAOI,1784641800,"Buying In Semiconductors On Iran Ceasefire Soap Opera, Earnings Hopium, And Korea",['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
+us,뉴스,AAPL,AAPL,1786031840,Stop Calling It A Bubble,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
+us,뉴스,AAPL,AAPL,1786041396,What Microsoft Stock's Thin Earnings Premium Is Actually Buying,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
+us,뉴스,AAPL,AAPL,1786047540,MP Earnings Show Chinese Rare-Earth Monopoly Is Fading,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
+us,뉴스,AAPL,AAPL,1786081500,Snap’s 2 Big Problems That Scream ‘Stay Away From the Stock’,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
+us,뉴스,AAPL,AAPL,1786096020,Tech Stocks Under Pressure: 1 Magnificent ETF to Buy on the Dip,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
+us,뉴스,AAPL,AAPL,1786096800,Tariff refunds boost quarterly earnings for some of biggest US companies,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
+us,뉴스,ABBV,ABBV,1783684953,JNJ Stock Keeps Climbing. Should You Climb On?,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
+us,뉴스,ABBV,ABBV,1783714594,"Amazon, Microsoft and Meta Among HSBC Earnings Picks",['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
+us,뉴스,ABNB,ABNB,1783016988,Own ABNB Stock? Here Is How To Collect 14% A Year On It,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
+us,뉴스,ABNB,ABNB,1783169700,Why Flywire and Airbnb Could Be Quiet Winners of a Ceasefire,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
+us,뉴스,ACHR,ACHR,1784542102,"AMC Entertainment, IREN, Hut 8 And Other Big Stocks Moving Higher On Monday",['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
+us,뉴스,ACHR,ACHR,1784708923,"Jim Cramer Likes Truist, But Prefers This Financial Stock",['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
+us,뉴스,ACHR,ACHR,1784814279,Why Is Robinhood Stock Falling on Thursday?,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
+us,뉴스,ALAB,ALAB,1783162833,Astera Labs Inc (NASDAQ:ALAB) Explosive Growth Potential Identified by Little Book Strategy,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
+us,뉴스,AMAT,AMAT,1784897040,LRCX Poised for a Q4 Earnings Surprise: Should You Buy the Stock Now?,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
+us,뉴스,AMAT,AMAT,1784906040,"KLA's Q4 Earnings Loom: Buy, Sell or Hold the KLAC Stock?",['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
+us,뉴스,AMAT,AMAT,1785163920,3 Semiconductor Stocks Likely to Outpace Q2 Earnings Estimates,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
+us,뉴스,AMAT,AMAT,1785169727,Applied Materials Stock Keeps Winning Upgrades: Is Michael Burry Dead Wrong to Short This Semiconductor Gem?,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
+us,뉴스,AMAT,AMAT,1785176167,3 Reasons Lam Research Is Worth a Closer Look Before July 29 Q4 Earnings,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
+us,뉴스,AMD,AMD,1785953674,Wall Street Doubles Down on AMD After Selloff,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
+us,뉴스,AMD,AMD,1785955380,"SpaceX, Alphabet, Nvidia, Micron, AMD, Uber, CVS, Lilly, and More Stocks That Explain Today’s Market",['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
+us,뉴스,AMD,AMD,1785960011,AMD Stock Drops 6.9% Despite Record $11.5 Billion Revenue,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
+us,뉴스,AMD,AMD,1785965914,"Dow Jones Futures: Nvidia Lifts Dow, But Google, SpaceX Skid; Sandisk, Western Digital Lead Earnings Losers Late",['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
+us,뉴스,AMD,AMD,1785973939,"$10,000 in AMDL Became $40,270 in 7 Months, but AMD’s Earnings Crash Erased $9,500 in One Day",['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
+us,뉴스,AMD,AMD,1785989990,One Massive AI Hardware Truth Keeps Me Loading Up On AMAT Ahead of Aug. 13 Earnings Print,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,reports/news_summary_us.csv,
 us,일정,HIPO,HIPO,2026-08-04,HIPO,['이벤트 주의'],이벤트 주의 D-10,14,근거 확인 후 유지,data/calendar/earnings_calendar.csv,-10.0
 us,일정,,MBA 30-Year Mortgage Rate,2026-06-10,MBA 30-Year Mortgage Rate,['이벤트 주의'],이벤트 주의 D-65,4,근거 확인 후 유지,data/calendar/macro_calendar.csv,-65.0
 us,일정,,MBA Mortgage Applications,2026-06-10,MBA Mortgage Applications,['이벤트 주의'],이벤트 주의 D-65,4,근거 확인 후 유지,data/calendar/macro_calendar.csv,-65.0
@@ -79,3 +63,19 @@ us,일정,,MBA Purchase Index,2026-06-10,MBA Purchase Index,['이벤트 주의']
 us,일정,,Core Inflation Rate MoM,2026-06-10,Core Inflation Rate MoM,['이벤트 주의'],이벤트 주의 D-65,4,근거 확인 후 유지,data/calendar/macro_calendar.csv,-65.0
 us,일정,,Core Inflation Rate YoY,2026-06-10,Core Inflation Rate YoY,['이벤트 주의'],이벤트 주의 D-65,4,근거 확인 후 유지,data/calendar/macro_calendar.csv,-65.0
 us,일정,,Inflation Rate MoM,2026-06-10,Inflation Rate MoM,['이벤트 주의'],이벤트 주의 D-65,4,근거 확인 후 유지,data/calendar/macro_calendar.csv,-65.0
+us,일정,,Inflation Rate YoY,2026-06-10,Inflation Rate YoY,['이벤트 주의'],이벤트 주의 D-65,4,근거 확인 후 유지,data/calendar/macro_calendar.csv,-65.0
+us,일정,,EIA Crude Oil Imports Change,2026-06-10,EIA Crude Oil Imports Change,['이벤트 주의'],이벤트 주의 D-65,4,근거 확인 후 유지,data/calendar/macro_calendar.csv,-65.0
+us,일정,,EIA Crude Oil Stocks Change,2026-06-10,EIA Crude Oil Stocks Change,['이벤트 주의'],이벤트 주의 D-65,4,근거 확인 후 유지,data/calendar/macro_calendar.csv,-65.0
+us,일정,,EIA Cushing Crude Oil Stocks Change,2026-06-10,EIA Cushing Crude Oil Stocks Change,['이벤트 주의'],이벤트 주의 D-65,4,근거 확인 후 유지,data/calendar/macro_calendar.csv,-65.0
+us,일정,,EIA Distillate Fuel Production Change,2026-06-10,EIA Distillate Fuel Production Change,['이벤트 주의'],이벤트 주의 D-65,4,근거 확인 후 유지,data/calendar/macro_calendar.csv,-65.0
+us,일정,,EIA Distillate Stocks Change,2026-06-10,EIA Distillate Stocks Change,['이벤트 주의'],이벤트 주의 D-65,4,근거 확인 후 유지,data/calendar/macro_calendar.csv,-65.0
+us,일정,,EIA Gasoline Production Change,2026-06-10,EIA Gasoline Production Change,['이벤트 주의'],이벤트 주의 D-65,4,근거 확인 후 유지,data/calendar/macro_calendar.csv,-65.0
+us,일정,,EIA Gasoline Stocks Change,2026-06-10,EIA Gasoline Stocks Change,['이벤트 주의'],이벤트 주의 D-65,4,근거 확인 후 유지,data/calendar/macro_calendar.csv,-65.0
+us,일정,,EIA Heating Oil Stocks Change,2026-06-10,EIA Heating Oil Stocks Change,['이벤트 주의'],이벤트 주의 D-65,4,근거 확인 후 유지,data/calendar/macro_calendar.csv,-65.0
+us,일정,,EIA Refinery Crude Runs Change,2026-06-10,EIA Refinery Crude Runs Change,['이벤트 주의'],이벤트 주의 D-65,4,근거 확인 후 유지,data/calendar/macro_calendar.csv,-65.0
+us,일정,,17-Week Bill Auction,2026-06-10,17-Week Bill Auction,['이벤트 주의'],이벤트 주의 D-65,4,근거 확인 후 유지,data/calendar/macro_calendar.csv,-65.0
+us,일정,,10-Year Note Auction,2026-06-10,10-Year Note Auction,['이벤트 주의'],이벤트 주의 D-65,4,근거 확인 후 유지,data/calendar/macro_calendar.csv,-65.0
+us,일정,,Monthly Budget Statement,2026-06-10,Monthly Budget Statement,['이벤트 주의'],이벤트 주의 D-65,4,근거 확인 후 유지,data/calendar/macro_calendar.csv,-65.0
+us,일정,,Continuing Jobless Claims,2026-06-11,Continuing Jobless Claims,['이벤트 주의'],이벤트 주의 D-64,4,근거 확인 후 유지,data/calendar/macro_calendar.csv,-64.0
+us,일정,,Initial Jobless Claims,2026-06-11,Initial Jobless Claims,['이벤트 주의'],이벤트 주의 D-64,4,근거 확인 후 유지,data/calendar/macro_calendar.csv,-64.0
+us,일정,,Jobless Claims 4-week Average,2026-06-11,Jobless Claims 4-week Average,['이벤트 주의'],이벤트 주의 D-64,4,근거 확인 후 유지,data/calendar/macro_calendar.csv,-64.0
