@@ -1,18 +1,18 @@
 {
-  "generatedAt": "2026-08-12T23:30:15.248542+00:00",
+  "generatedAt": "2026-08-13T09:15:49.693722+00:00",
   "since": null,
   "market": "all",
   "strategyFingerprint": "LEGACY_UNFINGERPRINTED",
   "sampleUnit": "UNIQUE_AS_OF_DATE_MARKET_SYMBOL",
   "method": "Pre-event market-model CAR. KR uses KOSPI/KOSDAQ by listing market; US uses SPY. Inference resamples equal-weight market-date blocks instead of recommendation rows.",
   "reference": "virattt/ai-hedge-fund v2/event_study (recommendation date as event)",
-  "events": 327,
+  "events": 337,
   "skipped": {
     "noOhlcv": 0,
     "noBenchmark": 0,
     "shortEstimation": 10,
     "noBenchmarkDate": 0,
-    "shortEventWindow": 60,
+    "shortEventWindow": 50,
     "replaySource": 1298,
     "beforeSince": 0,
     "marketMismatch": 0,
@@ -20,92 +20,92 @@
   },
   "windows": {
     "D+1": {
-      "events": 327,
-      "independentMarketDateBlocks": 26,
-      "meanCarPct": -0.3873,
-      "blockMeanCarPct": 0.2879,
-      "meanRawReturnPct": -0.5526,
-      "marketComponentPct": -0.1653,
-      "positiveShare": 0.474,
-      "tStat": 0.378,
-      "pValue": 0.7056,
+      "events": 337,
+      "independentMarketDateBlocks": 28,
+      "meanCarPct": -0.4061,
+      "blockMeanCarPct": 0.2891,
+      "meanRawReturnPct": -0.5722,
+      "marketComponentPct": -0.1661,
+      "positiveShare": 0.4777,
+      "tStat": 0.406,
+      "pValue": 0.68459,
       "significant": false,
       "bootstrapCi95": [
-        -1.0797,
-        1.8435
+        -1.0086,
+        1.7326
       ],
       "naiveRowInference": {
-        "tStat": -1.245,
-        "pValue": 0.21311,
+        "tStat": -1.325,
+        "pValue": 0.18509,
         "bootstrapCi95": [
-          -0.9967,
-          0.2177
+          -0.9973,
+          0.206
         ],
         "usableForPromotion": false
       },
-      "sampleWarning": "Only 26 independent market-date blocks; need 30.",
+      "sampleWarning": "Only 28 independent market-date blocks; need 30.",
       "significanceUsable": false
     },
     "D+5": {
-      "events": 327,
-      "independentMarketDateBlocks": 26,
-      "meanCarPct": -1.9778,
-      "blockMeanCarPct": -1.5145,
-      "meanRawReturnPct": -1.8474,
-      "marketComponentPct": 0.1304,
-      "positiveShare": 0.4709,
-      "tStat": -1.673,
-      "pValue": 0.09426,
+      "events": 337,
+      "independentMarketDateBlocks": 28,
+      "meanCarPct": -2.015,
+      "blockMeanCarPct": -1.3407,
+      "meanRawReturnPct": -1.9058,
+      "marketComponentPct": 0.1092,
+      "positiveShare": 0.4718,
+      "tStat": -1.508,
+      "pValue": 0.1315,
       "significant": false,
       "bootstrapCi95": [
-        -3.2386,
-        0.2291
+        -3.0763,
+        0.3636
       ],
       "naiveRowInference": {
-        "tStat": -3.49,
-        "pValue": 0.00048,
+        "tStat": -3.63,
+        "pValue": 0.00028,
         "bootstrapCi95": [
-          -3.1127,
-          -0.8731
+          -3.1334,
+          -0.9485
         ],
         "usableForPromotion": false
       },
-      "sampleWarning": "Only 26 independent market-date blocks; need 30.",
+      "sampleWarning": "Only 28 independent market-date blocks; need 30.",
       "significanceUsable": false
     },
     "D+20": {
-      "events": 327,
-      "independentMarketDateBlocks": 26,
-      "meanCarPct": -6.0856,
-      "blockMeanCarPct": -4.1275,
-      "meanRawReturnPct": -6.8669,
-      "marketComponentPct": -0.7813,
-      "positiveShare": 0.4251,
-      "tStat": -2.24,
-      "pValue": 0.02511,
+      "events": 337,
+      "independentMarketDateBlocks": 28,
+      "meanCarPct": -5.8747,
+      "blockMeanCarPct": -3.4608,
+      "meanRawReturnPct": -6.5375,
+      "marketComponentPct": -0.6629,
+      "positiveShare": 0.4303,
+      "tStat": -1.933,
+      "pValue": 0.05328,
       "significant": false,
       "bootstrapCi95": [
-        -7.6368,
-        -0.4225
+        -6.876,
+        0.0215
       ],
       "naiveRowInference": {
-        "tStat": -5.923,
+        "tStat": -5.824,
         "pValue": 0.0,
         "bootstrapCi95": [
-          -8.1298,
-          -4.0936
+          -7.8939,
+          -3.9554
         ],
         "usableForPromotion": false
       },
-      "sampleWarning": "Only 26 independent market-date blocks; need 30.",
+      "sampleWarning": "Only 28 independent market-date blocks; need 30.",
       "significanceUsable": false
     }
   },
   "status": "OK",
-  "avgBeta": 1.577,
+  "avgBeta": 1.566,
   "eventsByMarket": {
-    "kr": 78,
-    "us": 249
+    "kr": 79,
+    "us": 258
   },
   "benchmarks": [
     "kr:KOSDAQ",
@@ -114,11 +114,11 @@
   ],
   "eventDateRange": {
     "min": "2026-06-18",
-    "max": "2026-07-14"
+    "max": "2026-07-15"
   },
   "eventsByMonth": {
     "2026-06": 223,
-    "2026-07": 104
+    "2026-07": 114
   },
   "caveats": [
     "Long event windows exclude recent signals and bias the sample toward older cohorts.",
@@ -127,10 +127,10 @@
     "US sector benchmarks are not yet applied; US residuals currently use SPY."
   ],
   "clustering": {
-    "distinctEventDates": 18,
-    "distinctMarketDateBlocks": 26,
-    "calendarSpanDays": 27,
-    "eventsPerDate": 12.6,
+    "distinctEventDates": 19,
+    "distinctMarketDateBlocks": 28,
+    "calendarSpanDays": 28,
+    "eventsPerDate": 12.0,
     "isClustered": true,
     "inferenceMethod": "EQUAL_MARKET_DATE_BLOCK_BOOTSTRAP",
     "minBlocksForUse": 30,
