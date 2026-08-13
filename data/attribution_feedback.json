@@ -1,7 +1,7 @@
 {
   "status": "OK",
   "market": "all",
-  "sampleCount": 701,
+  "sampleCount": 705,
   "excludedInconsistentOutcomeCount": 3,
   "excludedBySourcePolicyCount": 1298,
   "calibrationBasis": "forward_only(SOURCE_CALIBRATION_WEIGHTS>0)",
@@ -18,20 +18,20 @@
       "sourceType": "FORWARD_PAPER_TRADE",
       "calibrationWeight": 1.0,
       "admissible": true,
-      "n": 704,
-      "winRate": 0.2358,
-      "avgPnlPct": -4.361
+      "n": 708,
+      "winRate": 0.2401,
+      "avgPnlPct": -4.28
     }
   ],
-  "baseWinRate": 0.2325,
-  "baseAvgPnlPct": -4.384,
-  "generatedAt": "2026-08-12T21:50:35",
+  "baseWinRate": 0.2369,
+  "baseAvgPnlPct": -4.303,
+  "generatedAt": "2026-08-13T17:41:20",
   "autoApplied": false,
   "manualApprovalRequired": true,
   "calibrationSummary": {
-    "suggestedCount": 18,
+    "suggestedCount": 19,
     "approvedCount": 0,
-    "pendingReviewCount": 41,
+    "pendingReviewCount": 42,
     "applyEndpoint": "/api/journal/calibration/apply-approved"
   },
   "adjustments": [
@@ -88,14 +88,14 @@
       "manualApprovalRequired": true
     },
     {
-      "feedbackId": "922cc57eed20b4105445",
+      "feedbackId": "81f3903c25ff66a23b20",
       "market": "all",
       "mode": "balanced",
       "horizon": "swing",
-      "n": 49,
-      "winRate": 0.1837,
-      "avgPnlPct": -6.114,
-      "multiplier": 0.572,
+      "n": 50,
+      "winRate": 0.2,
+      "avgPnlPct": -5.887,
+      "multiplier": 0.59,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true
@@ -127,14 +127,14 @@
       "manualApprovalRequired": true
     },
     {
-      "feedbackId": "045db5cd46d2cfd268e2",
+      "feedbackId": "6a9c1f60d8da59589a89",
       "market": "all",
       "mode": "aggressive",
       "horizon": "swing",
-      "n": 100,
-      "winRate": 0.17,
-      "avgPnlPct": -6.08,
-      "multiplier": 0.567,
+      "n": 103,
+      "winRate": 0.1942,
+      "avgPnlPct": -5.568,
+      "multiplier": 0.599,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true

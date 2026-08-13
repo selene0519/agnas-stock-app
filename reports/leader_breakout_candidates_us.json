@@ -1,24 +1,24 @@
 {
   "version": "leader-breakout-v1",
   "market": "us",
-  "asOf": "2026-08-11",
+  "asOf": "2026-08-12",
   "status": "OK",
   "usBackdropFavorable": true,
-  "scanned": 130,
+  "scanned": 129,
   "validatedEdge": {
     "note": "leader breakout only holds up on SPY>MA50; deep 2014-2026 train+OOS forward-return, not cost/trade-sim"
   },
   "candidates": [
     {
-      "symbol": "S",
-      "asOf": "2026-08-11",
-      "entry": 22.46,
-      "stop": 17.82,
-      "target": 31.74,
+      "symbol": "NBIS",
+      "asOf": "2026-08-12",
+      "entry": 259.2,
+      "stop": 169.08,
+      "target": 439.44,
       "rrRatio": 2.0,
-      "ret60Pct": 36.04,
-      "posRange250": 1.0,
-      "volRatio50": 1.56,
+      "ret60Pct": 17.85,
+      "posRange250": 0.877,
+      "volRatio50": 3.1,
       "setup": "LEADER_BREAKOUT"
     }
   ],
