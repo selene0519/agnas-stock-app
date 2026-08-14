@@ -1,27 +1,14 @@
 {
   "version": "leader-breakout-v1",
   "market": "us",
-  "asOf": "2026-08-13",
+  "asOf": "2026-08-14",
   "status": "OK",
   "usBackdropFavorable": true,
   "scanned": 130,
   "validatedEdge": {
     "note": "leader breakout only holds up on SPY>MA50; deep 2014-2026 train+OOS forward-return, not cost/trade-sim"
   },
-  "candidates": [
-    {
-      "symbol": "ESTC",
-      "asOf": "2026-08-13",
-      "entry": 86.03,
-      "stop": 63.2,
-      "target": 131.69,
-      "rrRatio": 2.0,
-      "ret60Pct": 59.58,
-      "posRange250": 0.835,
-      "volRatio50": 2.46,
-      "setup": "LEADER_BREAKOUT"
-    }
-  ],
+  "candidates": [],
   "heldForUnfavorableBackdrop": [],
   "note": "Research/paper only. Feed the paper loop for live proof before promotion."
 }
