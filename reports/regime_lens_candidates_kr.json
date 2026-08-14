@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-08-13T23:41:33.112364+00:00",
-  "asOfDate": "2026-08-13",
+  "generatedAt": "2026-08-14T07:15:31.710369+00:00",
+  "asOfDate": "2026-08-14",
   "market": "kr",
   "marketRegime": "BEAR",
-  "breadthAboveMa60": 0.304,
+  "breadthAboveMa60": 0.37,
   "activeLens": "BOTTOM_CATCH",
   "activeSetupByRegime": {
     "BULL": [
@@ -20,8 +20,41 @@
   "selfCalibrated": true,
   "liveSamplesTotal": 21,
   "universeSize": 106,
-  "candidateCount": 0,
-  "actionableCount": 0,
+  "candidateCount": 2,
+  "actionableCount": 1,
   "disclaimer": "생존편향(현상장 glob만)로 백테스트 낙관. actionable(ACTIVE)만 자가보정 통과 — 실사이징은 라이브 VTJ forward 검증 후.",
-  "candidates": []
+  "candidates": [
+    {
+      "symbol": "352820",
+      "name": "하이브",
+      "setup": "BOTTOM_CATCH",
+      "asOfDate": "2026-08-14",
+      "close": 179400.0,
+      "entryRef": 179400.0,
+      "stop": 173557,
+      "target": 193752,
+      "rrRatio": 2.46,
+      "rsi14": 26.3,
+      "distMa20Pct": -4.1,
+      "calibrationGate": "ACTIVE",
+      "sizeMultiplier": 0.51,
+      "actionable": true
+    },
+    {
+      "symbol": "078930",
+      "name": "GS",
+      "setup": "BREAKOUT",
+      "asOfDate": "2026-08-14",
+      "close": 117000.0,
+      "entryRef": 117000.0,
+      "stop": 112320,
+      "target": 126360,
+      "rrRatio": 2.0,
+      "rsi14": 72.6,
+      "distMa20Pct": 25.0,
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
+    }
+  ]
 }
