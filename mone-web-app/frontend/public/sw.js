@@ -1,12 +1,12 @@
-const CACHE = "mone-v13";
+const CACHE = "mone-v14";
 const STATIC = [
   "/manifest.json",
   "/loading/mone-logo.png",
-  "/icons/splash-logo-v2-192.png",
-  "/icons/splash-logo-v2-512.png",
-  "/icons/splash-maskable-v2-192.png",
-  "/icons/splash-maskable-v2-512.png",
-  "/icons/apple-touch-logo-v2.png",
+  "/icons/splash-logo-v2-192.png?v=3",
+  "/icons/splash-logo-v2-512.png?v=3",
+  "/icons/splash-maskable-v2-192.png?v=3",
+  "/icons/splash-maskable-v2-512.png?v=3",
+  "/icons/apple-touch-logo-v2.png?v=3",
 ];
 const OFFLINE_FALLBACK = "/__offline";
 

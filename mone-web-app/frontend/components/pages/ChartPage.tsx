@@ -2775,6 +2775,11 @@ export default function ChartPage() {
   const companyState = companyStatusCard(company, loadState);
   const companyCoverage = company ? companyDataCoverage(company) : null;
   const loadingData = loading || ["IDLE", "LOADING"].includes(String(loadState.ohlcvStatus || "").toUpperCase());
+  const hasRecommendationBasis = Boolean(levels && (
+    recommendationDisplayScore(levels) > 0
+    || levelValue(levels, "entry") > 0
+    || num(levels?.expectedValue ?? levels?.ev) !== null
+  ));
   const dataCards = [
     {
       label: "OHLCV",
@@ -2782,7 +2787,7 @@ export default function ChartPage() {
       sub: loadingData && loadState.ohlcvCount === 0 ? "데이터 연결 확인 중" : `${loadStatusText(loadState.ohlcvStatus)} · ${freshness.label}`,
       cls: loadingData && loadState.ohlcvCount === 0 ? statusTone("warn") : loadState.ohlcvCount >= 20 ? freshness.cls : loadState.ohlcvCount > 0 ? statusTone("warn") : statusTone("bad"),
     },
-    { label: "추천선", value: loading && !levels ? "확인 중" : levels ? "연결됨" : "없음", sub: `${loadState.recCount}개 후보 검색`, cls: levels ? statusTone("ok") : statusTone("warn") },
+    { label: "추천선", value: loading && !levels ? "확인 중" : hasRecommendationBasis ? "연결됨" : "없음", sub: `${loadState.recCount}개 후보 검색`, cls: hasRecommendationBasis ? statusTone("ok") : statusTone("warn") },
     { label: "뉴스·공시", value: newsDisclosureState.value, sub: newsDisclosureState.sub, cls: newsDisclosureState.cls },
     { label: "기업분석", value: companyState.value, sub: companyState.sub, cls: companyState.cls },
   ];
@@ -2798,6 +2803,7 @@ export default function ChartPage() {
     strategyRefreshStatus === "loading" ? "전략 기준 확인 중"
     : hasDedicatedStrategyBasis ? "상세 데이터와 동기화됨"
     : "전용 추천 없음 · 공통 기준 표시";
+
   const moneConclusion = (() => {
     const source = levels || {};
     const ps = source.patternStrategy && typeof source.patternStrategy === "object" ? source.patternStrategy as Record<string, unknown> : null;
@@ -2841,7 +2847,7 @@ export default function ChartPage() {
       : actionCode === "WATCH_ONLY" || actionCode === "WAIT" ? "관찰"
       : actionCode === "WAIT_PULLBACK" ? "대기"
       : actionCode === "ENTER" || actionCode === "BUY" || actionCode === "STRONG_BUY" ? "진입 검토"
-      : actionText || (levels ? stance.label : "대기");
+      : hasRecommendationBasis ? actionText || stance.label : stance.label;
     const blockReason = rrBelowMinimum
       ? `목표 손익비가 ${rrActual?.toFixed(2)}배로 최소 기준 1.8배에 미달합니다.`
       : weakSignal ? `종목 신호가 ${score}점으로 약합니다.`
@@ -2854,10 +2860,12 @@ export default function ChartPage() {
       : actionCode === "WATCH_ONLY" || actionCode === "WAIT" ? "지금은 기다리고 눌림 후 다시 확인하세요."
       : actionCode === "WAIT_PULLBACK" ? "눌림 확인 후 기준가 근접까지 대기하세요."
       : actionCode === "ENTER" || actionCode === "BUY" || actionCode === "STRONG_BUY" ? "기준가 근접 시 진입 조건을 확인하세요."
-      : levels ? stance.detail : "추천선과 OHLCV 연결 후 최종 판단을 확정합니다.";
+      : hasRecommendationBasis ? stance.detail : `최신 OHLCV ${rows.length}봉 기준 기술 상태입니다. 추천 후보가 아니므로 진입 신호로 사용하지 않습니다.`;
     const displayAction = hardEntryBlock
       ? { label: "신규 진입 보류", tone: "caution" as const }
-      : marketBlocksEntry ? { label: "관찰 유지", tone: "caution" as const } : action;
+      : marketBlocksEntry ? { label: "관찰 유지", tone: "caution" as const }
+      : hasRecommendationBasis ? action
+      : { label: "기술 관찰", tone: "neutral" as const };
     return {
       headline,
       actionText: displayAction.label || "대기",
@@ -2871,8 +2879,8 @@ export default function ChartPage() {
       isGateBlocked: blocksNewEntry,
       rows: [
         { label: "신규 진입", value: newEntry, tone: blocksNewEntry ? "warn" as const : "ok" as const },
-        { label: "보유자", value: levels ? `손절선 ${stop} 이탈 전까지 관찰` : "추천선 연결 후 손절 기준을 확정합니다.", tone: "neutral" as const },
-        { label: "진입가/알림가", value: levels ? `1차 진입가 ${entry} · 관심 알림가는 별도 근접 알림 기준` : "진입가 확정 후 알림 기준을 설정합니다.", tone: "neutral" as const },
+        { label: "보유자", value: hasRecommendationBasis ? `손절선 ${stop} 이탈 전까지 관찰` : atrPlan ? `ATR 기술 손절선 ${money(atrPlan.stop, selected?.market || market)} 참고` : "기술 손절 기준 산출 대기", tone: "neutral" as const },
+        { label: "진입가/알림가", value: hasRecommendationBasis ? `1차 진입가 ${entry} · 관심 알림가는 별도 근접 알림 기준` : "추천 진입가는 없습니다. 기술 기준은 참고값으로만 표시합니다.", tone: "neutral" as const },
         { label: "위험 상태", value: riskText, tone: riskTone },
         ...(confidence != null ? [{ label: "신뢰도", value: `${confidenceLabel(confidence).label} (${confidence})`, tone: confidence < 40 ? "warn" as const : confidence < 65 ? "neutral" as const : "ok" as const }] : []),
       ],
@@ -2968,9 +2976,12 @@ export default function ChartPage() {
     </div>
   ) : null;
 
-  const entryPrice = levelValue(levels, "entry");
-  const stopPrice = levelValue(levels, "stop");
-  const targetPrice = levelValue(levels, "target");
+  const recommendationEntryPrice = levelValue(levels, "entry");
+  const recommendationStopPrice = levelValue(levels, "stop");
+  const recommendationTargetPrice = levelValue(levels, "target");
+  const entryPrice = recommendationEntryPrice || atrPlan?.entry || currentPrice;
+  const stopPrice = recommendationStopPrice || atrPlan?.stop || 0;
+  const targetPrice = recommendationTargetPrice || atrPlan?.target2 || 0;
   const expectedValue = num(levels?.expectedValue ?? levels?.ev);
   const riskReward = num(levels?.rrActual ?? levels?.riskRewardRatio ?? levels?.rr) ?? (
     entryPrice > stopPrice && targetPrice > entryPrice
@@ -2989,14 +3000,14 @@ export default function ChartPage() {
     ? "조건이 정리될 때까지 관찰합니다."
     : moneConclusion.rows[0]?.value || "핵심 조건을 확인하고 다음 판단을 안내합니다.";
   const summaryMetrics = [
-    { label: "기준가", value: entryPrice > 0 ? money(entryPrice, selected?.market || market) : "-", sub: currentPrice > 0 ? `현재가 ${money(currentPrice, selected?.market || market)}` : "추천 기준", tone: "text-slate-100" },
+    { label: "기준가", value: entryPrice > 0 ? money(entryPrice, selected?.market || market) : "-", sub: hasRecommendationBasis ? (currentPrice > 0 ? `현재가 ${money(currentPrice, selected?.market || market)}` : "추천 기준") : "OHLCV·ATR 기술 기준", tone: "text-slate-100" },
     { label: "손절가", value: stopPrice > 0 ? money(stopPrice, selected?.market || market) : "-", sub: priceDelta(stopPrice), tone: "text-rose-300" },
     { label: "목표가", value: targetPrice > 0 ? money(targetPrice, selected?.market || market) : "-", sub: priceDelta(targetPrice), tone: "text-teal-300" },
-    { label: "기대값(EV)", value: expectedValue != null ? `${expectedValue >= 0 ? "+" : ""}${expectedValue.toFixed(1)}%` : "-", sub: "전략 산출값", tone: expectedValue != null && expectedValue < 0 ? "text-rose-300" : "text-teal-300" },
-    { label: "손익비(RR)", value: riskReward != null ? riskReward.toFixed(2) : "-", sub: riskReward != null ? (riskReward >= 1.8 ? "진입 기준 충족" : "기준 미달") : "산출 대기", tone: riskReward != null && riskReward < 1.8 ? "text-amber-300" : "text-teal-300" },
-    { label: "종합 점수", value: moneConclusion.score > 0 ? `${Math.round(moneConclusion.score)}점` : "-", sub: moneConclusion.conf != null ? `신뢰도 ${moneConclusion.conf}` : "추천 데이터 기준", tone: "text-teal-300" },
+    { label: "기대값(EV)", value: expectedValue != null ? `${expectedValue >= 0 ? "+" : ""}${expectedValue.toFixed(1)}%` : "-", sub: hasRecommendationBasis ? "전략 산출값" : "추천 산출값 없음", tone: expectedValue != null && expectedValue < 0 ? "text-rose-300" : "text-teal-300" },
+    { label: "손익비(RR)", value: riskReward != null ? riskReward.toFixed(2) : "-", sub: riskReward != null ? (hasRecommendationBasis ? (riskReward >= 1.8 ? "진입 기준 충족" : "기준 미달") : "ATR 참고 손익비") : "산출 대기", tone: riskReward != null && riskReward < 1.8 ? "text-amber-300" : "text-teal-300" },
+    { label: "종합 점수", value: moneConclusion.score > 0 ? `${Math.round(moneConclusion.score)}점` : "-", sub: moneConclusion.conf != null ? `신뢰도 ${moneConclusion.conf}` : hasRecommendationBasis ? "추천 데이터 기준" : "추천 후보 아님", tone: "text-teal-300" },
   ];
-  const analysisReady = rows.length >= 20 && Number(moneConclusion?.score || 0) > 0;
+  const analysisReady = rows.length >= 20 && currentPrice > 0;
 
   return (
     <ErrorBoundary>
@@ -3094,7 +3105,7 @@ export default function ChartPage() {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="text-sm font-semibold text-amber-100">분석 데이터 준비 중</div>
-                  <p className="mt-1 text-xs leading-5 text-amber-100/80">{stance.detail} OHLCV 20일과 추천 기준가가 연결되면 진입·손절·목표 지표를 표시합니다.</p>
+                  <p className="mt-1 text-xs leading-5 text-amber-100/80">{rows.length < 20 ? `OHLCV가 ${rows.length}봉이라 최소 20봉이 필요합니다.` : "유효한 종가를 확인하지 못했습니다."} 데이터가 충족되면 기술 상태와 위험 기준을 표시합니다.</p>
                 </div>
                 <button
                   type="button"
@@ -3104,6 +3115,13 @@ export default function ChartPage() {
                   <RefreshCw size={13} /> 재조회
                 </button>
               </div>
+            </div>
+          )}
+
+          {analysisReady && !hasRecommendationBasis && !loading && (
+            <div className="rounded-xl border border-sky-500/25 bg-sky-500/10 px-4 py-3">
+              <div className="text-sm font-semibold text-sky-100">기술 분석 표시 중</div>
+              <p className="mt-1 text-xs leading-5 text-sky-100/80">이 종목은 현재 추천 후보가 아닙니다. 최신 OHLCV와 ATR 기반 기술 상태·위험 기준만 표시하며 EV와 추천 점수는 비워 둡니다.</p>
             </div>
           )}
 
@@ -3117,7 +3135,7 @@ export default function ChartPage() {
                 </div>
                 <div className="grid self-stretch divide-y divide-slate-700/70">
                   <div className="flex gap-2.5 px-3 py-2.5 sm:px-4 sm:py-3"><Globe2 size={16} className="mt-0.5 shrink-0 text-slate-400" /><div className="min-w-0"><div className="text-[10px] text-slate-400">시장 환경</div><div className={marketGate?.isLow ? "mt-1 text-sm font-bold text-rose-300" : marketGate?.isMid ? "mt-1 text-sm font-bold text-amber-300" : "mt-1 text-sm font-bold text-teal-300"}>{marketGate ? marketGate.levelText : "확인 중"}</div><div className="mt-1 text-[10px] leading-4 text-slate-400">{marketGate?.hasRegimeMa ? `20일선 대비 ${marketGate.maDist >= 0 ? "+" : ""}${marketGate.maDist.toFixed(1)}%` : "시장 데이터 확인 중"}</div></div></div>
-                  <div className="flex gap-2.5 px-3 py-2.5 sm:px-4 sm:py-3"><Activity size={16} className="mt-0.5 shrink-0 text-slate-400" /><div className="min-w-0"><div className="text-[10px] text-slate-400">종목 신호</div><div className="mt-1 text-sm font-bold text-amber-300">{moneConclusion.score > 0 ? `${Math.round(moneConclusion.score)}점` : "산출 대기"}</div><div className="mt-1 text-[10px] leading-4 text-slate-400">{moneConclusion.riskText || "추천 조건 확인 중"}</div></div></div>
+                  <div className="flex gap-2.5 px-3 py-2.5 sm:px-4 sm:py-3"><Activity size={16} className="mt-0.5 shrink-0 text-slate-400" /><div className="min-w-0"><div className="text-[10px] text-slate-400">종목 신호</div><div className="mt-1 text-sm font-bold text-amber-300">{moneConclusion.score > 0 ? `${Math.round(moneConclusion.score)}점` : hasRecommendationBasis ? "산출 대기" : "추천 후보 아님"}</div><div className="mt-1 text-[10px] leading-4 text-slate-400">{moneConclusion.riskText || "추천 조건 확인 중"}</div></div></div>
                   <div className="flex gap-2.5 px-3 py-2.5 sm:px-4 sm:py-3"><Crosshair size={16} className="mt-0.5 shrink-0 text-slate-400" /><div className="min-w-0"><div className="text-[10px] text-slate-400">최종 행동</div><div className={`mt-1 text-sm font-bold ${toneTextClass(moneConclusion.actionTone)}`}>{moneConclusion.actionText}</div><div className="mt-1 text-[10px] leading-4 text-slate-400">{moneConclusion.rows[2]?.value || "진입 기준 확인 중"}</div></div></div>
                 </div>
               </div>

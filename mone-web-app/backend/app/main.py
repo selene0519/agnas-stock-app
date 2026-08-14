@@ -5362,10 +5362,8 @@ def _install_mone_authoritative_holdings_clean_v3():
             "authority": "",
         }
 
-    def _anon_or_empty_payload(market: str = "all", limit: int = 100) -> dict:
-        # 로그인(uid) 없을 때: 로컬 CSV 원장(kis/kis_2/toss/holdings)이 있으면 그것을 서빙한다.
-        # 개인 로컬 인스턴스는 즉시 보유가 보이고, 배포본은 개인 CSV가 git에 없으므로
-        # (caeac31cc: 공개레포 보호로 미추적) count=0 → authRequired 안내로 폴백한다.
+    def _legacy_holdings_payload(market: str = "all", limit: int = 100) -> dict:
+        """Read the single-user CSV ledger only after authentication."""
         try:
             csv_payload = _payload(market, limit)
         except Exception:
@@ -5374,8 +5372,15 @@ def _install_mone_authoritative_holdings_clean_v3():
             csv_payload["authRequired"] = False
             csv_payload["authNotice"] = ""
             if not csv_payload.get("authority"):
-                csv_payload["authority"] = "local_csv_ledger"
+                csv_payload["authority"] = "legacy_authenticated_csv_ledger"
             return csv_payload
+        return _empty_holdings_payload(market)
+
+    def _anon_or_empty_payload(market: str = "all", limit: int = 100) -> dict:
+        # 배포 환경에서는 로그인하지 않은 요청에 수량·평단·평가금액을 노출하지 않는다.
+        # 로컬 개발자가 명시적으로 MONE_ANON_HOLDINGS=1을 켠 경우에만 CSV를 허용한다.
+        if _local_dev_bypass():
+            return _legacy_holdings_payload(market, limit)
         return _empty_holdings_payload(market)
 
     global app
@@ -5397,7 +5402,7 @@ def _install_mone_authoritative_holdings_clean_v3():
             # 로그인은 됐으나 유저 DB에 보유가 없으면(로컬 브리지가 DB 대신 CSV에만 쓴 경우)
             # 로컬 CSV 원장으로 폴백한다. 배포본은 CSV가 없어 그대로 빈 목록.
             if not payload.get("count"):
-                fallback = _anon_or_empty_payload(market, limit)
+                fallback = _legacy_holdings_payload(market, limit)
                 if fallback.get("count"):
                     fallback["userId"] = uid
                     return fallback
@@ -5415,7 +5420,7 @@ def _install_mone_authoritative_holdings_clean_v3():
         if uid:
             payload = _personal_payload(uid, market, limit)
             if not payload.get("count"):
-                fallback = _anon_or_empty_payload(market, limit)
+                fallback = _legacy_holdings_payload(market, limit)
                 if fallback.get("count"):
                     fallback["userId"] = uid
                     return fallback

@@ -128,7 +128,8 @@ def test_launch_overlay_waits_for_home_and_light_supporting_snapshots() -> None:
     assert "fetchChartSnapshot" not in preload
     assert 'fetchApiSnapshot("/api/final/operation-summary"' not in preload
     assert 'fetchApiSnapshot("/api/risk/near-alerts"' not in preload
-    assert 'const BOOT_CACHE_KEY = "mone:boot-preload:v6";' in preload
+    assert 'const BOOT_CACHE_KEY = "mone:boot-preload:v7";' in preload
+    assert 'scopedBootCacheKey()' in preload
     assert "headers: bootRequestHeaders()" in preload
     assert 'fetchApiSnapshot("/api/holdings-clean", { market, limit: 500 }' in preload
     assert 'const API_SNAPSHOT_PREFIX = "mone:api-snapshot:v6:";' in api

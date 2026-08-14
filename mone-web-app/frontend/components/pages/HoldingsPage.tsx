@@ -107,6 +107,14 @@ function getMoneUserHeader(): Record<string, string> {
 
 const LS_HOLDINGS_KEY = "mone:personal_holdings_v2";
 
+function holdingsUserScope(): string {
+  return getAuthenticatedUserId() || "anonymous";
+}
+
+function holdingsStorageKey(scope = holdingsUserScope()): string {
+  return `${LS_HOLDINGS_KEY}:${scope}`;
+}
+
 function holdingStatusLabel(status: any): string {
   const s = String(status || "").toUpperCase();
   if (s === "LOCAL_ONLY") return "로컬 임시";
@@ -122,13 +130,23 @@ function holdingStatusLabel(status: any): string {
 
 function saveHoldingsToLocalStorage(items: any[]) {
   try {
-    localStorage.setItem(LS_HOLDINGS_KEY, JSON.stringify({ items, savedAt: new Date().toISOString() }));
+    localStorage.setItem(holdingsStorageKey(), JSON.stringify({ items, savedAt: new Date().toISOString() }));
   } catch {}
 }
 
-function loadHoldingsFromLocalStorage(): any[] {
+function loadHoldingsFromLocalStorage(options: { includeLegacy?: boolean } = {}): any[] {
   try {
-    const raw = localStorage.getItem(LS_HOLDINGS_KEY);
+    const scope = holdingsUserScope();
+    const scopedKey = holdingsStorageKey(scope);
+    let raw = localStorage.getItem(scopedKey);
+    if (!raw && options.includeLegacy && scope !== "anonymous") {
+      raw = localStorage.getItem(LS_HOLDINGS_KEY);
+      if (raw) {
+        // 기존 브라우저 보유 백업을 현재 로그인 사용자 키로 로컬에서만 이동한다.
+        localStorage.setItem(scopedKey, raw);
+        localStorage.removeItem(LS_HOLDINGS_KEY);
+      }
+    }
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed.items) ? parsed.items : [];
@@ -157,16 +175,17 @@ function dedupe(items: any[]) {
 
 // Module-level re-entry cache: avoids reload spinner when navigating away and back
 const HOLDINGS_CACHE_TTL = 3 * 60 * 1000; // 3 min
-type HoldingsCacheEntry = { data: any; market: Market; loadedAt: string; ts: number };
+type HoldingsCacheEntry = { data: any; market: Market; userScope: string; loadedAt: string; ts: number };
 let _holdingsCache: HoldingsCacheEntry | null = null;
-function readHoldingsCache(market: Market): HoldingsCacheEntry | null {
+function readHoldingsCache(market: Market, userScope = holdingsUserScope()): HoldingsCacheEntry | null {
   if (!_holdingsCache) return null;
   if (_holdingsCache.market !== market) return null;
+  if (_holdingsCache.userScope !== userScope) return null;
   if (Date.now() - _holdingsCache.ts > HOLDINGS_CACHE_TTL) return null;
   return _holdingsCache;
 }
-function writeHoldingsCache(market: Market, data: any, loadedAt: string) {
-  _holdingsCache = { data, market, loadedAt, ts: Date.now() };
+function writeHoldingsCache(market: Market, data: any, loadedAt: string, userScope = holdingsUserScope()) {
+  _holdingsCache = { data, market, userScope, loadedAt, ts: Date.now() };
 }
 
 function emptyHoldingsPayload(market: Market, needsLogin = false) {
@@ -816,7 +835,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
     if (!hasHoldingsAuth) return emptyHoldingsPayload("all", true);
     const cached = readHoldingsCache("all")?.data;
     if (cached) return cached;
-    const localItems = loadHoldingsFromLocalStorage();
+    const localItems = loadHoldingsFromLocalStorage({ includeLegacy: true });
     if (localItems.length > 0) return localHoldingsPayload(localItems, "all");
     const bc = bootData?.holdingsCache;
     if (bc && Array.isArray(bc.items) && bc.items.length > 0) return bc;
@@ -904,9 +923,23 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
   }
 
   async function load(options: { background?: boolean } = {}) {
-    // 토큰이 없어도 먼저 서버에 요청한다. 서버가 익명으로 보유를 서빙하면(로컬 CSV 원장)
-    // 그대로 표시하고, authRequired(배포 익명)면 로그인 안내로 폴백한다.
-    const cached = readHoldingsCache(market);
+    const userScope = hasHoldingsAuth ? holdingsUserScope() : "anonymous";
+    if (!hasHoldingsAuth) {
+      const empty = emptyHoldingsPayload(market, true);
+      const loadedAt = new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+      setData(empty);
+      setHoldingsLoadedAt(loadedAt);
+      writeHoldingsCache(market, empty, loadedAt, userScope);
+      setBrokerConnections([]);
+      setSectorData(null);
+      setBenchmarkData(null);
+      setRiskBudget(null);
+      setSoldHistory(null);
+      setLoading(false);
+      return;
+    }
+
+    const cached = readHoldingsCache(market, userScope);
     if (cached && !options.background) {
       setData(cached.data);
       setHoldingsLoadedAt(cached.loadedAt);
@@ -924,33 +957,22 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
         window.clearTimeout(timeout);
       }
       if (result?.status === "ERROR") throw new Error(result.error || "holdings refresh failed");
+      if (holdingsUserScope() !== userScope) return;
       const serverItems = Array.isArray(result.items) ? result.items : [];
-      const localItems = loadHoldingsFromLocalStorage();
-      let finalData: any;
-      if (result?.authRequired && serverItems.length === 0) {
-        // 서버가 보유를 노출하지 않음(로그인 필요). 로컬 백업이 있으면 표시, 없으면 로그인 안내.
-        if (localItems.length > 0) {
-          finalData = localHoldingsPayload(localItems, market);
-          setData(finalData);
-        } else {
-          setData(emptyHoldingsPayload(market, true));
-          setHoldingsLoadedAt(new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }));
-          setBrokerConnections([]);
-          setSectorData(null);
-          setBenchmarkData(null);
-          setRiskBudget(null);
-          setSoldHistory(null);
-          setLoading(false);
-          return;
-        }
-      } else {
-        if (serverItems.length > 0) saveHoldingsToLocalStorage(serverItems);
-        finalData = result;
-        setData(finalData);
-      }
+      const localItems = loadHoldingsFromLocalStorage({ includeLegacy: true });
+      const finalData = serverItems.length > 0
+        ? result
+        : localItems.length > 0
+          ? localHoldingsPayload(localItems, market)
+          : result?.authRequired
+            ? emptyHoldingsPayload(market, true)
+            : result;
+      if (serverItems.length > 0) saveHoldingsToLocalStorage(serverItems);
+      if (holdingsUserScope() !== userScope) return;
+      setData(finalData);
       const loadedAt = new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
       setHoldingsLoadedAt(loadedAt);
-      writeHoldingsCache(market, finalData, loadedAt);
+      writeHoldingsCache(market, finalData, loadedAt, userScope);
       loadPositionCandidates(market);
       setLoading(false);
       // 청산 신호 비동기 로딩
@@ -980,7 +1002,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
         setBenchmarkData({ status: "ERROR", error: String(error), items: [] });
       });
     } catch (error) {
-      const localItems = hasHoldingsAuth ? loadHoldingsFromLocalStorage() : [];
+      const localItems = hasHoldingsAuth ? loadHoldingsFromLocalStorage({ includeLegacy: true }) : [];
       setData(localItems.length > 0
         ? localHoldingsPayload(localItems, market)
         : { status: "ERROR", error: String(error), items: [], summary: {} });
@@ -990,7 +1012,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
   }
 
   useEffect(() => {
-    const hasCached = Boolean(_bootHoldings || readHoldingsCache(market));
+    const hasCached = Boolean(_bootHoldings || readHoldingsCache(market, hasHoldingsAuth ? holdingsUserScope() : "anonymous"));
     load({ background: hasCached });
   }, [market, hasHoldingsAuth]);
 
@@ -1028,7 +1050,7 @@ export default function HoldingsPage({ userToken, onNavigate, bootData }: Holdin
       const result = await getJson("/api/holdings-edit?market=all");
       return Array.isArray(result.items) ? mergeEditableRows(result.items.map(toEditableHolding)) : [];
     } catch {
-      return loadHoldingsFromLocalStorage().map(toEditableHolding);
+      return loadHoldingsFromLocalStorage({ includeLegacy: true }).map(toEditableHolding);
     }
   }
 

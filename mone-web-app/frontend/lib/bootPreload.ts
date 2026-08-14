@@ -35,7 +35,11 @@ type StoredCache = BootPreloadState & {
 type JsonResult = { ok: true; value: any } | { ok: false; error: string };
 type HomeSnapshotResult = { ok: true; value: any; stocksCache: any } | { ok: false; error: string };
 
-const BOOT_CACHE_KEY = "mone:boot-preload:v6";
+const BOOT_CACHE_KEY = "mone:boot-preload:v7";
+
+function scopedBootCacheKey(): string {
+  return `${BOOT_CACHE_KEY}:${getAuthenticatedUserId() || "anonymous"}`;
+}
 const BOOT_FALLBACK_TTL_MS = 24 * 60 * 60 * 1000;
 const HEALTH_CHECK_TIMEOUT_MS = 8000;
 const SNAPSHOT_FETCH_TIMEOUT_MS = 20000;
@@ -53,7 +57,7 @@ function isObject(value: unknown): value is Record<string, any> {
 function readStoredCache(): StoredCache | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = window.localStorage.getItem(BOOT_CACHE_KEY);
+    const raw = window.localStorage.getItem(scopedBootCacheKey());
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!isObject(parsed) || !isObject(parsed.bootData)) return null;
@@ -66,7 +70,7 @@ function readStoredCache(): StoredCache | null {
 function writeStoredCache(state: StoredCache) {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(BOOT_CACHE_KEY, JSON.stringify(state));
+    window.localStorage.setItem(scopedBootCacheKey(), JSON.stringify(state));
   } catch {
     // Best-effort cache only.
   }

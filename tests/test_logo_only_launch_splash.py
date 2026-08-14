@@ -12,7 +12,8 @@ def test_pre_react_splash_shows_only_the_transparent_logo() -> None:
     layout = (FRONTEND / "app" / "layout.tsx").read_text(encoding="utf-8")
     splash = layout.split('id="mone-html-splash"', 1)[1].split("{children}", 1)[0]
 
-    assert '/loading/mone-logo.png' in splash
+    assert '/icons/splash-logo-v2-512.png?v=3' in splash
+    assert 'width={96}' in splash
     assert 'background: "transparent"' in splash
     assert splash.count("<img") == 1
     assert '/loading/mone-bear.png' not in splash
@@ -24,10 +25,10 @@ def test_manifest_uses_versioned_logo_only_launch_icons() -> None:
     assert manifest["background_color"] == "#0b1220"
     assert manifest["theme_color"] == "#0b1220"
     assert [icon["src"] for icon in manifest["icons"]] == [
-        "/icons/splash-logo-v2-192.png",
-        "/icons/splash-logo-v2-512.png",
-        "/icons/splash-maskable-v2-192.png",
-        "/icons/splash-maskable-v2-512.png",
+        "/icons/splash-logo-v2-192.png?v=3",
+        "/icons/splash-logo-v2-512.png?v=3",
+        "/icons/splash-maskable-v2-192.png?v=3",
+        "/icons/splash-maskable-v2-512.png?v=3",
     ]
 
 

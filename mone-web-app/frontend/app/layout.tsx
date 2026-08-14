@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   description: '국장·미장 의사결정 운용 보드 · 장전·장중·장마감 기준 실전 운용',
   icons: {
     icon: '/favicon.png',
-    apple: '/icons/apple-touch-logo-v2.png',
+    apple: '/icons/apple-touch-logo-v2.png?v=3',
   },
   manifest: '/manifest.json',
   appleWebApp: {
@@ -39,7 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="MONE" />
-        <link rel="apple-touch-icon" href="/icons/apple-touch-logo-v2.png" />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-logo-v2.png?v=3" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -92,13 +92,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {/* A raw image keeps the pre-React launch mark available without waiting for Next.js hydration. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/loading/mone-logo.png"
+            src="/icons/splash-logo-v2-512.png?v=3"
             alt=""
-            width={180}
-            height={95}
+            width={96}
+            height={96}
             style={{
               display: "block",
-              width: "min(48vw, 180px)",
+              width: "min(28vw, 96px)",
               height: "auto",
               objectFit: "contain",
               background: "transparent",
