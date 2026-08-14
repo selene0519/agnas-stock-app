@@ -1,13 +1,13 @@
 {
-  "generatedAt": "2026-08-14T07:15:50.041099+00:00",
+  "generatedAt": "2026-08-14T08:55:36.862534+00:00",
   "asOfDate": "2026-08-14",
   "market": "kr",
-  "marketRegime": "BEAR",
+  "marketRegime": "SIDE",
   "modelType": "ridge_regression",
   "featureCount": 14,
   "provenEdge": {
     "split": "2025-09-01",
-    "oosTrades": 24017,
+    "oosTrades": 24019,
     "topQuintileNetPct": -0.437,
     "bottomQuintileNetPct": 0.008,
     "spreadPct": -0.445,
@@ -35,8 +35,8 @@
     "maalign": -0.001
   },
   "note": "다중신호 ML 순위(선별 두뇌). OOS 검증 통과. 약세장은 상위픽도 (−)라 caution. 가격신호만 사용 — 수급/뉴스/섹터/공시 추가 시 개선 여지.",
-  "actionableCount": 0,
-  "candidateCount": 100,
+  "actionableCount": 20,
+  "candidateCount": 102,
   "candidates": [
     {
       "symbol": "090360",
@@ -49,7 +49,7 @@
       "target": 92772,
       "supplySignal": "외국인 순매수",
       "rankBucket": "TOP20",
-      "actionable": false
+      "actionable": true
     },
     {
       "symbol": "006260",
@@ -62,7 +62,7 @@
       "target": 349380,
       "supplySignal": "기관+외국인 순매도",
       "rankBucket": "TOP20",
-      "actionable": false
+      "actionable": true
     },
     {
       "symbol": "222800",
@@ -75,12 +75,12 @@
       "target": 117396,
       "supplySignal": "외국인 순매수",
       "rankBucket": "TOP20",
-      "actionable": false
+      "actionable": true
     },
     {
       "symbol": "011070",
       "name": "LG이노텍",
-      "modelScore": 0.405,
+      "modelScore": 0.406,
       "close": 654000.0,
       "rsi14": 53.8,
       "entryRef": 654000.0,
@@ -88,7 +88,7 @@
       "target": 706320,
       "supplySignal": "기관 순매수",
       "rankBucket": "TOP20",
-      "actionable": false
+      "actionable": true
     },
     {
       "symbol": "131970",
@@ -101,7 +101,7 @@
       "target": 90720,
       "supplySignal": "기관 순매수",
       "rankBucket": "TOP20",
-      "actionable": false
+      "actionable": true
     },
     {
       "symbol": "298040",
@@ -114,7 +114,7 @@
       "target": 3190320,
       "supplySignal": "외국인 순매수",
       "rankBucket": "TOP20",
-      "actionable": false
+      "actionable": true
     },
     {
       "symbol": "064350",
@@ -127,7 +127,7 @@
       "target": 158652,
       "supplySignal": "외국인 순매수",
       "rankBucket": "TOP20",
-      "actionable": false
+      "actionable": true
     },
     {
       "symbol": "247540",
@@ -140,12 +140,12 @@
       "target": 126036,
       "supplySignal": "기관+외국인 순매도",
       "rankBucket": "TOP20",
-      "actionable": false
+      "actionable": true
     },
     {
       "symbol": "001440",
       "name": "대한전선",
-      "modelScore": 0.289,
+      "modelScore": 0.29,
       "close": 29950.0,
       "rsi14": 53.4,
       "entryRef": 29950.0,
@@ -153,7 +153,7 @@
       "target": 32346,
       "supplySignal": "기관 순매수",
       "rankBucket": "TOP20",
-      "actionable": false
+      "actionable": true
     },
     {
       "symbol": "009150",
@@ -166,12 +166,12 @@
       "target": 1682640,
       "supplySignal": "기관 순매수",
       "rankBucket": "TOP20",
-      "actionable": false
+      "actionable": true
     },
     {
       "symbol": "066970",
       "name": "엘앤에프",
-      "modelScore": 0.261,
+      "modelScore": 0.262,
       "close": 109700.0,
       "rsi14": 71.3,
       "entryRef": 109700.0,
@@ -179,20 +179,7 @@
       "target": 118476,
       "supplySignal": "기관 순매수",
       "rankBucket": "TOP20",
-      "actionable": false
-    },
-    {
-      "symbol": "454910",
-      "name": "두산로보틱스",
-      "modelScore": 0.248,
-      "close": 79200.0,
-      "rsi14": 68.6,
-      "entryRef": 79200.0,
-      "stop": 76032,
-      "target": 85536,
-      "supplySignal": "기관+외국인 순매수",
-      "rankBucket": "TOP20",
-      "actionable": false
+      "actionable": true
     },
     {
       "symbol": "121600",
@@ -205,7 +192,20 @@
       "target": 54972,
       "supplySignal": "기관+외국인 순매수",
       "rankBucket": "TOP20",
-      "actionable": false
+      "actionable": true
+    },
+    {
+      "symbol": "454910",
+      "name": "두산로보틱스",
+      "modelScore": 0.248,
+      "close": 79200.0,
+      "rsi14": 68.6,
+      "entryRef": 79200.0,
+      "stop": 76032,
+      "target": 85536,
+      "supplySignal": "기관+외국인 순매수",
+      "rankBucket": "TOP20",
+      "actionable": true
     },
     {
       "symbol": "007660",
@@ -218,7 +218,7 @@
       "target": 103248,
       "supplySignal": "기관 순매수",
       "rankBucket": "TOP20",
-      "actionable": false
+      "actionable": true
     },
     {
       "symbol": "058470",
@@ -231,12 +231,12 @@
       "target": 76464,
       "supplySignal": "기관 순매수",
       "rankBucket": "TOP20",
-      "actionable": false
+      "actionable": true
     },
     {
       "symbol": "000990",
       "name": "DB하이텍",
-      "modelScore": 0.201,
+      "modelScore": 0.202,
       "close": 102800.0,
       "rsi14": 52.7,
       "entryRef": 102800.0,
@@ -244,7 +244,7 @@
       "target": 111024,
       "supplySignal": "기관 순매수",
       "rankBucket": "TOP20",
-      "actionable": false
+      "actionable": true
     },
     {
       "symbol": "214150",
@@ -257,7 +257,7 @@
       "target": 40500,
       "supplySignal": "기관+외국인 순매도",
       "rankBucket": "TOP20",
-      "actionable": false
+      "actionable": true
     },
     {
       "symbol": "010120",
@@ -270,12 +270,12 @@
       "target": 223020,
       "supplySignal": "외국인 순매수",
       "rankBucket": "TOP20",
-      "actionable": false
+      "actionable": true
     },
     {
       "symbol": "196170",
       "name": "알테오젠",
-      "modelScore": 0.177,
+      "modelScore": 0.178,
       "close": 314000.0,
       "rsi14": 50.4,
       "entryRef": 314000.0,
@@ -283,7 +283,7 @@
       "target": 339120,
       "supplySignal": "외국인 순매수",
       "rankBucket": "TOP20",
-      "actionable": false
+      "actionable": true
     },
     {
       "symbol": "086520",
@@ -296,7 +296,7 @@
       "target": 101088,
       "supplySignal": "기관 순매수",
       "rankBucket": "TOP20",
-      "actionable": false
+      "actionable": true
     }
   ]
 }
