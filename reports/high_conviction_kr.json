@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-14T14:04:52.984542+00:00",
+  "generatedAt": "2026-08-14T21:39:22.627598+00:00",
   "market": "kr",
   "marketRegime": "SIDE",
   "marketRegimeLabel": "횡보장",
@@ -29,35 +29,9 @@
     "winRate": null
   },
   "note": "앱이 지는 이유=전부 거래. 실측상 (+)인 유일 구성(강세장+finalScore≥84)만 실전. 약세/횡보/저점수는 실전 없음(현금 보존). 이게 −1.92%→+0.72%의 차이.",
-  "candidateCount": 9,
+  "candidateCount": 3,
   "actionableCount": 0,
   "candidates": [
-    {
-      "symbol": "011200",
-      "name": "HMM",
-      "finalScore": 87.0,
-      "entry": null,
-      "stop": null,
-      "target": null,
-      "decisionBucket": "오늘 진입",
-      "supplySignal": "FOREIGN_BUY",
-      "eventBadges": "이격도수렴 | 외국인 순매수",
-      "highConviction": false,
-      "gateReason": "관찰만 — 횡보장(실전 게이트 OFF)"
-    },
-    {
-      "symbol": "032640",
-      "name": "LG유플러스",
-      "finalScore": 86.1,
-      "entry": null,
-      "stop": null,
-      "target": null,
-      "decisionBucket": "오늘 진입",
-      "supplySignal": "FOREIGN_BUY",
-      "eventBadges": "이격도수렴 | 외국인 순매수",
-      "highConviction": false,
-      "gateReason": "관찰만 — 횡보장(실전 게이트 OFF)"
-    },
     {
       "symbol": "214450",
       "name": "파마리서치",
@@ -68,19 +42,6 @@
       "decisionBucket": "기다림",
       "supplySignal": "FOREIGN_BUY",
       "eventBadges": "EV음수 | 외국인 순매수",
-      "highConviction": false,
-      "gateReason": "관찰만 — 횡보장(실전 게이트 OFF)"
-    },
-    {
-      "symbol": "035420",
-      "name": "NAVER",
-      "finalScore": 77.9,
-      "entry": null,
-      "stop": null,
-      "target": null,
-      "decisionBucket": "기다림",
-      "supplySignal": "STRONG_BUY",
-      "eventBadges": "EV음수 | 기관+외국인 동반매수",
       "highConviction": false,
       "gateReason": "관찰만 — 횡보장(실전 게이트 OFF)"
     },
@@ -98,54 +59,15 @@
       "gateReason": "관찰만 — 횡보장(실전 게이트 OFF)"
     },
     {
-      "symbol": "068270",
-      "name": "셀트리온",
-      "finalScore": 70.9,
+      "symbol": "035420",
+      "name": "NAVER",
+      "finalScore": 65.2,
       "entry": null,
       "stop": null,
       "target": null,
       "decisionBucket": "기다림",
-      "supplySignal": "FOREIGN_BUY",
-      "eventBadges": "EV음수 | 외국인 순매수 | 저평가성장주",
-      "highConviction": false,
-      "gateReason": "관찰만 — 횡보장(실전 게이트 OFF)"
-    },
-    {
-      "symbol": "128940",
-      "name": "한미약품",
-      "finalScore": 63.0,
-      "entry": null,
-      "stop": null,
-      "target": null,
-      "decisionBucket": "대기 관찰",
-      "supplySignal": "FOREIGN_BUY",
-      "eventBadges": "외국인 순매수",
-      "highConviction": false,
-      "gateReason": "관찰만 — 횡보장(실전 게이트 OFF)"
-    },
-    {
-      "symbol": "009540",
-      "name": "HD한국조선해양",
-      "finalScore": 61.0,
-      "entry": null,
-      "stop": null,
-      "target": null,
-      "decisionBucket": "기다림",
-      "supplySignal": "FOREIGN_BUY",
-      "eventBadges": "EV음수 | 외국인 순매수 | 저평가성장주",
-      "highConviction": false,
-      "gateReason": "관찰만 — 횡보장(실전 게이트 OFF)"
-    },
-    {
-      "symbol": "196170",
-      "name": "알테오젠",
-      "finalScore": 57.6,
-      "entry": null,
-      "stop": null,
-      "target": null,
-      "decisionBucket": "기다림",
-      "supplySignal": "FOREIGN_BUY",
-      "eventBadges": "EV음수 | 외국인 순매수 | 저평가성장주",
+      "supplySignal": "STRONG_BUY",
+      "eventBadges": "EV음수 | 기관+외국인 동반매수",
       "highConviction": false,
       "gateReason": "관찰만 — 횡보장(실전 게이트 OFF)"
     }

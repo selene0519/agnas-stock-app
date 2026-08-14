@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-14T14:04:30.179332+00:00",
+  "generatedAt": "2026-08-14T21:39:01.437384+00:00",
   "asOfDate": "2026-07-28",
   "sources": {
     "live": "reports/lens_live_journal_kr.csv",
@@ -27,21 +27,6 @@
     ]
   },
   "calibration": {
-    "BOTTOM_CATCH|BULL": {
-      "setup": "BOTTOM_CATCH",
-      "regime": "BULL",
-      "blendedNetAvgPct": -1.142,
-      "blendedWinRate": 35.5,
-      "gate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "liveEffectiveSamples": 0.0,
-      "liveRawSamples": 0,
-      "liveNetAvgPct": null,
-      "priorNetAvgPct": -1.142,
-      "priorRawSamples": 2268,
-      "liveFraction": 0.0,
-      "profitFactor": 0.66
-    },
     "BREAKOUT|BEAR": {
       "setup": "BREAKOUT",
       "regime": "BEAR",
@@ -57,20 +42,20 @@
       "liveFraction": 0.089,
       "profitFactor": 1.66
     },
-    "BREAKOUT|BULL": {
+    "BREAKOUT|SIDE": {
       "setup": "BREAKOUT",
-      "regime": "BULL",
-      "blendedNetAvgPct": 0.256,
-      "blendedWinRate": 42.4,
+      "regime": "SIDE",
+      "blendedNetAvgPct": 0.934,
+      "blendedWinRate": 49.5,
       "gate": "ACTIVE",
-      "sizeMultiplier": 0.41,
+      "sizeMultiplier": 1.5,
       "liveEffectiveSamples": 0.0,
       "liveRawSamples": 0,
       "liveNetAvgPct": null,
-      "priorNetAvgPct": 0.256,
-      "priorRawSamples": 9823,
+      "priorNetAvgPct": 0.934,
+      "priorRawSamples": 6662,
       "liveFraction": 0.0,
-      "profitFactor": 1.11
+      "profitFactor": 1.45
     },
     "BOTTOM_CATCH|SIDE": {
       "setup": "BOTTOM_CATCH",
@@ -102,20 +87,35 @@
       "liveFraction": 0.294,
       "profitFactor": 0.61
     },
-    "BREAKOUT|SIDE": {
+    "BREAKOUT|BULL": {
       "setup": "BREAKOUT",
-      "regime": "SIDE",
-      "blendedNetAvgPct": 0.934,
-      "blendedWinRate": 49.5,
+      "regime": "BULL",
+      "blendedNetAvgPct": 0.256,
+      "blendedWinRate": 42.4,
       "gate": "ACTIVE",
-      "sizeMultiplier": 1.5,
+      "sizeMultiplier": 0.41,
       "liveEffectiveSamples": 0.0,
       "liveRawSamples": 0,
       "liveNetAvgPct": null,
-      "priorNetAvgPct": 0.934,
-      "priorRawSamples": 6662,
+      "priorNetAvgPct": 0.256,
+      "priorRawSamples": 9823,
       "liveFraction": 0.0,
-      "profitFactor": 1.45
+      "profitFactor": 1.11
+    },
+    "BOTTOM_CATCH|BULL": {
+      "setup": "BOTTOM_CATCH",
+      "regime": "BULL",
+      "blendedNetAvgPct": -1.142,
+      "blendedWinRate": 35.5,
+      "gate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "liveEffectiveSamples": 0.0,
+      "liveRawSamples": 0,
+      "liveNetAvgPct": null,
+      "priorNetAvgPct": -1.142,
+      "priorRawSamples": 2268,
+      "liveFraction": 0.0,
+      "profitFactor": 0.66
     }
   }
 }
