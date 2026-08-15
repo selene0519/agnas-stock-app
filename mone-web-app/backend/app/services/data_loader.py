@@ -9,7 +9,7 @@ import time
 import threading as _threading
 import urllib.request as _url_req
 import requests
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from functools import lru_cache
@@ -4420,6 +4420,71 @@ def _latest_data_maps(patterns: tuple[str, ...], market: str, exclude: tuple[str
             sources.append(source)
     return merged, sources
 
+def inactive_symbols(market: str) -> set[str]:
+    """Symbols that must never re-enter active quote or recommendation paths."""
+    target_market = str(market or "").strip().lower()
+    path = REPO_ROOT / "data" / "market" / "inactive_symbols.csv"
+    frame = read_csv(path)
+    symbols: set[str] = set()
+    for row in dataframe_records(frame):
+        row_market = str(row.get("market") or "").strip().lower()
+        symbol = normalize_symbol(row.get("symbol"), row_market or target_market)
+        if row_market == target_market and symbol:
+            symbols.add(symbol)
+    return symbols
+
+
+def _automation_evidence() -> dict[str, Any] | None:
+    """Return fresh, persisted proof that the accumulator completed successfully."""
+    candidates = (
+        REPORT_DIR / "kis_live_refresh_status.json",
+        REPORT_DIR / "auto_sync_status.json",
+    )
+    for path in candidates:
+        if not path.is_file():
+            continue
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if not isinstance(payload, dict):
+            continue
+        raw_timestamp = str(payload.get("updatedAt") or payload.get("timestamp") or "").strip()
+        try:
+            observed_at = datetime.fromisoformat(raw_timestamp.replace(" KST", "+09:00"))
+            if observed_at.tzinfo is None:
+                observed_at = observed_at.replace(tzinfo=timezone.utc)
+            age_hours = max(
+                0.0,
+                (datetime.now(timezone.utc) - observed_at.astimezone(timezone.utc)).total_seconds() / 3600,
+            )
+        except (TypeError, ValueError):
+            continue
+
+        markets = payload.get("markets") if isinstance(payload.get("markets"), dict) else {}
+        market_rows = [row for row in markets.values() if isinstance(row, dict)]
+        market_statuses = {str(row.get("status") or "UNKNOWN").upper() for row in market_rows}
+        refreshed = sum(int(row.get("refreshed") or 0) for row in market_rows)
+        failed = sum(int(row.get("failed") or 0) for row in market_rows)
+        explicit_status = str(payload.get("status") or "").upper()
+        complete = (
+            bool(market_rows)
+            and market_statuses <= {"OK"}
+            and refreshed > 0
+            and failed == 0
+        ) or (not market_rows and explicit_status == "OK")
+        return {
+            "status": "OK" if complete and age_hours <= 36 else "STALE" if age_hours > 36 else "PARTIAL",
+            "file": path.relative_to(REPO_ROOT).as_posix(),
+            "updatedAt": raw_timestamp,
+            "ageHours": round(age_hours, 1),
+            "marketStatuses": sorted(market_statuses),
+            "refreshed": refreshed,
+            "failed": failed,
+        }
+    return None
+
+
 def github_actions_status() -> dict[str, Any]:
     repo = os.environ.get("GITHUB_REPOSITORY") or os.environ.get("MONE_GITHUB_REPOSITORY") or "selene0519/agnas-stock-app"
     token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN") or os.environ.get("MONE_GITHUB_TOKEN")
@@ -4449,6 +4514,19 @@ def github_actions_status() -> dict[str, Any]:
                 "runs": [],
             }
         if wf_res.status_code >= 400:
+            evidence = _automation_evidence()
+            if evidence and evidence.get("status") == "OK":
+                return {
+                    "status": "OK",
+                    "repo": repo,
+                    "message": "GitHub API telemetry unavailable; fresh persisted accumulator evidence verified.",
+                    "workflows": [],
+                    "runs": [],
+                    "authMode": "persisted_evidence",
+                    "tokenRejected": token_rejected,
+                    "upstreamStatus": f"HTTP {wf_res.status_code}",
+                    "evidence": evidence,
+                }
             return {
                 "status": "DEGRADED" if wf_res.status_code in {401, 403, 429} else "ERROR",
                 "repo": repo,

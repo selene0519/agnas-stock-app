@@ -622,15 +622,24 @@ def backfill_daily_ohlcv(symbol: str, market: str, days: int = 120) -> dict[str,
 
 
 def _refresh_targets(market: str, symbols: str | None, max_symbols: int) -> list[str]:
-    if symbols:
-        raw = [item.strip() for item in symbols.split(",") if item.strip()]
-        return [data.normalize_symbol(item, market) for item in raw][:max_symbols]
+    inactive = data.inactive_symbols(market)
     target_symbols: list[str] = []
+
+    def add(value: Any) -> bool:
+        symbol = data.normalize_symbol(value, market)
+        if not symbol or symbol in inactive or symbol in target_symbols:
+            return False
+        target_symbols.append(symbol)
+        return len(target_symbols) >= max_symbols
+
+    if symbols:
+        for item in (raw.strip() for raw in symbols.split(",")):
+            if item and add(item):
+                break
+        return target_symbols
+
     # 보유 원장을 맨 앞에 둔다 — 실제 보유 종목은 절대 max_symbols 컷오프에 밀리면
-    # 안 된다. 과거엔 보유 ETF(예: 133690)가 추천 유니버스 밖이라 KIS 현재가 수집
-    # 대상에서 빠져, 앱에 "시세 갱신 필요 / 6-30"으로 옛 가격이 고정됐다. toss_holdings_kr.csv는
-    # 파일명이 kr이지만 안이 us라 US 수집에만 넣고, KR엔 넣지 않는다(normalize가 걸러도
-    # 불필요한 조회 방지).
+    # 안 된다. 비활성·합병·상장폐지 심볼은 중앙 lifecycle registry에서 제외한다.
     if market == "kr":
         holding_ledgers = ["holdings_kr.csv", "data/kis_2_holdings_kr.csv", "data/kis_holdings_kr.csv"]
     else:
@@ -638,26 +647,19 @@ def _refresh_targets(market: str, symbols: str | None, max_symbols: int) -> list
             "holdings_us.csv", "data/holdings_us.csv", "data/toss_holdings_kr.csv",
             "data/kis_2_holdings_us.csv", "data/kis_holdings_us.csv", "data/toss_holdings_us.csv",
         ]
-    target_files = [data.REPO_ROOT / p for p in holding_ledgers] + [
+    target_files = [data.REPO_ROOT / path for path in holding_ledgers] + [
         data.REPO_ROOT / "data" / "stockapp" / f"price_collection_universe_{market}.csv",
         data.REPO_ROOT / "data" / "stockapp" / f"kis_collection_targets_{market}.csv",
     ]
     for path in target_files:
         for item in data.dataframe_records(data.read_csv(path)):
-            symbol = data.normalize_symbol(item.get("symbol"), market)
-            if symbol and symbol not in target_symbols:
-                target_symbols.append(symbol)
-            if len(target_symbols) >= max_symbols:
+            if add(item.get("symbol")):
                 return target_symbols
     for collection in (data.positions(market).get("items", []), data.symbols(market).get("items", [])):
         for item in collection:
-            symbol = data.normalize_symbol(item.get("symbol"), market)
-            if symbol and symbol not in target_symbols:
-                target_symbols.append(symbol)
-            if len(target_symbols) >= max_symbols:
+            if add(item.get("symbol")):
                 return target_symbols
     return target_symbols
-
 
 def refresh_quotes(market: str = "all", symbols: str | None = None, max_symbols: int = 80) -> dict[str, Any]:
     markets = ["kr", "us"] if market == "all" else [market]

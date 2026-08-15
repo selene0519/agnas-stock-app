@@ -67,6 +67,11 @@ import csv, json, math, os, re
 from datetime import date, datetime, timezone
 from typing import Any
 
+try:
+    from scripts.symbol_lifecycle import inactive_symbols
+except ModuleNotFoundError:  # direct `python scripts/...py` execution
+    from symbol_lifecycle import inactive_symbols
+
 OHLCV_DIR = ROOT / "data" / "market" / "ohlcv"
 REPORTS = ROOT / "reports"
 DATA_STOCKAPP = ROOT / "data" / "stockapp"
@@ -213,12 +218,13 @@ def _load_us_name_map() -> dict[str, str]:
 
 def _load_us_candidate_symbols(limit: int = 160) -> list[str]:
     symbols: list[str] = []
+    inactive = inactive_symbols("us")
 
     def add(value: Any, market: Any = "us") -> None:
         if market and str(market).strip().lower() not in {"", "us"}:
             return
         sym = str(value or "").strip().upper()
-        if not sym:
+        if not sym or sym in inactive:
             return
         if re.fullmatch(r"[A-Z][A-Z0-9.-]{0,9}", sym) and sym not in symbols:
             symbols.append(sym)

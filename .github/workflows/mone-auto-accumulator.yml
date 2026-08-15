@@ -261,6 +261,14 @@ jobs:
                   "failed": result.get("failed"),
                   "kisRows": len(kis_rows),
                   "fallbackRows": max(0, len(all_rows) - len(kis_rows)),
+                  "failedItems": [
+                      {
+                          "symbol": item.get("symbol", ""),
+                          "error": item.get("error", ""),
+                          "fallbackKept": bool(item.get("fallbackKept")),
+                      }
+                      for item in result.get("failedItems", [])
+                  ],
                   "updatedAt": result.get("updatedAt"),
               }
               print({
@@ -270,8 +278,22 @@ jobs:
                   "failed": result.get("failed"),
                   "kisRows": len(kis_rows),
                   "fallbackRows": max(0, len(all_rows) - len(kis_rows)),
+                  "failedItems": [
+                      {
+                          "symbol": item.get("symbol", ""),
+                          "error": item.get("error", ""),
+                          "fallbackKept": bool(item.get("fallbackKept")),
+                      }
+                      for item in result.get("failedItems", [])
+                  ],
                   "updatedAt": result.get("updatedAt"),
               })
+
+          market_statuses = {
+              str(item.get("status") or "UNKNOWN").upper()
+              for item in status_summary["markets"].values()
+          }
+          status_summary["status"] = "OK" if market_statuses and market_statuses <= {"OK"} else "PARTIAL"
 
           (reports / "kis_live_refresh_status.json").write_text(
               json.dumps(status_summary, ensure_ascii=False, indent=2),

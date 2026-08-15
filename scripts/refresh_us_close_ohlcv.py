@@ -24,6 +24,11 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
+try:
+    from scripts.symbol_lifecycle import inactive_symbols
+except ModuleNotFoundError:  # direct `python scripts/...py` execution
+    from symbol_lifecycle import inactive_symbols
+
 REPO = Path(__file__).resolve().parents[1]
 OHLCV_DIR = REPO / "data" / "market" / "ohlcv"
 REPORTS = REPO / "reports"
@@ -100,13 +105,14 @@ def _valid_us_symbol(value: object) -> str:
 def _target_symbols(limit: int = 200) -> list[str]:
     """기존 OHLCV 파일 목록 + watchlist/holdings/추천 파일에서 심볼 수집."""
     symbols: set[str] = set()
+    inactive = inactive_symbols("us")
 
     # 기존 OHLCV 파일에서 심볼 추출
     for p in OHLCV_DIR.glob("us_*_daily.csv"):
         m = re.match(r"us_(.+)_daily\.csv", p.name)
         if m:
             sym = _valid_us_symbol(m.group(1))
-            if sym:
+            if sym and sym not in inactive:
                 symbols.add(sym)
 
     # watchlist/holdings/추천 파일에서 추가
@@ -130,7 +136,7 @@ def _target_symbols(limit: int = 200) -> list[str]:
     for path in extra_paths:
         for row in _read_csv(path):
             sym = _valid_us_symbol(row.get("symbol") or row.get("ticker"))
-            if sym:
+            if sym and sym not in inactive:
                 symbols.add(sym)
 
     return sorted(symbols)[:limit]

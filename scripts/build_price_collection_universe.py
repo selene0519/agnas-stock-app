@@ -7,6 +7,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+try:
+    from scripts.symbol_lifecycle import is_inactive
+except ModuleNotFoundError:  # direct `python scripts/...py` execution
+    from symbol_lifecycle import is_inactive
+
 REPO = Path(__file__).resolve().parents[1]
 STOCKAPP = REPO / "data" / "stockapp"
 REPORTS = REPO / "reports"
@@ -106,6 +111,8 @@ def add_symbol(
 ) -> None:
     symbol, market = row_symbol(row, fallback_market)
     if not symbol or market not in {"kr", "us"}:
+        return
+    if is_inactive(market, symbol):
         return
     key = (market, symbol)
     current = bucket.setdefault(

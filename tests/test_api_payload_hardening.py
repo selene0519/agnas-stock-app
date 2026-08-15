@@ -113,3 +113,87 @@ def test_health_route_is_unique_and_reports_deploy_commit(monkeypatch) -> None:
     assert main.health_bootstrap()["deployCommit"] == "deploy-sha"
     main._HEALTH_CACHE.update({"ts": 0.0, "payload": None})
     assert main._build_health_payload()["deployCommit"] == "deploy-sha"
+
+
+def test_health_treats_closed_market_empty_result_as_operationally_good(monkeypatch) -> None:
+    def quality(market: str, mode: str = "quick") -> dict:
+        assert mode == "quick"
+        if market == "us":
+            return {
+                "status": "OK",
+                "dataStatus": "EMPTY_RESULT",
+                "priceDataStatus": "NORMAL",
+                "reviewMode": True,
+                "rootCauses": ["us_closed_session_review_basis"],
+                "nextActions": ["No action required unless live-session data is expected."],
+                "summary": "US closed review; no eligible candidates",
+                "candidateCount": 0,
+            }
+        return {
+            "status": "OK",
+            "dataStatus": "NORMAL",
+            "priceDataStatus": "NORMAL",
+            "reviewMode": True,
+            "rootCauses": [],
+            "nextActions": [],
+            "summary": "KR closed review data current",
+            "candidateCount": 3,
+        }
+
+    monkeypatch.setattr(main.data_quality, "data_quality", quality)
+    monkeypatch.setattr(main, "api_data_sources", lambda: {"status": "OK", "sources": {"github_actions": {"status": "OK"}}})
+    monkeypatch.setattr(
+        vtj,
+        "auto_capture_status",
+        lambda: {
+            "status": "OK",
+            "enabled": True,
+            "lastRunAt": "2026-08-15T08:00:00+09:00",
+            "journalSession": "AFTER_CLOSE_TRADE",
+            "evaluation": {"status": "OK"},
+            "completedKeys": [],
+            "runs": [{"status": "NO_CANDIDATES", "added": 0}],
+        },
+    )
+    main._HEALTH_CACHE.update({"ts": 0.0, "payload": None})
+
+    payload = main._build_health_payload()
+
+    assert payload["status"] == "OK"
+    assert payload["dataStatus"] == "GOOD"
+    assert payload["activeGaps"] == []
+    assert payload["marketQuality"]["us"]["dataStatus"] == "NORMAL"
+    assert payload["marketQuality"]["us"]["rawDataStatus"] == "EMPTY_RESULT"
+    assert payload["marketQuality"]["us"]["expectedConditions"] == ["us_closed_session_review_basis"]
+
+def test_data_sources_uses_market_status_and_separates_inactive_local_collector(monkeypatch, tmp_path: Path) -> None:
+    import json
+
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    (reports / "kis_live_refresh_status.json").write_text(
+        json.dumps(
+            {
+                "status": "OK",
+                "updatedAt": "2026-08-15 06:44:14 KST",
+                "markets": {
+                    "kr": {"status": "OK", "refreshed": 100, "failed": 0},
+                    "us": {"status": "OK", "refreshed": 111, "failed": 0},
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    (reports / "local_collector_status.json").write_text(
+        json.dumps({"completedAt": "2026-07-28T16:40:53", "source": "local_task_scheduler", "pushed": False}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(main.data, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(main.data, "REPORT_DIR", reports)
+
+    payload = main.api_data_sources()
+
+    assert payload["status"] == "OK"
+    assert payload["sources"]["github_actions"]["failed"] == 0
+    assert "local_collector" not in payload["sources"]
+    assert payload["inactiveSources"]["local_collector"]["status"] == "INACTIVE_FALLBACK"

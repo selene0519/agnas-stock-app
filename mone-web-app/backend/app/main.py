@@ -199,10 +199,24 @@ def _build_health_payload() -> dict:
             status = str(quality.get("dataStatus") or quality.get("status") or "PARTIAL").upper()
             root_causes = list(quality.get("rootCauses") or [])
             next_actions = list(quality.get("nextActions") or [])
+            expected_closed_empty = (
+                status == "EMPTY_RESULT"
+                and bool(quality.get("reviewMode"))
+                and str(quality.get("priceDataStatus") or "").upper() == "NORMAL"
+                and bool(root_causes)
+                and set(root_causes) <= {"us_closed_session_review_basis", "kr_closed_session_review_basis"}
+            )
+            expected_conditions = root_causes if expected_closed_empty else []
+            if expected_closed_empty:
+                root_causes = []
+                next_actions = []
+            operational_status = "NORMAL" if expected_closed_empty else status
             summary = str(quality.get("summary") or "").strip()
             market_quality[market] = {
                 "status": quality.get("status"),
-                "dataStatus": status,
+                "dataStatus": operational_status,
+                "rawDataStatus": status,
+                "expectedConditions": expected_conditions,
                 "summary": summary,
                 "rootCauses": root_causes,
                 "nextActions": next_actions,
@@ -218,10 +232,10 @@ def _build_health_payload() -> dict:
             }
             steps.append(_health_step(
                 f"{market}-data-quality",
-                _status_from_rank(_status_rank(status)),
+                _status_from_rank(_status_rank(operational_status)),
                 summary or f"dataStatus={status}, latestDataDate={quality.get('latestDataDate') or '-'}, rows={quality.get('rowCount') or 0}",
                 source="/api/final/data-quality",
-                next_action=next_actions[0] if next_actions else "Refresh collector/GitHub Actions data if status is STALE or ERROR.",
+                next_action=next_actions[0] if next_actions else ("" if operational_status == "NORMAL" else "Refresh collector/GitHub Actions data if status is STALE or ERROR."),
             ))
         except Exception as exc:
             market_quality[market] = {"status": "ERROR", "error": str(exc), "source": "/api/final/data-quality"}
@@ -9899,6 +9913,7 @@ HORIZONS = ("short", "swing", "mid")
 def api_data_sources() -> dict:
     """데이터 수집 소스 상태 (GitHub Actions vs 로컬 수집기) 및 추천 CSV 신선도"""
     sources: dict = {}
+    inactive_sources: dict = {}
 
     # GitHub Actions 마지막 실행 상태
     for f in ("reports/kis_live_refresh_status.json", "reports/auto_sync_status.json"):
@@ -9906,10 +9921,18 @@ def api_data_sources() -> dict:
         if p.exists():
             try:
                 d = json.loads(p.read_text(encoding="utf-8"))
+                market_rows = [row for row in (d.get("markets") or {}).values() if isinstance(row, dict)]
+                market_statuses = {str(row.get("status") or "UNKNOWN").upper() for row in market_rows}
+                derived_status = str(d.get("status") or "").upper()
+                if not derived_status:
+                    derived_status = "OK" if market_statuses and market_statuses <= {"OK"} else "PARTIAL"
                 sources["github_actions"] = {
                     "lastUpdate": d.get("updatedAt") or d.get("timestamp", ""),
-                    "status": d.get("status", "UNKNOWN"),
+                    "status": derived_status,
                     "file": f,
+                    "marketStatuses": sorted(market_statuses),
+                    "refreshed": sum(int(row.get("refreshed") or 0) for row in market_rows),
+                    "failed": sum(int(row.get("failed") or 0) for row in market_rows),
                 }
                 break
             except Exception:
@@ -9920,11 +9943,16 @@ def api_data_sources() -> dict:
     if p2.exists():
         try:
             d2 = json.loads(p2.read_text(encoding="utf-8"))
-            sources["local_collector"] = {
+            collector_payload = {
                 "lastUpdate": d2.get("completedAt", ""),
                 "source": d2.get("source", "local_task_scheduler"),
                 "pushed": d2.get("pushed", False),
+                "status": "OK" if d2.get("pushed") else "INACTIVE_FALLBACK",
             }
+            if d2.get("pushed"):
+                sources["local_collector"] = collector_payload
+            else:
+                inactive_sources["local_collector"] = collector_payload
         except Exception:
             pass
 
@@ -9940,7 +9968,14 @@ def api_data_sources() -> dict:
                     "fresh": age_h < 24,
                 }
 
-    return {"status": "OK", "sources": sources, "recommendationFreshness": rec_freshness}
+    source_statuses = {str(item.get("status") or "UNKNOWN").upper() for item in sources.values()}
+    overall_status = "OK" if sources and source_statuses <= {"OK"} else "PARTIAL"
+    return {
+        "status": overall_status,
+        "sources": sources,
+        "inactiveSources": inactive_sources,
+        "recommendationFreshness": rec_freshness,
+    }
 
 
 @app.post("/api/cache/refresh")

@@ -62,3 +62,39 @@ def test_latest_ohlcv_date_reads_last_record_across_market_files(tmp_path: Path,
     monkeypatch.setattr(data_quality.data, "REPO_ROOT", tmp_path)
 
     assert data_quality.latest_ohlcv_date("us") == "2026-08-09"
+
+
+def test_github_monitor_uses_fresh_persisted_evidence_when_api_is_rate_limited(monkeypatch, tmp_path: Path) -> None:
+    from datetime import datetime, timedelta, timezone
+    import json
+
+    from app.services import data_loader
+
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    updated_at = (datetime.now(timezone.utc) + timedelta(hours=9)).strftime("%Y-%m-%d %H:%M:%S KST")
+    (reports / "kis_live_refresh_status.json").write_text(
+        json.dumps(
+            {
+                "status": "OK",
+                "updatedAt": updated_at,
+                "markets": {
+                    "kr": {"status": "OK", "refreshed": 100, "failed": 0},
+                    "us": {"status": "OK", "refreshed": 111, "failed": 0},
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(data_loader, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(data_loader, "REPORT_DIR", reports)
+    monkeypatch.setenv("GITHUB_TOKEN", "expired-token")
+    responses = iter([_Response(403), _Response(403), _Response(403), _Response(403)])
+    monkeypatch.setattr(data_loader.requests, "get", lambda *_args, **_kwargs: next(responses))
+
+    result = data_loader.github_actions_status()
+
+    assert result["status"] == "OK"
+    assert result["authMode"] == "persisted_evidence"
+    assert result["upstreamStatus"] == "HTTP 403"
+    assert result["evidence"]["failed"] == 0

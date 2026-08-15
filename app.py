@@ -430,7 +430,7 @@ LESSER_KNOWN_GROWTH_UNIVERSE = {
     "전력/데이터센터": ["VRT", "ETN", "PWR", "CEG", "NNE", "OKLO", "SMR"],
     "우주/방산/통신": ["RKLB", "ASTS", "LUNR", "ACHR", "JOBY", "KTOS", "AVAV"],
     "소프트웨어/AI응용": ["APP", "PLTR", "DDOG", "NET", "MDB", "ESTC", "S", "PATH"],
-    "바이오/헬스테크": ["TMDX", "LNTH", "HIMS", "RXRX", "TEM", "EXAS", "GH"],
+    "바이오/헬스테크": ["TMDX", "LNTH", "HIMS", "RXRX", "TEM", "GH"],
     "소비/플랫폼 성장": ["RDDT", "DUOL", "CAVA", "CELH", "GLBE", "SHOP", "HOOD"],
 }
 
@@ -440,7 +440,7 @@ LESSER_KNOWN_SECTOR_HINTS = {
     "VRT": "반도체/AI", "ETN": "지수형", "PWR": "지수형", "CEG": "지수형", "NNE": "지수형", "OKLO": "지수형", "SMR": "지수형",
     "RKLB": "전기차/성장주", "ASTS": "전기차/성장주", "LUNR": "전기차/성장주", "ACHR": "전기차/성장주", "JOBY": "전기차/성장주", "KTOS": "전기차/성장주", "AVAV": "전기차/성장주",
     "APP": "클라우드/소프트웨어", "DDOG": "클라우드/소프트웨어", "NET": "클라우드/소프트웨어", "MDB": "클라우드/소프트웨어", "ESTC": "클라우드/소프트웨어", "S": "클라우드/소프트웨어", "PATH": "클라우드/소프트웨어",
-    "TMDX": "지수형", "LNTH": "지수형", "HIMS": "전기차/성장주", "RXRX": "지수형", "TEM": "지수형", "EXAS": "지수형", "GH": "지수형",
+    "TMDX": "지수형", "LNTH": "지수형", "HIMS": "전기차/성장주", "RXRX": "지수형", "TEM": "지수형", "GH": "지수형",
     "RDDT": "클라우드/소프트웨어", "DUOL": "클라우드/소프트웨어", "CAVA": "전기차/성장주", "CELH": "전기차/성장주", "GLBE": "클라우드/소프트웨어", "SHOP": "클라우드/소프트웨어", "HOOD": "전기차/성장주",
 }
 

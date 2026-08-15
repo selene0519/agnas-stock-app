@@ -26,6 +26,11 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any
 
+try:
+    from scripts.symbol_lifecycle import inactive_symbols
+except ModuleNotFoundError:  # direct `python scripts/...py` execution
+    from symbol_lifecycle import inactive_symbols
+
 import requests
 
 # ---------------------------------------------------------------------------
@@ -428,7 +433,8 @@ def load_symbols() -> list[str]:
         collected += _csv_symbols(p)
 
     # 중복 제거 + 순서 유지 + 최소 fallback
-    result = list(dict.fromkeys(s for s in collected if s))
+    inactive = inactive_symbols("us")
+    result = list(dict.fromkeys(s for s in collected if s and s not in inactive))
     if not result:
         result = [
             "NVDA", "MSFT", "AAPL", "AMZN", "GOOGL", "META", "TSLA", "AVGO",
