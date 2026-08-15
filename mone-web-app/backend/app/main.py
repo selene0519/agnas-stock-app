@@ -326,6 +326,7 @@ def _build_health_payload() -> dict:
         "dataStatus": _status_from_rank(worst_rank),
         "service": "mone-web-api",
         "version": app.version,
+        "deployCommit": os.environ.get("RENDER_GIT_COMMIT") or os.environ.get("GITHUB_SHA"),
         "generatedAt": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "uptimeSec": round(now - _APP_STARTED_AT, 1),
         "heavyJobsEnabled": runtime_limits.heavy_jobs_enabled(),
@@ -354,13 +355,14 @@ def health_bootstrap() -> dict:
     return {
         "status": "OK",
         "app": "mone-web-app",
+        "deployCommit": os.environ.get("RENDER_GIT_COMMIT") or os.environ.get("GITHUB_SHA"),
         "uptimeSeconds": round(max(time.time() - _APP_STARTED_AT, 0.0), 1),
         "generatedAt": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "dataVersions": _get_recommendation_data_versions(),
     }
 
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 def health_root() -> dict:
     return _build_health_payload()
 
@@ -732,42 +734,6 @@ def _apply_recommendation_trade_safety(payload: dict, quality: dict | None) -> d
     return payload
 
 
-@app.api_route("/health", methods=["GET", "HEAD"])
-def health() -> dict:
-    from pathlib import Path
-    import datetime as _dt
-    checks: dict[str, object] = {}
-    # OHLCV 파일 존재 여부
-    ohlcv_dir = data.REPO_ROOT / "data" / "market" / "ohlcv"
-    ohlcv_files = list(ohlcv_dir.glob("kr_*_daily.csv")) if ohlcv_dir.exists() else []
-    checks["ohlcv_files"] = len(ohlcv_files)
-    checks["ohlcv_ok"] = len(ohlcv_files) > 0
-    # 추천 파일 최신성 (kr_balanced_swing 기준)
-    reco_path = data.REPO_ROOT / "reports" / "mone_v36_final_recommendations_kr_balanced_swing.csv"
-    if reco_path.exists():
-        mtime = reco_path.stat().st_mtime
-        age_hours = (_dt.datetime.now().timestamp() - mtime) / 3600
-        checks["reco_file_age_hours"] = round(age_hours, 1)
-        checks["reco_stale"] = age_hours > 48
-    else:
-        checks["reco_stale"] = True
-        checks["reco_file_age_hours"] = None
-    # DB 연결 상태
-    try:
-        db_info = _db.backend_info()
-        checks["db"] = db_info
-        checks["db_ok"] = db_info.get("status") not in {"ERROR", "DISCONNECTED"}
-    except Exception as exc:
-        checks["db"] = {"status": "ERROR", "error": str(exc)[:100]}
-        checks["db_ok"] = False
-    overall = "OK" if checks.get("ohlcv_ok") and not checks.get("reco_stale") else "DEGRADED"
-    return {
-        "status": overall,
-        "app": "mone-web-app",
-        "repoRoot": str(data.REPO_ROOT),
-        "updatedAt": data.latest_updated_at(),
-        "checks": checks,
-    }
 
 
 

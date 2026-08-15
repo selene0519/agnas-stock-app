@@ -98,3 +98,18 @@ def test_health_only_embeds_journal_summary(monkeypatch) -> None:
     payload = main._build_health_payload()
 
     assert payload["journalCapture"]["evaluationStatus"] == "OK"
+
+
+def test_health_route_is_unique_and_reports_deploy_commit(monkeypatch) -> None:
+    monkeypatch.setenv("RENDER_GIT_COMMIT", "deploy-sha")
+    routes = [
+        route
+        for route in main.app.router.routes
+        if getattr(route, "path", "") == "/health" and "GET" in getattr(route, "methods", set())
+    ]
+
+    assert len(routes) == 1
+    assert "HEAD" in routes[0].methods
+    assert main.health_bootstrap()["deployCommit"] == "deploy-sha"
+    main._HEALTH_CACHE.update({"ts": 0.0, "payload": None})
+    assert main._build_health_payload()["deployCommit"] == "deploy-sha"

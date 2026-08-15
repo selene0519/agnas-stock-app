@@ -18,6 +18,6 @@ jobs:
           MONE_BACKEND_URL: https://agnas-stock-app.onrender.com
         run: |
           echo "Ping $MONE_BACKEND_URL"
-          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 25 "$MONE_BACKEND_URL/health" || echo "000")
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 25 "$MONE_BACKEND_URL/health/bootstrap" || echo "000")
           echo "HTTP $STATUS"
           if [ "$STATUS" = "200" ]; then echo "OK"; else echo "warm-up needed"; fi
