@@ -2645,8 +2645,8 @@ export default function ChartPage() {
     }
 
     Promise.allSettled([
-      withTimeout(mone.news({ market: selected.market, limit: 200 }, controller.signal), 12000, { status: "TIMEOUT", items: [] }),
-      withTimeout(mone.disclosures({ market: selected.market, limit: 200, watchOnly: false }, controller.signal), 12000, { status: "TIMEOUT", items: [] }),
+      withTimeout(mone.news({ market: selected.market, symbol: selected.symbol, limit: 30, watchOnly: false }, controller.signal), 12000, { status: "TIMEOUT", items: [] }),
+      withTimeout(mone.disclosures({ market: selected.market, symbol: selected.symbol, limit: 30, watchOnly: false }, controller.signal), 12000, { status: "TIMEOUT", items: [] }),
       withTimeout(mone.companyAnalysis({ market: selected.market, q: selected.symbol, limit: 20 }, controller.signal), 20000, { status: "TIMEOUT", items: [] }),
       withTimeout(mone.patternStrategy({ market: selected.market, symbol: selected.symbol }, controller.signal), 20000, { status: "TIMEOUT" }),
     ]).then((results) => {

@@ -51,3 +51,15 @@ def test_all_paper_ledger_mutations_require_admin_auth() -> None:
     )
     assert all(requires_admin_auth(method, path) for method, path in protected)
     assert requires_admin_auth("GET", "/api/paper/ai/status") is False
+
+
+def test_legacy_shared_holdings_mutations_require_admin_auth() -> None:
+    protected = (
+        ("POST", "/api/holdings"),
+        ("PATCH", "/api/holdings/005930"),
+        ("DELETE", "/api/holdings/AAPL"),
+        ("POST", "/api/holdings/import-csv"),
+        ("POST", "/api/kis/holdings/sync"),
+    )
+    assert all(requires_admin_auth(method, path) for method, path in protected)
+    assert requires_admin_auth("GET", "/api/holdings/exit-signals") is False

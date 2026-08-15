@@ -88,6 +88,39 @@ jobs:
 
           cat /tmp/ai_journal_result.json
 
+      - name: Validate capture result
+        id: validate
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          payload = json.loads(Path("/tmp/ai_journal_result.json").read_text(encoding="utf-8"))
+          if str(payload.get("status", "")).upper() != "OK":
+              print(f"::error::capture status={payload.get('status')} error={payload.get('error', '')}")
+              raise SystemExit(1)
+          runs = payload.get("runs") if isinstance(payload.get("runs"), list) else []
+          bad = [run for run in runs if str(run.get("status", "")).upper() in {"ERROR", "FAILED"}]
+          if bad:
+              print(f"::error::capture run failures={bad}")
+              raise SystemExit(1)
+          added = sum(int(run.get("added") or 0) for run in runs)
+          selected = sum(int(run.get("selected") or 0) for run in runs)
+          activity = "CAPTURED"
+          if not runs:
+              activity = "NO_RUNS"
+          elif added == 0 and any(str(run.get("status", "")).upper() == "NO_CANDIDATES" for run in runs):
+              activity = "NO_CANDIDATES"
+          elif added == 0:
+              activity = "NO_NEW_ROWS"
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fp:
+              fp.write(f"capture_activity={activity}\n")
+              fp.write(f"added={added}\n")
+              fp.write(f"selected={selected}\n")
+          print(f"capture_activity={activity} selected={selected} added={added}")
+          if activity in {"NO_CANDIDATES", "NO_RUNS"}:
+
       - name: 실패 시 텔레그램 알림
         if: failure()
         run: |

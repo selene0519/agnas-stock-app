@@ -2182,3 +2182,25 @@ def test_historical_replay_cannot_auto_apply_live_calibration() -> None:
 
     assert verdict["eligible"] is False
     assert verdict["reason"] == "RAW_SAMPLE_GATE"
+
+
+def test_no_candidates_auto_capture_remains_retryable(
+    isolated_vtj: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(vtj, "_kst_now", lambda: datetime(2026, 6, 18, 17, 30, tzinfo=vtj.ZoneInfo("Asia/Seoul")))
+    monkeypatch.setattr(vtj, "_source_recommendation_items", lambda *args, **kwargs: [])
+
+    first = vtj.run_auto_capture("kr", journal_session="AFTER_CLOSE_TRADE", evaluate_after=False, force=False)
+
+    run_key = first["runs"][0]["runKey"]
+    assert first["runs"][0]["status"] == "NO_CANDIDATES"
+    assert run_key not in first["completedKeys"]
+
+    monkeypatch.setattr(vtj, "_source_recommendation_items", lambda *args, **kwargs: [_valid_recommendation()])
+
+    second = vtj.run_auto_capture("kr", journal_session="AFTER_CLOSE_TRADE", evaluate_after=False, force=False)
+
+    assert second["runs"][0]["status"] != "SKIPPED_DUPLICATE"
+    assert second["runs"][0]["added"] > 0
+    assert run_key in second["completedKeys"]

@@ -16,7 +16,7 @@ permissions:
 
 concurrency:
   group: mone-walkforward-main
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 defaults:
   run:
@@ -25,7 +25,7 @@ defaults:
 jobs:
   backtest:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 240
     env:
       CI: "true"
       TZ: Asia/Seoul
@@ -61,7 +61,7 @@ jobs:
         env:
           PYTHONPATH: .
         run: |
-          set +e
+          set -e
           python - <<'PY'
           import sys, json
           from pathlib import Path
@@ -76,9 +76,11 @@ jobs:
                   print(f"[walk-forward] {market.upper()} 완료: {combo_count}개 전략 조합")
               except Exception as e:
                   print(f"[walk-forward] {market.upper()} 오류: {e}")
+                  raise
           PY
           echo "walk-forward: exit $?"
 
+          : <<'DEDICATED_WORKFLOWS'
           # 앙상블 보정 테이블 갱신 (walk-forward 직후 실행)
           python - <<'PY'
           import sys
@@ -110,6 +112,8 @@ jobs:
               print(f"[pattern-walkforward] 오류: {e}")
           PY
           echo "pattern-walkforward: exit $?"
+          DEDICATED_WORKFLOWS
+          echo "Ensemble and pattern validation run in dedicated monitored workflows."
           cd ../..
           python scripts/audit_walkforward_integrity.py
           echo "walkforward-integrity-audit: exit $?"
@@ -128,7 +132,7 @@ jobs:
             git add reports/walkforward_integrity.json 2>/dev/null || true
           }
 
-          max_attempts=8
+          max_attempts=20
           for attempt in $(seq 1 "${max_attempts}"); do
             echo "Commit attempt ${attempt}/${max_attempts}: align with origin/main and restage results."
             git fetch origin main

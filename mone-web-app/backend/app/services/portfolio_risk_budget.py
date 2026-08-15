@@ -269,10 +269,15 @@ def _holding_rows(market: str, user_id: str = "") -> list[dict[str, Any]]:
             from app import db
 
             personal_rows = db.get_holdings(user_id, market)
-            if personal_rows:
-                return personal_rows
+            # An authenticated user's empty ledger is authoritative. Falling
+            # through to the repository CSV here leaks another portfolio into
+            # the user's risk budget and makes an empty account look populated.
+            return personal_rows if isinstance(personal_rows, list) else []
         except Exception:
-            pass
+            # Fail closed for user-scoped data. Shared CSV holdings are only a
+            # legacy/admin source and must never substitute for a failed user
+            # database read.
+            return []
     try:
         from app.services.exit_signal import _holdings_items
 

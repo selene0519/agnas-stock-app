@@ -72,3 +72,16 @@ def test_risk_budget_uses_default_stop_when_missing(monkeypatch) -> None:
     assert out["missingStopCount"] == 1
     assert "default stop used" in out["items"][0]["reasons"]
     assert out["items"][0]["stopPrice"] == 92.0
+
+
+def test_empty_personal_ledger_never_falls_back_to_shared_holdings(monkeypatch) -> None:
+    from app import db
+
+    monkeypatch.setattr(db, "get_holdings", lambda user_id, market: [])
+    monkeypatch.setattr(
+        prb,
+        "_csv_holding_rows",
+        lambda market: (_ for _ in ()).throw(AssertionError("shared CSV fallback must not run")),
+    )
+
+    rows = prb._holding_rows("all", user_id="authenticated-user")

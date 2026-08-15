@@ -2,9 +2,16 @@ from __future__ import annotations
 
 
 ADMIN_PREFIX = "/api/admin/"
+PROTECTED_MUTATION_PATHS = {
+    "/api/holdings",
+    "/api/holdings/import-csv",
+    "/api/kis/holdings/sync",
+}
+
 PROTECTED_MUTATION_PREFIXES = (
     "/api/paper/",  # global paper ledgers and AI cycles are operational state
     "/api/journal/virtual-trades/capture",
+    "/api/holdings/",  # legacy shared-ledger PATCH/DELETE routes
     "/api/journal/virtual-trades/evaluate",
     "/api/journal/virtual-trades/",  # per-trade review actions
     "/api/journal/self-learning/performance-gate",
@@ -20,6 +27,8 @@ def requires_admin_auth(method: str, path: str) -> bool:
     normalized_method = str(method or "").upper()
     normalized_path = str(path or "")
     if normalized_path.startswith(ADMIN_PREFIX):
+        return True
+    if normalized_method in MUTATING_METHODS and normalized_path in PROTECTED_MUTATION_PATHS:
         return True
     return normalized_method in MUTATING_METHODS and any(
         normalized_path.startswith(prefix) for prefix in PROTECTED_MUTATION_PREFIXES

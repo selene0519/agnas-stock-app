@@ -10,6 +10,7 @@ import urllib.parse
 import urllib.request
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
 
 from fastapi import Body, FastAPI, Header, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -252,6 +253,55 @@ def _build_health_payload() -> dict:
             next_action="Inspect source status JSON files.",
         ))
 
+    try:
+        from app.services.virtual_trade_journal import auto_capture_status
+
+        journal_capture = auto_capture_status()
+        last_run_at = str(journal_capture.get("lastRunAt") or "")
+        last_run_age_hours = None
+        if last_run_at:
+            try:
+                last_run_age_hours = max(0.0, (now - datetime.fromisoformat(last_run_at).timestamp()) / 3600)
+            except (TypeError, ValueError):
+                last_run_age_hours = None
+        journal_runs = [run for run in (journal_capture.get("runs") or []) if isinstance(run, dict)]
+        journal_run_statuses = {str(run.get("status") or "UNKNOWN").upper() for run in journal_runs}
+        if any(int(run.get("added") or 0) > 0 for run in journal_runs):
+            capture_activity = "CAPTURED"
+        elif "NO_CANDIDATES" in journal_run_statuses:
+            capture_activity = "NO_CANDIDATES_RETRYABLE"
+        elif journal_run_statuses == {"SKIPPED_MARKET_CLOSED"}:
+            capture_activity = "MARKET_CLOSED"
+        else:
+            capture_activity = "NO_NEW_ROWS"
+        capture_stale = last_run_age_hours is None or last_run_age_hours > 72
+        journal_capture = {
+            "status": journal_capture.get("status"),
+            "enabled": journal_capture.get("enabled"),
+            "source": journal_capture.get("source"),
+            "lastRunAt": last_run_at or None,
+            "lastRunAgeHours": round(last_run_age_hours, 1) if last_run_age_hours is not None else None,
+            "journalSession": journal_capture.get("journalSession"),
+            "evaluationStatus": str((journal_capture.get("evaluation") or {}).get("status") or "UNKNOWN").upper(),
+            "completedKeyCount": len(journal_capture.get("completedKeys") or []),
+            "runStatuses": sorted(journal_run_statuses),
+            "captureActivity": capture_activity,
+            "stale": capture_stale,
+        }
+        steps.append(_health_step(
+            "ai-journal-capture",
+            "STALE" if capture_stale else "GOOD",
+            f"lastRunAt={last_run_at or '-'}, activity={capture_activity}",
+            source="reports/virtual_trade_journal_status.json",
+            next_action="Run or inspect MONE AI Journal Capture." if capture_stale else "",
+        ))
+    except Exception as exc:
+        journal_capture = {"status": "ERROR", "error": str(exc)[:240], "stale": True}
+        steps.append(_health_step(
+            "ai-journal-capture", "ERROR", str(exc)[:240],
+            source="reports/virtual_trade_journal_status.json",
+            next_action="Inspect the journal status file and capture workflow.",
+        ))
     active_gaps: list[str] = []
     gap_next_actions: dict[str, str] = {}
     for quality in market_quality.values():
@@ -288,6 +338,7 @@ def _build_health_payload() -> dict:
         "activeGaps": active_gaps,
         "gapNextActions": gap_next_actions,
         "dataSources": data_sources,
+        "journalCapture": journal_capture,
         "steps": steps,
         "checklist11to45": checklist,
         "dataVersions": _get_recommendation_data_versions(),
@@ -2743,15 +2794,34 @@ def api_news(
     market: str = Query("kr", pattern="^(kr|us)$"),
     watch_only: bool = Query(False),
     watchOnly: bool | None = Query(None),
+    symbol: str = Query(""),
+    limit: int = Query(100, ge=1, le=500),
 ) -> dict:
     from pathlib import Path as _NP
     import csv as _NC
 
     mk = _market(market)
     result = _ensure_status(data.news_rows(mk))
+    requested_symbol = data.normalize_symbol(symbol, mk) if str(symbol or "").strip() else ""
+
+    def _finalize_news(payload: dict) -> dict:
+        items = payload.get("items", []) if isinstance(payload, dict) else []
+        if requested_symbol:
+            items = [
+                item for item in items
+                if data.normalize_symbol(item.get("symbol", ""), mk) == requested_symbol
+            ]
+        public_items = []
+        for item in items[:limit]:
+            if not isinstance(item, dict):
+                continue
+            public_item = dict(item)
+            public_item.pop("raw", None)
+            public_items.append(public_item)
+        return _ensure_status({**payload, "items": public_items, "count": len(public_items), "limit": limit})
     effective_watch_only = watch_only if watchOnly is None else watchOnly
     if not effective_watch_only:
-        return result
+        return _finalize_news(result)
 
     relevant: set[str] = set()
     repo = _NP(__file__).resolve().parents[3]
@@ -2786,13 +2856,13 @@ def api_news(
         _read_symbols(repo / fname)
 
     if not relevant:
-        return {**result, "items": [], "count": 0, "watchOnly": True, "relevantSymbols": 0}
+        return _finalize_news({**result, "items": [], "count": 0, "watchOnly": True, "relevantSymbols": 0})
 
     filtered = [
         item for item in result.get("items", [])
         if data.normalize_symbol(item.get("symbol", ""), mk) in relevant
     ]
-    return {**result, "items": filtered, "count": len(filtered), "watchOnly": True, "relevantSymbols": len(relevant)}
+    return _finalize_news({**result, "items": filtered, "count": len(filtered), "watchOnly": True, "relevantSymbols": len(relevant)})
 
 
 @app.get("/api/disclosures")
@@ -2800,12 +2870,31 @@ def api_disclosures(
     market: str = Query("kr", pattern="^(kr|us)$"),
     watch_only: bool = Query(True),
     watchOnly: bool | None = Query(None),
+    symbol: str = Query(""),
+    limit: int = Query(100, ge=1, le=500),
 ) -> dict:
     from pathlib import Path as _DP
     import csv as _DC
 
     mk = _market(market)
     result = data.disclosure_rows(mk)
+    requested_symbol = data.normalize_symbol(symbol, mk) if str(symbol or "").strip() else ""
+
+    def _finalize_disclosures(payload: dict) -> dict:
+        items = payload.get("items", []) if isinstance(payload, dict) else []
+        if requested_symbol:
+            items = [
+                item for item in items
+                if data.normalize_symbol(item.get("symbol", ""), mk) == requested_symbol
+            ]
+        public_items = []
+        for item in items[:limit]:
+            if not isinstance(item, dict):
+                continue
+            public_item = dict(item)
+            public_item.pop("raw", None)
+            public_items.append(public_item)
+        return _ensure_status({**payload, "items": public_items, "count": len(public_items), "limit": limit})
     effective_watch_only = watch_only if watchOnly is None else watchOnly
 
     if effective_watch_only:
@@ -2857,9 +2946,9 @@ def api_disclosures(
             result = {**result, "items": filtered, "count": len(filtered),
                       "watchOnly": True, "relevantSymbols": len(relevant)}
         else:
-            result = {**result, "watchOnly": True, "relevantSymbols": 0}
+            result = {**result, "items": [], "count": 0, "watchOnly": True, "relevantSymbols": 0}
 
-    return result
+    return _finalize_disclosures(result)
 
 
 @app.post("/api/disclosures/refresh")
@@ -5438,15 +5527,17 @@ def _install_mone_symbols_extra_master_v2():
     from pathlib import Path as _MonePath
     import csv as _mone_csv
     import re as _mone_re
+    import time as _mone_time
+    from functools import lru_cache as _mone_lru_cache
     from datetime import datetime as _mone_datetime
     from fastapi import Query as _MoneQuery
 
     def _root() -> _MonePath:
         return _MonePath(__file__).resolve().parents[3]
 
-    def _read_csv(path: _MonePath) -> list[dict]:
-        if not path.exists():
-            return []
+    @_mone_lru_cache(maxsize=256)
+    def _read_csv_versioned(path_text: str, mtime_ns: int, size: int) -> list[dict]:
+        path = _MonePath(path_text)
         for enc in ("utf-8-sig", "utf-8", "cp949", "euc-kr"):
             try:
                 with path.open("r", encoding=enc, newline="") as f:
@@ -5454,6 +5545,17 @@ def _install_mone_symbols_extra_master_v2():
             except Exception:
                 continue
         return []
+
+    def _read_csv(path: _MonePath) -> list[dict]:
+        if not path.exists():
+            return []
+        try:
+            stat = path.stat()
+        except OSError:
+            return []
+        # Parsing all symbol sources for every typed character caused 15s+
+        # search latency. The cache key changes whenever the source file does.
+        return _read_csv_versioned(str(path), int(stat.st_mtime_ns), int(stat.st_size))
 
     def _text(row: dict, keys: list[str], default: str = "") -> str:
         lower = {str(k).lower(): k for k in row.keys()}
@@ -5526,6 +5628,8 @@ def _install_mone_symbols_extra_master_v2():
                 }
         return out
 
+    _source_files_cache: dict = {"expiresAt": 0.0, "files": []}
+
     def _symbol_source_files() -> list[_MonePath]:
         root = _root()
         files: list[_MonePath] = [
@@ -5564,14 +5668,28 @@ def _install_mone_symbols_extra_master_v2():
             root / "reports" / "intraday_quote_snapshot_kr.csv",
             root / "reports" / "intraday_quote_snapshot_us.csv",
         ]
-        if (root / "reports").exists():
-            files.extend(sorted((root / "reports").glob("v*_symbol_snapshot_kr.csv")))
-            files.extend(sorted((root / "reports").glob("v*_symbol_snapshot_us.csv")))
-            files.extend(sorted((root / "reports").glob("v*_master_investors_kr.csv")))
-            files.extend(sorted((root / "reports").glob("v*_master_investors_us.csv")))
-            files.extend(sorted((root / "reports").glob("mone_v36_final_recommendations_kr_*.csv")))
-            files.extend(sorted((root / "reports").glob("mone_v36_final_recommendations_us_*.csv")))
-        return [p for p in files if p.exists()]
+        now = _mone_time.monotonic()
+        cached_files = _source_files_cache.get("files") or []
+        if cached_files and now < float(_source_files_cache.get("expiresAt") or 0):
+            return list(cached_files)
+        reports_dir = root / "reports"
+        if reports_dir.exists():
+            try:
+                # One directory walk replaces six full glob scans. On Render's
+                # large reports directory those repeated scans dominated every
+                # symbol-search request.
+                for path in reports_dir.iterdir():
+                    name = path.name.lower()
+                    if not path.is_file() or not name.endswith(".csv"):
+                        continue
+                    if ((name.startswith("v") and ("_symbol_snapshot_" in name or "_master_investors_" in name))
+                            or name.startswith("mone_v36_final_recommendations_")):
+                        files.append(path)
+            except OSError:
+                pass
+        existing = [p for p in files if p.exists()]
+        _source_files_cache.update({"expiresAt": now + 30.0, "files": existing})
+        return list(existing)
 
     def _symbols_payload(market: str = "all", q: str = "", limit: int = 10000) -> dict:
         market_key = str(market or "all").lower()
@@ -6521,6 +6639,17 @@ from fastapi import Header as _Header
 
 def _sanitize_uid(raw: str) -> str:
     return _uid_re.sub(r"[^a-zA-Z0-9_\-]", "", str(raw or ""))[:64]
+def _authenticated_holdings_uid(x_mone_user: str, authorization: str) -> str:
+    claimed_uid = _sanitize_uid(x_mone_user)
+    if str(os.environ.get("MONE_ANON_HOLDINGS", "")).strip().lower() in {"1", "true", "yes", "on"}:
+        return claimed_uid or "local-dev"
+    payload = _verify_user_token(_extract_bearer_token(authorization))
+    token_uid = _sanitize_uid(str((payload or {}).get("userId") or (payload or {}).get("sub") or ""))
+    if not token_uid:
+        return ""
+    if claimed_uid and not hmac.compare_digest(claimed_uid, token_uid):
+        return ""
+    return token_uid
 
 def _user_holdings_dir(user_id: str) -> "Path":
     uid = _sanitize_uid(user_id)
@@ -6539,8 +6668,11 @@ def _holdings_path(mk: str, user_id: str = "") -> "Path":
 def api_holdings_edit(
     market: str = Query("all"),
     x_mone_user: str = _Header(default="", alias="x-mone-user"),
+    authorization: str = _Header(default="", alias="Authorization"),
 ) -> dict:
-    uid = _sanitize_uid(x_mone_user)
+    uid = _authenticated_holdings_uid(x_mone_user, authorization)
+    if not uid:
+        return JSONResponse(status_code=401, content={"status": "AUTH_REQUIRED", "authRequired": True, "count": 0, "items": []})
 
     # uid가 있으면 사용자별 저장소만 사용한다. 공용 CSV는 개인 모바일 화면에 노출하지 않는다.
     if uid:
@@ -6583,8 +6715,11 @@ if len(_hde_all) > 1:
 def api_holdings_edit_save(
     payload: dict = Body(...),
     x_mone_user: str = _Header(default="", alias="x-mone-user"),
+    authorization: str = _Header(default="", alias="Authorization"),
 ) -> dict:
-    uid = _sanitize_uid(x_mone_user)
+    uid = _authenticated_holdings_uid(x_mone_user, authorization)
+    if not uid:
+        return JSONResponse(status_code=401, content={"status": "AUTH_REQUIRED", "authRequired": True})
     items = payload.get("items", [])
     if not isinstance(items, list):
         return {"status": "ERROR", "error": "items must be a list"}
@@ -8617,7 +8752,7 @@ def api_portfolio_risk_budget(
     x_mone_user: str = Header(default="", alias="x-mone-user"),
     authorization: str = Header(default="", alias="Authorization"),
 ) -> dict:
-    from app.services.portfolio_risk_budget import risk_budget
+    from app.services.portfolio_risk_budget import POLICY, risk_budget
 
     try:
         from app import db as _db
@@ -8631,12 +8766,8 @@ def api_portfolio_risk_budget(
     except Exception:
         user_id = ""
     if not user_id:
-        # holdings-clean already exposes a local ledger when one exists.  Use
-        # that exact anonymous fallback for risk analysis as well, otherwise
-        # the holdings cards and portfolio tabs describe different portfolios.
-        local_risk = risk_budget(market=market)
-        if local_risk.get("actualHoldingCount", 0):
-            return local_risk
+        # Never execute or expose the shared legacy portfolio for an
+        # unauthenticated request.
         return {
             "status": "OK",
             "market": market,
@@ -8645,7 +8776,7 @@ def api_portfolio_risk_budget(
             "dataSource": "",
             "sourceSummary": "로그인 필요",
             "actualHoldingCount": 0,
-            "policy": risk_budget.__globals__.get("POLICY", {}),
+            "policy": POLICY,
             "totalValue": 0,
             "totalLossAmount": 0,
             "totalLossBudgetPct": 0,

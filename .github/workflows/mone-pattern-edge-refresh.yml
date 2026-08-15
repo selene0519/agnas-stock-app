@@ -55,7 +55,7 @@ jobs:
         env:
           PYTHONPATH: .
         run: |
-          set +e
+          set -e
           python - <<'PY'
           import json, logging
           logging.disable(logging.WARNING)
@@ -75,13 +75,13 @@ jobs:
 
       - name: Rebuild pattern edge map
         run: |
-          set +e
+          set -e
           python scripts/build_pattern_edge_map_kr.py
           echo "edge map build exit $?"
 
       - name: Commit and push
         run: |
-          set +e
+          set -e
           git config user.name "mone-bot"
           git config user.email "mone-bot@users.noreply.github.com"
           git add reports/regime_pattern_execution_kr.json reports/pattern_walkforward_kr.json reports/pattern_edge_map_kr.json
@@ -90,8 +90,16 @@ jobs:
             exit 0
           fi
           git commit -m "chore: weekly pattern edge map refresh [skip ci]"
+          pushed=0
           for i in 1 2 3; do
-            git pull --rebase origin main && git push origin main && break
+            if git pull --rebase origin main && git push origin main; then
+              pushed=1
+              break
+            fi
             echo "push attempt $i failed, retrying..."
             sleep 10
           done
+          if [ "${pushed}" != "1" ]; then
+            echo "::error::pattern results could not be pushed after 3 attempts"
+            exit 1
+          fi

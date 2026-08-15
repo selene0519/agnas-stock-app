@@ -11,6 +11,20 @@ name: PR Checks
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
+    paths:
+      - "mone-web-app/**"
+      - "core/**"
+      - "runners/**"
+      - "scripts/**"
+      - "tests/**"
+      - "*.py"
+      - "requirements.txt"
+      - "render.yaml"
+      - "vercel.json"
+      - ".github/workflows/**"
+      - ".github/actions/**"
   workflow_dispatch:
 
 permissions:
@@ -50,7 +64,7 @@ jobs:
           pip install "pandas>=2.2,<3" "numpy>=1.26,<3" \
                       fastapi uvicorn starlette pydantic httpx \
                       plotly streamlit yfinance python-dotenv \
-                      requests beautifulsoup4 lxml pytest PyYAML
+                      requests beautifulsoup4 lxml pillow pytest PyYAML
 
       - name: pytest
         # 수집 에러도 실패로 본다. 임포트가 깨진 테스트는 "없는 것"이 아니라
@@ -79,7 +93,7 @@ jobs:
         run: npx tsc --noEmit
 
       - name: 린트 (에러만 차단, 경고는 허용)
-        # 현재 경고가 81건 있다. 한 번에 0으로 만들려다 무관한 변경이 섞이는 것보다
+        # 현재 경고가 79건 있다. 한 번에 0으로 만들려다 무관한 변경이 섞이는 것보다
         # **에러 0을 지키는 것**이 먼저다. 경고를 줄이는 건 별도 작업.
         run: npx eslint . --ext .ts,.tsx --max-warnings=-1
 

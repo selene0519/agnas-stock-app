@@ -422,10 +422,31 @@ def _recommendation_csv_inspect(market: str) -> dict[str, Any]:
     normalized = normalize_market(market)
     csv_path = _repo_path("reports", f"mone_v36_final_recommendations_{normalized}_balanced_swing.csv")
     if not csv_path.exists():
-        return {"status": "NO_DATA", "reason": "추천 CSV 없음", "path": str(csv_path)}
+        available = list(csv_path.parent.glob(f"mone_v36_final_recommendations_{normalized}_*.csv"))
+        if available:
+            csv_path = max(available, key=lambda path: path.stat().st_mtime)
+        else:
+            return {
+                "status": "NO_DATA", "reason": "추천 CSV 없음", "path": str(csv_path),
+                "rowCount": 0, "emptyResult": True,
+            }
 
     mtime_result = session.evaluate_file_status(csv_path, normalized, required_today=True)
     deep = _deep_csv_inspect(csv_path, normalized)
+    if deep.get("emptyResult") or int(deep.get("rowCount") or 0) <= 0:
+        # A single strategy sleeve is allowed to abstain. Treat the whole
+        # market as EMPTY_RESULT only when every maintained sleeve is empty.
+        alternatives = sorted(
+            csv_path.parent.glob(f"mone_v36_final_recommendations_{normalized}_*.csv"),
+            key=lambda path: path.stat().st_mtime,
+            reverse=True,
+        )
+        for alternative in alternatives:
+            alternative_deep = _deep_csv_inspect(alternative, normalized)
+            if int(alternative_deep.get("rowCount") or 0) > 0 and not alternative_deep.get("emptyResult"):
+                csv_path, deep = alternative, alternative_deep
+                mtime_result = session.evaluate_file_status(csv_path, normalized, required_today=True)
+                break
     price_state = session.get_price_session(normalized)
     price_session = str(price_state.get("priceSession") or "")
 

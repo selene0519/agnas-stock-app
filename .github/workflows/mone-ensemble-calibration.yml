@@ -92,6 +92,7 @@ jobs:
           echo "ensemble calibration: exit ${code}"
           if [ "${code}" != "0" ]; then
             echo "::error::앙상블 보정 실패(exit ${code}) — 보정 테이블이 갱신되지 않았습니다"
+            exit "${code}"
           fi
 
       - name: Remove local token/cache files before commit
@@ -101,7 +102,7 @@ jobs:
 
       - name: Commit generated data
         # 보정이 실패해도 부분 산출물은 남길 수 있게 always()로 둔다.
-        if: always()
+        if: success()
         run: |
           bash scripts/ci_commit_app_data.sh "chore: ensemble calibration [skip ci]"
 

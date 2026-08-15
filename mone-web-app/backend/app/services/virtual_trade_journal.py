@@ -4902,7 +4902,10 @@ def run_auto_capture(
         })
     completed = set(before.get("completedKeys") or [])
     for item in runs:
-        if item.get("status") in {"OK", "NO_CANDIDATES", "SKIPPED_MARKET_CLOSED"}:
+        # NO_CANDIDATES is not terminal: recommendation files can arrive after
+        # the first scheduled attempt, so the later same-day retry must run.
+        # Only a captured/duplicate-bearing run or a closed market is complete.
+        if item.get("status") in {"OK", "SKIPPED_MARKET_CLOSED"}:
             completed.add(str(item.get("runKey")))
     should_evaluate = evaluate_after and journal_session not in PLAN_ONLY_SESSIONS
     evaluation = evaluate(market=market, source_type=source_type, journal_session=journal_session, limit=500) if should_evaluate else {"status": "SKIPPED", "reason": "PLAN_ONLY_SESSION" if evaluate_after else "EVALUATE_AFTER_FALSE"}
