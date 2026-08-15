@@ -4770,13 +4770,8 @@ def _disclosure_sort_key(item: dict[str, Any]) -> str:
 
 
 def disclosure_rows(market: str) -> dict[str, Any]:
-    out_file = _disclosure_output_file(market)
-    if not out_file.exists() or rows_for(out_file) == 0:
-        if (market == "kr" and os.environ.get("DART_API_KEY")) or (market == "us" and os.environ.get("FINNHUB_API_KEY")):
-            try:
-                refresh_disclosures(market=market, days=30)
-            except Exception:
-                pass
+    # Reads must never turn into multi-provider collection jobs. Scheduled
+    # workflows own refreshes so an empty file cannot block the UI for minutes.
     files = _preferred_disclosure_files(market)
     items: list[dict[str, Any]] = []
     used_sources: list[str] = []
