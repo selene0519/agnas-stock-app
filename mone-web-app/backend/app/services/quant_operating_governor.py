@@ -180,7 +180,7 @@ def _govern_market(market: str, user_id: str = "", shadow: dict[str, Any] | None
     if not execution_ready:
         reasons.append("QUANT_EXECUTION_PLAN_INVALID")
 
-    raw_candidate_count = int(paper_status.get("candidateCount") or 0)
+    raw_candidate_count = int(paper_status.get("rawCandidateCount") or paper_status.get("activeRawCandidateCount") or paper_status.get("candidateCount") or 0)
     candidate_count = len(execution_plan.get("positions") or []) if execution_ready and raw_candidate_count > 0 else 0
     if not reasons and candidate_count <= 0:
         reasons.append("NO_ELIGIBLE_CANDIDATE")
@@ -204,6 +204,15 @@ def _govern_market(market: str, user_id: str = "", shadow: dict[str, Any] | None
     checks.append({"id": "quantShadow", "label": "Quant V2 evidence", "passed": shadow_signal_ready, "detail": shadow.get("decision")})
     checks.append({"id": "executionPlan", "label": "Candidate execution lineage", "passed": execution_ready, "detail": execution_plan.get("status")})
     recommendation_actionable = operating_state == "RECOMMENDATION_READY"
+    # Discovery paper capital exists to generate forward evidence. It remains
+    # strictly separate from recommendation/live promotion authority and only
+    # runs with current candidates, healthy source data, and an active session.
+    paper_research_ready = bool(
+        ai_paper_trader.PAPER_DISCOVERY_ENABLED
+        and data_ready
+        and raw_candidate_count > 0
+        and not is_review_session
+    )
     scope = product_scope.product_scope()
     return {
         "market": market,
@@ -212,11 +221,23 @@ def _govern_market(market: str, user_id: str = "", shadow: dict[str, Any] | None
         # Backward-compatible advisory alias. This never grants broker authority.
         "entryAllowed": recommendation_actionable,
         "paperEntryAllowed": recommendation_actionable,
+        "paperResearchEntryAllowed": paper_research_ready,
         "exitAllowed": True,
         "liveOrderAllowed": product_scope.live_order_allowed(),
         "productScope": scope,
         "candidateCount": candidate_count if proof_ready and shadow_signal_ready else 0,
         "rawCandidateCount": raw_candidate_count,
+        "paperResearch": {
+            "enabled": ai_paper_trader.PAPER_DISCOVERY_ENABLED,
+            "entryAllowed": paper_research_ready,
+            "purpose": "forward evidence collection only",
+            "promotionAuthority": False,
+            "blockedReasons": list(dict.fromkeys(
+                ([] if data_ready else ["DATA_QUALITY_KILL_SWITCH"])
+                + ([] if raw_candidate_count > 0 else ["NO_ELIGIBLE_CANDIDATE"])
+                + (["MARKET_CLOSED_REVIEW"] if is_review_session else [])
+            )),
+        },
         "reasonCodes": list(dict.fromkeys(reasons)),
         "reasons": [_decision_reason(code) for code in dict.fromkeys(reasons)],
         "checks": checks,

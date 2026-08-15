@@ -168,3 +168,22 @@ def test_recommendations_remain_visible_but_are_not_tradeable_when_authority_den
     assert result["entryAllowed"] is False
     assert result["items"][0]["isTradeBlocked"] is True
     assert result["items"][0]["tradeBlockStatus"] == "QUANT_OPERATING_GATE"
+
+def test_governor_allows_discovery_paper_when_promotion_is_unproven(monkeypatch) -> None:
+    _stub_dependencies(monkeypatch, allowed=False, candidates=2)
+
+    result = governor.operating_status("kr")["markets"]["kr"]
+
+    assert result["entryAllowed"] is False
+    assert result["paperEntryAllowed"] is False
+    assert result["paperResearchEntryAllowed"] is True
+    assert result["paperResearch"]["promotionAuthority"] is False
+
+
+def test_governor_blocks_discovery_paper_on_closed_market(monkeypatch) -> None:
+    _stub_dependencies(monkeypatch, allowed=False, candidates=2, review=True)
+
+    result = governor.operating_status("kr")["markets"]["kr"]
+
+    assert result["paperResearchEntryAllowed"] is False
+    assert "MARKET_CLOSED_REVIEW" in result["paperResearch"]["blockedReasons"]

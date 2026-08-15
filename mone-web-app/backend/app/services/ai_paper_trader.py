@@ -10,6 +10,7 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
+from app.engine.quant_scanner import load_market_regime
 from app.services import paper_trading, quant_execution_plan
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -39,10 +40,20 @@ MIN_TRADE_US = float(os.getenv("AI_PAPER_MIN_TRADE_US", "10"))
 LENS_EXPERIMENT_SIZE_MULT = float(os.getenv("AI_PAPER_LENS_EXPERIMENT_SIZE_MULT", "0.25"))
 MIN_REALIZED_SAMPLES = int(os.getenv("AI_PAPER_MIN_REALIZED_SAMPLES", "20"))
 MIN_REALIZED_WIN_RATE = float(os.getenv("AI_PAPER_MIN_REALIZED_WIN_RATE", "0.45"))
+PAPER_DISCOVERY_ENABLED = str(os.getenv("AI_PAPER_DISCOVERY_ENABLED", "true")).strip().lower() in {"1", "true", "yes", "on"}
+PAPER_DISCOVERY_MAX_GROSS = float(os.getenv("AI_PAPER_DISCOVERY_MAX_GROSS", "0.15"))
+PAPER_DISCOVERY_MAX_POSITION = float(os.getenv("AI_PAPER_DISCOVERY_MAX_POSITION", "0.05"))
+PAPER_DISCOVERY_RISK_PER_TRADE = float(os.getenv("AI_PAPER_DISCOVERY_RISK_PER_TRADE", "0.0025"))
+PAPER_DISCOVERY_MAX_SIGNAL_AGE_DAYS = int(os.getenv("AI_PAPER_DISCOVERY_MAX_SIGNAL_AGE_DAYS", "7"))
+
+TRADE_COSTS = {
+    "kr": {"buy": 0.0010, "sell": 0.0031},
+    "us": {"buy": 0.0010, "sell": 0.0020},
+}
 
 TRADE_FIELDS = [
     "id", "createdAt", "market", "agentId", "agentLabel", "generation",
-    "symbol", "name", "action", "price", "quantity", "totalValue", "memo",
+    "symbol", "name", "action", "price", "quantity", "totalValue", "costAmount", "netCashFlow", "memo",
 ]
 
 NAV_FIELDS = [
@@ -86,6 +97,17 @@ def _write_csv(path: Path, rows: list[dict[str, Any]], fields: list[str]) -> Non
 def _append_csv(path: Path, row: dict[str, Any], fields: list[str]) -> None:
     _ensure_dirs()
     write_header = not path.exists() or path.stat().st_size == 0
+    if not write_header:
+        try:
+            with path.open("r", encoding="utf-8-sig", newline="") as source:
+                existing_fields = list(csv.DictReader(source).fieldnames or [])
+        except Exception:
+            existing_fields = []
+        if existing_fields != fields:
+            # Migrate old ledgers before append. Appending a wider row under an
+            # old header would silently shift cost/memo columns on the next read.
+            existing_rows = _read_csv(path)
+            _write_csv(path, existing_rows, fields)
     with path.open("a", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fields)
         if write_header:
@@ -160,6 +182,7 @@ def _default_state() -> dict[str, Any]:
             "us": {"agentId": AGENT_POOL[0]["id"], "generation": 1, "startedAt": datetime.now().isoformat(timespec="seconds")},
         },
         "lastRun": {},
+        "selectionHistory": [],
     }
 
 
@@ -170,6 +193,7 @@ def _load_state() -> dict[str, Any]:
     default = _default_state()
     state.setdefault("activeAgents", {})
     state.setdefault("lastRun", {})
+    state.setdefault("selectionHistory", [])
     for mk in ("kr", "us"):
         state["activeAgents"].setdefault(mk, default["activeAgents"][mk])
     return state
@@ -356,6 +380,213 @@ def _collect_recommendations(market: str, agent: dict[str, str] | None = None) -
     )
 
 
+def _market_regime_snapshot(market: str) -> dict[str, Any]:
+    try:
+        payload = load_market_regime(REPO_ROOT, market)
+        return payload if isinstance(payload, dict) else {"regime": "SIDE"}
+    except Exception as exc:
+        return {"regime": "SIDE", "label": "횡보장", "description": "market regime unavailable", "error": repr(exc)}
+
+
+def _strategy_realized_stats(market: str, agent: dict[str, str]) -> dict[str, Any]:
+    report = _read_json(REPORTS / "strategy_win_rates.json", {})
+    market_stats = (report.get("byMarket") or {}).get(market) or {}
+    key = f"{agent['mode']}_{agent['horizon']}"
+    return {
+        "sampleCount": int(_num((market_stats.get("sampleCounts") or {}).get(key))),
+        "winRate": _num((market_stats.get("observedWinRates") or {}).get(key)),
+        "avgReturnPct": _num((market_stats.get("averageReturnPct") or {}).get(key)),
+    }
+
+
+def _regime_agent_preference(regime: str, agent: dict[str, str]) -> float:
+    key = f"{agent['mode']}_{agent['horizon']}"
+    table = {
+        "BULL": {
+            "aggressive_mid": 12.0, "balanced_mid": 7.0, "balanced_swing": 6.0,
+            "conservative_mid": 2.0, "conservative_swing": 1.0,
+        },
+        "BEAR": {
+            "conservative_swing": 12.0, "conservative_mid": 10.0, "balanced_swing": 5.0,
+            "balanced_mid": 2.0, "aggressive_mid": -4.0,
+        },
+        "SIDE": {
+            "balanced_mid": 10.0, "conservative_mid": 8.0, "balanced_swing": 6.0,
+            "conservative_swing": 5.0, "aggressive_mid": 1.0,
+        },
+    }
+    return table.get(str(regime or "SIDE").upper(), table["SIDE"]).get(key, 0.0)
+
+
+def _suggest_agent(market: str) -> dict[str, Any]:
+    regime_info = _market_regime_snapshot(market)
+    regime = str(regime_info.get("regime") or "SIDE").upper()
+    rows: list[dict[str, Any]] = []
+    for profile in AGENT_POOL:
+        candidates = _collect_recommendations(market, profile)
+        realized = _strategy_realized_stats(market, profile)
+        if candidates:
+            top = candidates[0]
+            quality_score = _num(top.get("expectedValue")) * 3.0 + _num(top.get("score")) * 0.05 + min(len(candidates), 3)
+        else:
+            quality_score = -50.0
+        # Historical live results influence exploration modestly. They never
+        # turn a negative strategy into a production recommendation.
+        realized_score = max(-4.0, min(4.0, _num(realized.get("avgReturnPct"))))
+        paper_metrics = _closed_trade_metrics(market, profile["id"])
+        paper_score = 0.0
+        if int(paper_metrics.get("closedTradeCount") or 0) >= 5:
+            paper_score = max(-6.0, min(6.0,
+                _num(paper_metrics.get("avgNetPnlPct")) * 1.5
+                + (_num(paper_metrics.get("winRate")) - 50.0) * 0.08
+            ))
+        selection_score = _regime_agent_preference(regime, profile) + quality_score + realized_score + paper_score
+        rows.append({
+            "agent": dict(profile),
+            "candidateCount": len(candidates),
+            "selectionScore": round(selection_score, 3),
+            "regimePreference": _regime_agent_preference(regime, profile),
+            "topExpectedValue": _num(candidates[0].get("expectedValue")) if candidates else None,
+            "topScore": _num(candidates[0].get("score")) if candidates else None,
+            "realized": realized,
+            "paperMetrics": paper_metrics,
+            "paperFeedbackScore": round(paper_score, 3),
+        })
+    rows.sort(key=lambda row: (row["candidateCount"] > 0, row["selectionScore"]), reverse=True)
+    winner = rows[0] if rows and rows[0]["candidateCount"] > 0 else None
+    return {
+        "status": "SELECTED" if winner else "NO_CANDIDATE",
+        "market": market,
+        "regime": regime,
+        "regimeInfo": regime_info,
+        "selectedAgent": dict(winner["agent"]) if winner else {},
+        "candidateCount": int(winner["candidateCount"]) if winner else 0,
+        "selectionScore": winner.get("selectionScore") if winner else None,
+        "rankings": rows,
+        "policy": "regime_candidate_quality_with_modest_realized_feedback_v1",
+    }
+
+
+def _activate_suggested_agent(market: str, suggestion: dict[str, Any], *, dry_run: bool) -> dict[str, Any]:
+    ctx = _active_context(market)
+    current = ctx["agent"]
+    selected = suggestion.get("selectedAgent") if isinstance(suggestion.get("selectedAgent"), dict) else {}
+    if not selected or not selected.get("id"):
+        return {"changed": False, "reason": "NO_ELIGIBLE_AGENT", "agent": current, "generation": ctx["generation"]}
+    if selected.get("id") == current.get("id"):
+        return {"changed": False, "reason": "ACTIVE_AGENT_ALREADY_BEST", "agent": current, "generation": ctx["generation"]}
+    if _position_items(market, current["id"]):
+        return {"changed": False, "reason": "ACTIVE_POSITIONS_PIN_AGENT", "agent": current, "generation": ctx["generation"]}
+
+    generation = int(ctx["generation"]) + 1
+    event = {
+        "changed": True,
+        "dryRun": dry_run,
+        "market": market,
+        "fromAgentId": current["id"],
+        "toAgentId": selected["id"],
+        "generation": generation,
+        "regime": suggestion.get("regime"),
+        "selectionScore": suggestion.get("selectionScore"),
+        "changedAt": datetime.now().astimezone().isoformat(timespec="seconds"),
+        "reason": "FLAT_ACCOUNT_REGIME_CHAMPION_SELECTED",
+        "agent": dict(selected),
+    }
+    if not dry_run:
+        state = ctx["state"]
+        state["activeAgents"][market] = {
+            "agentId": selected["id"],
+            "generation": generation,
+            "startedAt": event["changedAt"],
+            "selectionReason": event["reason"],
+            "regime": event["regime"],
+        }
+        history = state.setdefault("selectionHistory", [])
+        history.append({key: value for key, value in event.items() if key not in {"agent", "dryRun"}})
+        state["selectionHistory"] = history[-100:]
+        _write_json(AI_STATE_JSON, state)
+    return event
+
+
+def _candidate_signal_check(candidate: dict[str, Any], *, today: date | None = None) -> dict[str, Any]:
+    cutoff = today or date.today()
+    raw = str(candidate.get("signalDate") or candidate.get("generatedAt") or "").strip()[:10]
+    try:
+        signal_day = date.fromisoformat(raw)
+    except ValueError:
+        return {"allowed": False, "reason": "PAPER_SIGNAL_DATE_MISSING", "signalDate": raw}
+    age = (cutoff - signal_day).days
+    if age < 0:
+        return {"allowed": False, "reason": "PAPER_SIGNAL_FROM_FUTURE", "signalDate": raw, "ageDays": age}
+    if age > PAPER_DISCOVERY_MAX_SIGNAL_AGE_DAYS:
+        return {"allowed": False, "reason": "PAPER_SIGNAL_STALE", "signalDate": raw, "ageDays": age}
+    return {"allowed": True, "reason": "PAPER_SIGNAL_CURRENT", "signalDate": raw, "ageDays": age}
+
+
+def _paper_discovery_plan(market: str, agent: dict[str, str], candidates: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    eligible: list[dict[str, Any]] = []
+    rejected: list[dict[str, Any]] = []
+    remaining = max(0.0, min(PAPER_DISCOVERY_MAX_GROSS, 0.30))
+    for candidate in candidates if candidates is not None else _collect_recommendations(market, agent):
+        signal_check = _candidate_signal_check(candidate)
+        if not signal_check["allowed"]:
+            rejected.append({"symbol": candidate.get("symbol"), **signal_check})
+            continue
+        entry = _num(candidate.get("entry"))
+        stop = _num(candidate.get("stop"))
+        stop_pct = (entry - stop) / entry if entry > stop > 0 else 0.0
+        if stop_pct <= 0:
+            rejected.append({"symbol": candidate.get("symbol"), "allowed": False, "reason": "PAPER_STOP_INVALID"})
+            continue
+        weight = min(PAPER_DISCOVERY_MAX_POSITION, PAPER_DISCOVERY_RISK_PER_TRADE / stop_pct, remaining)
+        if weight <= 0:
+            break
+        decision_id = hashlib.sha256(f"paper-discovery|{candidate.get('candidateKey')}|{signal_check['signalDate']}".encode("utf-8")).hexdigest()[:20]
+        eligible.append({
+            "decisionId": decision_id,
+            "candidateKey": candidate.get("candidateKey"),
+            "market": market,
+            "symbol": candidate.get("symbol"),
+            "mode": candidate.get("mode"),
+            "horizon": candidate.get("horizon"),
+            "entryPrice": entry,
+            "stopPrice": stop,
+            "weight": round(weight, 8),
+            "signalDate": signal_check["signalDate"],
+            "metaPolicyFingerprint": "paper-discovery-only-v1",
+            "riskPolicyVersion": "paper-discovery-risk-v1",
+            "riskPolicyFingerprint": "paper-discovery-risk-v1",
+            "allocationFingerprint": "",
+            "researchOnly": True,
+        })
+        remaining -= weight
+        if len(eligible) >= min(MAX_POSITIONS, 3) or remaining <= 0:
+            break
+    allocation_payload = [
+        {key: row.get(key) for key in ("decisionId", "candidateKey", "market", "symbol", "weight", "signalDate")}
+        for row in eligible
+    ]
+    allocation_fingerprint = hashlib.sha256(json.dumps(allocation_payload, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+    for row in eligible:
+        row["allocationFingerprint"] = allocation_fingerprint
+    return {
+        "status": "AUTHORIZED" if eligible else "BLOCKED",
+        "market": market,
+        "mode": "PAPER_DISCOVERY_ONLY",
+        "maxGrossExposure": max(0.0, min(PAPER_DISCOVERY_MAX_GROSS, 0.30)),
+        "positions": eligible,
+        "rejected": rejected,
+        "blockingReasons": [] if eligible else ["NO_CURRENT_DISCOVERY_CANDIDATE"],
+        "policy": {
+            "maxGrossExposure": max(0.0, min(PAPER_DISCOVERY_MAX_GROSS, 0.30)),
+            "maxPositionWeight": max(0.0, min(PAPER_DISCOVERY_MAX_POSITION, 0.10)),
+            "accountRiskPerTrade": max(0.0, min(PAPER_DISCOVERY_RISK_PER_TRADE, 0.005)),
+            "removedExposureStaysCash": True,
+            "promotionAuthority": False,
+            "brokerAuthority": False,
+        },
+    }
+
 def _lens_intraday_context_kr() -> dict[str, dict[str, Any]]:
     path = REPORTS / "lens_intraday_context_kr.csv"
     rows = _read_csv(path)
@@ -390,6 +621,10 @@ def _collect_regime_lens_candidates_kr(agent: dict[str, str] | None = None) -> l
 
     regime = str(report.get("marketRegime") or "SIDE").upper()
     as_of = str(report.get("asOfDate") or "")
+    current_regime = str(_market_regime_snapshot("kr").get("regime") or "SIDE").upper()
+    report_signal = _candidate_signal_check({"signalDate": as_of})
+    if not report_signal["allowed"] or current_regime == "BULL" or regime != current_regime:
+        return []
     active_agent = agent or AGENT_POOL[0]
     intraday_context = _lens_intraday_context_kr()
     items: list[dict[str, Any]] = []
@@ -452,7 +687,7 @@ def _collect_regime_lens_candidates_kr(agent: dict[str, str] | None = None) -> l
             continue
 
         decision = "today paper-only bear rebound" if regime == "BEAR" else "conditional paper-only range rebound"
-        items.append({
+        candidate = {
             "market": "kr",
             "agentId": active_agent["id"],
             "agentLabel": active_agent["label"],
@@ -478,7 +713,9 @@ def _collect_regime_lens_candidates_kr(agent: dict[str, str] | None = None) -> l
             "flowScore": flow_score if context else "",
             "bidRatio": bid_ratio if context else "",
             "memo": f"KR {regime} {setup} lens paper test gate={gate} rr={rr:.2f}",
-        })
+        }
+        candidate["candidateKey"] = _candidate_key(candidate, as_of)
+        items.append(candidate)
     return sorted(items, key=lambda x: (-_num(x.get("expectedValue")), -_num(x.get("score"))))
 
 
@@ -512,8 +749,11 @@ def _compute_positions(trades: list[dict[str, Any]]) -> dict[str, dict[str, Any]
             "totalCost": 0.0,
         })
         if action == "BUY":
+            gross = price * qty
+            recorded_cost = trade.get("costAmount")
+            buy_cost = _num(recorded_cost) if recorded_cost not in (None, "") else _trade_cost_amount(str(trade.get("market") or "us").lower(), "BUY", gross)
             item["quantity"] += qty
-            item["totalCost"] += price * qty
+            item["totalCost"] += gross + buy_cost
         elif action == "SELL":
             prev_qty = item["quantity"]
             if prev_qty > 0:
@@ -523,6 +763,52 @@ def _compute_positions(trades: list[dict[str, Any]]) -> dict[str, dict[str, Any]
             item["totalCost"] = max(item["totalCost"], 0.0)
     return {k: v for k, v in positions.items() if v["quantity"] > 0.0001}
 
+
+def _closed_trade_metrics(market: str, agent_id: str) -> dict[str, Any]:
+    books: dict[str, dict[str, float]] = {}
+    returns: list[float] = []
+    pnls: list[float] = []
+    for trade in sorted(_trades_for(market, agent_id), key=lambda row: str(row.get("createdAt") or "")):
+        symbol = str(trade.get("symbol") or "").upper()
+        action = str(trade.get("action") or "").upper()
+        quantity = _num(trade.get("quantity"))
+        gross = _num(trade.get("totalValue")) or (_num(trade.get("price")) * quantity)
+        recorded_cost = trade.get("costAmount")
+        cost = _num(recorded_cost) if recorded_cost not in (None, "") else _trade_cost_amount(market, action, gross)
+        if not symbol or quantity <= 0 or action not in {"BUY", "SELL"}:
+            continue
+        book = books.setdefault(symbol, {"quantity": 0.0, "basis": 0.0})
+        if action == "BUY":
+            book["quantity"] += quantity
+            book["basis"] += gross + cost
+            continue
+        sold = min(quantity, book["quantity"])
+        if sold <= 0 or book["quantity"] <= 0:
+            continue
+        basis = book["basis"] * (sold / book["quantity"])
+        proceeds = gross * (sold / quantity) - cost * (sold / quantity)
+        pnl = proceeds - basis
+        pnls.append(pnl)
+        returns.append((pnl / basis * 100.0) if basis > 0 else 0.0)
+        book["quantity"] -= sold
+        book["basis"] = max(0.0, book["basis"] - basis)
+    wins = [value for value in pnls if value > 0]
+    losses = [value for value in pnls if value < 0]
+    gross_profit = sum(wins)
+    gross_loss = abs(sum(losses))
+    avg_win = (sum(wins) / len(wins)) if wins else 0.0
+    avg_loss = abs(sum(losses) / len(losses)) if losses else 0.0
+    return {
+        "closedTradeCount": len(returns),
+        "winRate": round(len(wins) / len(returns) * 100.0, 1) if returns else None,
+        "avgNetPnlPct": round(sum(returns) / len(returns), 3) if returns else None,
+        "profitFactor": round(gross_profit / gross_loss, 3) if gross_loss > 0 else (None if not wins else 999.0),
+        "payoffRatio": round(avg_win / avg_loss, 3) if avg_loss > 0 else (None if not wins else 999.0),
+        "grossProfit": round(gross_profit, 2),
+        "grossLoss": round(gross_loss, 2),
+        "costModel": "buy/sell slippage plus tax-commission",
+        "costRates": TRADE_COSTS.get(market, {}),
+    }
 
 def _position_items(market: str, agent_id: str) -> list[dict[str, Any]]:
     result = []
@@ -618,8 +904,29 @@ def _set_stop(market: str, agent_id: str, symbol: str, stop: float, target: floa
     _write_json(AI_STOPS_JSON, stops)
 
 
-def _append_trade(market: str, agent: dict[str, str], generation: int, symbol: str, name: str, action: str, price: float, quantity: float, memo: str) -> dict[str, Any]:
+def _trade_cost_amount(market: str, action: str, total_value: float) -> float:
+    side = "buy" if str(action or "").upper() == "BUY" else "sell"
+    rate = float((TRADE_COSTS.get(market) or TRADE_COSTS["us"]).get(side, 0.0))
+    return round(max(total_value, 0.0) * max(rate, 0.0), 2)
+
+
+def _append_trade(
+    market: str,
+    agent: dict[str, str],
+    generation: int,
+    symbol: str,
+    name: str,
+    action: str,
+    price: float,
+    quantity: float,
+    memo: str,
+    *,
+    cost_amount: float | None = None,
+) -> dict[str, Any]:
     total = round(price * quantity, 2)
+    action_name = action.upper()
+    cost = _trade_cost_amount(market, action_name, total) if cost_amount is None else round(max(cost_amount, 0.0), 2)
+    net_cash_flow = -(total + cost) if action_name == "BUY" else total - cost
     row = {
         "id": f"ai-{datetime.now().strftime('%Y%m%d%H%M%S%f')}",
         "createdAt": datetime.now().isoformat(timespec="seconds"),
@@ -629,16 +936,16 @@ def _append_trade(market: str, agent: dict[str, str], generation: int, symbol: s
         "generation": generation,
         "symbol": symbol.upper(),
         "name": name or symbol.upper(),
-        "action": action.upper(),
+        "action": action_name,
         "price": round(price, 2),
         "quantity": round(quantity, 4),
         "totalValue": total,
+        "costAmount": cost,
+        "netCashFlow": round(net_cash_flow, 2),
         "memo": memo,
     }
     _append_csv(AI_TRADES_CSV, row, TRADE_FIELDS)
     return row
-
-
 def _quantity_for(market: str, cash: float, equity: float, entry: float, stop: float, slots: int) -> float:
     if cash <= 0 or equity <= 0 or entry <= 0 or slots <= 0:
         return 0.0
@@ -730,9 +1037,11 @@ def _sell_triggered_positions(market: str, dry_run: bool) -> list[dict[str, Any]
             continue
         result = {"ok": True, "dryRun": dry_run}
         if not dry_run:
-            _append_trade(market, agent, ctx["generation"], symbol, str(pos.get("name") or symbol), "SELL", current, quantity, f"AI paper {reason}")
+            gross_value = current * quantity
+            cost_amount = _trade_cost_amount(market, "SELL", gross_value)
+            _append_trade(market, agent, ctx["generation"], symbol, str(pos.get("name") or symbol), "SELL", current, quantity, f"AI paper {reason}", cost_amount=cost_amount)
             cash = _cash_for(market, agent["id"])
-            _set_cash(market, agent["id"], cash + current * quantity)
+            _set_cash(market, agent["id"], cash + gross_value - cost_amount)
         actions.append({
             "action": "SELL",
             "reason": reason,
@@ -752,9 +1061,16 @@ def _buy_candidates(
     market: str,
     dry_run: bool,
     execution_plan: dict[str, Any] | None = None,
+    *,
+    research_mode: bool = False,
+    agent_override: dict[str, str] | None = None,
 ) -> list[dict[str, Any]]:
     actions: list[dict[str, Any]] = []
     ctx = _active_context(market)
+    if agent_override and agent_override.get("id"):
+        selected = _agent_by_id(str(agent_override["id"]))
+        if selected["id"] != ctx["agentId"]:
+            ctx = {**ctx, "agent": selected, "agentId": selected["id"], "generation": int(ctx["generation"]) + 1}
     agent = ctx["agent"]
     summary = _summary_for_market(market, agent["id"])
     survival = _survival_state(market, summary)
@@ -771,7 +1087,7 @@ def _buy_candidates(
         return actions
 
     performance_gate = _realized_performance_gate(market, agent)
-    if not performance_gate["allowed"]:
+    if not performance_gate["allowed"] and not research_mode:
         actions.append({
             "action": "SKIP",
             "market": market,
@@ -792,7 +1108,7 @@ def _buy_candidates(
     cash = float(summary.get("cash") or 0)
     equity = float(summary.get("portfolioValue") if summary.get("portfolioValue") is not None else cash)
     min_trade = MIN_TRADE_KR if market == "kr" else MIN_TRADE_US
-    plan = execution_plan or quant_execution_plan.execution_plan(market)
+    plan = execution_plan or (_paper_discovery_plan(market, agent) if research_mode else quant_execution_plan.execution_plan(market))
     if plan.get("status") != "AUTHORIZED":
         return [{
             "action": "SKIP",
@@ -853,6 +1169,12 @@ def _buy_candidates(
         if rec.get("paperOnly"):
             qty = _apply_position_multiplier(market, qty, _num(rec.get("paperSizeMultiplier")) or LENS_EXPERIMENT_SIZE_MULT)
         total = qty * rec["entry"]
+        cost_amount = _trade_cost_amount(market, "BUY", total)
+        if total + cost_amount > cash and rec["entry"] > 0:
+            affordable = cash / (rec["entry"] * (1.0 + float(TRADE_COSTS.get(market, {}).get("buy", 0.0))))
+            qty = float(int(affordable)) if market == "kr" else math.floor(max(0.0, affordable) * 10_000) / 10_000
+            total = qty * rec["entry"]
+            cost_amount = _trade_cost_amount(market, "BUY", total)
         if qty <= 0 or total < min_trade:
             continue
         result = {"ok": True, "dryRun": dry_run}
@@ -867,8 +1189,9 @@ def _buy_candidates(
                 rec["entry"],
                 qty,
                 str(rec.get("memo") or f"AI paper buy {agent['label']} EV={rec['expectedValue']:.2f}"),
+                cost_amount=cost_amount,
             )
-            _set_cash(market, agent["id"], cash - total)
+            _set_cash(market, agent["id"], cash - total - cost_amount)
             _set_stop(market, agent["id"], symbol, rec["stop"], rec["target"], f"AI paper {agent['label']} {rec['source']}")
             _append_execution_record(market, ctx, rec, authorization, qty)
         actions.append({
@@ -881,6 +1204,8 @@ def _buy_candidates(
             "price": rec["entry"],
             "quantity": qty,
             "totalValue": round(total, 2),
+            "costAmount": cost_amount,
+            "researchMode": research_mode,
             "stopPrice": rec["stop"],
             "targetPrice": rec["target"],
             "expectedValue": rec["expectedValue"],
@@ -895,7 +1220,7 @@ def _buy_candidates(
             "result": result,
         })
         if result.get("ok"):
-            cash -= total
+            cash -= total + cost_amount
             remaining_gross_value = max(0.0, remaining_gross_value - total)
             held.add(symbol)
             slots -= 1
@@ -1119,17 +1444,44 @@ def status(market: str = "all") -> dict[str, Any]:
         agent = ctx["agent"]
         summary = _summary_for_market(mk, agent["id"])
         performance_gate = _realized_performance_gate(mk, agent)
-        candidate_count = len(_collect_recommendations(mk, agent)) if performance_gate["allowed"] else 0
+        active_candidates = _collect_recommendations(mk, agent)
+        all_candidates = _collect_recommendations(mk)
+        suggestion = _suggest_agent(mk)
         survival = _survival_state(mk, summary)
+        scoreboard = []
+        for profile in AGENT_POOL:
+            profile_summary = _summary_for_market(mk, profile["id"])
+            scoreboard.append({
+                "agent": dict(profile),
+                "summary": profile_summary,
+                "realizedTrades": _closed_trade_metrics(mk, profile["id"]),
+                "candidateCount": len(_collect_recommendations(mk, profile)),
+                "isActive": profile["id"] == agent["id"],
+            })
         markets[mk] = {
             "activeAgent": agent,
             "generation": ctx["generation"],
+            "suggestedAgent": suggestion.get("selectedAgent") or {},
+            "agentSelection": suggestion,
             "summary": summary,
             "liveMetrics": _live_nav_metrics(mk, agent["id"], summary),
+            "realizedTrades": _closed_trade_metrics(mk, agent["id"]),
             "survival": survival,
             "positions": _position_items(mk, agent["id"]),
-            "candidateCount": candidate_count,
+            "candidateCount": len(active_candidates) if performance_gate["allowed"] else 0,
+            "activeRawCandidateCount": len(active_candidates),
+            "rawCandidateCount": len(all_candidates),
+            "blockedCandidateCount": len(all_candidates) if not performance_gate["allowed"] else max(0, len(all_candidates) - len(active_candidates)),
             "entryPerformanceGate": performance_gate,
+            "paperDiscovery": {
+                "enabled": PAPER_DISCOVERY_ENABLED,
+                "purpose": "forward evidence collection only",
+                "promotionAuthority": False,
+                "maxGrossExposure": max(0.0, min(PAPER_DISCOVERY_MAX_GROSS, 0.30)),
+                "maxPositionWeight": max(0.0, min(PAPER_DISCOVERY_MAX_POSITION, 0.10)),
+                "accountRiskPerTrade": max(0.0, min(PAPER_DISCOVERY_RISK_PER_TRADE, 0.005)),
+            },
+            "agentScoreboard": scoreboard,
             "proofFailed": survival["state"] == "DEAD",
             "proofBoard": _walkforward_proof_board(mk, agent["id"]),
         }
@@ -1140,6 +1492,7 @@ def status(market: str = "all") -> dict[str, Any]:
         "agentPool": list(AGENT_POOL),
         "markets": markets,
         "lastRun": state.get("lastRun", {}),
+        "selectionHistory": state.get("selectionHistory", []),
         "navRows": len(nav_rows),
         "latestNav": nav_rows[-1] if nav_rows else {},
         "supervisor": _read_json(AI_SUPERVISOR_STATUS_JSON, {}),
@@ -1156,6 +1509,9 @@ def run_cycle(market: str = "all", dry_run: bool = True) -> dict[str, Any]:
     }
     for mk in _market_list(market):
         actions: list[dict[str, Any]] = []
+        # Risk-reducing exits always run before any strategy handoff. An agent
+        # with an open position is pinned until every stop/target is resolved.
+        actions.extend(_sell_triggered_positions(mk, dry_run=dry_run))
         try:
             from app.services.quant_operating_governor import entry_authority
 
@@ -1166,16 +1522,37 @@ def run_cycle(market: str = "all", dry_run: bool = True) -> dict[str, Any]:
                 "operatingState": "BLOCKED",
                 "entryAllowed": False,
                 "paperEntryAllowed": False,
+                "paperResearchEntryAllowed": False,
                 "exitAllowed": True,
                 "liveOrderAllowed": False,
                 "reasonCodes": ["OPERATING_AUTHORITY_UNAVAILABLE"],
                 "error": repr(exc),
             }
-        # Risk-reducing exits must remain available even when new exposure is
-        # denied.  Only the buy leg is governed by entry authority.
-        actions.extend(_sell_triggered_positions(mk, dry_run=dry_run))
+
+        cycle_agent = _active_context(mk)["agent"]
         if authority.get("paperEntryAllowed"):
             actions.extend(_buy_candidates(mk, dry_run=dry_run, execution_plan=authority.get("executionPlan")))
+        elif authority.get("paperResearchEntryAllowed") and PAPER_DISCOVERY_ENABLED:
+            suggestion = _suggest_agent(mk)
+            activation = _activate_suggested_agent(mk, suggestion, dry_run=dry_run)
+            cycle_agent = activation.get("agent") if isinstance(activation.get("agent"), dict) else cycle_agent
+            if activation.get("changed"):
+                actions.append({
+                    "action": "AGENT_SWITCH",
+                    "market": mk,
+                    "fromAgentId": activation.get("fromAgentId"),
+                    "toAgentId": activation.get("toAgentId"),
+                    "generation": activation.get("generation"),
+                    "regime": activation.get("regime"),
+                    "reason": activation.get("reason"),
+                    "result": {"ok": True, "dryRun": dry_run},
+                })
+            actions.extend(_buy_candidates(
+                mk,
+                dry_run=dry_run,
+                research_mode=True,
+                agent_override=cycle_agent,
+            ))
         else:
             actions.append({
                 "action": "SKIP",
@@ -1186,16 +1563,19 @@ def run_cycle(market: str = "all", dry_run: bool = True) -> dict[str, Any]:
                 "result": {"ok": False, "dryRun": dry_run},
             })
         nav = {} if dry_run else _append_nav_snapshot(mk, actions)
-        ctx = _active_context(mk)
-        summary = _summary_for_market(mk, ctx["agentId"])
+        active_ctx = _active_context(mk)
+        result_agent = cycle_agent if dry_run else active_ctx["agent"]
+        result_generation = int(active_ctx["generation"]) + (1 if dry_run and result_agent["id"] != active_ctx["agentId"] else 0)
+        summary = _summary_for_market(mk, result_agent["id"])
         result["markets"][mk] = {
-            "activeAgent": ctx["agent"],
-            "generation": ctx["generation"],
+            "activeAgent": result_agent,
+            "generation": result_generation,
             "actions": actions,
             "summary": summary,
-            "liveMetrics": _live_nav_metrics(mk, ctx["agentId"], summary),
+            "liveMetrics": _live_nav_metrics(mk, result_agent["id"], summary),
+            "realizedTrades": _closed_trade_metrics(mk, result_agent["id"]),
             "survival": _survival_state(mk, summary),
-            "proofBoard": _walkforward_proof_board(mk, ctx["agentId"]),
+            "proofBoard": _walkforward_proof_board(mk, result_agent["id"]),
             "operatingAuthority": authority,
             "nav": nav,
         }

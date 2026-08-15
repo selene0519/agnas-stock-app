@@ -66,14 +66,17 @@ jobs:
           import sys, json
           from pathlib import Path
           sys.path.insert(0, str(Path.cwd()))
-          from app.engine.walkforward_backtest import run_all
+          from app.engine.walkforward_backtest import inspect_persisted_results, run_all
           for market in ("kr", "us"):
               try:
                   # Quarterly windows retain independent out-of-sample checks
                   # while keeping the full two-market job within its time budget.
                   result = run_all(market, window_months=3)
                   combo_count = len(result.get("combos", {}))
-                  print(f"[walk-forward] {market.upper()} 완료: {combo_count}개 전략 조합")
+                  integrity = inspect_persisted_results(market)
+                  if integrity.get("status") != "OK":
+                      raise RuntimeError(f"persisted temporal integrity failed: {integrity}")
+                  print(f"[walk-forward] {market.upper()} 완료: {combo_count}개 전략 조합, temporal=OK")
               except Exception as e:
                   print(f"[walk-forward] {market.upper()} 오류: {e}")
                   raise

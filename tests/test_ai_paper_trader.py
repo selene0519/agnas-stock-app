@@ -187,3 +187,125 @@ def test_execution_weight_never_redistributes_unused_budget() -> None:
     )
 
     assert qty == 0.6
+
+def test_regime_selector_connects_bull_market_to_aggressive_candidate(monkeypatch) -> None:
+    monkeypatch.setattr(trader, "_market_regime_snapshot", lambda market: {"regime": "BULL", "label": "강세장"})
+    monkeypatch.setattr(trader, "_strategy_realized_stats", lambda market, agent: {"sampleCount": 0, "winRate": 0.0, "avgReturnPct": 0.0})
+
+    def candidates(_market, agent=None):
+        if agent and agent["id"] == "ml_rank_aggressive_mid":
+            return [{"symbol": "005930", "entry": 100.0, "stop": 95.0, "expectedValue": 2.0, "score": 80.0}]
+        return []
+
+    monkeypatch.setattr(trader, "_collect_recommendations", candidates)
+
+    suggestion = trader._suggest_agent("kr")
+
+    assert suggestion["status"] == "SELECTED"
+    assert suggestion["regime"] == "BULL"
+    assert suggestion["selectedAgent"]["id"] == "ml_rank_aggressive_mid"
+
+
+def test_discovery_plan_rejects_future_signal_and_caps_risk() -> None:
+    agent = {"id": "ml_rank_aggressive_mid", "label": "Aggressive", "mode": "aggressive", "horizon": "mid"}
+    today = date.today()
+    current = {
+        "candidateKey": "current", "market": "kr", "symbol": "005930", "mode": "aggressive", "horizon": "mid",
+        "entry": 100.0, "stop": 95.0, "signalDate": today.isoformat(),
+    }
+    future = {
+        "candidateKey": "future", "market": "kr", "symbol": "000660", "mode": "aggressive", "horizon": "mid",
+        "entry": 100.0, "stop": 95.0, "signalDate": (today + timedelta(days=1)).isoformat(),
+    }
+
+    plan = trader._paper_discovery_plan("kr", agent, [future, current])
+
+    assert plan["status"] == "AUTHORIZED"
+    assert [row["symbol"] for row in plan["positions"]] == ["005930"]
+    assert plan["positions"][0]["weight"] <= trader.PAPER_DISCOVERY_MAX_POSITION
+    assert plan["positions"][0]["researchOnly"] is True
+    assert plan["rejected"][0]["reason"] == "PAPER_SIGNAL_FROM_FUTURE"
+
+
+def test_run_cycle_uses_discovery_lane_without_relaxing_promotion_gate(monkeypatch) -> None:
+    _stub_cycle_views(monkeypatch)
+    monkeypatch.setattr(
+        governor,
+        "entry_authority",
+        lambda market: {
+            "market": market,
+            "operatingState": "ABSTAIN",
+            "entryAllowed": False,
+            "paperEntryAllowed": False,
+            "paperResearchEntryAllowed": True,
+            "exitAllowed": True,
+            "reasonCodes": ["REALIZED_WIN_RATE_BELOW_GATE"],
+        },
+    )
+    monkeypatch.setattr(trader, "_sell_triggered_positions", lambda market, dry_run: [])
+    monkeypatch.setattr(
+        trader,
+        "_suggest_agent",
+        lambda market: {"selectedAgent": trader.AGENT_POOL[3], "regime": "BULL", "selectionScore": 10.0},
+    )
+    monkeypatch.setattr(
+        trader,
+        "_activate_suggested_agent",
+        lambda market, suggestion, dry_run: {"changed": True, "agent": trader.AGENT_POOL[3], "fromAgentId": "test", "toAgentId": trader.AGENT_POOL[3]["id"], "generation": 2, "regime": "BULL", "reason": "FLAT_ACCOUNT_REGIME_CHAMPION_SELECTED"},
+    )
+    calls = []
+    monkeypatch.setattr(
+        trader,
+        "_buy_candidates",
+        lambda market, dry_run, execution_plan=None, **kwargs: calls.append(kwargs) or [{"action": "BUY", "researchMode": kwargs.get("research_mode")}],
+    )
+
+    result = trader.run_cycle("kr", dry_run=True)
+
+    assert calls == [{"research_mode": True, "agent_override": trader.AGENT_POOL[3]}]
+    assert result["markets"]["kr"]["actions"][0]["action"] == "AGENT_SWITCH"
+    assert result["markets"]["kr"]["actions"][1] == {"action": "BUY", "researchMode": True}
+    assert result["markets"]["kr"]["operatingAuthority"]["entryAllowed"] is False
+
+
+def test_closed_trade_metrics_are_net_of_recorded_costs(monkeypatch) -> None:
+    monkeypatch.setattr(
+        trader,
+        "_trades_for",
+        lambda market, agent_id: [
+            {"createdAt": "2026-01-01", "symbol": "AAPL", "action": "BUY", "price": 100, "quantity": 1, "totalValue": 100, "costAmount": 1},
+            {"createdAt": "2026-01-02", "symbol": "AAPL", "action": "SELL", "price": 102, "quantity": 1, "totalValue": 102, "costAmount": 1},
+        ],
+    )
+
+    metrics = trader._closed_trade_metrics("us", "test")
+
+    assert metrics["closedTradeCount"] == 1
+    assert metrics["winRate"] == 0.0
+    assert metrics["avgNetPnlPct"] == 0.0
+
+def test_append_csv_migrates_legacy_trade_header(tmp_path) -> None:
+    path = tmp_path / "trades.csv"
+    path.write_text("id,memo\nold,legacy\n", encoding="utf-8")
+
+    trader._append_csv(path, {"id": "new", "memo": "current", "costAmount": 1.25}, ["id", "costAmount", "memo"])
+
+    rows = trader._read_csv(path)
+    assert rows == [
+        {"id": "old", "costAmount": "", "memo": "legacy"},
+        {"id": "new", "costAmount": "1.25", "memo": "current"},
+    ]
+
+
+def test_regime_lens_is_rejected_when_report_regime_is_stale(monkeypatch, tmp_path) -> None:
+    report = {
+        "market": "kr",
+        "marketRegime": "SIDE",
+        "asOfDate": date.today().isoformat(),
+        "candidates": [{"symbol": "005930", "setup": "BOTTOM_CATCH", "entryRef": 100, "stop": 95, "target": 110, "rrRatio": 2.0}],
+    }
+    (tmp_path / "regime_lens_candidates_kr.json").write_text(json.dumps(report), encoding="utf-8")
+    monkeypatch.setattr(trader, "REPORTS", tmp_path)
+    monkeypatch.setattr(trader, "_market_regime_snapshot", lambda market: {"regime": "BULL"})
+
+    assert trader._collect_regime_lens_candidates_kr(trader.AGENT_POOL[0]) == []

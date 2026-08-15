@@ -329,15 +329,15 @@ function AiPaperSurvivalPanel({
             <ShieldCheck size={16} className="text-emerald-300" />
             <span>AI 생존계좌</span>
           </div>
-          <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-400">
+          <p className="mt-1 max-w-3xl text-pretty text-xs leading-5 text-slate-400">
             실제 주문 없이 AI 추천만으로 굴리는 검증 계좌입니다. 0원이 되면 실패로 멈추고, OOS 증거판으로 성능을 비교합니다.
           </p>
         </div>
         <div className="flex gap-2">
-          <button onClick={onPreview} disabled={busy} className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-emerald-500/12 px-3 text-xs font-semibold text-emerald-200 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.22)] disabled:opacity-50">
+          <button onClick={onPreview} disabled={busy} className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-emerald-500/12 px-3 text-xs font-semibold text-emerald-200 shadow-[inset_0_0_0_1px_rgba(52,211,153,0.22)] transition-transform active:scale-[0.96] disabled:opacity-50">
             <Play size={13} /> 다음 행동 점검
           </button>
-          <button onClick={onRefresh} disabled={busy} className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-slate-800 px-3 text-xs font-semibold text-slate-200 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.14)] disabled:opacity-50">
+          <button onClick={onRefresh} disabled={busy} className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-slate-800 px-3 text-xs font-semibold text-slate-200 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.14)] transition-transform active:scale-[0.96] disabled:opacity-50">
             <RefreshCw size={13} className={busy ? "animate-spin" : ""} /> 새로고침
           </button>
         </div>
@@ -351,6 +351,9 @@ function AiPaperSurvivalPanel({
           const activeAgent = item?.activeAgent || {};
           const proof = item?.proofBoard || {};
           const live = item?.liveMetrics || {};
+          const realized = item?.realizedTrades || {};
+          const discovery = item?.paperDiscovery || {};
+          const suggestedAgent = item?.suggestedAgent || {};
           const proofRows = Array.isArray(proof.rows) ? proof.rows.slice(0, 3) : [];
           const state = survivalStateLabel(survival.state);
           const liveEnough = Number(live.sampleCount || 0) >= 5;
@@ -361,13 +364,25 @@ function AiPaperSurvivalPanel({
                   <span className="rounded-md bg-slate-800 px-2 py-1 text-[11px] font-semibold text-slate-300">{mk.toUpperCase()}</span>
                   <span className={`font-mono text-xs font-semibold ${stateTone(state)}`}>{state}</span>
                 </div>
-                <span className="text-[11px] text-slate-400">후보 {item?.candidateCount ?? 0}개</span>
+                <span className="tabular-nums text-[11px] text-slate-400">학습 {item?.rawCandidateCount ?? 0} · 승격 {item?.candidateCount ?? 0}</span>
               </div>
               <div className="mt-3 rounded-md bg-slate-900/65 p-2 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
                 <div className="flex items-center justify-between gap-3 text-[11px]">
                   <span className="text-slate-400">현재 AI</span>
                   <span className="truncate text-right font-semibold text-slate-200">{activeAgent.label || summary.agentLabel || "-"}</span>
                 </div>
+                <div className="mt-1 flex items-center justify-between gap-3 text-[11px]">
+                  <span className="text-slate-400">학습 모드</span>
+                  <span className={`truncate text-right font-semibold ${discovery.enabled ? "text-cyan-300" : "text-slate-400"}`}>
+                    {discovery.enabled ? `가상 관찰 · 최대 ${Number(discovery.maxGrossExposure || 0) * 100}%` : "중지"}
+                  </span>
+                </div>
+                {suggestedAgent.id && suggestedAgent.id !== activeAgent.id && (
+                  <div className="mt-1 flex items-center justify-between gap-3 text-[11px]">
+                    <span className="text-slate-400">다음 전략</span>
+                    <span className="truncate text-right font-semibold text-cyan-300">{suggestedAgent.label}</span>
+                  </div>
+                )}
                 <div className="mt-1 flex items-center justify-between gap-3 text-[11px]">
                   <span className="text-slate-400">OOS 판정</span>
                   <span className={`truncate text-right font-semibold ${verdictTone(proof.verdict)}`}>{verdictLabel(proof.verdict)}</span>
@@ -393,7 +408,7 @@ function AiPaperSurvivalPanel({
               </div>
               <div className="mt-3 rounded-md bg-slate-900/65 p-2 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
                 <div className="mb-2 flex items-center justify-between gap-3 text-[11px]">
-                  <span className="font-semibold text-slate-300">실전 NAV</span>
+                  <span className="font-semibold text-slate-300">가상 NAV</span>
                   <span className={liveEnough ? "text-slate-400" : "text-amber-300"}>
                     {liveEnough ? `${live.sampleCount}개 구간` : `샘플 부족 ${live.sampleCount ?? 0}/5`}
                   </span>
@@ -412,7 +427,7 @@ function AiPaperSurvivalPanel({
                     <span className="font-mono text-slate-200">{live.sharpe == null ? "-" : Number(live.sharpe).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between gap-2">
-                    <span className="text-slate-400">승률</span>
+                    <span className="text-slate-400">NAV 상승일</span>
                     <span className="font-mono text-slate-200">{fmtPctValue(live.winRate, 1)}</span>
                   </div>
                   <div className="flex justify-between gap-2">
@@ -425,7 +440,19 @@ function AiPaperSurvivalPanel({
                   </div>
                 </div>
               </div>
-              <div className="mt-3 flex items-center justify-between text-[11px] text-slate-400">
+              <div className="mt-3 rounded-md bg-slate-900/65 p-2 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.08)]">
+                <div className="mb-2 flex items-center justify-between gap-3 text-[11px]">
+                  <span className="font-semibold text-slate-300">비용 차감 청산 성과</span>
+                  <span className="tabular-nums text-slate-400">{realized.closedTradeCount ?? 0}건</span>
+                </div>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] tabular-nums">
+                  <div className="flex justify-between gap-2"><span className="text-slate-400">청산 승률</span><span className="font-mono text-slate-200">{fmtPctValue(realized.winRate, 1)}</span></div>
+                  <div className="flex justify-between gap-2"><span className="text-slate-400">평균 순손익</span><span className={`font-mono ${Number(realized.avgNetPnlPct || 0) >= 0 ? "text-emerald-300" : "text-red-300"}`}>{fmtSignedPct(realized.avgNetPnlPct)}</span></div>
+                  <div className="flex justify-between gap-2"><span className="text-slate-400">손익비</span><span className="font-mono text-slate-200">{realized.payoffRatio == null ? "-" : Number(realized.payoffRatio).toFixed(2)}</span></div>
+                  <div className="flex justify-between gap-2"><span className="text-slate-400">Profit factor</span><span className="font-mono text-slate-200">{realized.profitFactor == null ? "-" : Number(realized.profitFactor).toFixed(2)}</span></div>
+                </div>
+              </div>
+              <div className="mt-3 flex items-center justify-between text-[11px] text-slate-400 tabular-nums">
                 <span>보유 {summary.positionCount ?? positions.length ?? 0}개</span>
                 <span>거래 {summary.tradeCount ?? 0}회</span>
                 <span>NAV {data?.navRows ?? 0}행</span>
