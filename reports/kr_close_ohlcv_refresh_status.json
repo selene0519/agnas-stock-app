@@ -1,12 +1,11 @@
 {
-  "status": "SKIP",
+  "status": "NO_DATA",
   "market": "kr",
-  "date": "2026-08-16",
-  "reason": "SKIPPED_MARKET_CLOSED",
-  "targetCount": 0,
+  "date": "2026-08-17",
+  "targetCount": 100,
   "successCount": 0,
-  "failedCount": 0,
-  "workers": 0,
-  "message": "KR market is closed; existing OHLCV was preserved.",
-  "updatedAt": "2026-08-16T00:00:25"
+  "failedCount": 100,
+  "workers": 6,
+  "message": "오늘 국장 장마감 OHLCV 원본 없음 또는 수집 실패",
+  "updatedAt": "2026-08-17T07:59:13"
 }
