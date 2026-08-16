@@ -1,6 +1,6 @@
 {
   "status": "OK",
-  "generatedAt": "2026-08-14T15:00:49.269438+00:00",
+  "generatedAt": "2026-08-16T23:10:36.836468+00:00",
   "basis": {
     "startNav": 100.0,
     "positionFraction": 0.1,
@@ -16,7 +16,7 @@
   },
   "dataQuality": {
     "excluded": {
-      "notEvaluated": 161,
+      "notEvaluated": 158,
       "nonForwardSource": 1298
     }
   },
@@ -26,10 +26,10 @@
     "conservative_short",
     "aggressive_mid",
     "aggressive_short",
+    "conservative_mid",
     "balanced_swing",
     "balanced_mid",
-    "aggressive_swing",
-    "conservative_mid"
+    "aggressive_swing"
   ],
   "sleeves": {
     "conservative_short": {
@@ -658,18 +658,18 @@
       "distinctSignalDates": 20
     },
     "conservative_mid": {
-      "trades": 23,
-      "candidateTrades": 88,
-      "capacityRejectedTrades": 65,
-      "nav": 84.8996,
-      "cash": 84.8996,
+      "trades": 22,
+      "candidateTrades": 89,
+      "capacityRejectedTrades": 67,
+      "nav": 88.1656,
+      "cash": 88.1656,
       "openPositions": 0,
-      "totalReturnPct": -15.1004,
-      "winRate": 0.087,
-      "avgNetPnlPct": -7.8966,
-      "payoffRatio": 1.5769,
-      "profitFactor": 0.1753,
-      "maxDrawdownPct": 16.1074,
+      "totalReturnPct": -11.8344,
+      "winRate": 0.1364,
+      "avgNetPnlPct": -6.7086,
+      "payoffRatio": 1.4659,
+      "profitFactor": 0.273,
+      "maxDrawdownPct": 12.8056,
       "maxInvestedPct": 100.0,
       "curve": [
         {
@@ -718,17 +718,8 @@
           "netPnlPct": -11.8563
         },
         {
-          "date": "2026-06-29",
-          "nav": 93.2311,
-          "cash": 8.766,
-          "openPositions": 9,
-          "symbol": "TXN",
-          "market": "us",
-          "netPnlPct": -12.3402
-        },
-        {
           "date": "2026-06-30",
-          "nav": 92.1139,
+          "nav": 93.3479,
           "cash": 7.5705,
           "openPositions": 9,
           "symbol": "032830",
@@ -737,7 +728,7 @@
         },
         {
           "date": "2026-07-02",
-          "nav": 93.4044,
+          "nav": 94.6384,
           "cash": 11.2905,
           "openPositions": 9,
           "symbol": "VRTX",
@@ -746,8 +737,8 @@
         },
         {
           "date": "2026-07-07",
-          "nav": 93.227,
-          "cash": 1.7726,
+          "nav": 94.4722,
+          "cash": 1.6605,
           "openPositions": 10,
           "symbol": "RIOT",
           "market": "us",
@@ -755,8 +746,8 @@
         },
         {
           "date": "2026-07-13",
-          "nav": 93.1945,
-          "cash": 1.7402,
+          "nav": 94.4418,
+          "cash": 1.6301,
           "openPositions": 10,
           "symbol": "381180",
           "market": "kr",
@@ -764,7 +755,7 @@
         },
         {
           "date": "2026-07-14",
-          "nav": 91.9677,
+          "nav": 93.215,
           "cash": 8.7732,
           "openPositions": 10,
           "symbol": "015760",
@@ -773,8 +764,8 @@
         },
         {
           "date": "2026-07-17",
-          "nav": 91.7559,
-          "cash": 1.5284,
+          "nav": 93.0166,
+          "cash": 1.4317,
           "openPositions": 10,
           "symbol": "ANET",
           "market": "us",
@@ -782,8 +773,8 @@
         },
         {
           "date": "2026-07-17",
-          "nav": 90.9955,
-          "cash": 8.9844,
+          "nav": 92.2562,
+          "cash": 8.8876,
           "openPositions": 9,
           "symbol": "TSM",
           "market": "us",
@@ -791,8 +782,8 @@
         },
         {
           "date": "2026-07-20",
-          "nav": 90.7603,
-          "cash": 17.0619,
+          "nav": 92.021,
+          "cash": 16.9652,
           "openPositions": 8,
           "symbol": "360750",
           "market": "kr",
@@ -800,8 +791,8 @@
         },
         {
           "date": "2026-07-23",
-          "nav": 89.7835,
-          "cash": 25.4255,
+          "nav": 91.0313,
+          "cash": 25.4393,
           "openPositions": 7,
           "symbol": "TSLA",
           "market": "us",
@@ -809,35 +800,35 @@
         },
         {
           "date": "2026-07-27",
-          "nav": 89.1098,
-          "cash": 32.3223,
+          "nav": 90.3576,
+          "cash": 32.3361,
           "openPositions": 6,
           "symbol": "UBER",
           "market": "us",
           "netPnlPct": -8.8991
         },
         {
-          "date": "2026-07-27",
-          "nav": 88.2912,
-          "cash": 40.2697,
-          "openPositions": 5,
-          "symbol": "UBER",
-          "market": "us",
-          "netPnlPct": -9.3391
-        },
-        {
           "date": "2026-07-28",
-          "nav": 87.2545,
-          "cash": 49.0348,
-          "openPositions": 4,
+          "nav": 89.321,
+          "cash": 41.1013,
+          "openPositions": 5,
           "symbol": "ASML",
           "market": "us",
           "netPnlPct": -10.5761
         },
         {
           "date": "2026-07-28",
-          "nav": 86.1866,
-          "cash": 57.4134,
+          "nav": 90.5564,
+          "cash": 52.3367,
+          "openPositions": 4,
+          "symbol": "V",
+          "market": "us",
+          "netPnlPct": 12.3538
+        },
+        {
+          "date": "2026-07-28",
+          "nav": 89.4885,
+          "cash": 60.7153,
           "openPositions": 3,
           "symbol": "ASML",
           "market": "us",
@@ -845,8 +836,8 @@
         },
         {
           "date": "2026-07-29",
-          "nav": 85.236,
-          "cash": 65.236,
+          "nav": 88.5378,
+          "cash": 68.5378,
           "openPositions": 2,
           "symbol": "214150",
           "market": "kr",
@@ -854,8 +845,8 @@
         },
         {
           "date": "2026-07-31",
-          "nav": 83.8926,
-          "cash": 73.8926,
+          "nav": 87.1944,
+          "cash": 77.1944,
           "openPositions": 1,
           "symbol": "RDDT",
           "market": "us",
@@ -863,8 +854,8 @@
         },
         {
           "date": "2026-08-07",
-          "nav": 85.8118,
-          "cash": 77.4225,
+          "nav": 89.1136,
+          "cash": 80.3942,
           "openPositions": 1,
           "symbol": "LYFT",
           "market": "us",
@@ -872,8 +863,8 @@
         },
         {
           "date": "2026-08-10",
-          "nav": 84.8996,
-          "cash": 84.8996,
+          "nav": 88.1656,
+          "cash": 88.1656,
           "openPositions": 0,
           "symbol": "017670",
           "market": "kr",
@@ -1331,8 +1322,8 @@
     },
     "balanced_mid": {
       "trades": 22,
-      "candidateTrades": 91,
-      "capacityRejectedTrades": 69,
+      "candidateTrades": 93,
+      "capacityRejectedTrades": 71,
       "nav": 87.8905,
       "cash": 87.8905,
       "openPositions": 0,
