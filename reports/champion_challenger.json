@@ -1,6 +1,6 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-08-17T08:46:51.265575+00:00",
+  "generatedAt": "2026-08-17T14:36:36.119301+00:00",
   "policy": {
     "version": "champion-challenger-v1.4.0",
     "champion": "TOP_3_RAW_CANDIDATES",
@@ -30,21 +30,21 @@
     "fingerprint": "2cc1dea4ccc330c31cb9"
   },
   "recording": {
-    "appended": 0,
-    "conflicts": 22,
+    "appended": 17,
+    "conflicts": 3,
     "skipped": 0,
-    "total": 445
+    "total": 462
   },
   "policyCohort": {
     "activeFingerprint": "2cc1dea4ccc330c31cb9",
     "activeMetaPolicyFingerprint": "0bb3379dfc7bec772798",
     "activeRiskPolicyFingerprint": "e35273b1243c0e38f6ce",
-    "activeRows": 305,
-    "validActiveRows": 305,
+    "activeRows": 322,
+    "validActiveRows": 322,
     "excludedPriorPolicyRows": 140
   },
   "integrity": {
-    "immutableConflicts": 22,
+    "immutableConflicts": 3,
     "timeIntegrityViolations": 0,
     "recordHashViolations": 0,
     "invalidRecordIds": [],
@@ -54,12 +54,12 @@
   },
   "alphaGate": {
     "passed": false,
-    "blockMeanCarPct": -2.4836,
+    "blockMeanCarPct": -2.2762,
     "bootstrapCi95": [
-      -5.9659,
-      0.8742
+      -5.505,
+      1.0584
     ],
-    "independentMarketDateBlocks": 31,
+    "independentMarketDateBlocks": 32,
     "significanceUsable": false
   },
   "residualAlphaModelGate": {
@@ -90,7 +90,7 @@
   },
   "comparison": {
     "completedSignalDates": 0,
-    "incompleteSignalDates": 10,
+    "incompleteSignalDates": 11,
     "champion": {
       "completeSignalDates": 0,
       "selectedEvaluatedTrades": 0,
