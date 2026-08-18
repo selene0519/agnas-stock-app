@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-08-17T23:12:54.028780+00:00",
+  "generatedAt": "2026-08-18T08:40:36.555421+00:00",
   "since": "2026-07-10",
   "cleanWindowStart": "2026-07-10",
   "source": "virtual_trade_journal + virtual_trade_evaluations (FORWARD_PAPER_TRADE only)",
   "overall": {
-    "trades": 105,
-    "winRate": 0.2762,
-    "avgPnlPct": -1.8698,
+    "trades": 108,
+    "winRate": 0.2963,
+    "avgPnlPct": -1.3872,
     "sampleWarning": null
   },
   "dateRange": {
@@ -16,13 +16,13 @@
   "observedScoreRange": {
     "min": 68.0,
     "max": 92.1,
-    "median": 71.3
+    "median": 71.5
   },
   "byRegime": {
     "BEAR": {
-      "trades": 32,
-      "winRate": 0.5,
-      "avgPnlPct": 1.2379,
+      "trades": 35,
+      "winRate": 0.5429,
+      "avgPnlPct": 2.4607,
       "sampleWarning": null
     },
     "BULL": {
@@ -40,15 +40,15 @@
   },
   "byScoreBin": {
     "65-70": {
-      "trades": 31,
-      "winRate": 0.2581,
-      "avgPnlPct": -0.9809,
+      "trades": 32,
+      "winRate": 0.2812,
+      "avgPnlPct": -0.3406,
       "sampleWarning": null
     },
     "70-100": {
-      "trades": 74,
-      "winRate": 0.2838,
-      "avgPnlPct": -2.2422,
+      "trades": 76,
+      "winRate": 0.3026,
+      "avgPnlPct": -1.8279,
       "sampleWarning": null
     }
   }
