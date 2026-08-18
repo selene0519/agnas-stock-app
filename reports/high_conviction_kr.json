@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-18T12:50:42.863845+00:00",
+  "generatedAt": "2026-08-18T21:56:35.606134+00:00",
   "market": "kr",
   "marketRegime": "SIDE",
   "marketRegimeLabel": "횡보장",
@@ -8,7 +8,7 @@
     "distToMa20": 6.0,
     "mom5": 9.05,
     "trend60": -4.7,
-    "volRatio": 0.783,
+    "volRatio": 0.784,
     "definition": "trend60+거래량(약추세만)",
     "kospi": 6869.83
   },
@@ -29,13 +29,13 @@
     "winRate": null
   },
   "note": "앱이 지는 이유=전부 거래. 실측상 (+)인 유일 구성(강세장+finalScore≥84)만 실전. 약세/횡보/저점수는 실전 없음(현금 보존). 이게 −1.92%→+0.72%의 차이.",
-  "candidateCount": 8,
+  "candidateCount": 7,
   "actionableCount": 0,
   "candidates": [
     {
       "symbol": "011200",
       "name": "HMM",
-      "finalScore": 74.4,
+      "finalScore": 77.0,
       "entry": null,
       "stop": null,
       "target": null,
@@ -72,28 +72,15 @@
       "gateReason": "관찰만 — 횡보장(실전 게이트 OFF)"
     },
     {
-      "symbol": "000100",
-      "name": "유한양행",
-      "finalScore": 67.3,
-      "entry": null,
-      "stop": null,
-      "target": null,
-      "decisionBucket": "기다림",
-      "supplySignal": "INST_BUY",
-      "eventBadges": "EV음수 | 기관 순매수",
-      "highConviction": false,
-      "gateReason": "관찰만 — 횡보장(실전 게이트 OFF)"
-    },
-    {
-      "symbol": "005490",
-      "name": "POSCO홀딩스",
-      "finalScore": 63.5,
+      "symbol": "003620",
+      "name": "KG모빌리티",
+      "finalScore": 67.2,
       "entry": null,
       "stop": null,
       "target": null,
       "decisionBucket": "오늘 진입",
-      "supplySignal": "FOREIGN_BUY",
-      "eventBadges": "외국인 순매수 | 저평가성장주",
+      "supplySignal": "INST_BUY",
+      "eventBadges": "기관 순매수",
       "highConviction": false,
       "gateReason": "관찰만 — 횡보장(실전 게이트 OFF)"
     },
@@ -101,6 +88,19 @@
       "symbol": "293490",
       "name": "카카오게임즈",
       "finalScore": 62.4,
+      "entry": null,
+      "stop": null,
+      "target": null,
+      "decisionBucket": "기다림",
+      "supplySignal": "SELL_PRESSURE",
+      "eventBadges": "EV음수 | 기관+외국인 순매도",
+      "highConviction": false,
+      "gateReason": "관찰만 — 횡보장(실전 게이트 OFF)"
+    },
+    {
+      "symbol": "000100",
+      "name": "유한양행",
+      "finalScore": 61.3,
       "entry": null,
       "stop": null,
       "target": null,
@@ -120,19 +120,6 @@
       "decisionBucket": "기다림",
       "supplySignal": "FOREIGN_BUY",
       "eventBadges": "EV음수 | 외국인 순매수 | 저평가성장주",
-      "highConviction": false,
-      "gateReason": "관찰만 — 횡보장(실전 게이트 OFF)"
-    },
-    {
-      "symbol": "030200",
-      "name": "KT",
-      "finalScore": 60.0,
-      "entry": null,
-      "stop": null,
-      "target": null,
-      "decisionBucket": "기다림",
-      "supplySignal": "STRONG_BUY",
-      "eventBadges": "EV음수 | 이격도수렴 | 기관+외국인 동반매수",
       "highConviction": false,
       "gateReason": "관찰만 — 횡보장(실전 게이트 OFF)"
     }
