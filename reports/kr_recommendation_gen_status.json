@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-08-17T23:29:00.989302+00:00",
+  "generatedAt": "2026-08-18T07:15:01.617083+00:00",
   "source": "ohlcv_quant_scanner",
   "symbols": 106,
   "kisSymbols": 167,
-  "newsSentimentSymbols": 7,
+  "newsSentimentSymbols": 8,
   "financialSymbols": 5,
   "supplySymbols": 87,
   "marketRegime": {
@@ -19,17 +19,17 @@
     "asOf": "2026-08-14",
     "source": "kr_KOSPI_daily.csv"
   },
-  "evFiltered": 4,
-  "regimeFiltered": 443,
+  "evFiltered": 1,
+  "regimeFiltered": 544,
   "results": {
     "conservative_short": 0,
-    "conservative_swing": 0,
+    "conservative_swing": 1,
     "conservative_mid": 0,
     "balanced_short": 0,
     "balanced_swing": 0,
-    "balanced_mid": 0,
-    "aggressive_short": 0,
+    "balanced_mid": 1,
+    "aggressive_short": 1,
     "aggressive_swing": 0,
-    "aggressive_mid": 3
+    "aggressive_mid": 5
   }
 }

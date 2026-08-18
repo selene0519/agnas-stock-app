@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-17T23:29:44.273310+00:00",
+  "generatedAt": "2026-08-18T07:15:50.970050+00:00",
   "market": "kr",
   "marketRegime": "SIDE",
   "marketRegimeLabel": "횡보장",
@@ -29,13 +29,26 @@
     "winRate": null
   },
   "note": "앱이 지는 이유=전부 거래. 실측상 (+)인 유일 구성(강세장+finalScore≥84)만 실전. 약세/횡보/저점수는 실전 없음(현금 보존). 이게 −1.92%→+0.72%의 차이.",
-  "candidateCount": 3,
+  "candidateCount": 8,
   "actionableCount": 0,
   "candidates": [
     {
-      "symbol": "214450",
-      "name": "파마리서치",
-      "finalScore": 79.6,
+      "symbol": "011200",
+      "name": "HMM",
+      "finalScore": 74.4,
+      "entry": null,
+      "stop": null,
+      "target": null,
+      "decisionBucket": "기다림",
+      "supplySignal": "STRONG_BUY",
+      "eventBadges": "EV음수 | 기관+외국인 동반매수",
+      "highConviction": false,
+      "gateReason": "관찰만 — 횡보장(실전 게이트 OFF)"
+    },
+    {
+      "symbol": "028670",
+      "name": "팬오션",
+      "finalScore": 73.8,
       "entry": null,
       "stop": null,
       "target": null,
@@ -46,9 +59,9 @@
       "gateReason": "관찰만 — 횡보장(실전 게이트 OFF)"
     },
     {
-      "symbol": "000100",
-      "name": "유한양행",
-      "finalScore": 74.0,
+      "symbol": "003550",
+      "name": "LG",
+      "finalScore": 73.2,
       "entry": null,
       "stop": null,
       "target": null,
@@ -59,15 +72,67 @@
       "gateReason": "관찰만 — 횡보장(실전 게이트 OFF)"
     },
     {
-      "symbol": "035420",
-      "name": "NAVER",
-      "finalScore": 65.2,
+      "symbol": "000100",
+      "name": "유한양행",
+      "finalScore": 67.3,
+      "entry": null,
+      "stop": null,
+      "target": null,
+      "decisionBucket": "기다림",
+      "supplySignal": "INST_BUY",
+      "eventBadges": "EV음수 | 기관 순매수",
+      "highConviction": false,
+      "gateReason": "관찰만 — 횡보장(실전 게이트 OFF)"
+    },
+    {
+      "symbol": "005490",
+      "name": "POSCO홀딩스",
+      "finalScore": 63.5,
+      "entry": null,
+      "stop": null,
+      "target": null,
+      "decisionBucket": "오늘 진입",
+      "supplySignal": "FOREIGN_BUY",
+      "eventBadges": "외국인 순매수 | 저평가성장주",
+      "highConviction": false,
+      "gateReason": "관찰만 — 횡보장(실전 게이트 OFF)"
+    },
+    {
+      "symbol": "293490",
+      "name": "카카오게임즈",
+      "finalScore": 62.4,
+      "entry": null,
+      "stop": null,
+      "target": null,
+      "decisionBucket": "기다림",
+      "supplySignal": "SELL_PRESSURE",
+      "eventBadges": "EV음수 | 기관+외국인 순매도",
+      "highConviction": false,
+      "gateReason": "관찰만 — 횡보장(실전 게이트 OFF)"
+    },
+    {
+      "symbol": "278470",
+      "name": "에이피알",
+      "finalScore": 61.1,
+      "entry": null,
+      "stop": null,
+      "target": null,
+      "decisionBucket": "기다림",
+      "supplySignal": "FOREIGN_BUY",
+      "eventBadges": "EV음수 | 외국인 순매수 | 저평가성장주",
+      "highConviction": false,
+      "gateReason": "관찰만 — 횡보장(실전 게이트 OFF)"
+    },
+    {
+      "symbol": "030200",
+      "name": "KT",
+      "finalScore": 60.0,
       "entry": null,
       "stop": null,
       "target": null,
       "decisionBucket": "기다림",
       "supplySignal": "STRONG_BUY",
-      "eventBadges": "EV음수 | 기관+외국인 동반매수",
+      "eventBadges": "EV음수 | 이격도수렴 | 기관+외국인 동반매수",
       "highConviction": false,
       "gateReason": "관찰만 — 횡보장(실전 게이트 OFF)"
     }
