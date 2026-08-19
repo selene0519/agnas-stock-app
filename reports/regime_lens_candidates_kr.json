@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-08-19T07:16:08.413950+00:00",
+  "generatedAt": "2026-08-19T08:12:26.894694+00:00",
   "asOfDate": "2026-08-19",
   "market": "kr",
-  "marketRegime": "SIDE",
-  "breadthAboveMa60": 0.31,
-  "activeLens": "BREAKOUT",
+  "marketRegime": "BEAR",
+  "breadthAboveMa60": 0.304,
+  "activeLens": "BOTTOM_CATCH",
   "activeSetupByRegime": {
     "BULL": [
       "BREAKOUT"
@@ -20,7 +20,7 @@
   "liveSamplesTotal": 21,
   "universeSize": 106,
   "candidateCount": 1,
-  "actionableCount": 1,
+  "actionableCount": 0,
   "disclaimer": "생존편향(현상장 glob만)로 백테스트 낙관. actionable(ACTIVE)만 자가보정 통과 — 실사이징은 라이브 VTJ forward 검증 후.",
   "candidates": [
     {
@@ -35,9 +35,9 @@
       "rrRatio": 2.0,
       "rsi14": 84.6,
       "distMa20Pct": 23.1,
-      "calibrationGate": "ACTIVE",
-      "sizeMultiplier": 1.5,
-      "actionable": true
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
     }
   ]
 }
