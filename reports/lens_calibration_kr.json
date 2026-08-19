@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-19T14:02:14.419489+00:00",
+  "generatedAt": "2026-08-19T21:55:16.699065+00:00",
   "asOfDate": "2026-07-28",
   "sources": {
     "live": "reports/lens_live_journal_kr.csv",
@@ -41,20 +41,20 @@
       "liveFraction": 0.0,
       "profitFactor": 1.11
     },
-    "BREAKOUT|SIDE": {
-      "setup": "BREAKOUT",
-      "regime": "SIDE",
-      "blendedNetAvgPct": 0.94,
-      "blendedWinRate": 50.5,
+    "BOTTOM_CATCH|BEAR": {
+      "setup": "BOTTOM_CATCH",
+      "regime": "BEAR",
+      "blendedNetAvgPct": 0.317,
+      "blendedWinRate": 46.4,
       "gate": "ACTIVE",
-      "sizeMultiplier": 1.5,
-      "liveEffectiveSamples": 0.0,
-      "liveRawSamples": 0,
-      "liveNetAvgPct": null,
-      "priorNetAvgPct": 0.94,
-      "priorRawSamples": 6666,
-      "liveFraction": 0.0,
-      "profitFactor": 1.47
+      "sizeMultiplier": 0.51,
+      "liveEffectiveSamples": 16.6,
+      "liveRawSamples": 17,
+      "liveNetAvgPct": -1.4,
+      "priorNetAvgPct": 1.031,
+      "priorRawSamples": 3597,
+      "liveFraction": 0.294,
+      "profitFactor": 0.61
     },
     "BREAKOUT|BEAR": {
       "setup": "BREAKOUT",
@@ -86,6 +86,21 @@
       "liveFraction": 0.0,
       "profitFactor": 0.99
     },
+    "BREAKOUT|SIDE": {
+      "setup": "BREAKOUT",
+      "regime": "SIDE",
+      "blendedNetAvgPct": 0.94,
+      "blendedWinRate": 50.5,
+      "gate": "ACTIVE",
+      "sizeMultiplier": 1.5,
+      "liveEffectiveSamples": 0.0,
+      "liveRawSamples": 0,
+      "liveNetAvgPct": null,
+      "priorNetAvgPct": 0.94,
+      "priorRawSamples": 6666,
+      "liveFraction": 0.0,
+      "profitFactor": 1.47
+    },
     "BOTTOM_CATCH|BULL": {
       "setup": "BOTTOM_CATCH",
       "regime": "BULL",
@@ -100,21 +115,6 @@
       "priorRawSamples": 2268,
       "liveFraction": 0.0,
       "profitFactor": 0.66
-    },
-    "BOTTOM_CATCH|BEAR": {
-      "setup": "BOTTOM_CATCH",
-      "regime": "BEAR",
-      "blendedNetAvgPct": 0.317,
-      "blendedWinRate": 46.4,
-      "gate": "ACTIVE",
-      "sizeMultiplier": 0.51,
-      "liveEffectiveSamples": 16.6,
-      "liveRawSamples": 17,
-      "liveNetAvgPct": -1.4,
-      "priorNetAvgPct": 1.031,
-      "priorRawSamples": 3597,
-      "liveFraction": 0.294,
-      "profitFactor": 0.61
     }
   }
 }

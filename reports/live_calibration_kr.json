@@ -1,24 +1,24 @@
 {
   "table": {
     "0-72|SIDE": {
-      "winRate": 18.1,
+      "winRate": 18.2,
       "rawWinRate": 12.0,
       "avgPnl": -7.226,
-      "effN": 23.1,
+      "effN": 22.6,
       "priorWinRate": 25.2
     },
     "72-76|SIDE": {
-      "winRate": 21.1,
+      "winRate": 21.2,
       "rawWinRate": 13.2,
       "avgPnl": -7.309,
-      "effN": 10.3,
+      "effN": 10.0,
       "priorWinRate": 25.2
     },
     "76-80|SIDE": {
       "winRate": 22.8,
       "rawWinRate": 8.4,
       "avgPnl": -7.84,
-      "effN": 3.3,
+      "effN": 3.2,
       "priorWinRate": 25.2
     },
     "80-84|BULL": {
@@ -32,7 +32,7 @@
       "winRate": 25.8,
       "rawWinRate": 31.4,
       "avgPnl": -1.984,
-      "effN": 2.5,
+      "effN": 2.4,
       "priorWinRate": 25.2
     },
     "72-76|BULL": {
@@ -46,7 +46,7 @@
       "winRate": 25.6,
       "rawWinRate": 38.4,
       "avgPnl": -0.784,
-      "effN": 0.7,
+      "effN": 0.6,
       "priorWinRate": 25.2
     },
     "88-200|BULL": {
@@ -57,17 +57,17 @@
       "priorWinRate": 25.2
     },
     "80-84|SIDE": {
-      "winRate": 23.8,
+      "winRate": 23.9,
       "rawWinRate": 0.0,
       "avgPnl": -6.22,
       "effN": 1.1,
       "priorWinRate": 25.2
     },
     "0-72|BEAR": {
-      "winRate": 29.3,
+      "winRate": 29.2,
       "rawWinRate": 39.6,
       "avgPnl": 0.499,
-      "effN": 8.0,
+      "effN": 7.9,
       "priorWinRate": 25.2
     },
     "84-88|SIDE": {
@@ -78,17 +78,17 @@
       "priorWinRate": 25.2
     },
     "72-76|BEAR": {
-      "winRate": 34.6,
+      "winRate": 34.4,
       "rawWinRate": 68.8,
       "avgPnl": 3.362,
-      "effN": 5.5,
+      "effN": 5.4,
       "priorWinRate": 25.2
     },
     "76-80|BEAR": {
-      "winRate": 31.2,
+      "winRate": 31.1,
       "rawWinRate": 82.1,
       "avgPnl": 11.169,
-      "effN": 2.4,
+      "effN": 2.3,
       "priorWinRate": 25.2
     },
     "80-84|BEAR": {
@@ -102,7 +102,7 @@
   "global": {
     "winRate": 25.2,
     "avgPnl": -3.969,
-    "effN": 62.0
+    "effN": 60.6
   },
   "bins": [
     "0-72",
@@ -115,7 +115,7 @@
   "params": {
     "halfLifeDays": 30.0,
     "shrinkK": 20.0,
-    "asOf": "2026-08-19"
+    "asOf": "2026-08-20"
   },
   "market": "kr",
   "source": "live_vtj_rolling_pooled",
