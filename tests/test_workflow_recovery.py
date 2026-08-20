@@ -151,3 +151,11 @@ def test_ai_paper_workflow_installs_pinned_runtime_dependencies():
     assert '"pandas>=2.2,<3"' in workflow
     assert '"numpy>=1.26,<3"' in workflow
     assert "requests python-dotenv" in workflow
+
+def test_ai_journal_workflow_smoke_runs_after_core_changes():
+    workflow = (ROOT / ".github" / "workflows" / "mone-vtj-capture.yml").read_text(encoding="utf-8")
+
+    assert "  push:" in workflow
+    assert '      - ".github/workflows/mone-vtj-capture.yml"' in workflow
+    assert '      - "mone-web-app/backend/app/services/virtual_trade_journal.py"' in workflow
+    assert '      - "mone-web-app/backend/app/main.py"' in workflow

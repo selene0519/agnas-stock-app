@@ -1,6 +1,12 @@
 name: MONE AI Journal Capture
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/mone-vtj-capture.yml"
+      - "mone-web-app/backend/app/main.py"
+      - "mone-web-app/backend/app/services/virtual_trade_journal.py"
   workflow_dispatch:
     inputs:
       market:
