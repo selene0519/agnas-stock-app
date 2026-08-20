@@ -16,7 +16,7 @@
   "lastRun": {
     "status": "OK",
     "dryRun": false,
-    "createdAt": "2026-08-20T22:31:47",
+    "createdAt": "2026-08-20T22:40:51",
     "market": "us",
     "markets": {
       "us": {
@@ -27,67 +27,7 @@
           "horizon": "swing"
         },
         "generation": 2,
-        "actions": [
-          {
-            "action": "AGENT_SWITCH",
-            "market": "us",
-            "fromAgentId": "ml_rank_balanced_mid",
-            "toAgentId": "ml_rank_conservative_swing",
-            "generation": 2,
-            "regime": "SIDE",
-            "reason": "FLAT_ACCOUNT_REGIME_CHAMPION_SELECTED",
-            "result": {
-              "ok": true,
-              "dryRun": false
-            }
-          },
-          {
-            "action": "BUY",
-            "market": "us",
-            "agentId": "ml_rank_conservative_swing",
-            "agentLabel": "ML Rank Conservative Swing",
-            "symbol": "SMR",
-            "name": "NuScale Power",
-            "price": 9.29,
-            "quantity": 9.6899,
-            "totalValue": 90.02,
-            "costAmount": 0.09,
-            "researchMode": true,
-            "stopPrice": 8.0,
-            "targetPrice": 12.0,
-            "expectedValue": 2.66,
-            "score": 71.0,
-            "decision": "오늘 진입",
-            "paperOnly": false,
-            "paperSetup": "",
-            "paperRegime": "",
-            "paperSizeMultiplier": "",
-            "calibrationGate": "",
-            "executionAuthority": {
-              "allowed": true,
-              "reason": "EXACT_CANDIDATE_AND_RISK_WEIGHT_AUTHORIZED",
-              "decisionId": "2d9ffb752f8f148b35f4",
-              "candidateKey": "d2f7a53778301aa8cf490bbf",
-              "market": "us",
-              "symbol": "SMR",
-              "mode": "conservative",
-              "horizon": "swing",
-              "entryPrice": 9.29,
-              "stopPrice": 8.0,
-              "weight": 0.01800388,
-              "signalDate": "2026-08-19",
-              "metaPolicyFingerprint": "paper-discovery-only-v1",
-              "riskPolicyVersion": "paper-discovery-risk-v1",
-              "riskPolicyFingerprint": "paper-discovery-risk-v1",
-              "allocationFingerprint": "7b734c5e7b714097b9c9a67fd899f8e01d6844ad40eb99c51650634a43d52ef3",
-              "researchOnly": true
-            },
-            "result": {
-              "ok": true,
-              "dryRun": false
-            }
-          }
-        ],
+        "actions": [],
         "summary": {
           "agentId": "ml_rank_conservative_swing",
           "agentLabel": "ML Rank Conservative Swing",
@@ -106,21 +46,28 @@
         "liveMetrics": {
           "status": "OK",
           "proofStatus": "WARMING_UP",
-          "sampleCount": 0,
-          "navPointCount": 1,
+          "sampleCount": 1,
+          "navPointCount": 2,
           "totalReturnPct": -0.0,
           "mddPct": 0.0,
           "sharpe": null,
-          "winRate": null,
-          "avgPeriodReturnPct": null,
+          "winRate": 0.0,
+          "avgPeriodReturnPct": 0.0,
           "cashPct": 98.2,
           "peakValue": 4999.91,
           "currentValue": 4999.91,
           "lastNavDate": "2026-08-20",
-          "recentReturnsPct": [],
+          "recentReturnsPct": [
+            0.0
+          ],
           "equityCurve": [
             {
               "index": 0,
+              "value": 4999.91,
+              "returnPct": -0.0
+            },
+            {
+              "index": 1,
               "value": 4999.91,
               "returnPct": -0.0
             }
@@ -149,6 +96,8 @@
         "proofBoard": {
           "status": "OK",
           "method": "recent_6_window_walk_forward_oos",
+          "mddMethod": "fixed_notional_equity_100",
+          "legacyMddNormalized": true,
           "verdict": "NOT_PROVEN",
           "currentRank": 5,
           "profileCount": 5,
@@ -162,7 +111,8 @@
             "winRate": 10.9,
             "avgNetPnlPct": -0.01,
             "positiveWindowRate": 66.7,
-            "mddPct": -252.87,
+            "mddPct": -100.0,
+            "mddNormalized": true,
             "proofScore": 8.34,
             "lastWindow": "2026-08-01"
           },
@@ -176,7 +126,8 @@
             "winRate": 19.9,
             "avgNetPnlPct": 0.57,
             "positiveWindowRate": 83.3,
-            "mddPct": -202.48,
+            "mddPct": -100.0,
+            "mddNormalized": true,
             "proofScore": 22.64,
             "lastWindow": "2026-08-01"
           },
@@ -190,7 +141,8 @@
             "winRate": 22.0,
             "avgNetPnlPct": 0.65,
             "positiveWindowRate": 83.3,
-            "mddPct": -203.83,
+            "mddPct": -100.0,
+            "mddNormalized": true,
             "proofScore": 24.32,
             "lastWindow": "2026-08-01"
           },
@@ -206,7 +158,8 @@
               "winRate": 19.9,
               "avgNetPnlPct": 0.57,
               "positiveWindowRate": 83.3,
-              "mddPct": -202.48,
+              "mddPct": -100.0,
+              "mddNormalized": true,
               "proofScore": 22.64,
               "lastWindow": "2026-08-01"
             },
@@ -220,7 +173,8 @@
               "winRate": 18.9,
               "avgNetPnlPct": 0.49,
               "positiveWindowRate": 83.3,
-              "mddPct": -198.06,
+              "mddPct": -100.0,
+              "mddNormalized": true,
               "proofScore": 21.27,
               "lastWindow": "2026-08-01"
             },
@@ -234,7 +188,8 @@
               "winRate": 18.9,
               "avgNetPnlPct": 0.48,
               "positiveWindowRate": 83.3,
-              "mddPct": -193.4,
+              "mddPct": -100.0,
+              "mddNormalized": true,
               "proofScore": 21.18,
               "lastWindow": "2026-08-01"
             },
@@ -248,7 +203,8 @@
               "winRate": 8.2,
               "avgNetPnlPct": -0.23,
               "positiveWindowRate": 83.3,
-              "mddPct": -230.43,
+              "mddPct": -100.0,
+              "mddNormalized": true,
               "proofScore": 8.92,
               "lastWindow": "2026-08-01"
             },
@@ -262,7 +218,8 @@
               "winRate": 10.9,
               "avgNetPnlPct": -0.01,
               "positiveWindowRate": 66.7,
-              "mddPct": -252.87,
+              "mddPct": -100.0,
+              "mddNormalized": true,
               "proofScore": 8.34,
               "lastWindow": "2026-08-01"
             }
@@ -278,7 +235,8 @@
               "winRate": 22.0,
               "avgNetPnlPct": 0.65,
               "positiveWindowRate": 83.3,
-              "mddPct": -203.83,
+              "mddPct": -100.0,
+              "mddNormalized": true,
               "proofScore": 24.32,
               "lastWindow": "2026-08-01"
             },
@@ -292,7 +250,8 @@
               "winRate": 21.1,
               "avgNetPnlPct": 0.59,
               "positiveWindowRate": 83.3,
-              "mddPct": -194.34,
+              "mddPct": -100.0,
+              "mddNormalized": true,
               "proofScore": 23.35,
               "lastWindow": "2026-08-01"
             },
@@ -306,7 +265,8 @@
               "winRate": 20.9,
               "avgNetPnlPct": 0.57,
               "positiveWindowRate": 83.3,
-              "mddPct": -199.33,
+              "mddPct": -100.0,
+              "mddNormalized": true,
               "proofScore": 23.04,
               "lastWindow": "2026-08-01"
             }
@@ -403,32 +363,35 @@
           "performanceGate": {
             "allowed": false,
             "market": "us",
-            "strategy": "balanced_mid",
-            "sampleCount": 33,
+            "strategy": "conservative_swing",
+            "sampleCount": 38,
             "minSamples": 20,
-            "winRate": 0.1212,
+            "winRate": 0.3421,
             "minWinRate": 0.45,
-            "avgReturnPct": -8.3011,
+            "avgReturnPct": -2.0068,
             "reason": "REALIZED_WIN_RATE_BELOW_GATE"
           },
           "proofBoard": {
             "status": "OK",
             "method": "recent_6_window_walk_forward_oos",
+            "mddMethod": "fixed_notional_equity_100",
+            "legacyMddNormalized": true,
             "verdict": "NOT_PROVEN",
-            "currentRank": 2,
+            "currentRank": 5,
             "profileCount": 5,
             "current": {
-              "agentId": "ml_rank_balanced_mid",
-              "agentLabel": "ML Rank Balanced Mid",
-              "mode": "balanced",
-              "horizon": "mid",
+              "agentId": "ml_rank_conservative_swing",
+              "agentLabel": "ML Rank Conservative Swing",
+              "mode": "conservative",
+              "horizon": "swing",
               "strategy": "corrected",
-              "sampleCount": 270,
-              "winRate": 18.9,
-              "avgNetPnlPct": 0.49,
-              "positiveWindowRate": 83.3,
-              "mddPct": -198.06,
-              "proofScore": 21.27,
+              "sampleCount": 265,
+              "winRate": 10.9,
+              "avgNetPnlPct": -0.01,
+              "positiveWindowRate": 66.7,
+              "mddPct": -100.0,
+              "mddNormalized": true,
+              "proofScore": 8.34,
               "lastWindow": "2026-08-01"
             },
             "leader": {
@@ -441,7 +404,8 @@
               "winRate": 19.9,
               "avgNetPnlPct": 0.57,
               "positiveWindowRate": 83.3,
-              "mddPct": -202.48,
+              "mddPct": -100.0,
+              "mddNormalized": true,
               "proofScore": 22.64,
               "lastWindow": "2026-08-01"
             },
@@ -455,7 +419,8 @@
               "winRate": 22.0,
               "avgNetPnlPct": 0.65,
               "positiveWindowRate": 83.3,
-              "mddPct": -203.83,
+              "mddPct": -100.0,
+              "mddNormalized": true,
               "proofScore": 24.32,
               "lastWindow": "2026-08-01"
             },
@@ -471,7 +436,8 @@
                 "winRate": 19.9,
                 "avgNetPnlPct": 0.57,
                 "positiveWindowRate": 83.3,
-                "mddPct": -202.48,
+                "mddPct": -100.0,
+                "mddNormalized": true,
                 "proofScore": 22.64,
                 "lastWindow": "2026-08-01"
               },
@@ -485,7 +451,8 @@
                 "winRate": 18.9,
                 "avgNetPnlPct": 0.49,
                 "positiveWindowRate": 83.3,
-                "mddPct": -198.06,
+                "mddPct": -100.0,
+                "mddNormalized": true,
                 "proofScore": 21.27,
                 "lastWindow": "2026-08-01"
               },
@@ -499,7 +466,8 @@
                 "winRate": 18.9,
                 "avgNetPnlPct": 0.48,
                 "positiveWindowRate": 83.3,
-                "mddPct": -193.4,
+                "mddPct": -100.0,
+                "mddNormalized": true,
                 "proofScore": 21.18,
                 "lastWindow": "2026-08-01"
               },
@@ -513,7 +481,8 @@
                 "winRate": 8.2,
                 "avgNetPnlPct": -0.23,
                 "positiveWindowRate": 83.3,
-                "mddPct": -230.43,
+                "mddPct": -100.0,
+                "mddNormalized": true,
                 "proofScore": 8.92,
                 "lastWindow": "2026-08-01"
               },
@@ -527,7 +496,8 @@
                 "winRate": 10.9,
                 "avgNetPnlPct": -0.01,
                 "positiveWindowRate": 66.7,
-                "mddPct": -252.87,
+                "mddPct": -100.0,
+                "mddNormalized": true,
                 "proofScore": 8.34,
                 "lastWindow": "2026-08-01"
               }
@@ -543,7 +513,8 @@
                 "winRate": 22.0,
                 "avgNetPnlPct": 0.65,
                 "positiveWindowRate": 83.3,
-                "mddPct": -203.83,
+                "mddPct": -100.0,
+                "mddNormalized": true,
                 "proofScore": 24.32,
                 "lastWindow": "2026-08-01"
               },
@@ -557,7 +528,8 @@
                 "winRate": 21.1,
                 "avgNetPnlPct": 0.59,
                 "positiveWindowRate": 83.3,
-                "mddPct": -194.34,
+                "mddPct": -100.0,
+                "mddNormalized": true,
                 "proofScore": 23.35,
                 "lastWindow": "2026-08-01"
               },
@@ -571,7 +543,8 @@
                 "winRate": 20.9,
                 "avgNetPnlPct": 0.57,
                 "positiveWindowRate": 83.3,
-                "mddPct": -199.33,
+                "mddPct": -100.0,
+                "mddNormalized": true,
                 "proofScore": 23.04,
                 "lastWindow": "2026-08-01"
               }
@@ -609,8 +582,8 @@
             "priceSession": "us_intraday",
             "sessionLabel": "미장 장중",
             "priceBasis": "미장 장중 · KIS 현재가 기준",
-            "nowKst": "2026-08-20T22:31:47.300145+09:00",
-            "nowLocal": "2026-08-20T09:31:47.300145-04:00",
+            "nowKst": "2026-08-20T22:40:52.085546+09:00",
+            "nowLocal": "2026-08-20T09:40:52.085546-04:00",
             "isHoliday": false,
             "isReviewMode": false,
             "isUsDst": true
@@ -637,7 +610,7 @@
         },
         "nav": {
           "date": "2026-08-20",
-          "createdAt": "2026-08-20T22:31:47",
+          "createdAt": "2026-08-20T22:40:52",
           "market": "us",
           "agentId": "ml_rank_conservative_swing",
           "agentLabel": "ML Rank Conservative Swing",
@@ -652,7 +625,7 @@
           "survivalPct": 100.0,
           "positionCount": 1,
           "tradeCount": 1,
-          "buyCount": 1,
+          "buyCount": 0,
           "sellCount": 0,
           "proofStatus": "RUNNING"
         }
