@@ -694,16 +694,27 @@ def _agg_stats(results: list[dict]) -> dict[str, Any]:
         if v is not None:
             hold_days.append(v)
 
-    # MDD: 최저 누적 수익률
-    running = 0.0
-    peak    = 0.0
-    mdd     = 0.0
-    for p in sorted([r.get("entryDate") or "" for r in executed]):
-        pass
-    for p in pnls:
-        running += p
-        peak     = max(peak, running)
-        mdd      = min(mdd, running - peak)
+    # Fixed-notional equity curve (base 100).  The previous implementation
+    # reported drawdown of the additive PnL series itself, which could produce
+    # impossible values below -100% and was not a portfolio MDD.
+    ordered_executed = sorted(
+        executed,
+        key=lambda row: (
+            str(row.get("exitDate") or row.get("entryDate") or ""),
+            str(row.get("symbol") or ""),
+        ),
+    )
+    equity = 100.0
+    peak = 100.0
+    mdd = 0.0
+    for row in ordered_executed:
+        pnl = _num(row.get("netPnlPct"))
+        if pnl is None:
+            continue
+        equity = max(0.0, equity + pnl)
+        peak = max(peak, equity)
+        if peak > 0:
+            mdd = min(mdd, (equity / peak - 1.0) * 100.0)
 
     # 실패 원인 집계
     reason_counts: dict[str, int] = {}
@@ -739,6 +750,7 @@ def _agg_stats(results: list[dict]) -> dict[str, Any]:
         "avgNetPnlPct":         avg_pnl,
         "cumulativeNetPnlPct":  cum_pnl,
         "mddPct":               round(mdd, 2),
+        "mddMethod":            "fixed_notional_equity_100",
         "avgHoldingDays":       round(sum(hold_days) / len(hold_days), 1) if hold_days else None,
         "profitLossRatio":      pl_ratio,
         "reasonCounts":         reason_counts,

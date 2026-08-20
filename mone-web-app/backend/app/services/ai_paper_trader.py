@@ -1378,8 +1378,10 @@ def _walkforward_proof_board(market: str, current_agent_id: str) -> dict[str, An
         )
         win_rate = (win_count / exec_count * 100.0) if exec_count > 0 else 0.0
         positive_rate = (sum(1 for v in avg_pnls if v > 0) / len(avg_pnls) * 100.0) if avg_pnls else 0.0
-        mdd = min((_num(row.get("mddPct")) for row in recent), default=0.0)
-        proof_score = weighted_pnl * 12.0 + win_rate * 0.35 + positive_rate * 0.25 + max(mdd, -100.0) * 0.12
+        raw_mdd = min((_num(row.get("mddPct")) for row in recent), default=0.0)
+        mdd = max(-100.0, min(0.0, raw_mdd))
+        mdd_normalized = abs(raw_mdd - mdd) > 1e-9
+        proof_score = weighted_pnl * 12.0 + win_rate * 0.35 + positive_rate * 0.25 + mdd * 0.12
         return {
             "agentId": profile["id"],
             "agentLabel": profile["label"],
@@ -1391,6 +1393,7 @@ def _walkforward_proof_board(market: str, current_agent_id: str) -> dict[str, An
             "avgNetPnlPct": round(weighted_pnl, 2),
             "positiveWindowRate": round(positive_rate, 1),
             "mddPct": round(mdd, 2),
+            "mddNormalized": mdd_normalized,
             "proofScore": round(proof_score, 2),
             "lastWindow": str(recent[-1].get("window") or "") if recent else "",
         }
@@ -1424,6 +1427,10 @@ def _walkforward_proof_board(market: str, current_agent_id: str) -> dict[str, An
     return {
         "status": "OK",
         "method": "recent_6_window_walk_forward_oos",
+        "mddMethod": "fixed_notional_equity_100",
+        "legacyMddNormalized": any(
+            row.get("mddNormalized") for row in [*profile_rows, *baseline_rows]
+        ),
         "verdict": verdict,
         "currentRank": current_rank,
         "profileCount": len(profile_rows),
