@@ -13,7 +13,7 @@ Windows 작업 스케줄러 설정:
   시작위치: C:\\dev\\agnas-stock-app
 """
 from __future__ import annotations
-import argparse, csv, json, os, subprocess, sys, time, urllib.request
+import argparse, atexit, csv, json, os, subprocess, sys, time, urllib.request
 from datetime import datetime
 from pathlib import Path
 
@@ -30,11 +30,85 @@ GIT_AUTHOR_EMAIL = os.getenv(
     "287042011+selene0519@users.noreply.github.com",
 )
 INVALID_SYMBOL_TOKENS = {"", "NAN", "NONE", "NULL", "N/A", "NA", "UNDEFINED"}
+YFINANCE_SYMBOL_ALIASES = {"SP500": "^GSPC", "GSPC": "^GSPC"}
+COLLECTOR_LOCK_PATH = REPO_ROOT / "reports" / ".local_data_collector.lock"
+COLLECTOR_LOCK_STALE_SECONDS = 3 * 60 * 60
+_collector_lock_owned = False
 
 
 def log(msg: str) -> None:
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{ts}] {msg}")
+
+
+def _acquire_collector_lock() -> bool:
+    """Prevent overlapping local collectors from writing the same CSV files."""
+    global _collector_lock_owned
+    COLLECTOR_LOCK_PATH.parent.mkdir(parents=True, exist_ok=True)
+    for attempt in range(2):
+        try:
+            fd = os.open(COLLECTOR_LOCK_PATH, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            with os.fdopen(fd, "w", encoding="utf-8") as lock_file:
+                lock_file.write(
+                    json.dumps({"pid": os.getpid(), "startedAt": datetime.now().isoformat()})
+                )
+            _collector_lock_owned = True
+            return True
+        except FileExistsError:
+            try:
+                age = time.time() - COLLECTOR_LOCK_PATH.stat().st_mtime
+            except OSError:
+                age = 0
+            if attempt == 0 and age > COLLECTOR_LOCK_STALE_SECONDS:
+                try:
+                    COLLECTOR_LOCK_PATH.unlink()
+                    log(f"  오래된 수집기 잠금 제거 ({age / 60:.0f}분 경과)")
+                    continue
+                except OSError:
+                    pass
+            return False
+    return False
+
+
+def _release_collector_lock() -> None:
+    global _collector_lock_owned
+    if not _collector_lock_owned:
+        return
+    try:
+        COLLECTOR_LOCK_PATH.unlink(missing_ok=True)
+    finally:
+        _collector_lock_owned = False
+
+
+def _read_existing_ohlcv(path: Path):
+    """Read legacy OHLCV and salvage valid rows if an old write was torn."""
+    import pandas as pd
+
+    try:
+        return pd.read_csv(path, encoding="utf-8-sig")
+    except pd.errors.ParserError as exc:
+        log(f"  손상 CSV 복구 읽기 [{path.name}]: {exc}")
+        recovered = pd.read_csv(
+            path,
+            encoding="utf-8-sig",
+            engine="python",
+            on_bad_lines="skip",
+        )
+        required = {"date", "open", "high", "low", "close", "volume"}
+        columns = {str(column).lower() for column in recovered.columns}
+        if recovered.empty or not required.issubset(columns):
+            raise
+        return recovered
+
+
+def _atomic_write_ohlcv(df, path: Path) -> None:
+    """Write in the same directory and atomically replace the completed CSV."""
+    tmp = path.with_name(f".{path.name}.tmp-{os.getpid()}-{time.time_ns()}")
+    try:
+        df.to_csv(tmp, index=False, encoding="utf-8-sig")
+        os.replace(tmp, path)
+    finally:
+        tmp.unlink(missing_ok=True)
 
 
 def clean_symbol(value: object, market: str = "") -> str:
@@ -100,12 +174,12 @@ def collect_ohlcv_fdr(symbols: list[str], days: int = 30) -> dict:
             # 기존 파일과 병합
             path = ohlcv_dir / f"kr_{sym}_daily.csv"
             if path.exists():
-                existing = pd.read_csv(path, encoding="utf-8-sig")
+                existing = _read_existing_ohlcv(path)
                 existing.columns = [c.lower() for c in existing.columns]
                 df = pd.concat([existing, df]).drop_duplicates("date", keep="last")
                 df = df.sort_values("date").reset_index(drop=True)
 
-            df.to_csv(path, index=False, encoding="utf-8-sig")
+            _atomic_write_ohlcv(df, path)
             ok += 1
         except Exception as e:
             log(f"  오류 [{sym}]: {e}")
@@ -456,7 +530,8 @@ def collect_ohlcv_us(symbols: list[str], days: int = 30) -> dict:
             fail += 1
             continue
         try:
-            df = yf.download(sym, start=start.strftime("%Y-%m-%d"),
+            download_symbol = YFINANCE_SYMBOL_ALIASES.get(sym, sym)
+            df = yf.download(download_symbol, start=start.strftime("%Y-%m-%d"),
                              end=end.strftime("%Y-%m-%d"), progress=False, auto_adjust=True)
             if df is None or df.empty:
                 fail += 1; continue
@@ -468,12 +543,11 @@ def collect_ohlcv_us(symbols: list[str], days: int = 30) -> dict:
             path = ohlcv_dir / f"us_{sym}_daily.csv"
             if path.exists():
                 import pandas as pd
-                existing = pd.read_csv(path, encoding="utf-8-sig")
+                existing = _read_existing_ohlcv(path)
                 existing.columns = [c.lower() for c in existing.columns]
-                import pandas as pd2
                 df = pd.concat([existing, df]).drop_duplicates("date", keep="last")
                 df = df.sort_values("date").reset_index(drop=True)
-            df.to_csv(path, index=False, encoding="utf-8-sig")
+            _atomic_write_ohlcv(df, path)
             ok += 1
         except Exception as e:
             log(f"  오류 [{sym}]: {e}"); fail += 1
@@ -488,6 +562,11 @@ def main() -> None:
     parser.add_argument("--no-news",  action="store_true",  help="뉴스/공시 수집 건너뜀")
     parser.add_argument("--market",   default="kr",         help="수집 대상 시장: kr / us / all")
     args = parser.parse_args()
+
+    if not _acquire_collector_lock():
+        log("다른 로컬 수집기가 실행 중이므로 중복 실행을 건너뜁니다.")
+        return
+    atexit.register(_release_collector_lock)
 
     markets = ["kr", "us"] if args.market == "all" else [args.market]
     start_time = time.time()

@@ -1,6 +1,13 @@
 name: MONE AI Paper Trader
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/mone-ai-paper-trader.yml"
+      - "scripts/run_ai_paper_supervisor.py"
+      - "mone-web-app/backend/app/services/ai_paper_trader.py"
   workflow_dispatch:
     inputs:
       market:

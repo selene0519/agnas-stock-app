@@ -159,3 +159,12 @@ def test_ai_journal_workflow_smoke_runs_after_core_changes():
     assert '      - ".github/workflows/mone-vtj-capture.yml"' in workflow
     assert '      - "mone-web-app/backend/app/services/virtual_trade_journal.py"' in workflow
     assert '      - "mone-web-app/backend/app/main.py"' in workflow
+
+
+def test_ai_paper_workflow_smoke_runs_after_related_changes():
+    workflow = (ROOT / ".github" / "workflows" / "mone-ai-paper-trader.yml").read_text(encoding="utf-8")
+
+    assert "  push:" in workflow
+    assert '      - ".github/workflows/mone-ai-paper-trader.yml"' in workflow
+    assert '      - "scripts/run_ai_paper_supervisor.py"' in workflow
+    assert '      - "mone-web-app/backend/app/services/ai_paper_trader.py"' in workflow
