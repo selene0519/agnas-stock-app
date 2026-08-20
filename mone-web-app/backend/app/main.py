@@ -201,7 +201,6 @@ def _build_health_payload() -> dict:
             next_actions = list(quality.get("nextActions") or [])
             expected_closed_empty = (
                 status == "EMPTY_RESULT"
-                and bool(quality.get("reviewMode"))
                 and str(quality.get("priceDataStatus") or "").upper() == "NORMAL"
                 and bool(root_causes)
                 and set(root_causes) <= {"us_closed_session_review_basis", "kr_closed_session_review_basis"}
@@ -8703,9 +8702,14 @@ def api_journal_calibration_apply_approved(payload: dict = Body(default_factory=
 
 
 @app.get("/api/journal/self-learning/status")
-def api_journal_self_learning_status(market: str = Query("all")) -> dict:
+def api_journal_self_learning_status(
+    market: str = Query("all"),
+    summary_only: bool = Query(False, alias="summaryOnly"),
+) -> dict:
     from app.services import virtual_trade_journal as vtj
 
+    if summary_only:
+        return vtj.self_learning_summary(market=market)
     return vtj.self_learning_status(market=market)
 
 
@@ -8909,10 +8913,38 @@ def api_journal_market_analogs_run(payload: dict = Body(default_factory=dict)) -
 
 
 @app.get("/api/journal/auto-capture/status")
-def api_journal_auto_capture_status() -> dict:
+def api_journal_auto_capture_status(
+    summary_only: bool = Query(False, alias="summaryOnly"),
+) -> dict:
     from app.services import virtual_trade_journal as vtj
 
-    return vtj.auto_capture_status()
+    payload = vtj.auto_capture_status()
+    if not summary_only:
+        return payload
+    evaluation = payload.get("evaluation") if isinstance(payload.get("evaluation"), dict) else {}
+    runs = [run for run in (payload.get("runs") or []) if isinstance(run, dict)]
+    return {
+        "status": payload.get("status"),
+        "enabled": payload.get("enabled"),
+        "source": payload.get("source"),
+        "lastRunAt": payload.get("lastRunAt"),
+        "timezone": payload.get("timezone"),
+        "journalSession": payload.get("journalSession"),
+        "evaluation": {
+            "status": evaluation.get("status"),
+            "evaluated": evaluation.get("evaluated", 0),
+            "outcomes": evaluation.get("outcomes") or {},
+        },
+        "completedKeyCount": len(payload.get("completedKeys") or []),
+        "runs": [
+            {
+                key: run.get(key)
+                for key in ("market", "tradeDate", "journalSession", "status", "selected", "added", "rejected")
+            }
+            for run in runs
+        ],
+        "summaryOnly": True,
+    }
 
 
 @app.post("/api/journal/auto-capture/run")

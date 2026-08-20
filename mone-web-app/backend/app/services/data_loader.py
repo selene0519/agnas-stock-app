@@ -4496,7 +4496,7 @@ def github_actions_status() -> dict[str, Any]:
 
     def load(api_headers: dict[str, str]):
         workflows_response = requests.get(f"{api_base}/actions/workflows", headers=api_headers, timeout=8)
-        runs_response = requests.get(f"{api_base}/actions/runs?per_page=8", headers=api_headers, timeout=8)
+        runs_response = requests.get(f"{api_base}/actions/runs?per_page=30", headers=api_headers, timeout=8)
         return workflows_response, runs_response
 
     try:
@@ -4556,11 +4556,29 @@ def github_actions_status() -> dict[str, Any]:
             if run.get("conclusion") == "success" and str(run.get("name", "")).lower() == "mone auto accumulator"
         ]
         latest_automation = (schedule_runs[0] if schedule_runs else None) or (dispatch_runs[0] if dispatch_runs else None) or (successful_runs[0] if successful_runs else None)
+        latest_by_workflow: dict[str, dict[str, Any]] = {}
+        for run in runs:
+            workflow_name = str(run.get("name") or "").strip()
+            if workflow_name and workflow_name not in latest_by_workflow:
+                latest_by_workflow[workflow_name] = run
+        failure_conclusions = {"failure", "cancelled", "timed_out", "action_required"}
+        failed_workflows = [
+            run
+            for run in latest_by_workflow.values()
+            if str(run.get("status") or "").lower() == "completed"
+            and str(run.get("conclusion") or "").lower() in failure_conclusions
+        ]
         auth_mode = "public_fallback" if token_rejected else ("token" if token else "public")
+        monitor_status = "DEGRADED" if failed_workflows else "OK"
+        message = "GitHub Actions public API fallback connected." if token_rejected else "GitHub Actions API connected."
+        if failed_workflows:
+            failed_names = ", ".join(str(run.get("name") or "unknown") for run in failed_workflows)
+            message = f"Latest workflow run failed: {failed_names}"
         return {
-            "status": "OK", "repo": repo,
-            "message": "GitHub Actions public API fallback connected." if token_rejected else "GitHub Actions API connected.",
+            "status": monitor_status, "repo": repo,
+            "message": message,
             "workflows": workflows, "runs": runs,
+            "failedWorkflows": failed_workflows,
             "latestScheduled": schedule_runs[0] if schedule_runs else None,
             "latestWorkflowDispatch": dispatch_runs[0] if dispatch_runs else None,
             "latestAutomationRun": latest_automation,

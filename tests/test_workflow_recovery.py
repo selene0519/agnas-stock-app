@@ -141,3 +141,13 @@ def test_virtual_summary_uses_recent_window_and_avoids_duplicate_history(tmp_pat
     paths = summary._virtual_paths()
     assert evaluation in paths
     assert operation not in paths
+
+def test_ai_paper_workflow_installs_pinned_runtime_dependencies():
+    workflow = (ROOT / ".github" / "workflows" / "mone-ai-paper-trader.yml").read_text(encoding="utf-8")
+
+    install = workflow.index("Install runtime dependencies")
+    execute = workflow.index("python scripts/run_ai_paper_supervisor.py")
+    assert install < execute
+    assert '"pandas>=2.2,<3"' in workflow
+    assert '"numpy>=1.26,<3"' in workflow
+    assert "requests python-dotenv" in workflow

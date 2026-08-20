@@ -578,7 +578,7 @@ export default function VirtualJournalPage() {
         safe(mone.virtualTrades({ ...scope, sourceType: listSourceParam, limit: 200 }), { status: "ERROR", error: "일지 로드 실패", items: [] } as any),
         safe(mone.journalFailurePatterns(scope), {} as any),
         safe(mone.journalCalibrationSuggestions(scope), {} as any),
-        safe(mone.journalAutoCaptureStatus(), {} as any),
+        safe(mone.journalAutoCaptureStatus({ summaryOnly: true }), {} as any),
         safe(mone.journalAnalytics(scope), {} as any),
         safe(mone.virtualFailureAnalytics(scope), {} as any),
         safe(mone.virtualImprovementPriorities(scope), {} as any),
@@ -593,7 +593,7 @@ export default function VirtualJournalPage() {
         safe(mone.journalAttribution({ market: scope.market, mode: scope.mode, horizon: scope.horizon }), {} as any),
         safe(mone.journalEntryEfficiency({ market: scope.market, horizon: scope.horizon }), {} as any),
         safe(mone.journalAttributionFeedback({ market: scope.market }), {} as any),
-        safe(mone.journalSelfLearningStatus({ market: scope.market }), {} as any),
+        safe(mone.journalSelfLearningStatus({ market: scope.market, summaryOnly: true }), {} as any),
         safe(mone.journalOpsDashboard({ market: scope.market }), {} as any),
         safe(mone.lensCandidates({ market: "kr" }), {} as any),
         safe(mone.smartRank({ market: "kr" }), {} as any),
@@ -2306,7 +2306,7 @@ export default function VirtualJournalPage() {
             <div className="space-y-2 text-xs text-slate-400">
               <div className="flex justify-between gap-3"><span>상태</span><span className="font-mono text-slate-200">{autoStatus.status || "-"}</span></div>
               <div className="flex justify-between gap-3"><span>마지막 실행</span><span className="font-mono text-slate-200">{autoStatus.lastRunAt || "-"}</span></div>
-              <div className="flex justify-between gap-3"><span>중복 방지 키</span><span className="font-mono text-slate-200">{(autoStatus.completedKeys || []).length}</span></div>
+              <div className="flex justify-between gap-3"><span>중복 방지 키</span><span className="font-mono text-slate-200">{autoStatus.completedKeyCount ?? (autoStatus.completedKeys || []).length}</span></div>
             </div>
           </div>
 

@@ -3965,6 +3965,34 @@ def self_learning_status(market: str = "all") -> dict[str, Any]:
     }
 
 
+def self_learning_summary(market: str = "all") -> dict[str, Any]:
+    """Return the last completed learning snapshot without recomputing the journal."""
+    persisted = _persisted_self_learning_status(market)
+    latest = persisted.get("lastSelfLearningRun") if isinstance(persisted.get("lastSelfLearningRun"), dict) else {}
+    try:
+        from app.engine import correction_store
+
+        params = correction_store.load_params()
+    except Exception:
+        params = {"version": 0}
+    return {
+        "status": persisted.get("status") or "STALE",
+        "source": persisted.get("source") or "PERSISTED_RUN",
+        "generatedAt": persisted.get("generatedAt"),
+        "market": market,
+        "correctionVersion": int(params.get("version") or 0),
+        "policy": AUTO_CALIBRATION_POLICY,
+        "policyFingerprint": persisted.get("policyFingerprint") or _calibration_policy_fingerprint(),
+        "quality": persisted.get("quality"),
+        "sourceWeights": SOURCE_CALIBRATION_WEIGHTS,
+        "eligibleAutoCount": persisted.get("eligibleAutoCount"),
+        "lowSampleCount": persisted.get("lowSampleCount"),
+        "appliedCount": persisted.get("appliedCount"),
+        "lastSelfLearningRun": latest or None,
+        "performanceGate": persisted.get("performanceGate") or {"status": "DEFERRED"},
+        "summaryOnly": True,
+    }
+
 def _performance_scope_rows(
     application: dict[str, Any],
     merged_rows: list[dict[str, Any]] | None = None,

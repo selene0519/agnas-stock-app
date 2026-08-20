@@ -119,7 +119,12 @@ jobs:
               fp.write(f"added={added}\n")
               fp.write(f"selected={selected}\n")
           print(f"capture_activity={activity} selected={selected} added={added}")
-          if activity in {"NO_CANDIDATES", "NO_RUNS"}:
+          if activity == "NO_CANDIDATES":
+              print("::notice::capture pipeline is healthy; no recommendation passed the current quality gates")
+          elif activity == "NO_RUNS":
+              print("::error::capture response did not include run diagnostics")
+              raise SystemExit(1)
+          PY
 
       - name: 실패 시 텔레그램 알림
         if: failure()

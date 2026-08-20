@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from datetime import datetime
 from pathlib import Path
 
 
@@ -86,7 +87,7 @@ def test_health_only_embeds_journal_summary(monkeypatch) -> None:
         lambda: {
             "status": "OK",
             "enabled": True,
-            "lastRunAt": "2026-08-15T08:00:00+09:00",
+            "lastRunAt": datetime.now().astimezone().isoformat(timespec="seconds"),
             "journalSession": "AFTER_CLOSE_TRADE",
             "evaluation": {"status": "OK", "items": [{"large": "x" * 100_000}]},
             "completedKeys": ["one"],
@@ -148,7 +149,7 @@ def test_health_treats_closed_market_empty_result_as_operationally_good(monkeypa
         lambda: {
             "status": "OK",
             "enabled": True,
-            "lastRunAt": "2026-08-15T08:00:00+09:00",
+            "lastRunAt": datetime.now().astimezone().isoformat(timespec="seconds"),
             "journalSession": "AFTER_CLOSE_TRADE",
             "evaluation": {"status": "OK"},
             "completedKeys": [],
@@ -165,6 +166,47 @@ def test_health_treats_closed_market_empty_result_as_operationally_good(monkeypa
     assert payload["marketQuality"]["us"]["dataStatus"] == "NORMAL"
     assert payload["marketQuality"]["us"]["rawDataStatus"] == "EMPTY_RESULT"
     assert payload["marketQuality"]["us"]["expectedConditions"] == ["us_closed_session_review_basis"]
+
+
+def test_health_treats_after_close_empty_result_as_expected_without_review_flag(monkeypatch) -> None:
+    def quality(market: str, mode: str = "quick") -> dict:
+        assert mode == "quick"
+        return {
+            "status": "OK",
+            "dataStatus": "EMPTY_RESULT" if market == "kr" else "NORMAL",
+            "priceDataStatus": "NORMAL",
+            "reviewMode": False,
+            "rootCauses": ["kr_closed_session_review_basis"] if market == "kr" else [],
+            "nextActions": ["No action required unless live-session data is expected."] if market == "kr" else [],
+            "summary": f"{market.upper()} data current",
+            "candidateCount": 0 if market == "kr" else 1,
+        }
+
+    monkeypatch.setattr(main.data_quality, "data_quality", quality)
+    monkeypatch.setattr(main, "api_data_sources", lambda: {"status": "OK", "sources": {"github_actions": {"status": "OK"}}})
+    monkeypatch.setattr(
+        vtj,
+        "auto_capture_status",
+        lambda: {
+            "status": "OK",
+            "enabled": True,
+            "lastRunAt": datetime.now().astimezone().isoformat(timespec="seconds"),
+            "journalSession": "AFTER_CLOSE_TRADE",
+            "evaluation": {"status": "OK"},
+            "completedKeys": [],
+            "runs": [{"status": "NO_CANDIDATES", "added": 0}],
+        },
+    )
+    main._HEALTH_CACHE.update({"ts": 0.0, "payload": None})
+
+    payload = main._build_health_payload()
+
+    assert payload["dataStatus"] == "GOOD"
+    assert payload["activeGaps"] == []
+    assert payload["marketQuality"]["kr"]["dataStatus"] == "NORMAL"
+    assert payload["marketQuality"]["kr"]["rawDataStatus"] == "EMPTY_RESULT"
+    assert payload["marketQuality"]["kr"]["expectedConditions"] == ["kr_closed_session_review_basis"]
+
 
 def test_data_sources_uses_market_status_and_separates_inactive_local_collector(monkeypatch, tmp_path: Path) -> None:
     import json

@@ -619,7 +619,7 @@ export const mone = {
     apiPost<ApiList>(`/api/journal/calibration-suggestions/${encodeURIComponent(suggestionId)}/approve`, body || {}),
   journalCalibrationApplyApproved: (body?: { appliedBy?: string }) =>
     apiPost<ApiList>("/api/journal/calibration-suggestions/apply-approved", body || {}),
-  journalSelfLearningStatus: (p?: { market?: Market | string }) =>
+  journalSelfLearningStatus: (p?: { market?: Market | string; summaryOnly?: boolean }) =>
     apiGet<any>("/api/journal/self-learning/status", p),
   journalOpsDashboard: (p?: { market?: Market | string }) =>
     apiGet<any>("/api/journal/ops-dashboard", p),
@@ -635,8 +635,8 @@ export const mone = {
     apiPost<ApiList>("/api/journal/historical-replay/backfill", body),
   journalMarketAnalogsRun: (body?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; asOfDate?: string; analogLimit?: number; replayLimit?: number; runReplay?: boolean }) =>
     apiPost<ApiList>("/api/journal/market-analogs/run", body || {}),
-  journalAutoCaptureStatus: () =>
-    apiGet<ApiList>("/api/journal/auto-capture/status"),
+  journalAutoCaptureStatus: (p?: { summaryOnly?: boolean }) =>
+    apiGet<ApiList>("/api/journal/auto-capture/status", p),
   journalAutoCaptureRun: (body?: { market?: Market; sourceType?: string; journalSession?: string; limit?: number; includeEngine?: boolean; evaluateAfter?: boolean; force?: boolean }) =>
     apiPost<ApiList>("/api/journal/auto-capture/run", body || {}),
   journalTradeReview: (journalId: string, body?: { reviewedBy?: string; reviewerNote?: string }) =>

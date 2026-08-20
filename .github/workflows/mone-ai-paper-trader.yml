@@ -48,6 +48,11 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Install runtime dependencies
+        run: |
+          python -m pip install --disable-pip-version-check \
+            "pandas>=2.2,<3" "numpy>=1.26,<3" requests python-dotenv
+
       - name: Run one market only
         id: run
         env:

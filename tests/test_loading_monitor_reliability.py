@@ -98,3 +98,44 @@ def test_github_monitor_uses_fresh_persisted_evidence_when_api_is_rate_limited(m
     assert result["authMode"] == "persisted_evidence"
     assert result["upstreamStatus"] == "HTTP 403"
     assert result["evidence"]["failed"] == 0
+
+
+def test_github_monitor_reports_latest_workflow_failure(monkeypatch) -> None:
+    from app.services import data_loader
+
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.delenv("GH_TOKEN", raising=False)
+    monkeypatch.delenv("MONE_GITHUB_TOKEN", raising=False)
+    responses = iter(
+        [
+            _Response(200, {"workflows": [{"name": "MONE AI Journal Capture"}]}),
+            _Response(
+                200,
+                {
+                    "workflow_runs": [
+                        {
+                            "name": "MONE AI Journal Capture",
+                            "event": "schedule",
+                            "status": "completed",
+                            "conclusion": "failure",
+                            "html_url": "https://example.test/run/2",
+                        },
+                        {
+                            "name": "MONE AI Journal Capture",
+                            "event": "schedule",
+                            "status": "completed",
+                            "conclusion": "success",
+                            "html_url": "https://example.test/run/1",
+                        },
+                    ]
+                },
+            ),
+        ]
+    )
+    monkeypatch.setattr(data_loader.requests, "get", lambda *_args, **_kwargs: next(responses))
+
+    result = data_loader.github_actions_status()
+
+    assert result["status"] == "DEGRADED"
+    assert [run["name"] for run in result["failedWorkflows"]] == ["MONE AI Journal Capture"]
+    assert "MONE AI Journal Capture" in result["message"]
