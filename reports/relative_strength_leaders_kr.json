@@ -1,13 +1,195 @@
 {
   "version": "relative-strength-v1",
   "market": "kr",
-  "asOf": "2026-08-19",
+  "asOf": "2026-08-20",
   "regime": "SIDE",
   "status": "OK",
   "lensNote": "Long the RS leaders, avoid the laggards. RS edge holds in BULL/SIDE.",
-  "universeCount": 0,
-  "leaders": [],
-  "laggardsToAvoid": [],
+  "universeCount": 100,
+  "leaders": [
+    {
+      "symbol": "078930",
+      "rs60Pct": 47.72,
+      "relToIndexPp": 60.4,
+      "vol60Pct": 4.48
+    },
+    {
+      "symbol": "214450",
+      "rs60Pct": 35.57,
+      "relToIndexPp": 48.25,
+      "vol60Pct": 4.76
+    },
+    {
+      "symbol": "010950",
+      "rs60Pct": 30.83,
+      "relToIndexPp": 43.51,
+      "vol60Pct": 4.23
+    },
+    {
+      "symbol": "018260",
+      "rs60Pct": 19.67,
+      "relToIndexPp": 32.35,
+      "vol60Pct": 7.37
+    },
+    {
+      "symbol": "207940",
+      "rs60Pct": 11.24,
+      "relToIndexPp": 23.92,
+      "vol60Pct": 3.27
+    },
+    {
+      "symbol": "006360",
+      "rs60Pct": 10.73,
+      "relToIndexPp": 23.41,
+      "vol60Pct": 7.1
+    },
+    {
+      "symbol": "000810",
+      "rs60Pct": 9.31,
+      "relToIndexPp": 22.0,
+      "vol60Pct": 4.14
+    },
+    {
+      "symbol": "035420",
+      "rs60Pct": 8.13,
+      "relToIndexPp": 20.81,
+      "vol60Pct": 5.37
+    },
+    {
+      "symbol": "138040",
+      "rs60Pct": 5.49,
+      "relToIndexPp": 18.18,
+      "vol60Pct": 2.54
+    },
+    {
+      "symbol": "009150",
+      "rs60Pct": 4.18,
+      "relToIndexPp": 16.86,
+      "vol60Pct": 9.22
+    },
+    {
+      "symbol": "011200",
+      "rs60Pct": 3.41,
+      "relToIndexPp": 16.1,
+      "vol60Pct": 2.78
+    },
+    {
+      "symbol": "055550",
+      "rs60Pct": 2.95,
+      "relToIndexPp": 15.63,
+      "vol60Pct": 3.05
+    },
+    {
+      "symbol": "068270",
+      "rs60Pct": 2.48,
+      "relToIndexPp": 15.17,
+      "vol60Pct": 2.87
+    },
+    {
+      "symbol": "096770",
+      "rs60Pct": 1.78,
+      "relToIndexPp": 14.46,
+      "vol60Pct": 4.7
+    },
+    {
+      "symbol": "086790",
+      "rs60Pct": 1.06,
+      "relToIndexPp": 13.75,
+      "vol60Pct": 2.97
+    }
+  ],
+  "laggardsToAvoid": [
+    {
+      "symbol": "064350",
+      "rs60Pct": -33.4,
+      "relToIndexPp": -20.72,
+      "vol60Pct": 5.58
+    },
+    {
+      "symbol": "058470",
+      "rs60Pct": -34.74,
+      "relToIndexPp": -22.06,
+      "vol60Pct": 5.46
+    },
+    {
+      "symbol": "214150",
+      "rs60Pct": -34.88,
+      "relToIndexPp": -22.2,
+      "vol60Pct": 4.11
+    },
+    {
+      "symbol": "035900",
+      "rs60Pct": -34.9,
+      "relToIndexPp": -22.22,
+      "vol60Pct": 3.62
+    },
+    {
+      "symbol": "103590",
+      "rs60Pct": -35.36,
+      "relToIndexPp": -22.68,
+      "vol60Pct": 6.13
+    },
+    {
+      "symbol": "005380",
+      "rs60Pct": -36.26,
+      "relToIndexPp": -23.58,
+      "vol60Pct": 4.19
+    },
+    {
+      "symbol": "267260",
+      "rs60Pct": -36.4,
+      "relToIndexPp": -23.72,
+      "vol60Pct": 5.63
+    },
+    {
+      "symbol": "277810",
+      "rs60Pct": -37.47,
+      "relToIndexPp": -24.79,
+      "vol60Pct": 6.44
+    },
+    {
+      "symbol": "108320",
+      "rs60Pct": -39.23,
+      "relToIndexPp": -26.55,
+      "vol60Pct": 4.56
+    },
+    {
+      "symbol": "086520",
+      "rs60Pct": -39.86,
+      "relToIndexPp": -27.18,
+      "vol60Pct": 6.41
+    },
+    {
+      "symbol": "006260",
+      "rs60Pct": -42.37,
+      "relToIndexPp": -29.69,
+      "vol60Pct": 6.29
+    },
+    {
+      "symbol": "000990",
+      "rs60Pct": -46.49,
+      "relToIndexPp": -33.81,
+      "vol60Pct": 7.12
+    },
+    {
+      "symbol": "247540",
+      "rs60Pct": -47.18,
+      "relToIndexPp": -34.5,
+      "vol60Pct": 5.64
+    },
+    {
+      "symbol": "001440",
+      "rs60Pct": -48.27,
+      "relToIndexPp": -35.59,
+      "vol60Pct": 5.98
+    },
+    {
+      "symbol": "131970",
+      "rs60Pct": -52.16,
+      "relToIndexPp": -39.48,
+      "vol60Pct": 7.88
+    }
+  ],
   "defensiveHolds": [],
   "note": "Research/paper only."
 }
