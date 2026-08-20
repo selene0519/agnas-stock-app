@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-08-19T23:30:31.523677+00:00",
-  "asOfDate": "2026-08-19",
+  "generatedAt": "2026-08-20T07:15:41.323941+00:00",
+  "asOfDate": "2026-08-20",
   "market": "kr",
   "marketRegime": "BEAR",
-  "breadthAboveMa60": 0.304,
+  "breadthAboveMa60": 0.35,
   "activeLens": "BOTTOM_CATCH",
   "activeSetupByRegime": {
     "BULL": [
@@ -17,27 +17,27 @@
     ]
   },
   "selfCalibrated": true,
-  "liveSamplesTotal": 21,
+  "liveSamplesTotal": 22,
   "universeSize": 106,
   "candidateCount": 1,
-  "actionableCount": 0,
+  "actionableCount": 1,
   "disclaimer": "생존편향(현상장 glob만)로 백테스트 낙관. actionable(ACTIVE)만 자가보정 통과 — 실사이징은 라이브 VTJ forward 검증 후.",
   "candidates": [
     {
-      "symbol": "078930",
-      "name": "GS",
-      "setup": "BREAKOUT",
-      "asOfDate": "2026-08-19",
-      "close": 119700.0,
-      "entryRef": 119700.0,
-      "stop": 114912,
-      "target": 129276,
-      "rrRatio": 2.0,
-      "rsi14": 84.6,
-      "distMa20Pct": 23.1,
-      "calibrationGate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "actionable": false
+      "symbol": "259960",
+      "name": "크래프톤",
+      "setup": "BOTTOM_CATCH",
+      "asOfDate": "2026-08-20",
+      "close": 222500.0,
+      "entryRef": 222500.0,
+      "stop": 217192,
+      "target": 240300,
+      "rrRatio": 3.35,
+      "rsi14": 27.6,
+      "distMa20Pct": -6.4,
+      "calibrationGate": "ACTIVE",
+      "sizeMultiplier": 0.54,
+      "actionable": true
     }
   ]
 }
