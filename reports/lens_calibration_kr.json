@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-20T14:02:38.034757+00:00",
+  "generatedAt": "2026-08-20T21:55:42.361295+00:00",
   "asOfDate": "2026-08-05",
   "sources": {
     "live": "reports/lens_live_journal_kr.csv",
@@ -26,36 +26,6 @@
     ]
   },
   "calibration": {
-    "BREAKOUT|SIDE": {
-      "setup": "BREAKOUT",
-      "regime": "SIDE",
-      "blendedNetAvgPct": 0.765,
-      "blendedWinRate": 47.6,
-      "gate": "ACTIVE",
-      "sizeMultiplier": 1.23,
-      "liveEffectiveSamples": 0.0,
-      "liveRawSamples": 0,
-      "liveNetAvgPct": null,
-      "priorNetAvgPct": 0.765,
-      "priorRawSamples": 6666,
-      "liveFraction": 0.0,
-      "profitFactor": 1.36
-    },
-    "BOTTOM_CATCH|SIDE": {
-      "setup": "BOTTOM_CATCH",
-      "regime": "SIDE",
-      "blendedNetAvgPct": -0.017,
-      "blendedWinRate": 42.7,
-      "gate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "liveEffectiveSamples": 0.0,
-      "liveRawSamples": 0,
-      "liveNetAvgPct": null,
-      "priorNetAvgPct": -0.017,
-      "priorRawSamples": 2865,
-      "liveFraction": 0.0,
-      "profitFactor": 0.99
-    },
     "BREAKOUT|BULL": {
       "setup": "BREAKOUT",
       "regime": "BULL",
@@ -85,6 +55,36 @@
       "priorRawSamples": 2268,
       "liveFraction": 0.0,
       "profitFactor": 0.66
+    },
+    "BREAKOUT|SIDE": {
+      "setup": "BREAKOUT",
+      "regime": "SIDE",
+      "blendedNetAvgPct": 0.765,
+      "blendedWinRate": 47.6,
+      "gate": "ACTIVE",
+      "sizeMultiplier": 1.23,
+      "liveEffectiveSamples": 0.0,
+      "liveRawSamples": 0,
+      "liveNetAvgPct": null,
+      "priorNetAvgPct": 0.765,
+      "priorRawSamples": 6666,
+      "liveFraction": 0.0,
+      "profitFactor": 1.36
+    },
+    "BOTTOM_CATCH|SIDE": {
+      "setup": "BOTTOM_CATCH",
+      "regime": "SIDE",
+      "blendedNetAvgPct": -0.017,
+      "blendedWinRate": 42.7,
+      "gate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "liveEffectiveSamples": 0.0,
+      "liveRawSamples": 0,
+      "liveNetAvgPct": null,
+      "priorNetAvgPct": -0.017,
+      "priorRawSamples": 2865,
+      "liveFraction": 0.0,
+      "profitFactor": 0.99
     },
     "BREAKOUT|BEAR": {
       "setup": "BREAKOUT",
