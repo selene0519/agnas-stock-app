@@ -16,7 +16,7 @@
   "lastRun": {
     "status": "OK",
     "dryRun": false,
-    "createdAt": "2026-08-21T22:50:13",
+    "createdAt": "2026-08-21T23:05:39",
     "market": "us",
     "markets": {
       "us": {
@@ -45,12 +45,12 @@
         },
         "liveMetrics": {
           "status": "OK",
-          "proofStatus": "WARMING_UP",
-          "sampleCount": 4,
-          "navPointCount": 5,
+          "proofStatus": "RUNNING",
+          "sampleCount": 5,
+          "navPointCount": 6,
           "totalReturnPct": -0.05,
           "mddPct": -0.05,
-          "sharpe": -7.94,
+          "sharpe": -7.1,
           "winRate": 0.0,
           "avgPeriodReturnPct": -0.01,
           "cashPct": 93.2,
@@ -61,6 +61,7 @@
             0.0,
             0.0,
             -0.05,
+            0.0,
             0.0
           ],
           "equityCurve": [
@@ -86,6 +87,11 @@
             },
             {
               "index": 4,
+              "value": 4997.53,
+              "returnPct": -0.05
+            },
+            {
+              "index": 5,
               "value": 4997.53,
               "returnPct": -0.05
             }
@@ -600,8 +606,8 @@
             "priceSession": "us_intraday",
             "sessionLabel": "미장 장중",
             "priceBasis": "미장 장중 · KIS 현재가 기준",
-            "nowKst": "2026-08-21T22:50:13.958283+09:00",
-            "nowLocal": "2026-08-21T09:50:13.958283-04:00",
+            "nowKst": "2026-08-21T23:05:40.079088+09:00",
+            "nowLocal": "2026-08-21T10:05:40.079088-04:00",
             "isHoliday": false,
             "isReviewMode": false,
             "isUsDst": true
@@ -628,7 +634,7 @@
         },
         "nav": {
           "date": "2026-08-21",
-          "createdAt": "2026-08-21T22:50:14",
+          "createdAt": "2026-08-21T23:05:40",
           "market": "us",
           "agentId": "ml_rank_conservative_swing",
           "agentLabel": "ML Rank Conservative Swing",
