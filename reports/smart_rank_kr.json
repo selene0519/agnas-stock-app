@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-21T07:12:39.882431+00:00",
+  "generatedAt": "2026-08-21T08:15:54.259516+00:00",
   "asOfDate": "2026-08-21",
   "market": "kr",
   "marketRegime": "BEAR",
@@ -7,15 +7,15 @@
   "featureCount": 14,
   "provenEdge": {
     "split": "2025-09-01",
-    "oosTrades": 24425,
+    "oosTrades": 24426,
     "topQuintileNetPct": -0.574,
-    "bottomQuintileNetPct": -0.008,
-    "spreadPct": -0.567,
+    "bottomQuintileNetPct": -0.009,
+    "spreadPct": -0.566,
     "ic": -0.023,
     "topQuintileByRegime": {
       "BULL": -0.973,
       "SIDE": 0.416,
-      "BEAR": 0.766
+      "BEAR": 0.767
     }
   },
   "featureWeights": {
@@ -36,7 +36,7 @@
   },
   "note": "다중신호 ML 순위(선별 두뇌). OOS 검증 통과. 약세장은 상위픽도 (−)라 caution. 가격신호만 사용 — 수급/뉴스/섹터/공시 추가 시 개선 여지.",
   "actionableCount": 0,
-  "candidateCount": 100,
+  "candidateCount": 101,
   "candidates": [
     {
       "symbol": "011070",
@@ -132,7 +132,7 @@
     {
       "symbol": "454910",
       "name": "두산로보틱스",
-      "modelScore": 0.455,
+      "modelScore": 0.456,
       "close": 70900.0,
       "rsi14": 64.0,
       "entryRef": 70900.0,
@@ -145,7 +145,7 @@
     {
       "symbol": "090360",
       "name": "로보스타",
-      "modelScore": 0.451,
+      "modelScore": 0.452,
       "close": 78200.0,
       "rsi14": 69.5,
       "entryRef": 78200.0,
@@ -210,7 +210,7 @@
     {
       "symbol": "095340",
       "name": "ISC",
-      "modelScore": 0.368,
+      "modelScore": 0.369,
       "close": 154300.0,
       "rsi14": 62.3,
       "entryRef": 154300.0,
@@ -249,7 +249,7 @@
     {
       "symbol": "064350",
       "name": "현대로템",
-      "modelScore": 0.35,
+      "modelScore": 0.351,
       "close": 130100.0,
       "rsi14": 47.3,
       "entryRef": 130100.0,
