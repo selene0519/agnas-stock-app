@@ -1,11 +1,12 @@
 {
-  "status": "OK",
+  "status": "SKIP",
   "market": "kr",
-  "date": "2026-08-21",
-  "targetCount": 100,
-  "successCount": 100,
+  "date": "2026-08-22",
+  "reason": "SKIPPED_MARKET_CLOSED",
+  "targetCount": 0,
+  "successCount": 0,
   "failedCount": 0,
-  "workers": 6,
-  "message": "KR close OHLCV collected",
-  "updatedAt": "2026-08-21T23:02:11"
+  "workers": 0,
+  "message": "KR market is closed; existing OHLCV was preserved.",
+  "updatedAt": "2026-08-22T06:36:18"
 }
