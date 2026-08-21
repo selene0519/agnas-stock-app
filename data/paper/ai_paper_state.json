@@ -16,7 +16,7 @@
   "lastRun": {
     "status": "OK",
     "dryRun": false,
-    "createdAt": "2026-08-21T22:05:42",
+    "createdAt": "2026-08-21T22:50:13",
     "market": "us",
     "markets": {
       "us": {
@@ -27,54 +27,7 @@
           "horizon": "swing"
         },
         "generation": 2,
-        "actions": [
-          {
-            "action": "BUY",
-            "market": "us",
-            "agentId": "ml_rank_conservative_swing",
-            "agentLabel": "ML Rank Conservative Swing",
-            "symbol": "LMT",
-            "name": "LMT",
-            "price": 571.48,
-            "quantity": 0.4372,
-            "totalValue": 249.85,
-            "costAmount": 0.25,
-            "researchMode": true,
-            "stopPrice": 549.0,
-            "targetPrice": 640.0,
-            "expectedValue": 2.27,
-            "score": 75.8,
-            "decision": "오늘 진입",
-            "paperOnly": false,
-            "paperSetup": "",
-            "paperRegime": "",
-            "paperSizeMultiplier": "",
-            "calibrationGate": "",
-            "executionAuthority": {
-              "allowed": true,
-              "reason": "EXACT_CANDIDATE_AND_RISK_WEIGHT_AUTHORIZED",
-              "decisionId": "75f5a9c3a1b8f85c11b6",
-              "candidateKey": "5ac6feeda2a2f6902962e368",
-              "market": "us",
-              "symbol": "LMT",
-              "mode": "conservative",
-              "horizon": "swing",
-              "entryPrice": 571.48,
-              "stopPrice": 549.0,
-              "weight": 0.05,
-              "signalDate": "2026-08-20",
-              "metaPolicyFingerprint": "paper-discovery-only-v1",
-              "riskPolicyVersion": "paper-discovery-risk-v1",
-              "riskPolicyFingerprint": "paper-discovery-risk-v1",
-              "allocationFingerprint": "fc94c716bd860e65d2cf5ee46aad7b06e99cc10f20368fc47b9a9c60027534a5",
-              "researchOnly": true
-            },
-            "result": {
-              "ok": true,
-              "dryRun": false
-            }
-          }
-        ],
+        "actions": [],
         "summary": {
           "agentId": "ml_rank_conservative_swing",
           "agentLabel": "ML Rank Conservative Swing",
@@ -93,13 +46,13 @@
         "liveMetrics": {
           "status": "OK",
           "proofStatus": "WARMING_UP",
-          "sampleCount": 3,
-          "navPointCount": 4,
+          "sampleCount": 4,
+          "navPointCount": 5,
           "totalReturnPct": -0.05,
           "mddPct": -0.05,
-          "sharpe": -9.17,
+          "sharpe": -7.94,
           "winRate": 0.0,
-          "avgPeriodReturnPct": -0.02,
+          "avgPeriodReturnPct": -0.01,
           "cashPct": 93.2,
           "peakValue": 4999.91,
           "currentValue": 4997.53,
@@ -107,7 +60,8 @@
           "recentReturnsPct": [
             0.0,
             0.0,
-            -0.05
+            -0.05,
+            0.0
           ],
           "equityCurve": [
             {
@@ -127,6 +81,11 @@
             },
             {
               "index": 3,
+              "value": 4997.53,
+              "returnPct": -0.05
+            },
+            {
+              "index": 4,
               "value": 4997.53,
               "returnPct": -0.05
             }
@@ -638,11 +597,11 @@
           },
           "priceSession": {
             "market": "us",
-            "priceSession": "us_premarket",
-            "sessionLabel": "미장 장전",
-            "priceBasis": "미장 장전 · 프리마켓 업데이트 기준",
-            "nowKst": "2026-08-21T22:05:42.322304+09:00",
-            "nowLocal": "2026-08-21T09:05:42.322304-04:00",
+            "priceSession": "us_intraday",
+            "sessionLabel": "미장 장중",
+            "priceBasis": "미장 장중 · KIS 현재가 기준",
+            "nowKst": "2026-08-21T22:50:13.958283+09:00",
+            "nowLocal": "2026-08-21T09:50:13.958283-04:00",
             "isHoliday": false,
             "isReviewMode": false,
             "isUsDst": true
@@ -669,7 +628,7 @@
         },
         "nav": {
           "date": "2026-08-21",
-          "createdAt": "2026-08-21T22:05:42",
+          "createdAt": "2026-08-21T22:50:14",
           "market": "us",
           "agentId": "ml_rank_conservative_swing",
           "agentLabel": "ML Rank Conservative Swing",
@@ -684,7 +643,7 @@
           "survivalPct": 99.95,
           "positionCount": 2,
           "tradeCount": 2,
-          "buyCount": 1,
+          "buyCount": 0,
           "sellCount": 0,
           "proofStatus": "RUNNING"
         }
