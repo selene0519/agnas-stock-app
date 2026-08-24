@@ -16,7 +16,7 @@
   "lastRun": {
     "status": "OK",
     "dryRun": false,
-    "createdAt": "2026-08-25T08:35:31",
+    "createdAt": "2026-08-25T08:43:31",
     "market": "kr",
     "markets": {
       "kr": {
@@ -61,8 +61,8 @@
         "liveMetrics": {
           "status": "OK",
           "proofStatus": "WARMING_UP",
-          "sampleCount": 2,
-          "navPointCount": 3,
+          "sampleCount": 3,
+          "navPointCount": 4,
           "totalReturnPct": 0.0,
           "mddPct": 0.0,
           "sharpe": null,
@@ -73,6 +73,7 @@
           "currentValue": 5000000.0,
           "lastNavDate": "2026-08-25",
           "recentReturnsPct": [
+            0.0,
             0.0,
             0.0
           ],
@@ -89,6 +90,11 @@
             },
             {
               "index": 2,
+              "value": 5000000.0,
+              "returnPct": 0.0
+            },
+            {
+              "index": 3,
               "value": 5000000.0,
               "returnPct": 0.0
             }
@@ -603,8 +609,8 @@
             "priceSession": "kr_premarket",
             "sessionLabel": "국장 장전",
             "priceBasis": "국장 장전 · 전일 OHLCV 종가 기준",
-            "nowKst": "2026-08-25T08:35:31.820074+09:00",
-            "nowLocal": "2026-08-25T08:35:31.820074+09:00",
+            "nowKst": "2026-08-25T08:43:31.764133+09:00",
+            "nowLocal": "2026-08-25T08:43:31.764133+09:00",
             "isHoliday": false,
             "isReviewMode": false,
             "isUsDst": false
@@ -628,7 +634,7 @@
         },
         "nav": {
           "date": "2026-08-25",
-          "createdAt": "2026-08-25T08:35:31",
+          "createdAt": "2026-08-25T08:43:31",
           "market": "kr",
           "agentId": "ml_rank_balanced_mid",
           "agentLabel": "ML Rank Balanced Mid",
