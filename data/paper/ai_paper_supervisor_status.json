@@ -1,6 +1,6 @@
 {
   "status": "OK",
-  "lastRunAt": "2026-08-24T22:55:50+09:00",
+  "lastRunAt": "2026-08-24T23:05:42+09:00",
   "market": "us",
   "execute": true,
   "repair": {
@@ -35,12 +35,12 @@
     "recordingStatus": "OK",
     "evaluationStatus": "OK",
     "latestCapturedAt": "2026-08-19T06:57:40",
-    "latestEvaluatedAt": "2026-08-24T22:55:50"
+    "latestEvaluatedAt": "2026-08-24T23:05:41"
   },
   "paper": {
     "status": "OK",
     "dryRun": false,
-    "createdAt": "2026-08-24T22:55:50",
+    "createdAt": "2026-08-24T23:05:42",
     "market": "us",
     "markets": {
       "us": {
@@ -85,11 +85,11 @@
         "liveMetrics": {
           "status": "OK",
           "proofStatus": "RUNNING",
-          "sampleCount": 7,
-          "navPointCount": 8,
+          "sampleCount": 8,
+          "navPointCount": 9,
           "totalReturnPct": -0.05,
           "mddPct": -0.05,
-          "sharpe": -6.74,
+          "sharpe": -6.29,
           "winRate": 0.0,
           "avgPeriodReturnPct": -0.01,
           "cashPct": 93.2,
@@ -103,6 +103,7 @@
             0.0,
             0.0,
             -0.01,
+            0.0,
             0.0
           ],
           "equityCurve": [
@@ -143,6 +144,11 @@
             },
             {
               "index": 7,
+              "value": 4997.27,
+              "returnPct": -0.05
+            },
+            {
+              "index": 8,
               "value": 4997.27,
               "returnPct": -0.05
             }
@@ -657,8 +663,8 @@
             "priceSession": "us_intraday",
             "sessionLabel": "미장 장중",
             "priceBasis": "미장 장중 · KIS 현재가 기준",
-            "nowKst": "2026-08-24T22:55:50.473161+09:00",
-            "nowLocal": "2026-08-24T09:55:50.473161-04:00",
+            "nowKst": "2026-08-24T23:05:42.342298+09:00",
+            "nowLocal": "2026-08-24T10:05:42.342298-04:00",
             "isHoliday": false,
             "isReviewMode": false,
             "isUsDst": true
@@ -682,7 +688,7 @@
         },
         "nav": {
           "date": "2026-08-24",
-          "createdAt": "2026-08-24T22:55:50",
+          "createdAt": "2026-08-24T23:05:42",
           "market": "us",
           "agentId": "ml_rank_conservative_swing",
           "agentLabel": "ML Rank Conservative Swing",
