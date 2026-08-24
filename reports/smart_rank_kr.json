@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-24T07:16:41.370495+00:00",
+  "generatedAt": "2026-08-24T08:21:15.780776+00:00",
   "asOfDate": "2026-08-24",
   "market": "kr",
   "marketRegime": "BEAR",
@@ -7,15 +7,15 @@
   "featureCount": 14,
   "provenEdge": {
     "split": "2025-09-01",
-    "oosTrades": 24527,
-    "topQuintileNetPct": -0.563,
+    "oosTrades": 24529,
+    "topQuintileNetPct": -0.562,
     "bottomQuintileNetPct": -0.0,
-    "spreadPct": -0.563,
+    "spreadPct": -0.562,
     "ic": -0.023,
     "topQuintileByRegime": {
-      "BULL": -0.977,
-      "SIDE": 0.478,
-      "BEAR": 0.719
+      "BULL": -0.976,
+      "SIDE": 0.481,
+      "BEAR": 0.716
     }
   },
   "featureWeights": {
@@ -36,7 +36,7 @@
   },
   "note": "다중신호 ML 순위(선별 두뇌). OOS 검증 통과. 약세장은 상위픽도 (−)라 caution. 가격신호만 사용 — 수급/뉴스/섹터/공시 추가 시 개선 여지.",
   "actionableCount": 0,
-  "candidateCount": 100,
+  "candidateCount": 102,
   "candidates": [
     {
       "symbol": "131970",
@@ -80,7 +80,7 @@
     {
       "symbol": "009150",
       "name": "삼성전기",
-      "modelScore": 0.595,
+      "modelScore": 0.594,
       "close": 1318000.0,
       "rsi14": 57.4,
       "entryRef": 1318000.0,
@@ -145,7 +145,7 @@
     {
       "symbol": "353200",
       "name": "대덕전자",
-      "modelScore": 0.453,
+      "modelScore": 0.452,
       "close": 104600.0,
       "rsi14": 56.9,
       "entryRef": 104600.0,
@@ -158,7 +158,7 @@
     {
       "symbol": "067310",
       "name": "하나마이크론",
-      "modelScore": 0.424,
+      "modelScore": 0.423,
       "close": 34500.0,
       "rsi14": 61.9,
       "entryRef": 34500.0,
@@ -236,7 +236,7 @@
     {
       "symbol": "095340",
       "name": "ISC",
-      "modelScore": 0.361,
+      "modelScore": 0.36,
       "close": 154200.0,
       "rsi14": 65.9,
       "entryRef": 154200.0,
@@ -249,7 +249,7 @@
     {
       "symbol": "039030",
       "name": "이오테크닉스",
-      "modelScore": 0.352,
+      "modelScore": 0.351,
       "close": 388000.0,
       "rsi14": 75.5,
       "entryRef": 388000.0,
