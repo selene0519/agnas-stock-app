@@ -1,7 +1,7 @@
 {
   "status": "OK",
   "market": "all",
-  "sampleCount": 726,
+  "sampleCount": 729,
   "excludedInconsistentOutcomeCount": 3,
   "excludedBySourcePolicyCount": 1298,
   "calibrationBasis": "forward_only(SOURCE_CALIBRATION_WEIGHTS>0)",
@@ -18,14 +18,14 @@
       "sourceType": "FORWARD_PAPER_TRADE",
       "calibrationWeight": 1.0,
       "admissible": true,
-      "n": 729,
-      "winRate": 0.2524,
-      "avgPnlPct": -3.954
+      "n": 732,
+      "winRate": 0.2541,
+      "avgPnlPct": -3.922
     }
   ],
-  "baseWinRate": 0.2493,
-  "baseAvgPnlPct": -3.974,
-  "generatedAt": "2026-08-24T21:49:05",
+  "baseWinRate": 0.251,
+  "baseAvgPnlPct": -3.943,
+  "generatedAt": "2026-08-24T23:04:02",
   "autoApplied": false,
   "manualApprovalRequired": true,
   "calibrationSummary": {
@@ -75,14 +75,14 @@
       "manualApprovalRequired": true
     },
     {
-      "feedbackId": "a3489e2512c22c29c12f",
+      "feedbackId": "97ca38cf255b4642cdd4",
       "market": "all",
       "mode": "balanced",
       "horizon": "short",
-      "n": 27,
-      "winRate": 0.4815,
-      "avgPnlPct": -0.496,
-      "multiplier": 0.93,
+      "n": 28,
+      "winRate": 0.4643,
+      "avgPnlPct": -0.877,
+      "multiplier": 0.915,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true
@@ -101,14 +101,14 @@
       "manualApprovalRequired": true
     },
     {
-      "feedbackId": "52244a6a867c03ebf9e6",
+      "feedbackId": "1b01c5fa7dc443d60b37",
       "market": "all",
       "mode": "balanced",
       "horizon": "mid",
-      "n": 96,
-      "winRate": 0.1458,
-      "avgPnlPct": -5.896,
-      "multiplier": 0.562,
+      "n": 97,
+      "winRate": 0.1546,
+      "avgPnlPct": -5.72,
+      "multiplier": 0.574,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true
@@ -140,14 +140,14 @@
       "manualApprovalRequired": true
     },
     {
-      "feedbackId": "8be69bae9b6c26e05aeb",
+      "feedbackId": "cb5f7b5aae57d5bb682d",
       "market": "all",
       "mode": "aggressive",
       "horizon": "mid",
-      "n": 121,
-      "winRate": 0.1074,
-      "avgPnlPct": -6.803,
-      "multiplier": 0.507,
+      "n": 122,
+      "winRate": 0.1148,
+      "avgPnlPct": -6.655,
+      "multiplier": 0.516,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true
