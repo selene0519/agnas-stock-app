@@ -16,7 +16,7 @@
   "lastRun": {
     "status": "OK",
     "dryRun": false,
-    "createdAt": "2026-08-24T22:05:40",
+    "createdAt": "2026-08-24T22:55:50",
     "market": "us",
     "markets": {
       "us": {
@@ -61,11 +61,11 @@
         "liveMetrics": {
           "status": "OK",
           "proofStatus": "RUNNING",
-          "sampleCount": 6,
-          "navPointCount": 7,
+          "sampleCount": 7,
+          "navPointCount": 8,
           "totalReturnPct": -0.05,
           "mddPct": -0.05,
-          "sharpe": -7.31,
+          "sharpe": -6.74,
           "winRate": 0.0,
           "avgPeriodReturnPct": -0.01,
           "cashPct": 93.2,
@@ -78,7 +78,8 @@
             -0.05,
             0.0,
             0.0,
-            -0.01
+            -0.01,
+            0.0
           ],
           "equityCurve": [
             {
@@ -113,6 +114,11 @@
             },
             {
               "index": 6,
+              "value": 4997.27,
+              "returnPct": -0.05
+            },
+            {
+              "index": 7,
               "value": 4997.27,
               "returnPct": -0.05
             }
@@ -624,11 +630,11 @@
           },
           "priceSession": {
             "market": "us",
-            "priceSession": "us_premarket",
-            "sessionLabel": "미장 장전",
-            "priceBasis": "미장 장전 · 프리마켓 업데이트 기준",
-            "nowKst": "2026-08-24T22:05:40.730685+09:00",
-            "nowLocal": "2026-08-24T09:05:40.730685-04:00",
+            "priceSession": "us_intraday",
+            "sessionLabel": "미장 장중",
+            "priceBasis": "미장 장중 · KIS 현재가 기준",
+            "nowKst": "2026-08-24T22:55:50.473161+09:00",
+            "nowLocal": "2026-08-24T09:55:50.473161-04:00",
             "isHoliday": false,
             "isReviewMode": false,
             "isUsDst": true
@@ -652,7 +658,7 @@
         },
         "nav": {
           "date": "2026-08-24",
-          "createdAt": "2026-08-24T22:05:40",
+          "createdAt": "2026-08-24T22:55:50",
           "market": "us",
           "agentId": "ml_rank_conservative_swing",
           "agentLabel": "ML Rank Conservative Swing",
