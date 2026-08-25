@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-08-24T23:14:12.572907+00:00",
+  "generatedAt": "2026-08-25T08:46:04.162701+00:00",
   "since": "2026-07-10",
   "cleanWindowStart": "2026-07-10",
   "source": "virtual_trade_journal + virtual_trade_evaluations (FORWARD_PAPER_TRADE only)",
   "overall": {
-    "trades": 111,
-    "winRate": 0.2973,
-    "avgPnlPct": -1.399,
+    "trades": 112,
+    "winRate": 0.3036,
+    "avgPnlPct": -1.1047,
     "sampleWarning": null
   },
   "dateRange": {
@@ -16,7 +16,7 @@
   "observedScoreRange": {
     "min": 68.0,
     "max": 92.1,
-    "median": 71.3
+    "median": 71.5
   },
   "byRegime": {
     "BEAR": {
@@ -32,10 +32,10 @@
       "sampleWarning": null
     },
     "SIDE": {
-      "trades": 28,
-      "winRate": 0.1786,
-      "avgPnlPct": -3.9956,
-      "sampleWarning": "표본 28건 — 30건 미만이라 순위는 노이즈"
+      "trades": 29,
+      "winRate": 0.2069,
+      "avgPnlPct": -2.7694,
+      "sampleWarning": "표본 29건 — 30건 미만이라 순위는 노이즈"
     }
   },
   "byScoreBin": {
@@ -46,9 +46,9 @@
       "sampleWarning": null
     },
     "70-100": {
-      "trades": 79,
-      "winRate": 0.3038,
-      "avgPnlPct": -1.8277,
+      "trades": 80,
+      "winRate": 0.3125,
+      "avgPnlPct": -1.4103,
       "sampleWarning": null
     }
   }
