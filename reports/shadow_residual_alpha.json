@@ -1,6 +1,6 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-08-25T21:55:40.524067+00:00",
+  "generatedAt": "2026-08-25T23:07:46.650770+00:00",
   "policy": {
     "version": "shadow-residual-alpha-v1.1.2",
     "label": "POST_SIGNAL_PRE_EVENT_MARKET_MODEL_CAR_BY_HORIZON",
@@ -103,8 +103,8 @@
     "selectedOosSignalDates": 0,
     "selectedBlockMeanResidualAlphaPct": null,
     "selectedBlockBootstrapCi95": null,
-    "modelRmse": 2.52747,
-    "expandingMeanRmse": 8.14657,
+    "modelRmse": 2.625846,
+    "expandingMeanRmse": 8.244946,
     "rankIcSpearman": null,
     "temporalLeakageViolations": 0,
     "source": "RECOMPUTED_EXPANDING_WALK_FORWARD_RESEARCH_ONLY",
@@ -147,7 +147,7 @@
       "futureGeneratedAtSkipped": 0,
       "immutableConflicts": 0,
       "schemaError": null,
-      "recordMarket": "all",
+      "recordMarket": "none",
       "candidateRowsConsidered": 0
     },
     "settlementJournal": {
@@ -183,7 +183,7 @@
       "predictedResidualAlphaPct": -9.245918192690446,
       "predictionLower90Pct": -27.58671754782359,
       "baselinePredictionPct": -3.626818493225629,
-      "realizedResidualAlphaPct": -11.77338805066938
+      "realizedResidualAlphaPct": -11.871764473267856
     }
   ]
 }

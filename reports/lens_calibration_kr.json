@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-25T21:55:47.108587+00:00",
+  "generatedAt": "2026-08-25T23:07:53.174550+00:00",
   "asOfDate": "2026-08-10",
   "sources": {
     "live": "reports/lens_live_journal_kr.csv",
@@ -26,21 +26,6 @@
     ]
   },
   "calibration": {
-    "BREAKOUT|BEAR": {
-      "setup": "BREAKOUT",
-      "regime": "BEAR",
-      "blendedNetAvgPct": -1.221,
-      "blendedWinRate": 29.6,
-      "gate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "liveEffectiveSamples": 14.6,
-      "liveRawSamples": 15,
-      "liveNetAvgPct": -1.357,
-      "priorNetAvgPct": -1.171,
-      "priorRawSamples": 2274,
-      "liveFraction": 0.268,
-      "profitFactor": 0.59
-    },
     "BOTTOM_CATCH|BEAR": {
       "setup": "BOTTOM_CATCH",
       "regime": "BEAR",
@@ -55,21 +40,6 @@
       "priorRawSamples": 3599,
       "liveFraction": 0.283,
       "profitFactor": 0.61
-    },
-    "BREAKOUT|SIDE": {
-      "setup": "BREAKOUT",
-      "regime": "SIDE",
-      "blendedNetAvgPct": 0.842,
-      "blendedWinRate": 48.6,
-      "gate": "ACTIVE",
-      "sizeMultiplier": 1.36,
-      "liveEffectiveSamples": 0.0,
-      "liveRawSamples": 0,
-      "liveNetAvgPct": null,
-      "priorNetAvgPct": 0.842,
-      "priorRawSamples": 6666,
-      "liveFraction": 0.0,
-      "profitFactor": 1.4
     },
     "BOTTOM_CATCH|SIDE": {
       "setup": "BOTTOM_CATCH",
@@ -100,6 +70,36 @@
       "priorRawSamples": 9823,
       "liveFraction": 0.0,
       "profitFactor": 1.11
+    },
+    "BREAKOUT|BEAR": {
+      "setup": "BREAKOUT",
+      "regime": "BEAR",
+      "blendedNetAvgPct": -1.221,
+      "blendedWinRate": 29.6,
+      "gate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "liveEffectiveSamples": 14.6,
+      "liveRawSamples": 15,
+      "liveNetAvgPct": -1.357,
+      "priorNetAvgPct": -1.171,
+      "priorRawSamples": 2274,
+      "liveFraction": 0.268,
+      "profitFactor": 0.59
+    },
+    "BREAKOUT|SIDE": {
+      "setup": "BREAKOUT",
+      "regime": "SIDE",
+      "blendedNetAvgPct": 0.842,
+      "blendedWinRate": 48.6,
+      "gate": "ACTIVE",
+      "sizeMultiplier": 1.36,
+      "liveEffectiveSamples": 0.0,
+      "liveRawSamples": 0,
+      "liveNetAvgPct": null,
+      "priorNetAvgPct": 0.842,
+      "priorRawSamples": 6666,
+      "liveFraction": 0.0,
+      "profitFactor": 1.4
     },
     "BOTTOM_CATCH|BULL": {
       "setup": "BOTTOM_CATCH",
