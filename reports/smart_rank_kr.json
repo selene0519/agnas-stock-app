@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-25T07:15:23.232699+00:00",
+  "generatedAt": "2026-08-25T08:16:25.847824+00:00",
   "asOfDate": "2026-08-25",
   "market": "kr",
   "marketRegime": "BEAR",
@@ -7,15 +7,15 @@
   "featureCount": 14,
   "provenEdge": {
     "split": "2025-09-01",
-    "oosTrades": 24629,
+    "oosTrades": 24631,
     "topQuintileNetPct": -0.561,
-    "bottomQuintileNetPct": 0.009,
-    "spreadPct": -0.569,
+    "bottomQuintileNetPct": 0.01,
+    "spreadPct": -0.571,
     "ic": -0.023,
     "topQuintileByRegime": {
       "BULL": -0.993,
-      "SIDE": 0.429,
-      "BEAR": 0.743
+      "SIDE": 0.433,
+      "BEAR": 0.739
     }
   },
   "featureWeights": {
@@ -36,7 +36,7 @@
   },
   "note": "다중신호 ML 순위(선별 두뇌). OOS 검증 통과. 약세장은 상위픽도 (−)라 caution. 가격신호만 사용 — 수급/뉴스/섹터/공시 추가 시 개선 여지.",
   "actionableCount": 0,
-  "candidateCount": 100,
+  "candidateCount": 102,
   "candidates": [
     {
       "symbol": "011070",
@@ -67,7 +67,7 @@
     {
       "symbol": "131970",
       "name": "두산테스나",
-      "modelScore": 0.463,
+      "modelScore": 0.462,
       "close": 79700.0,
       "rsi14": 61.4,
       "entryRef": 79700.0,
