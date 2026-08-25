@@ -2530,7 +2530,7 @@ export default function VirtualJournalPage() {
                 { label: "전체 평가", value: String(perfData.summary.count) },
                 { label: "승률", value: perfData.summary.winRate != null ? `${(perfData.summary.winRate * 100).toFixed(1)}%` : "-", tone: perfData.summary.winRate != null && perfData.summary.winRate >= 0.5 ? "text-emerald-300" : "text-amber-300" },
                 { label: "평균 PnL", value: perfData.summary.avgPnlPct != null ? `${perfData.summary.avgPnlPct >= 0 ? "+" : ""}${perfData.summary.avgPnlPct.toFixed(2)}%` : "-", tone: (perfData.summary.avgPnlPct ?? 0) >= 0 ? "text-emerald-300" : "text-red-300" },
-                { label: "누적 PnL", value: perfData.summary.totalPnlPct != null ? `${perfData.summary.totalPnlPct >= 0 ? "+" : ""}${perfData.summary.totalPnlPct.toFixed(2)}%` : "-", tone: (perfData.summary.totalPnlPct ?? 0) >= 0 ? "text-emerald-300" : "text-red-300" },
+                { label: "고정명목 수익", value: perfData.summary.fixedNotionalReturnPct != null ? `${perfData.summary.fixedNotionalReturnPct >= 0 ? "+" : ""}${perfData.summary.fixedNotionalReturnPct.toFixed(2)}%` : "-", tone: (perfData.summary.fixedNotionalReturnPct ?? 0) >= 0 ? "text-emerald-300" : "text-red-300" },
                 { label: "샤프 (간이)", value: perfData.summary.sharpe != null ? String(perfData.summary.sharpe) : "-", tone: (perfData.summary.sharpe ?? 0) >= 1 ? "text-emerald-300" : (perfData.summary.sharpe ?? 0) >= 0 ? "text-amber-300" : "text-red-300" },
                 { label: "최대 낙폭", value: perfData.summary.maxDrawdownPct != null ? `${perfData.summary.maxDrawdownPct.toFixed(2)}%` : "-", tone: (perfData.summary.maxDrawdownPct ?? 0) <= 5 ? "text-emerald-300" : (perfData.summary.maxDrawdownPct ?? 0) <= 15 ? "text-amber-300" : "text-red-300" },
               ].map(({ label, value, tone = "text-slate-100" }) => (
@@ -2544,7 +2544,8 @@ export default function VirtualJournalPage() {
             {/* Equity Curve */}
             {(perfData.equityCurve?.length ?? 0) > 1 && (
               <div className="rounded-lg bg-slate-900/50 p-4 shadow-[inset_0_0_0_1px_rgba(148,163,184,0.10)]">
-                <div className="mb-2 text-xs font-semibold text-slate-400">누적 PnL 곡선</div>
+                <div className="mb-1 text-xs font-semibold text-slate-400">고정명목 자본곡선</div>
+                <div className="mb-2 text-[10px] text-slate-400">기준자본 100 · 비용차감 거래 수익률 적용 · 낙폭 0~100% 제한</div>
                 <EquityCurveSparkline points={perfData.equityCurve} />
               </div>
             )}

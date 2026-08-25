@@ -399,6 +399,28 @@ def _strategy_realized_stats(market: str, agent: dict[str, str]) -> dict[str, An
     }
 
 
+def _research_candidate_order(candidates: list[dict[str, Any]], *, as_of: date | None = None) -> list[dict[str, Any]]:
+    """Interleave EV strata so research does not reinforce an unvalidated rank."""
+    if len(candidates) < 4:
+        return sorted(candidates, key=lambda row: (-_num(row.get("score")), str(row.get("symbol") or "")))
+    ordered = sorted(candidates, key=lambda row: (_num(row.get("expectedValue")), str(row.get("symbol") or "")))
+    strata: list[list[dict[str, Any]]] = [[] for _ in range(4)]
+    for index, candidate in enumerate(ordered):
+        stratum = min(3, index * 4 // len(ordered))
+        strata[stratum].append(candidate)
+    for rows in strata:
+        rows.sort(key=lambda row: (-_num(row.get("score")), str(row.get("symbol") or "")))
+    rotation = (as_of or date.today()).toordinal() % 4
+    stratum_order = [(rotation + offset) % 4 for offset in range(4)]
+    result: list[dict[str, Any]] = []
+    depth = 0
+    while any(depth < len(strata[index]) for index in stratum_order):
+        for index in stratum_order:
+            if depth < len(strata[index]):
+                result.append(strata[index][depth])
+        depth += 1
+    return result
+
 def _regime_agent_preference(regime: str, agent: dict[str, str]) -> float:
     key = f"{agent['mode']}_{agent['horizon']}"
     table = {
@@ -418,7 +440,7 @@ def _regime_agent_preference(regime: str, agent: dict[str, str]) -> float:
     return table.get(str(regime or "SIDE").upper(), table["SIDE"]).get(key, 0.0)
 
 
-def _suggest_agent(market: str) -> dict[str, Any]:
+def _suggest_agent(market: str, selection_policy: str = "EXPECTED_VALUE") -> dict[str, Any]:
     regime_info = _market_regime_snapshot(market)
     regime = str(regime_info.get("regime") or "SIDE").upper()
     rows: list[dict[str, Any]] = []
@@ -426,8 +448,9 @@ def _suggest_agent(market: str) -> dict[str, Any]:
         candidates = _collect_recommendations(market, profile)
         realized = _strategy_realized_stats(market, profile)
         if candidates:
-            top = candidates[0]
-            quality_score = _num(top.get("expectedValue")) * 3.0 + _num(top.get("score")) * 0.05 + min(len(candidates), 3)
+            top = max(candidates, key=lambda row: _num(row.get("score"))) if selection_policy == "EV_NEUTRAL_STRATIFIED" else candidates[0]
+            ev_component = 0.0 if selection_policy == "EV_NEUTRAL_STRATIFIED" else _num(top.get("expectedValue")) * 3.0
+            quality_score = ev_component + _num(top.get("score")) * 0.05 + min(len(candidates), 3)
         else:
             quality_score = -50.0
         # Historical live results influence exploration modestly. They never
@@ -464,6 +487,7 @@ def _suggest_agent(market: str) -> dict[str, Any]:
         "selectionScore": winner.get("selectionScore") if winner else None,
         "rankings": rows,
         "policy": "regime_candidate_quality_with_modest_realized_feedback_v1",
+        "candidateSelectionPolicy": selection_policy,
     }
 
 
@@ -731,6 +755,31 @@ def _trades_for(market: str, agent_id: str) -> list[dict[str, Any]]:
     ]
 
 
+def _trade_history_items(market: str, agent_id: str, limit: int = 100) -> list[dict[str, Any]]:
+    rows = sorted(
+        _trades_for(market, agent_id),
+        key=lambda row: str(row.get("createdAt") or ""),
+        reverse=True,
+    )
+    return [
+        {
+            "id": str(row.get("id") or ""),
+            "createdAt": str(row.get("createdAt") or ""),
+            "market": market,
+            "agentId": agent_id,
+            "symbol": str(row.get("symbol") or "").upper(),
+            "name": str(row.get("name") or row.get("symbol") or ""),
+            "action": str(row.get("action") or "").upper(),
+            "price": round(_num(row.get("price")), 4),
+            "quantity": round(_num(row.get("quantity")), 4),
+            "totalValue": round(_num(row.get("totalValue")), 2),
+            "costAmount": round(_num(row.get("costAmount")), 2),
+            "memo": str(row.get("memo") or ""),
+        }
+        for row in rows[: max(1, min(int(limit), 500))]
+    ]
+
+
 def _compute_positions(trades: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     positions: dict[str, dict[str, Any]] = {}
     for trade in trades:
@@ -812,6 +861,7 @@ def _closed_trade_metrics(market: str, agent_id: str) -> dict[str, Any]:
 
 def _position_items(market: str, agent_id: str) -> list[dict[str, Any]]:
     result = []
+    stops = _read_json(AI_STOPS_JSON, {})
     for symbol, pos in _compute_positions(_trades_for(market, agent_id)).items():
         qty = float(pos["quantity"])
         avg_price = float(pos["totalCost"]) / qty if qty > 0 else 0.0
@@ -831,6 +881,8 @@ def _position_items(market: str, agent_id: str) -> list[dict[str, Any]]:
             "valuation": round(valuation, 2),
             "pnl": round(pnl, 2),
             "pnlPct": round((pnl / cost * 100), 2) if cost > 0 else 0.0,
+            "stopPrice": _num((stops.get(_stop_key(market, agent_id, symbol)) or {}).get("stopPrice")) or None,
+            "targetPrice": _num((stops.get(_stop_key(market, agent_id, symbol)) or {}).get("targetPrice")) or None,
         })
     return sorted(result, key=lambda x: abs(x.get("pnl") or 0), reverse=True)
 
@@ -1064,6 +1116,7 @@ def _buy_candidates(
     *,
     research_mode: bool = False,
     agent_override: dict[str, str] | None = None,
+    research_selection_policy: str = "EXPECTED_VALUE",
 ) -> list[dict[str, Any]]:
     actions: list[dict[str, Any]] = []
     ctx = _active_context(market)
@@ -1108,7 +1161,10 @@ def _buy_candidates(
     cash = float(summary.get("cash") or 0)
     equity = float(summary.get("portfolioValue") if summary.get("portfolioValue") is not None else cash)
     min_trade = MIN_TRADE_KR if market == "kr" else MIN_TRADE_US
-    plan = execution_plan or (_paper_discovery_plan(market, agent) if research_mode else quant_execution_plan.execution_plan(market))
+    candidates = _collect_recommendations(market, agent)
+    if research_mode and research_selection_policy == "EV_NEUTRAL_STRATIFIED":
+        candidates = _research_candidate_order(candidates)
+    plan = execution_plan or (_paper_discovery_plan(market, agent, candidates) if research_mode else quant_execution_plan.execution_plan(market))
     if plan.get("status") != "AUTHORIZED":
         return [{
             "action": "SKIP",
@@ -1125,7 +1181,7 @@ def _buy_candidates(
     max_gross_value = equity * _num(plan.get("maxGrossExposure"))
     remaining_gross_value = max(0.0, max_gross_value - current_gross_value)
 
-    for rec in _collect_recommendations(market, agent):
+    for rec in candidates:
         if slots <= 0 or cash < min_trade:
             break
         symbol = rec["symbol"]
@@ -1475,6 +1531,7 @@ def status(market: str = "all") -> dict[str, Any]:
             "realizedTrades": _closed_trade_metrics(mk, agent["id"]),
             "survival": survival,
             "positions": _position_items(mk, agent["id"]),
+            "tradeHistory": _trade_history_items(mk, agent["id"]),
             "candidateCount": len(active_candidates) if performance_gate["allowed"] else 0,
             "activeRawCandidateCount": len(active_candidates),
             "rawCandidateCount": len(all_candidates),
@@ -1493,6 +1550,33 @@ def status(market: str = "all") -> dict[str, Any]:
             "proofBoard": _walkforward_proof_board(mk, agent["id"]),
         }
     nav_rows = _read_csv(AI_NAV_CSV)
+    latest_nav_by_market: dict[str, dict[str, Any]] = {}
+    for mk in markets:
+        agent_id = str((markets[mk].get("activeAgent") or {}).get("id") or "")
+        market_nav_rows = _nav_rows_for(mk, agent_id) if agent_id else []
+        latest_nav_by_market[mk] = market_nav_rows[-1] if market_nav_rows else {}
+
+    requested_market = str(market or "all").lower()
+    latest_nav = (
+        latest_nav_by_market.get(requested_market, {})
+        if requested_market in {"kr", "us"}
+        else (nav_rows[-1] if nav_rows else {})
+    )
+    raw_supervisor = _read_json(AI_SUPERVISOR_STATUS_JSON, {})
+    supervisor_by_market = raw_supervisor.get("byMarket") if isinstance(raw_supervisor.get("byMarket"), dict) else {}
+    if requested_market in {"kr", "us"}:
+        supervisor = supervisor_by_market.get(requested_market)
+        if not isinstance(supervisor, dict) and str(raw_supervisor.get("market") or "").lower() == requested_market:
+            supervisor = raw_supervisor
+        if not isinstance(supervisor, dict):
+            supervisor = {
+                "status": "NO_MARKET_RUN_RECORDED",
+                "market": requested_market,
+                "lastKnownMarket": str(raw_supervisor.get("market") or ""),
+                "lastRunAt": "",
+            }
+    else:
+        supervisor = raw_supervisor
     return {
         "status": "OK",
         "market": market,
@@ -1501,8 +1585,10 @@ def status(market: str = "all") -> dict[str, Any]:
         "lastRun": state.get("lastRun", {}),
         "selectionHistory": state.get("selectionHistory", []),
         "navRows": len(nav_rows),
-        "latestNav": nav_rows[-1] if nav_rows else {},
-        "supervisor": _read_json(AI_SUPERVISOR_STATUS_JSON, {}),
+        "latestNav": latest_nav,
+        "latestNavByMarket": latest_nav_by_market,
+        "supervisor": supervisor,
+        "supervisorByMarket": supervisor_by_market,
     }
 
 
@@ -1540,7 +1626,8 @@ def run_cycle(market: str = "all", dry_run: bool = True) -> dict[str, Any]:
         if authority.get("paperEntryAllowed"):
             actions.extend(_buy_candidates(mk, dry_run=dry_run, execution_plan=authority.get("executionPlan")))
         elif authority.get("paperResearchEntryAllowed") and PAPER_DISCOVERY_ENABLED:
-            suggestion = _suggest_agent(mk)
+            research_selection_policy = str(authority.get("evCalibrationGate", {}).get("researchSelectionPolicy") or "EV_NEUTRAL_STRATIFIED")
+            suggestion = _suggest_agent(mk, selection_policy=research_selection_policy)
             activation = _activate_suggested_agent(mk, suggestion, dry_run=dry_run)
             cycle_agent = activation.get("agent") if isinstance(activation.get("agent"), dict) else cycle_agent
             if activation.get("changed"):
@@ -1559,6 +1646,7 @@ def run_cycle(market: str = "all", dry_run: bool = True) -> dict[str, Any]:
                 dry_run=dry_run,
                 research_mode=True,
                 agent_override=cycle_agent,
+                research_selection_policy=research_selection_policy,
             ))
         else:
             actions.append({

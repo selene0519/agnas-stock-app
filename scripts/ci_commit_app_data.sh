@@ -48,6 +48,7 @@ stage_app_data() {
   git add reports/lens_promotion_status_kr.json 2>/dev/null || true
   git add reports/leader_breakout_candidates_kr.json reports/leader_breakout_candidates_us.json 2>/dev/null || true
   git add reports/relative_strength_leaders_kr.json reports/relative_strength_leaders_us.json 2>/dev/null || true
+  git add reports/biotech_evidence.json 2>/dev/null || true
   git add reports/kr_supply_flow_history.csv reports/disclosures_kr_history.csv 2>/dev/null || true
   git add reports/smart_rank_kr.json reports/high_conviction_kr.json 2>/dev/null || true
   git add reports/high_conviction_ledger_kr.csv reports/high_conviction_pnl_kr.json 2>/dev/null || true

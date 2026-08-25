@@ -26,6 +26,7 @@ from app.services import insights
 from app.services import operation_history
 from app.services import quotes
 from app.services import runtime_limits
+from app.services import biotech_evidence
 from app.services import user_data
 from app import db as _db
 
@@ -3645,6 +3646,15 @@ def api_research_relative_strength(market: str = Query("kr", pattern="^(kr|us)$"
     """연구 중 — 횡단면 상대강도 렌즈(강세/횡보) + 약세장 저변동 방어주 로테이션.
     딥데이터 OOS 방향성 확인, 정식 거래시뮬 전 단계."""
     return _read_research_report(f"relative_strength_leaders_{market}.json")
+
+
+@app.get("/api/research/biotech-evidence")
+def api_research_biotech_evidence(
+    market: str = Query("all", pattern="^(all|kr|us)$"),
+    symbol: str = Query("", max_length=20),
+) -> dict:
+    """Research-only official trial/publication evidence; never a score input."""
+    return biotech_evidence.read_cache(market=market, symbol=symbol)
 
 
 @app.get("/api/advanced/backtest")

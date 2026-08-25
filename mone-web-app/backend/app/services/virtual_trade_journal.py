@@ -5098,20 +5098,35 @@ def _sharpe(pnls: list[float]) -> float | None:
     return round(mean / std, 3) if std > 0 else None
 
 
-def _max_drawdown(pnls: list[float]) -> float | None:
+def _fixed_notional_equity_curve(
+    pnls: list[float],
+    base_equity: float = 100.0,
+) -> tuple[list[float], list[float], float | None]:
+    """Bounded fixed-notional equity and drawdown series.
+
+    Each trade contributes its net return as percentage points to a 100-unit
+    research account. Equity is floored at zero, so portfolio drawdown cannot
+    exceed 100%. This is not a claim that overlapping trades were fully funded.
+    """
     if not pnls:
-        return None
-    peak = 0.0
-    max_dd = 0.0
-    running = 0.0
-    for p in pnls:
-        running += p
-        if running > peak:
-            peak = running
-        dd = peak - running
-        if dd > max_dd:
-            max_dd = dd
-    return round(max_dd, 4)
+        return [], [], None
+    equity = max(float(base_equity), 0.0)
+    peak = equity
+    values: list[float] = []
+    drawdowns: list[float] = []
+    max_drawdown = 0.0
+    for pnl in pnls:
+        equity = max(0.0, equity + float(pnl))
+        peak = max(peak, equity)
+        drawdown = ((peak - equity) / peak * 100.0) if peak > 0 else 0.0
+        max_drawdown = max(max_drawdown, drawdown)
+        values.append(equity)
+        drawdowns.append(drawdown)
+    return values, drawdowns, round(min(max_drawdown, 100.0), 4)
+
+
+def _max_drawdown(pnls: list[float]) -> float | None:
+    return _fixed_notional_equity_curve(pnls)[2]
 
 
 def performance_by_strategy(
@@ -5182,26 +5197,25 @@ def performance_by_strategy(
             "totalPnlPct": round(sum(pnls), 4) if pnls else None,
         })
 
-    # ── 2. 시간순 누적 equity curve (전체) ────────────────────────────────
-    curve_points: list[dict[str, Any]] = []
-    running_pnl = 0.0
-    peak_pnl = 0.0
-    max_dd = 0.0
-    for r in evaluated:
-        pnl = _safe_float(r.get("net_pnl_pct"))
-        if pnl is None:
-            continue
-        running_pnl += pnl
-        if running_pnl > peak_pnl:
-            peak_pnl = running_pnl
-        dd = peak_pnl - running_pnl
-        if dd > max_dd:
-            max_dd = dd
-        curve_points.append({
-            "date": str(r.get("as_of_date") or ""),
-            "cumPnlPct": round(running_pnl, 4),
-            "drawdownPct": round(dd, 4),
-        })
+    # ── 2. 시간순 고정명목 equity curve (전체) ───────────────────────────
+    dated_pnls = [
+        (str(row.get("as_of_date") or row.get("trade_date") or ""), pnl)
+        for row in evaluated
+        for pnl in [_safe_float(row.get("net_pnl_pct"))]
+        if pnl is not None
+    ]
+    equity_values, drawdown_values, max_dd = _fixed_notional_equity_curve(
+        [pnl for _, pnl in dated_pnls]
+    )
+    curve_points = [
+        {
+            "date": trade_date,
+            "equityValue": round(equity, 4),
+            "cumPnlPct": round(equity - 100.0, 4),
+            "drawdownPct": round(drawdown, 4),
+        }
+        for (trade_date, _), equity, drawdown in zip(dated_pnls, equity_values, drawdown_values)
+    ]
 
     # ── 3. 전체 요약 ──────────────────────────────────────────────────────
     all_pnls = [p for r in evaluated for p in ([_safe_float(r.get("net_pnl_pct"))] if _safe_float(r.get("net_pnl_pct")) is not None else [])]
@@ -5214,8 +5228,11 @@ def performance_by_strategy(
         "winRate": round(all_wins / total_count, 4) if total_count else None,
         "avgPnlPct": round(sum(all_pnls) / len(all_pnls), 4) if all_pnls else None,
         "totalPnlPct": round(sum(all_pnls), 4) if all_pnls else None,
+        "totalPnlMethod": "sum_of_independent_trade_return_points_research_only",
+        "fixedNotionalReturnPct": round(equity_values[-1] - 100.0, 4) if equity_values else None,
         "sharpe": _sharpe(all_pnls),
-        "maxDrawdownPct": round(max_dd, 4) if evaluated else None,
+        "maxDrawdownPct": round(max_dd, 4) if max_dd is not None else None,
+        "mddMethod": "fixed_notional_equity_100_bounded",
     }
 
     return {
@@ -5350,6 +5367,146 @@ def _ev_accuracy(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "evQuartileBuckets": ev_quartile_buckets,
     }
 
+
+def _pearson_correlation(pairs: list[tuple[float, float]]) -> float | None:
+    if len(pairs) < 3:
+        return None
+    mean_x = sum(x for x, _ in pairs) / len(pairs)
+    mean_y = sum(y for _, y in pairs) / len(pairs)
+    covariance = sum((x - mean_x) * (y - mean_y) for x, y in pairs)
+    variance_x = sum((x - mean_x) ** 2 for x, _ in pairs)
+    variance_y = sum((y - mean_y) ** 2 for _, y in pairs)
+    if variance_x <= 1e-12 or variance_y <= 1e-12:
+        return None
+    return covariance / (variance_x * variance_y) ** 0.5
+
+
+def _clean_window_start() -> str:
+    path = REPORTS_DIR / "clean_window_marker.json"
+    try:
+        marker = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        marker = {}
+    return _text(marker.get("cleanWindowStart"))[:10]
+
+
+def _ev_calibration_from_rows(
+    rows: list[dict[str, Any]],
+    *,
+    clean_window_start: str = "",
+) -> dict[str, Any]:
+    """Validate EV direction on clean, independent decisions and a later holdout.
+
+    The app never auto-inverts a miscalibrated signal. An inverse result blocks
+    promotion, while insufficient evidence remains available for EV-neutral
+    paper research so the validation set can continue to grow.
+    """
+    cutoff = clean_window_start[:10]
+    eligible: list[tuple[str, float, float]] = []
+    for row in _dedupe_decision_units(rows):
+        ev = _safe_float(row.get("expected_value") or row.get("ev"))
+        pnl = _safe_float(row.get("net_pnl_pct"))
+        signal_date = _text(row.get("as_of_date") or row.get("generated_at"))[:10]
+        if ev is None or pnl is None or not signal_date:
+            continue
+        if cutoff and signal_date < cutoff:
+            continue
+        eligible.append((signal_date, ev, pnl))
+
+    by_date: dict[str, list[tuple[float, float]]] = {}
+    for signal_date, ev, pnl in eligible:
+        by_date.setdefault(signal_date, []).append((ev, pnl))
+    date_pairs = [
+        (
+            sum(ev for ev, _ in by_date[day]) / len(by_date[day]),
+            sum(pnl for _, pnl in by_date[day]) / len(by_date[day]),
+        )
+        for day in sorted(by_date)
+    ]
+    split = max(1, int(len(date_pairs) * 0.70))
+    if len(date_pairs) >= 2:
+        split = min(split, len(date_pairs) - 1)
+    train_pairs = date_pairs[:split]
+    holdout_pairs = date_pairs[split:]
+    row_pairs = [(ev, pnl) for _, ev, pnl in eligible]
+
+    row_correlation = _pearson_correlation(row_pairs)
+    date_correlation = _pearson_correlation(date_pairs)
+    train_correlation = _pearson_correlation(train_pairs)
+    holdout_correlation = _pearson_correlation(holdout_pairs)
+
+    sorted_rows = sorted(row_pairs)
+    quartile_size = len(sorted_rows) // 4
+    low_quartile = sorted_rows[:quartile_size] if quartile_size else []
+    high_quartile = sorted_rows[-quartile_size:] if quartile_size else []
+    low_avg = sum(pnl for _, pnl in low_quartile) / len(low_quartile) if low_quartile else None
+    high_avg = sum(pnl for _, pnl in high_quartile) / len(high_quartile) if high_quartile else None
+    quartile_gap = high_avg - low_avg if low_avg is not None and high_avg is not None else None
+
+    sample_ready = len(row_pairs) >= 50 and len(date_pairs) >= 8 and len(train_pairs) >= 5 and len(holdout_pairs) >= 3
+    inverse = bool(
+        sample_ready
+        and row_correlation is not None and row_correlation <= -0.10
+        and train_correlation is not None and train_correlation < 0
+        and holdout_correlation is not None and holdout_correlation < 0
+        and quartile_gap is not None and quartile_gap <= -1.0
+    )
+    valid = bool(
+        sample_ready
+        and row_correlation is not None and row_correlation >= 0.10
+        and train_correlation is not None and train_correlation > 0
+        and holdout_correlation is not None and holdout_correlation > 0
+        and quartile_gap is not None and quartile_gap >= 0.5
+    )
+    status = "INVERTED" if inverse else "VALID" if valid else "INSUFFICIENT" if not sample_ready else "UNSTABLE"
+    return {
+        "status": status,
+        "operationalEntryAllowed": status == "VALID",
+        "paperResearchAllowed": status != "ERROR",
+        "researchSelectionPolicy": "EXPECTED_VALUE" if status == "VALID" else "EV_NEUTRAL_STRATIFIED",
+        "autoInverseApplied": False,
+        "cleanWindowStart": cutoff or None,
+        "rowSamples": len(row_pairs),
+        "distinctSignalDates": len(date_pairs),
+        "trainDateSamples": len(train_pairs),
+        "holdoutDateSamples": len(holdout_pairs),
+        "minimums": {"rows": 50, "dates": 8, "trainDates": 5, "holdoutDates": 3},
+        "rowCorrelation": round(row_correlation, 4) if row_correlation is not None else None,
+        "dateCorrelation": round(date_correlation, 4) if date_correlation is not None else None,
+        "trainDateCorrelation": round(train_correlation, 4) if train_correlation is not None else None,
+        "holdoutDateCorrelation": round(holdout_correlation, 4) if holdout_correlation is not None else None,
+        "lowEvQuartileAvgPnlPct": round(low_avg, 4) if low_avg is not None else None,
+        "highEvQuartileAvgPnlPct": round(high_avg, 4) if high_avg is not None else None,
+        "highMinusLowPnlPct": round(quartile_gap, 4) if quartile_gap is not None else None,
+    }
+
+
+def ev_calibration_gate(market: str = "all") -> dict[str, Any]:
+    """Canonical clean-window EV promotion gate used by operating authority."""
+    _ensure()
+    clean_start = _clean_window_start()
+    if not clean_start:
+        return {
+            "market": market,
+            "status": "ERROR",
+            "operationalEntryAllowed": False,
+            "paperResearchAllowed": False,
+            "researchSelectionPolicy": "EV_NEUTRAL_STRATIFIED",
+            "autoInverseApplied": False,
+            "reason": "CLEAN_WINDOW_MARKER_MISSING",
+        }
+    rows = _filter_rows(
+        _merge_evaluations(_read_journal_rows()),
+        market, "all", "all", "all", "all", "all",
+    )
+    evaluated = [
+        row for row in rows
+        if _upper(row.get("status")) in {"EVALUATED", "CANCELLED"}
+        and _safe_float(row.get("net_pnl_pct")) is not None
+        and _is_calibration_admissible(row)
+        and _has_consistent_realized_outcome(row)
+    ]
+    return {"market": market, **_ev_calibration_from_rows(evaluated, clean_window_start=clean_start)}
 
 def _solve_linear_system(matrix: list[list[float]], vector: list[float]) -> list[float] | None:
     n = len(vector)
@@ -5517,7 +5674,7 @@ def attribution_analysis(
             "byHorizon": [],
             "byEntryType": [],
             "bySourceType": [],
-            "evAccuracy": {"evPositive": {"n": 0}, "correlation": None, "correlationLabel": "데이터 부족", "evQuartileBuckets": []},
+            "evAccuracy": {"evPositive": {"n": 0}, "correlation": None, "correlationLabel": "데이터 부족", "evQuartileBuckets": [], "calibrationGate": ev_calibration_gate(market)},
         }
 
     return {
@@ -5535,7 +5692,7 @@ def attribution_analysis(
         "byHorizon": _factor_stats(evaluated, "horizon"),
         "byEntryType": _factor_stats(evaluated, "entry_type"),
         "bySourceType": _factor_stats(evaluated, "source_type"),
-        "evAccuracy": _ev_accuracy(evaluated),
+        "evAccuracy": {**_ev_accuracy(evaluated), "calibrationGate": ev_calibration_gate(market)},
         "regression": _ols_factor_attribution(evaluated),
     }
 

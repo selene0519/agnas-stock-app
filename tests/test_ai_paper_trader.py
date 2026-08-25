@@ -246,7 +246,7 @@ def test_run_cycle_uses_discovery_lane_without_relaxing_promotion_gate(monkeypat
     monkeypatch.setattr(
         trader,
         "_suggest_agent",
-        lambda market: {"selectedAgent": trader.AGENT_POOL[3], "regime": "BULL", "selectionScore": 10.0},
+        lambda market, selection_policy="EXPECTED_VALUE": {"selectedAgent": trader.AGENT_POOL[3], "regime": "BULL", "selectionScore": 10.0, "candidateSelectionPolicy": selection_policy},
     )
     monkeypatch.setattr(
         trader,
@@ -262,7 +262,7 @@ def test_run_cycle_uses_discovery_lane_without_relaxing_promotion_gate(monkeypat
 
     result = trader.run_cycle("kr", dry_run=True)
 
-    assert calls == [{"research_mode": True, "agent_override": trader.AGENT_POOL[3]}]
+    assert calls == [{"research_mode": True, "agent_override": trader.AGENT_POOL[3], "research_selection_policy": "EV_NEUTRAL_STRATIFIED"}]
     assert result["markets"]["kr"]["actions"][0]["action"] == "AGENT_SWITCH"
     assert result["markets"]["kr"]["actions"][1] == {"action": "BUY", "researchMode": True}
     assert result["markets"]["kr"]["operatingAuthority"]["entryAllowed"] is False
@@ -309,3 +309,81 @@ def test_regime_lens_is_rejected_when_report_regime_is_stale(monkeypatch, tmp_pa
     monkeypatch.setattr(trader, "_market_regime_snapshot", lambda market: {"regime": "BULL"})
 
     assert trader._collect_regime_lens_candidates_kr(trader.AGENT_POOL[0]) == []
+
+
+def test_trade_history_items_are_market_agent_scoped_and_numeric(monkeypatch) -> None:
+    monkeypatch.setattr(
+        trader,
+        "_trades_for",
+        lambda market, agent_id: [
+            {
+                "id": "new", "createdAt": "2026-08-25T10:00:00", "market": market,
+                "agentId": agent_id, "symbol": "aapl", "name": "Apple", "action": "buy",
+                "price": "100.25", "quantity": "0.5", "totalValue": "50.125",
+                "costAmount": "0.05", "memo": "test",
+            }
+        ],
+    )
+
+    rows = trader._trade_history_items("us", "test")
+
+    assert rows == [{
+        "id": "new", "createdAt": "2026-08-25T10:00:00", "market": "us",
+        "agentId": "test", "symbol": "AAPL", "name": "Apple", "action": "BUY",
+        "price": 100.25, "quantity": 0.5, "totalValue": 50.12,
+        "costAmount": 0.05, "memo": "test",
+    }]
+
+
+def test_status_filters_latest_nav_and_supervisor_by_requested_market(monkeypatch) -> None:
+    agent = _agent()
+    monkeypatch.setattr(trader, "AGENT_POOL", (agent,))
+    monkeypatch.setattr(trader, "_load_state", lambda: {"lastRun": {}, "selectionHistory": []})
+    monkeypatch.setattr(trader, "_market_list", lambda market: [market])
+    monkeypatch.setattr(trader, "_active_context", lambda market: {"agent": agent, "generation": 1})
+    monkeypatch.setattr(trader, "_summary_for_market", lambda market, agent_id: {"seed": 100, "portfolioValue": 100})
+    monkeypatch.setattr(trader, "_realized_performance_gate", lambda market, active: {"allowed": False})
+    monkeypatch.setattr(trader, "_collect_recommendations", lambda market, active=None: [])
+    monkeypatch.setattr(trader, "_suggest_agent", lambda market: {})
+    monkeypatch.setattr(trader, "_survival_state", lambda market, summary: {"state": "ALIVE"})
+    monkeypatch.setattr(trader, "_closed_trade_metrics", lambda market, agent_id: {})
+    monkeypatch.setattr(trader, "_live_nav_metrics", lambda market, agent_id, summary: {})
+    monkeypatch.setattr(trader, "_position_items", lambda market, agent_id: [])
+    monkeypatch.setattr(trader, "_trade_history_items", lambda market, agent_id: [])
+    monkeypatch.setattr(trader, "_walkforward_proof_board", lambda market, agent_id: {})
+    monkeypatch.setattr(trader, "_read_csv", lambda path: [{"market": "us"}, {"market": "kr"}] if path == trader.AI_NAV_CSV else [])
+    monkeypatch.setattr(trader, "_nav_rows_for", lambda market, agent_id: [{"market": market, "portfolioValue": "100"}])
+    monkeypatch.setattr(
+        trader,
+        "_read_json",
+        lambda path, default: {
+            "status": "OK", "market": "us",
+            "byMarket": {
+                "kr": {"status": "OK", "market": "kr", "lastRunAt": "kr-time"},
+                "us": {"status": "OK", "market": "us", "lastRunAt": "us-time"},
+            },
+        } if path == trader.AI_SUPERVISOR_STATUS_JSON else default,
+    )
+
+    result = trader.status("kr")
+
+    assert result["latestNav"]["market"] == "kr"
+    assert result["latestNavByMarket"]["kr"]["market"] == "kr"
+    assert result["supervisor"]["market"] == "kr"
+    assert result["supervisor"]["lastRunAt"] == "kr-time"
+
+def test_research_candidate_order_interleaves_ev_strata() -> None:
+    candidates = [
+        {"symbol": f"S{i:02d}", "expectedValue": float(i), "score": float(100 - i)}
+        for i in range(16)
+    ]
+
+    ordered = trader._research_candidate_order(candidates, as_of=date(2026, 8, 25))
+    first_four_ev = [row["expectedValue"] for row in ordered[:4]]
+
+    assert len(ordered) == len(candidates)
+    assert len({row["symbol"] for row in ordered}) == len(candidates)
+    assert any(ev < 4 for ev in first_four_ev)
+    assert any(4 <= ev < 8 for ev in first_four_ev)
+    assert any(8 <= ev < 12 for ev in first_four_ev)
+    assert any(ev >= 12 for ev in first_four_ev)

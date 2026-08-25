@@ -15,6 +15,7 @@ def _stub_dependencies(monkeypatch, *, allowed=True, journal_status="RUNNING", r
     monkeypatch.setattr(governor.portfolio_risk_budget, "risk_budget", lambda market, user_id="": {"status": risk_status, "policy": {"maxPortfolioLossPct": 6.0}})
     monkeypatch.setattr(governor.data_quality, "data_quality", lambda market, mode: {"status": "OK", "killSwitch": kill_switch})
     monkeypatch.setattr(governor.session, "get_price_session", lambda market: {"isReviewMode": review, "priceSession": f"{market}_closed" if review else f"{market}_intraday"})
+    monkeypatch.setattr(governor.virtual_trade_journal, "ev_calibration_gate", lambda market: {"status": "VALID", "operationalEntryAllowed": True, "paperResearchAllowed": True, "researchSelectionPolicy": "EXPECTED_VALUE"})
     monkeypatch.setattr(
         governor.quant_execution_plan,
         "execution_plan",
@@ -187,3 +188,47 @@ def test_governor_blocks_discovery_paper_on_closed_market(monkeypatch) -> None:
 
     assert result["paperResearchEntryAllowed"] is False
     assert "MARKET_CLOSED_REVIEW" in result["paperResearch"]["blockedReasons"]
+
+
+def test_governor_blocks_operational_entry_but_keeps_ev_neutral_research_when_inverted(monkeypatch) -> None:
+    _stub_dependencies(monkeypatch, allowed=True, candidates=2)
+    monkeypatch.setattr(
+        governor.virtual_trade_journal,
+        "ev_calibration_gate",
+        lambda market: {
+            "status": "INVERTED",
+            "operationalEntryAllowed": False,
+            "paperResearchAllowed": True,
+            "researchSelectionPolicy": "EV_NEUTRAL_STRATIFIED",
+        },
+    )
+
+    result = governor.operating_status("kr")["markets"]["kr"]
+
+    assert result["operatingState"] == "BLOCKED"
+    assert result["entryAllowed"] is False
+    assert result["paperResearchEntryAllowed"] is True
+    assert result["evCalibrationGate"]["researchSelectionPolicy"] == "EV_NEUTRAL_STRATIFIED"
+    assert "EV_CALIBRATION_INVERTED" in result["reasonCodes"]
+    assert result["evCalibrationGate"]["status"] == "INVERTED"
+
+def test_governor_abstains_when_ev_calibration_is_unstable_even_if_other_gates_pass(monkeypatch) -> None:
+    _stub_dependencies(monkeypatch, allowed=True, candidates=2)
+    monkeypatch.setattr(
+        governor.virtual_trade_journal,
+        "ev_calibration_gate",
+        lambda market: {
+            "status": "UNSTABLE",
+            "operationalEntryAllowed": False,
+            "paperResearchAllowed": True,
+            "researchSelectionPolicy": "EV_NEUTRAL_STRATIFIED",
+        },
+    )
+
+    result = governor.operating_status("kr")["markets"]["kr"]
+
+    assert result["operatingState"] == "ABSTAIN"
+    assert result["entryAllowed"] is False
+    assert result["paperEntryAllowed"] is False
+    assert result["paperResearchEntryAllowed"] is True
+    assert "EV_CALIBRATION_NOT_VALIDATED" in result["reasonCodes"]

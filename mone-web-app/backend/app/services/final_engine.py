@@ -25,6 +25,7 @@ from app.services import trendline_learning
 from app.services import event_context as _ec
 from app.services import adaptive_weights as _aw
 from app.services import low_atr_next_open_guard as _latr_guard
+from app.services import biotech_evidence as _bio
 
 MARKETS = ("kr", "us")
 MODES = ("conservative", "balanced", "aggressive")
@@ -1603,7 +1604,7 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
     if _pre is not None:
         _result = dict(_pre)
         _items = _result.get("items") or []
-        _result["items"] = _items[:requested_limit]
+        _result["items"] = _bio.decorate_items(_items[:requested_limit], market)
         _result["count"] = len(_result["items"])
         _result["servedFrom"] = "precompute"
         _RECO_CACHE[_cache_key] = _result
@@ -2000,7 +2001,7 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
         row["validatedSampleCount"] = int((_wf_full_cur or {}).get("sampleCount") or 0)
         rows.append(row)
     rows.sort(key=lambda r: (bool(r.get("recommended")), float(r.get("finalRankScore") or 0)), reverse=True)
-    selected = rows[:requested_limit]
+    selected = _bio.decorate_items(rows[:requested_limit], market)
 
     # ── 이름 보정: name == symbol(숫자) 인 경우 sector_map에서 실제 이름 조회 ──
     try:

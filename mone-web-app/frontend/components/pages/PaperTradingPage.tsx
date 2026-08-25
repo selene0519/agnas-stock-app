@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { mone, type Market } from "@/lib/api";
 import { ShadowCapitalGate } from "@/components/ShadowCapitalGate";
-import { TrendingUp, TrendingDown, RefreshCw, Plus, Minus, RotateCcw, History, BarChart3, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { RefreshCw, History, BarChart3, AlertTriangle, CheckCircle2 } from "lucide-react";
 
 type Position = {
   market: string;
@@ -16,6 +16,8 @@ type Position = {
   valuation: number;
   pnl: number;
   pnlPct: number;
+  stopPrice?: number | null;
+  targetPrice?: number | null;
 };
 
 type Trade = {
@@ -32,6 +34,7 @@ type Trade = {
 };
 
 type Summary = {
+  agentLabel?: string;
   seed: number;
   cash: number;
   invested: number;
@@ -44,7 +47,7 @@ type Summary = {
   tradeCount: number;
 };
 
-type TabId = "positions" | "history" | "trade";
+type TabId = "positions" | "history";
 
 function fmt(v: number, market: string) {
   if (!isFinite(v)) return "—";
@@ -141,220 +144,36 @@ function DrawdownBanner({ dd, market }: { dd: DrawdownInfo; market: string }) {
   );
 }
 
-function PositionCard({ p, market, onUpdated }: { p: Position; market: string; onUpdated: () => void }) {
-  const [editing, setEditing] = useState(false);
-  const [stopVal, setStopVal] = useState("");
-  const [targetVal, setTargetVal] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [stopInfo, setStopInfo] = useState<{ stopPrice?: number; targetPrice?: number } | null>(null);
-
-  useEffect(() => {
-    mone.paperStops({ market }).then((res: any) => {
-      const key = `${market}:${p.symbol}`;
-      const entry = res?.stops?.[key];
-      if (entry) {
-        setStopInfo(entry);
-        setStopVal(entry.stopPrice ? String(entry.stopPrice) : "");
-        setTargetVal(entry.targetPrice ? String(entry.targetPrice) : "");
-      }
-    }).catch(() => {});
-  }, [market, p.symbol]);
-
-  async function saveStops() {
-    setSaving(true);
-    const body: { stopPrice?: number; targetPrice?: number } = {};
-    const sp = parseFloat(stopVal);
-    const tp = parseFloat(targetVal);
-    if (isFinite(sp) && sp > 0) body.stopPrice = sp;
-    if (isFinite(tp) && tp > 0) body.targetPrice = tp;
-    try {
-      const res: any = await mone.paperStopUpdate(market, p.symbol, body);
-      if (res?.ok) {
-        setStopInfo(body);
-        setEditing(false);
-        onUpdated();
-      }
-    } finally {
-      setSaving(false);
-    }
-  }
-
+function PositionCard({ p, market }: { p: Position; market: string }) {
   const cur = p.currentPrice ?? p.avgPrice;
-  const stopDist = stopInfo?.stopPrice ? ((cur - stopInfo.stopPrice) / stopInfo.stopPrice * 100) : null;
-  const targetDist = stopInfo?.targetPrice ? ((stopInfo.targetPrice - cur) / cur * 100) : null;
+  const stopDist = p.stopPrice ? ((cur - p.stopPrice) / p.stopPrice * 100) : null;
+  const targetDist = p.targetPrice ? ((p.targetPrice - cur) / cur * 100) : null;
   const stopAlert = stopDist !== null && stopDist < 5;
   const targetAlert = targetDist !== null && targetDist < 5;
 
   return (
     <div className={`rounded-2xl border bg-slate-900/50 px-4 py-3 ${stopAlert ? "border-red-500/50" : targetAlert ? "border-emerald-500/40" : "border-slate-700/60"}`}>
       <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="text-sm font-bold text-slate-100">{p.name}</span>
             <span className="text-[11px] font-mono text-slate-400">{p.symbol}</span>
-            {stopAlert && <span className="rounded bg-red-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-red-400">스탑 {stopDist!.toFixed(1)}%</span>}
-            {targetAlert && !stopAlert && <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-400">목표 {targetDist!.toFixed(1)}%</span>}
+            {stopAlert && <span className="rounded bg-red-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-red-400">손절 근접 {stopDist!.toFixed(1)}%</span>}
+            {targetAlert && !stopAlert && <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-400">목표 근접 {targetDist!.toFixed(1)}%</span>}
           </div>
           <div className="mt-0.5 text-[11px] text-slate-400">
             {p.quantity}주 · 평균 {fmt(p.avgPrice, market)}
             {p.currentPrice && <span className="ml-2">현재 {fmt(p.currentPrice, market)}</span>}
           </div>
-          {/* 스탑/타겟 표시 */}
-          {!editing && (stopInfo?.stopPrice || stopInfo?.targetPrice) && (
+          {(p.stopPrice || p.targetPrice) && (
             <div className="mt-1 flex gap-3 text-[10px]">
-              {stopInfo.stopPrice && (
-                <span className="text-red-400">손절 {fmt(stopInfo.stopPrice, market)}{stopDist !== null ? ` (${stopDist.toFixed(1)}%)` : ""}</span>
-              )}
-              {stopInfo.targetPrice && (
-                <span className="text-emerald-400">목표 {fmt(stopInfo.targetPrice, market)}{targetDist !== null ? ` (+${targetDist.toFixed(1)}%)` : ""}</span>
-              )}
-            </div>
-          )}
-          {/* 인라인 편집 */}
-          {editing && (
-            <div className="mt-2 flex items-center gap-2">
-              <input
-                type="number" placeholder="손절가" value={stopVal}
-                onChange={(e) => setStopVal(e.target.value)}
-                className="w-28 rounded-lg border border-red-500/40 bg-slate-800 px-2 py-1 text-xs text-slate-100 placeholder-slate-600 focus:outline-none"
-              />
-              <input
-                type="number" placeholder="목표가" value={targetVal}
-                onChange={(e) => setTargetVal(e.target.value)}
-                className="w-28 rounded-lg border border-emerald-500/40 bg-slate-800 px-2 py-1 text-xs text-slate-100 placeholder-slate-600 focus:outline-none"
-              />
-              <button onClick={saveStops} disabled={saving} className="rounded-lg bg-slate-700 px-2 py-1 text-[11px] text-slate-200 hover:bg-slate-600 disabled:opacity-50">저장</button>
-              <button onClick={() => setEditing(false)} className="text-[11px] text-slate-400 hover:text-slate-300">취소</button>
+              {p.stopPrice && <span className="text-red-400">손절 {fmt(p.stopPrice, market)}</span>}
+              {p.targetPrice && <span className="text-emerald-400">목표 {fmt(p.targetPrice, market)}</span>}
             </div>
           )}
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <PnlBadge pct={p.pnlPct} abs={p.pnl} />
-          <button onClick={() => setEditing(!editing)} className="rounded-lg border border-slate-700 px-2 py-1 text-[10px] text-slate-400 hover:bg-slate-800 hover:text-slate-200">
-            {editing ? "접기" : "스탑"}
-          </button>
-        </div>
+        <PnlBadge pct={p.pnlPct} abs={p.pnl} />
       </div>
-    </div>
-  );
-}
-
-function TradeForm({
-  market,
-  action,
-  onDone,
-  initialValues,
-}: {
-  market: Market;
-  action: "buy" | "sell";
-  onDone: () => void;
-  initialValues?: { symbol?: string; name?: string; price?: string; quantity?: string };
-}) {
-  const [symbol, setSymbol] = useState(initialValues?.symbol ?? "");
-  const [name, setName] = useState(initialValues?.name ?? "");
-  const [quantity, setQuantity] = useState(initialValues?.quantity ?? "");
-  const [price, setPrice] = useState(initialValues?.price ?? "");
-  const [memo, setMemo] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
-
-  async function submit() {
-    if (!symbol || !quantity) return;
-    setLoading(true);
-    setResult(null);
-    try {
-      const qty = parseFloat(quantity);
-      const prc = price ? parseFloat(price) : undefined;
-      const res: any =
-        action === "buy"
-          ? await mone.paperBuy({ symbol: symbol.trim(), market, quantity: qty, price: prc, name: name.trim(), memo })
-          : await mone.paperSell({ symbol: symbol.trim(), market, quantity: qty, price: prc, memo });
-      setResult({ ok: res.ok === true, message: res.message || res.error || "완료" });
-      if (res.ok) {
-        setSymbol(""); setName(""); setQuantity(""); setPrice(""); setMemo("");
-        setTimeout(onDone, 800);
-      }
-    } catch {
-      setResult({ ok: false, message: "네트워크 오류" });
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  const isBuy = action === "buy";
-  const accentBg = isBuy ? "bg-emerald-600 hover:bg-emerald-500" : "bg-red-600 hover:bg-red-500";
-
-  return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-2">
-        <label className="space-y-1">
-          <span className="text-[10px] text-slate-400">종목 코드 *</span>
-          <input
-            value={symbol}
-            onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-            placeholder={market === "kr" ? "005930" : "AAPL"}
-            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:border-slate-500 focus:outline-none"
-          />
-        </label>
-        <label className="space-y-1">
-          <span className="text-[10px] text-slate-400">종목명 (선택)</span>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="삼성전자"
-            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:border-slate-500 focus:outline-none"
-          />
-        </label>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <label className="space-y-1">
-          <span className="text-[10px] text-slate-400">수량 *</span>
-          <input
-            type="number"
-            min="0.0001"
-            step="1"
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
-            placeholder="10"
-            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:border-slate-500 focus:outline-none"
-          />
-        </label>
-        <label className="space-y-1">
-          <span className="text-[10px] text-slate-400">체결가 (비워두면 현재가)</span>
-          <input
-            type="number"
-            min="0"
-            step="1"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            placeholder="자동"
-            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:border-slate-500 focus:outline-none"
-          />
-        </label>
-      </div>
-      <label className="block space-y-1">
-        <span className="text-[10px] text-slate-400">메모 (선택)</span>
-        <input
-          value={memo}
-          onChange={(e) => setMemo(e.target.value)}
-          placeholder="매수 이유 등 자유 기록"
-          className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:border-slate-500 focus:outline-none"
-        />
-      </label>
-      <button
-        onClick={submit}
-        disabled={loading || !symbol || !quantity}
-        className={`w-full rounded-xl py-2.5 text-sm font-bold text-white transition-colors disabled:opacity-40 ${accentBg}`}
-      >
-        {loading ? "처리 중..." : isBuy ? "가상 매수" : "가상 매도"}
-      </button>
-      {result && (
-        <div
-          className={`rounded-xl border px-3 py-2 text-xs ${result.ok ? "border-emerald-500/20 bg-emerald-950/10 text-emerald-300" : "border-red-500/20 bg-red-950/10 text-red-300"}`}
-        >
-          {result.message}
-        </div>
-      )}
     </div>
   );
 }
@@ -365,70 +184,67 @@ export default function PaperTradingPage({
   initialOrder?: { symbol: string; name: string; price: number; market: "kr" | "us"; quantity?: number };
 } = {}) {
   const [market, setMarket] = useState<Market>(initialOrder?.market ?? "kr");
-  const [tab, setTab] = useState<TabId>(initialOrder ? "trade" : "positions");
-  const [tradeAction, setTradeAction] = useState<"buy" | "sell">("buy");
+  const [tab, setTab] = useState<TabId>("positions");
   const [positions, setPositions] = useState<Position[]>([]);
   const [history, setHistory] = useState<Trade[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
-  const [cash, setCash] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
-  const [resetConfirm, setResetConfirm] = useState(false);
-  const [seedInput, setSeedInput] = useState<string>("");
-  const [showSeedInput, setShowSeedInput] = useState(false);
+  const [error, setError] = useState("");
   const [drawdown, setDrawdown] = useState<DrawdownInfo | null>(null);
+  const [accountMeta, setAccountMeta] = useState({
+    agentLabel: "",
+    proofStatus: "WARMING_UP",
+    lastNavDate: "",
+    closedTradeCount: 0,
+  });
 
   async function loadAll() {
     setLoading(true);
+    setError("");
     try {
-      const [posRes, histRes, sumRes, ddRes] = await Promise.all([
-        mone.paperPositions({ market }) as Promise<any>,
-        mone.paperHistory({ market, limit: 50 }) as Promise<any>,
-        mone.paperSummary({ market }) as Promise<any>,
-        mone.paperDrawdown({ market }) as Promise<any>,
-      ]);
-      setPositions((posRes?.items || []) as Position[]);
-      setCash((posRes?.cash || {}) as Record<string, number>);
-      setHistory((histRes?.items || []) as Trade[]);
-      const mktSummary = sumRes?.markets?.[market] as Summary | undefined;
-      setSummary(mktSummary || null);
-      const ddMkt = ddRes?.markets?.[market] as DrawdownInfo | undefined;
-      setDrawdown(ddMkt || null);
+      const response: any = await mone.aiPaperStatus({ market });
+      const account = response?.markets?.[market];
+      if (!account) throw new Error("AI Paper account missing");
+      const accountSummary = account.summary as Summary;
+      const metrics = account.liveMetrics || {};
+      setPositions((account.positions || []) as Position[]);
+      setHistory((account.tradeHistory || []) as Trade[]);
+      setSummary(accountSummary || null);
+      const mdd = Math.abs(Number(metrics.mddPct || 0));
+      setDrawdown({
+        drawdownPct: mdd,
+        peakValue: Number(metrics.peakValue || accountSummary?.seed || 0),
+        portfolioValue: Number(metrics.currentValue || accountSummary?.portfolioValue || 0),
+        alertLevel: mdd >= 10 ? "RED" : mdd >= 5 ? "YELLOW" : "GREEN",
+      });
+      setAccountMeta({
+        agentLabel: String(account.activeAgent?.label || accountSummary?.agentLabel || ""),
+        proofStatus: String(metrics.proofStatus || "WARMING_UP"),
+        lastNavDate: String(metrics.lastNavDate || ""),
+        closedTradeCount: Number(account.realizedTrades?.closedTradeCount || 0),
+      });
     } catch {
-      /* ignore */
+      setPositions([]);
+      setHistory([]);
+      setSummary(null);
+      setDrawdown(null);
+      setError("AI 검증계좌 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleReset() {
-    if (!resetConfirm) { setResetConfirm(true); setShowSeedInput(true); return; }
-    const seedVal = parseFloat(seedInput);
-    const opts = market === "kr"
-      ? { seedKr: isFinite(seedVal) && seedVal > 0 ? seedVal : undefined }
-      : { seedUs: isFinite(seedVal) && seedVal > 0 ? seedVal : undefined };
-    await mone.paperReset(market, opts);
-    setResetConfirm(false);
-    setShowSeedInput(false);
-    setSeedInput("");
-    loadAll();
-  }
-
   useEffect(() => {
-    loadAll();
-    setResetConfirm(false);
-    setShowSeedInput(false);
-    setSeedInput("");
+    setTab("positions");
+    void loadAll();
   }, [market]);
-
-  const cashVal = cash[market] ?? 0;
 
   return (
     <div className="space-y-5 animate-fade-in">
-      {/* 헤더 */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-[var(--text-primary)]">Paper 검증 계좌</h1>
-          <p className="mt-1 text-xs text-slate-400">실제 주문 없이 추천 규칙을 가상 체결하고 손익·낙폭을 검증합니다.</p>
+          <h1 className="text-xl font-bold text-[var(--text-primary)]">AI Paper 검증 계좌</h1>
+          <p className="mt-1 text-xs text-slate-400">실제 주문 없이 AI 추천을 동일 원장에 가상 체결해 손익·낙폭을 검증합니다.</p>
         </div>
         <div className="flex items-center gap-2">
           {(["kr", "us"] as Market[]).map((mk) => (
@@ -445,28 +261,44 @@ export default function PaperTradingPage({
             disabled={loading}
             type="button"
             title="새로고침"
-            aria-label="모의투자 데이터 새로고침"
-            className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-lg border border-slate-700 px-2 py-1.5 text-[11px] text-slate-400 hover:bg-slate-800 disabled:opacity-50"
+            aria-label="AI 가상투자 데이터 새로고침"
+            className="flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-slate-700 px-2 py-1.5 text-slate-400 hover:bg-slate-800 disabled:opacity-50"
           >
-            <RefreshCw size={11} aria-hidden="true" className={loading ? "animate-spin" : ""} />
+            <RefreshCw size={14} aria-hidden="true" className={loading ? "animate-spin" : ""} />
           </button>
         </div>
       </div>
 
       <ShadowCapitalGate market={market} />
 
-      {/* 요약 */}
-      {summary && <SummaryBar summary={summary} market={market} />}
+      {initialOrder && (
+        <div className="rounded-xl border border-teal-500/25 bg-teal-500/10 px-3 py-2 text-xs text-teal-200">
+          {initialOrder.name || initialOrder.symbol} 후보는 수동으로 성과 원장에 섞지 않고 다음 AI Paper 주기에서 동일한 검증 게이트를 통과할 때만 반영됩니다.
+        </div>
+      )}
 
-      {/* 드로다운 모니터 */}
+      {error && (
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</div>
+      )}
+
+      {summary && (
+        <>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-slate-700/50 bg-slate-900/40 px-3 py-2 text-[11px] text-slate-400">
+            <span className="font-semibold text-slate-200">{accountMeta.agentLabel}</span>
+            <span>검증 {accountMeta.proofStatus}</span>
+            <span>청산 {accountMeta.closedTradeCount}건</span>
+            <span>최근 NAV {accountMeta.lastNavDate || "준비 중"}</span>
+          </div>
+          <SummaryBar summary={summary} market={market} />
+        </>
+      )}
+
       {drawdown && <DrawdownBanner dd={drawdown} market={market} />}
 
-      {/* 탭 */}
       <div className="flex w-fit gap-1 rounded-lg bg-slate-800/50 p-1">
         {([
-          { id: "positions" as TabId, label: "가상 포지션", icon: <BarChart3 size={12} /> },
-          { id: "history" as TabId, label: "가상 체결", icon: <History size={12} /> },
-          { id: "trade" as TabId, label: "Paper 입력", icon: <Plus size={12} /> },
+          { id: "positions" as TabId, label: "AI 포지션", icon: <BarChart3 size={12} /> },
+          { id: "history" as TabId, label: "AI 체결", icon: <History size={12} /> },
         ]).map(({ id, label, icon }) => (
           <button
             key={id}
@@ -478,144 +310,42 @@ export default function PaperTradingPage({
         ))}
       </div>
 
-      {/* 포지션 탭 */}
       {tab === "positions" && (
         <div className="space-y-2">
           {positions.length === 0 ? (
             <div className="rounded-xl border border-slate-700 bg-slate-900/50 px-4 py-8 text-center">
-              <div className="text-sm font-semibold text-slate-200">보유 포지션이 없습니다</div>
-              <p className="mt-1 text-xs leading-5 text-slate-400">
-                추천 후보를 Paper 계좌에 기록해 손익과 위험을 검증해 보세요.
-              </p>
-              <button
-                type="button"
-                onClick={() => setTab("trade")}
-                className="mt-4 inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-teal-500 px-3.5 text-xs font-bold text-slate-950 transition-colors hover:bg-teal-400"
-              >
-                <Plus size={14} />
-                가상 매수 시작
-              </button>
+              <div className="text-sm font-semibold text-slate-200">현재 AI 보유 포지션이 없습니다</div>
+              <p className="mt-1 text-xs leading-5 text-slate-400">추천이 비용차감 기대값·독립검증·위험예산 게이트를 통과할 때만 자동으로 가상 기록됩니다.</p>
             </div>
-          ) : (
-            positions.map((p) => (
-              <PositionCard key={p.symbol} p={p} market={market} onUpdated={loadAll} />
-            ))
-          )}
+          ) : positions.map((position) => (
+            <PositionCard key={`${position.market}:${position.symbol}`} p={position} market={market} />
+          ))}
         </div>
       )}
 
-      {/* 체결 내역 탭 */}
       {tab === "history" && (
         <div className="space-y-2">
           {history.length === 0 ? (
-            <div className="rounded-xl border border-slate-700 bg-slate-900/50 px-4 py-8 text-center text-sm text-slate-400">
-              체결 내역 없음
-            </div>
-          ) : (
-            history.map((t) => (
-              <div
-                key={t.id}
-                className="flex items-center justify-between rounded-xl border border-slate-700/40 bg-slate-800/30 px-3 py-2.5"
-              >
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`rounded border px-1.5 py-0.5 text-[10px] font-bold ${t.action === "BUY" ? "border-emerald-500/30 text-emerald-400" : "border-red-500/30 text-red-400"}`}
-                  >
-                    {t.action === "BUY" ? "가상 매수" : "가상 매도"}
-                  </span>
-                  <div>
-                    <span className="text-xs font-semibold text-slate-200">{t.name}</span>
-                    <span className="ml-1.5 text-[10px] text-slate-400">{t.symbol}</span>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-xs font-mono text-slate-200">
-                    {t.quantity}주 × {Math.round(Number(t.price)).toLocaleString("ko-KR")}
-                  </div>
-                  <div className="text-[10px] text-slate-400">
-                    {String(t.createdAt).slice(0, 16)} {t.memo && `· ${t.memo}`}
-                  </div>
+            <div className="rounded-xl border border-slate-700 bg-slate-900/50 px-4 py-8 text-center text-sm text-slate-400">AI 체결 내역 없음</div>
+          ) : history.map((trade) => (
+            <div key={trade.id} className="flex items-center justify-between rounded-xl border border-slate-700/40 bg-slate-800/30 px-3 py-2.5">
+              <div className="flex items-center gap-2">
+                <span className={`rounded border px-1.5 py-0.5 text-[10px] font-bold ${trade.action === "BUY" ? "border-emerald-500/30 text-emerald-400" : "border-red-500/30 text-red-400"}`}>
+                  {trade.action === "BUY" ? "가상 매수" : "가상 매도"}
+                </span>
+                <div>
+                  <span className="text-xs font-semibold text-slate-200">{trade.name}</span>
+                  <span className="ml-1.5 text-[10px] text-slate-400">{trade.symbol}</span>
                 </div>
               </div>
-            ))
-          )}
+              <div className="text-right">
+                <div className="text-xs font-mono text-slate-200">{trade.quantity}주 × {fmt(Number(trade.price), market)}</div>
+                <div className="text-[10px] text-slate-400">{String(trade.createdAt).slice(0, 16)}{trade.memo && ` · ${trade.memo}`}</div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
-
-      {/* 주문 탭 */}
-      {tab === "trade" && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between rounded-xl border border-slate-700/40 bg-slate-800/30 px-3 py-2">
-            <span className="text-xs text-slate-400">
-              {market === "kr" ? "현금 잔고" : "Cash"}
-            </span>
-            <span className="font-mono text-sm font-bold text-slate-200">
-              {fmt(cashVal, market)}
-            </span>
-          </div>
-
-          <div className="flex gap-2">
-            {(["buy", "sell"] as const).map((a) => (
-              <button
-                key={a}
-                onClick={() => setTradeAction(a)}
-                className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-bold transition-colors ${tradeAction === a
-                  ? a === "buy"
-                    ? "bg-emerald-600 text-slate-950"
-                    : "bg-red-600 text-white"
-                  : "bg-slate-800/60 text-slate-400 hover:text-white"
-                }`}
-              >
-                {a === "buy" ? <Plus size={13} /> : <Minus size={13} />}
-                {a === "buy" ? "가상 매수" : "가상 매도"}
-              </button>
-            ))}
-          </div>
-
-          <TradeForm
-            key={initialOrder ? `${initialOrder.symbol}-${initialOrder.market}` : "manual"}
-            market={market}
-            action={tradeAction}
-            onDone={loadAll}
-            initialValues={initialOrder ? {
-              symbol: initialOrder.symbol,
-              name: initialOrder.name,
-              price: initialOrder.price > 0 ? String(Math.round(initialOrder.price)) : "",
-              quantity: initialOrder.quantity && initialOrder.quantity > 0 ? String(initialOrder.quantity) : "",
-            } : undefined}
-          />
-        </div>
-      )}
-
-      {/* 초기화 */}
-      <div className="flex flex-col items-end gap-2 pt-2">
-        {showSeedInput && (
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] text-slate-400">새 시드 금액</span>
-            <input
-              type="number"
-              min="1"
-              value={seedInput}
-              onChange={(e) => setSeedInput(e.target.value)}
-              placeholder={market === "kr" ? "5000000" : "5000"}
-              className="min-h-11 w-36 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs text-slate-100 placeholder-slate-600 focus:border-slate-500 focus:outline-none"
-            />
-            <button
-              onClick={() => { setShowSeedInput(false); setResetConfirm(false); setSeedInput(""); }}
-              className="text-[11px] text-slate-400 hover:text-slate-200"
-            >
-              취소
-            </button>
-          </div>
-        )}
-        <button
-          onClick={handleReset}
-          className="flex min-h-11 items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-1.5 text-[11px] text-slate-400 hover:border-red-500/40 hover:text-red-400"
-        >
-          <RotateCcw size={11} />
-          {resetConfirm ? "정말 초기화하시겠습니까? (한 번 더 클릭)" : `${market.toUpperCase()} 페이퍼 초기화`}
-        </button>
-      </div>
     </div>
   );
 }

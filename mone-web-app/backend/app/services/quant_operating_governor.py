@@ -34,6 +34,8 @@ def _decision_reason(code: str) -> str:
         "QUANT_EVIDENCE_INTEGRITY_NOT_READY": "Quant V2 evidence reports are missing, stale, or invalid.",
         "OPERATING_AUTHORITY_UNAVAILABLE": "Operating authority unavailable; new entries fail closed.",
         "QUANT_EXECUTION_PLAN_INVALID": "Candidate-level execution lineage or risk allocation is not valid.",
+        "EV_CALIBRATION_INVERTED": "Expected-value ranking is inverse on clean chronological evidence; new entries are blocked.",
+        "EV_CALIBRATION_NOT_VALIDATED": "Expected-value ranking has not passed clean chronological validation.",
     }
     if code in english_labels:
         return english_labels[code]
@@ -128,6 +130,18 @@ def _govern_market(market: str, user_id: str = "", shadow: dict[str, Any] | None
 
     data_ready = not bool(quality.get("killSwitch"))
     is_review_session = bool(price_session.get("isReviewMode"))
+    try:
+        ev_gate = virtual_trade_journal.ev_calibration_gate(market)
+    except Exception as exc:
+        ev_gate = {
+            "status": "ERROR",
+            "operationalEntryAllowed": False,
+            "paperResearchAllowed": False,
+            "researchSelectionPolicy": "EV_NEUTRAL_STRATIFIED",
+            "error": repr(exc),
+        }
+    ev_ready = bool(ev_gate.get("operationalEntryAllowed"))
+    ev_research_ready = bool(ev_gate.get("paperResearchAllowed"))
 
     # The full journal operations board includes calibration analytics over a
     # large ledger. When independent evidence already prohibits entry, defer
@@ -179,15 +193,17 @@ def _govern_market(market: str, user_id: str = "", shadow: dict[str, Any] | None
         reasons.append("QUANT_SHADOW_NOT_APPROVED")
     if not execution_ready:
         reasons.append("QUANT_EXECUTION_PLAN_INVALID")
+    if not ev_ready:
+        reasons.append("EV_CALIBRATION_INVERTED" if ev_gate.get("status") == "INVERTED" else "EV_CALIBRATION_NOT_VALIDATED")
 
     raw_candidate_count = int(paper_status.get("rawCandidateCount") or paper_status.get("activeRawCandidateCount") or paper_status.get("candidateCount") or 0)
     candidate_count = len(execution_plan.get("positions") or []) if execution_ready and raw_candidate_count > 0 else 0
     if not reasons and candidate_count <= 0:
         reasons.append("NO_ELIGIBLE_CANDIDATE")
 
-    if not journal_ready or not risk_ready or not data_ready or not shadow_integrity_ready or not execution_ready:
+    if not journal_ready or not risk_ready or not data_ready or not shadow_integrity_ready or not execution_ready or ev_gate.get("status") in {"INVERTED", "ERROR"}:
         operating_state = "BLOCKED"
-    elif not proof_ready or not shadow_signal_ready or candidate_count <= 0:
+    elif not proof_ready or not shadow_signal_ready or not ev_ready or candidate_count <= 0:
         operating_state = "ABSTAIN"
     elif is_review_session:
         operating_state = "WATCH"
@@ -203,6 +219,7 @@ def _govern_market(market: str, user_id: str = "", shadow: dict[str, Any] | None
     ]
     checks.append({"id": "quantShadow", "label": "Quant V2 evidence", "passed": shadow_signal_ready, "detail": shadow.get("decision")})
     checks.append({"id": "executionPlan", "label": "Candidate execution lineage", "passed": execution_ready, "detail": execution_plan.get("status")})
+    checks.append({"id": "evCalibration", "label": "EV clean-window chronology", "passed": ev_ready, "detail": ev_gate.get("status")})
     recommendation_actionable = operating_state == "RECOMMENDATION_READY"
     # Discovery paper capital exists to generate forward evidence. It remains
     # strictly separate from recommendation/live promotion authority and only
@@ -212,6 +229,7 @@ def _govern_market(market: str, user_id: str = "", shadow: dict[str, Any] | None
         and data_ready
         and raw_candidate_count > 0
         and not is_review_session
+        and ev_research_ready
     )
     scope = product_scope.product_scope()
     return {
@@ -236,12 +254,14 @@ def _govern_market(market: str, user_id: str = "", shadow: dict[str, Any] | None
                 ([] if data_ready else ["DATA_QUALITY_KILL_SWITCH"])
                 + ([] if raw_candidate_count > 0 else ["NO_ELIGIBLE_CANDIDATE"])
                 + (["MARKET_CLOSED_REVIEW"] if is_review_session else [])
+                + ([] if ev_research_ready else ["EV_CALIBRATION_INVERTED"])
             )),
         },
         "reasonCodes": list(dict.fromkeys(reasons)),
         "reasons": [_decision_reason(code) for code in dict.fromkeys(reasons)],
         "checks": checks,
         "performanceGate": performance_gate,
+        "evCalibrationGate": ev_gate,
         "proofBoard": paper_status.get("proofBoard") or {},
         "journal": {
             "status": operational_journal.get("status"),

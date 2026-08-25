@@ -227,6 +227,14 @@ def collect_news_and_disclosures(market: str = "kr") -> dict:
     return result
 
 
+def collect_biotech_official_evidence() -> dict:
+    """Refresh research-only ClinicalTrials.gov/PubMed evidence cache."""
+    try:
+        from app.services import biotech_evidence
+        return biotech_evidence.collect(max_symbols=12)
+    except Exception as exc:
+        return {"status": "ERROR", "reason": str(exc)}
+
 def evaluate_virtual_ledger() -> dict:
     """가상 매매 검증 원장(virtual_validation_results.csv) 재평가 — 기존에는
     누군가 /api/virtual/validation 화면을 열어야만 평가가 실행돼, 페이지를
@@ -610,6 +618,11 @@ def main() -> None:
             log(f"  결과: {news_result}")
             status["steps"][f"news_disclosures_{mkt}"] = news_result
 
+    if not args.no_news:
+        log("Step 3b: ClinicalTrials/PubMed 바이오 근거 수집...")
+        biotech_result = collect_biotech_official_evidence()
+        log(f"  결과: {biotech_result.get('status')}")
+        status["steps"]["biotech_evidence"] = biotech_result
     # Step 4: 가상 매매 검증 원장 재평가 (화면을 열지 않아도 검증일이 지난
     # PENDING 건을 주기적으로 해소)
     log("Step 4: 가상 매매 검증 재평가...")

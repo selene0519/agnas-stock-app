@@ -22,6 +22,16 @@ JOURNAL_PATH = ROOT / "data" / "virtual_trade_journal.csv"
 SUPERVISOR_STATUS_PATH = ROOT / "data" / "paper" / "ai_paper_supervisor_status.json"
 
 
+def _read_json_file(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        return payload if isinstance(payload, dict) else {}
+    except Exception:
+        return {}
+
+
 def _read_csv(path: Path) -> tuple[list[dict[str, str]], list[str]]:
     if not path.exists() or path.stat().st_size == 0:
         return [], []
@@ -116,6 +126,22 @@ def run_supervisor(market: str = "all", execute: bool = False) -> dict[str, Any]
         },
         "paper": paper,
     }
+    previous = _read_json_file(SUPERVISOR_STATUS_PATH)
+    by_market = previous.get("byMarket") if isinstance(previous.get("byMarket"), dict) else {}
+    for market_name, market_result in (paper.get("markets") or {}).items():
+        normalized_market = str(market_name).lower()
+        if normalized_market not in {"kr", "us"} or not isinstance(market_result, dict):
+            continue
+        market_payload = dict(payload)
+        market_payload["market"] = normalized_market
+        market_payload["paper"] = {
+            **paper,
+            "market": normalized_market,
+            "markets": {normalized_market: market_result},
+        }
+        market_payload.pop("byMarket", None)
+        by_market[normalized_market] = market_payload
+    payload["byMarket"] = by_market
     SUPERVISOR_STATUS_PATH.parent.mkdir(parents=True, exist_ok=True)
     SUPERVISOR_STATUS_PATH.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     return payload

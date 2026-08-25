@@ -2204,3 +2204,74 @@ def test_no_candidates_auto_capture_remains_retryable(
     assert second["runs"][0]["status"] != "SKIPPED_DUPLICATE"
     assert second["runs"][0]["added"] > 0
     assert run_key in second["completedKeys"]
+
+
+def test_journal_mdd_uses_bounded_fixed_notional_equity() -> None:
+    values, drawdowns, mdd = vtj._fixed_notional_equity_curve([100.0, -75.0, -75.0])
+
+    assert values == [200.0, 125.0, 50.0]
+    assert drawdowns == [0.0, 37.5, 75.0]
+    assert mdd == 75.0
+    assert vtj._max_drawdown([-250.0, -10.0]) == 100.0
+
+
+def test_performance_dashboard_reports_bounded_mdd_and_fixed_notional_return(monkeypatch, isolated_vtj: Path) -> None:
+    rows = [
+        {
+            "market": "us", "mode": "balanced", "horizon": "swing",
+            "source_type": "FORWARD_PAPER_TRADE", "status": "EVALUATED",
+            "outcome": "TARGET_HIT", "net_pnl_pct": "100", "as_of_date": "2026-01-01",
+        },
+        {
+            "market": "us", "mode": "balanced", "horizon": "swing",
+            "source_type": "FORWARD_PAPER_TRADE", "status": "EVALUATED",
+            "outcome": "STOP", "net_pnl_pct": "-75", "as_of_date": "2026-01-02",
+        },
+        {
+            "market": "us", "mode": "balanced", "horizon": "swing",
+            "source_type": "FORWARD_PAPER_TRADE", "status": "EVALUATED",
+            "outcome": "STOP", "net_pnl_pct": "-75", "as_of_date": "2026-01-03",
+        },
+    ]
+    monkeypatch.setattr(vtj, "_read_journal_rows", lambda: rows)
+    monkeypatch.setattr(vtj, "_merge_evaluations", lambda source: source)
+
+    out = vtj.performance_by_strategy(market="us")
+
+    assert out["summary"]["fixedNotionalReturnPct"] == -50.0
+    assert out["summary"]["maxDrawdownPct"] == 75.0
+    assert out["summary"]["mddMethod"] == "fixed_notional_equity_100_bounded"
+    assert out["equityCurve"][-1]["equityValue"] == 50.0
+    assert out["equityCurve"][-1]["drawdownPct"] == 75.0
+
+def _ev_gate_rows(direction: float) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    for day in range(10):
+        for offset in range(6):
+            ev = float(day * 2 + offset / 10)
+            rows.append({
+                "decision_unit_id": f"ev-{direction}-{day}-{offset}",
+                "as_of_date": f"2026-07-{10 + day:02d}",
+                "expected_value": ev,
+                "net_pnl_pct": direction * ev,
+            })
+    return rows
+
+
+def test_ev_calibration_gate_detects_inverse_signal_in_later_holdout() -> None:
+    gate = vtj._ev_calibration_from_rows(_ev_gate_rows(-1.0), clean_window_start="2026-07-10")
+
+    assert gate["status"] == "INVERTED"
+    assert gate["operationalEntryAllowed"] is False
+    assert gate["paperResearchAllowed"] is True
+    assert gate["autoInverseApplied"] is False
+    assert gate["trainDateCorrelation"] < 0
+    assert gate["holdoutDateCorrelation"] < 0
+
+
+def test_ev_calibration_gate_requires_positive_train_and_holdout_before_promotion() -> None:
+    gate = vtj._ev_calibration_from_rows(_ev_gate_rows(1.0), clean_window_start="2026-07-10")
+
+    assert gate["status"] == "VALID"
+    assert gate["operationalEntryAllowed"] is True
+    assert gate["researchSelectionPolicy"] == "EXPECTED_VALUE"
