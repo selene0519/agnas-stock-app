@@ -2214,6 +2214,11 @@ def test_journal_mdd_uses_bounded_fixed_notional_equity() -> None:
     assert mdd == 75.0
     assert vtj._max_drawdown([-250.0, -10.0]) == 100.0
 
+    bankrupt_values, bankrupt_drawdowns, bankrupt_mdd = vtj._fixed_notional_equity_curve([-250.0, 500.0])
+    assert bankrupt_values == [0.0, 0.0]
+    assert bankrupt_drawdowns == [100.0, 100.0]
+    assert bankrupt_mdd == 100.0
+
 
 def test_performance_dashboard_reports_bounded_mdd_and_fixed_notional_return(monkeypatch, isolated_vtj: Path) -> None:
     rows = [
@@ -2240,7 +2245,7 @@ def test_performance_dashboard_reports_bounded_mdd_and_fixed_notional_return(mon
 
     assert out["summary"]["fixedNotionalReturnPct"] == -50.0
     assert out["summary"]["maxDrawdownPct"] == 75.0
-    assert out["summary"]["mddMethod"] == "fixed_notional_equity_100_bounded"
+    assert out["summary"]["mddMethod"] == "fixed_notional_equity_100_absorbing_floor_bounded"
     assert out["equityCurve"][-1]["equityValue"] == 50.0
     assert out["equityCurve"][-1]["drawdownPct"] == 75.0
 

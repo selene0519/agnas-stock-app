@@ -5105,8 +5105,9 @@ def _fixed_notional_equity_curve(
     """Bounded fixed-notional equity and drawdown series.
 
     Each trade contributes its net return as percentage points to a 100-unit
-    research account. Equity is floored at zero, so portfolio drawdown cannot
-    exceed 100%. This is not a claim that overlapping trades were fully funded.
+    research account. Zero is an absorbing bankruptcy boundary: once depleted,
+    later trades cannot resurrect unfunded capital. Drawdown is therefore bounded
+    at 100%. This is not a claim that overlapping trades were fully funded.
     """
     if not pnls:
         return [], [], None
@@ -5116,7 +5117,7 @@ def _fixed_notional_equity_curve(
     drawdowns: list[float] = []
     max_drawdown = 0.0
     for pnl in pnls:
-        equity = max(0.0, equity + float(pnl))
+        equity = 0.0 if equity <= 0.0 else max(0.0, equity + float(pnl))
         peak = max(peak, equity)
         drawdown = ((peak - equity) / peak * 100.0) if peak > 0 else 0.0
         max_drawdown = max(max_drawdown, drawdown)
@@ -5232,7 +5233,7 @@ def performance_by_strategy(
         "fixedNotionalReturnPct": round(equity_values[-1] - 100.0, 4) if equity_values else None,
         "sharpe": _sharpe(all_pnls),
         "maxDrawdownPct": round(max_dd, 4) if max_dd is not None else None,
-        "mddMethod": "fixed_notional_equity_100_bounded",
+        "mddMethod": "fixed_notional_equity_100_absorbing_floor_bounded",
     }
 
     return {
