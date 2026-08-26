@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-26T07:16:05.541593+00:00",
+  "generatedAt": "2026-08-26T08:17:45.267126+00:00",
   "asOfDate": "2026-08-26",
   "market": "kr",
   "marketRegime": "BEAR",
@@ -7,7 +7,7 @@
   "featureCount": 14,
   "provenEdge": {
     "split": "2025-09-01",
-    "oosTrades": 24731,
+    "oosTrades": 24733,
     "topQuintileNetPct": -0.555,
     "bottomQuintileNetPct": 0.015,
     "spreadPct": -0.57,
@@ -15,7 +15,7 @@
     "topQuintileByRegime": {
       "BULL": -0.989,
       "SIDE": 0.457,
-      "BEAR": 0.685
+      "BEAR": 0.686
     }
   },
   "featureWeights": {
@@ -36,7 +36,7 @@
   },
   "note": "다중신호 ML 순위(선별 두뇌). OOS 검증 통과. 약세장은 상위픽도 (−)라 caution. 가격신호만 사용 — 수급/뉴스/섹터/공시 추가 시 개선 여지.",
   "actionableCount": 0,
-  "candidateCount": 100,
+  "candidateCount": 102,
   "candidates": [
     {
       "symbol": "011070",
@@ -80,7 +80,7 @@
     {
       "symbol": "009150",
       "name": "삼성전기",
-      "modelScore": 0.335,
+      "modelScore": 0.336,
       "close": 1330000.0,
       "rsi14": 48.4,
       "entryRef": 1330000.0,
@@ -145,7 +145,7 @@
     {
       "symbol": "067310",
       "name": "하나마이크론",
-      "modelScore": 0.207,
+      "modelScore": 0.208,
       "close": 36850.0,
       "rsi14": 62.2,
       "entryRef": 36850.0,
@@ -195,6 +195,19 @@
       "actionable": false
     },
     {
+      "symbol": "039030",
+      "name": "이오테크닉스",
+      "modelScore": 0.129,
+      "close": 400500.0,
+      "rsi14": 71.9,
+      "entryRef": 400500.0,
+      "stop": 384480,
+      "target": 432540,
+      "supplySignal": "기관+외국인 순매수",
+      "rankBucket": "TOP20",
+      "actionable": false
+    },
+    {
       "symbol": "403870",
       "name": "HPSP",
       "modelScore": 0.128,
@@ -208,15 +221,15 @@
       "actionable": false
     },
     {
-      "symbol": "039030",
-      "name": "이오테크닉스",
-      "modelScore": 0.128,
-      "close": 400500.0,
-      "rsi14": 71.9,
-      "entryRef": 400500.0,
-      "stop": 384480,
-      "target": 432540,
-      "supplySignal": "기관+외국인 순매수",
+      "symbol": "090360",
+      "name": "로보스타",
+      "modelScore": 0.125,
+      "close": 78600.0,
+      "rsi14": 52.9,
+      "entryRef": 78600.0,
+      "stop": 75456,
+      "target": 84888,
+      "supplySignal": "외국인 순매수",
       "rankBucket": "TOP20",
       "actionable": false
     },
@@ -230,19 +243,6 @@
       "stop": 391680,
       "target": 440640,
       "supplySignal": "기관+외국인 순매도",
-      "rankBucket": "TOP20",
-      "actionable": false
-    },
-    {
-      "symbol": "090360",
-      "name": "로보스타",
-      "modelScore": 0.124,
-      "close": 78600.0,
-      "rsi14": 52.9,
-      "entryRef": 78600.0,
-      "stop": 75456,
-      "target": 84888,
-      "supplySignal": "외국인 순매수",
       "rankBucket": "TOP20",
       "actionable": false
     },
