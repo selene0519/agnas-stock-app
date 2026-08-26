@@ -4,24 +4,11 @@
   "asOf": "2026-08-25",
   "status": "OK",
   "usBackdropFavorable": true,
-  "scanned": 100,
+  "scanned": 0,
   "validatedEdge": {
     "note": "leader breakout only holds up on SPY>MA50; deep 2014-2026 train+OOS forward-return, not cost/trade-sim"
   },
-  "candidates": [
-    {
-      "symbol": "278470",
-      "asOf": "2026-08-25",
-      "entry": 440500.0,
-      "stop": 367500.0,
-      "target": 586500.0,
-      "rrRatio": 2.0,
-      "ret60Pct": 9.99,
-      "posRange250": 0.925,
-      "volRatio50": 1.61,
-      "setup": "LEADER_BREAKOUT"
-    }
-  ],
+  "candidates": [],
   "heldForUnfavorableBackdrop": [],
   "note": "Research/paper only. Feed the paper loop for live proof before promotion."
 }
