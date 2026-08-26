@@ -112,6 +112,21 @@ export interface RecommendationItem {
   surgeReason?: string;
   eventContext?: string;
   dataSourceType?: string;
+  biotechEvidence?: Record<string, any>;
+  biotechEvidenceSummary?: {
+    officialEvidenceAvailable?: boolean;
+    verifiedClinicalStudies?: number;
+    activeClinicalStudies?: number;
+    phase3ClinicalStudies?: number;
+    riskClinicalStudies?: number;
+    pubMedStatus?: string;
+    recentPublicationCount?: number | null;
+    asOfDate?: string;
+  };
+  biotechEvidenceValidation?: Record<string, any>;
+  biotechEvidenceResearchOnly?: boolean;
+  biotechEvidenceScoreAdjustment?: number;
+  biotechEvidenceScoreApplied?: boolean;
   // 4차 이벤트 컨텍스트 필드
   eventContextUsed?: boolean;
   newsEventTag?: string;
@@ -605,6 +620,10 @@ export const mone = {
     apiGet<any>("/api/research/leader-breakout", p),
   researchRelativeStrength: (p?: { market?: Market }) =>
     apiGet<any>("/api/research/relative-strength", p),
+  researchBiotechEvidence: (p?: { market?: Market | "all"; symbol?: string }) =>
+    apiGet<any>("/api/research/biotech-evidence", p),
+  researchBiotechEvidenceValidation: () =>
+    apiGet<any>("/api/research/biotech-evidence-validation"),
   virtualTrades: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string; journalSession?: string; status?: string; limit?: number }) =>
     apiGet<ApiList>("/api/journal/virtual-trades", p),
   virtualTradeCapture: (body?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string; journalSession?: string; limit?: number; includeEngine?: boolean }) =>

@@ -1605,6 +1605,7 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
         _result = dict(_pre)
         _items = _result.get("items") or []
         _result["items"] = _bio.decorate_items(_items[:requested_limit], market)
+        _result["items"].sort(key=lambda row: (bool(row.get("recommended")), (_num(row.get("finalRankScore")) or 0.0)), reverse=True)
         _result["count"] = len(_result["items"])
         _result["servedFrom"] = "precompute"
         _RECO_CACHE[_cache_key] = _result
@@ -2023,6 +2024,8 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
                 _row["name"] = _sector_name_map[_sym]
     except Exception:
         pass
+
+    selected.sort(key=lambda row: (bool(row.get("recommended")), (_num(row.get("finalRankScore")) or 0.0)), reverse=True)
 
     limit_meta = runtime_limits.limit_meta(
         total_count=len(universe),

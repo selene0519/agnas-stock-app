@@ -231,7 +231,7 @@ def collect_biotech_official_evidence() -> dict:
     """Refresh research-only ClinicalTrials.gov/PubMed evidence cache."""
     try:
         from app.services import biotech_evidence
-        return biotech_evidence.collect(max_symbols=12)
+        return biotech_evidence.collect(max_symbols=30)
     except Exception as exc:
         return {"status": "ERROR", "reason": str(exc)}
 

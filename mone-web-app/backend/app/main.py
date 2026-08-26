@@ -27,6 +27,7 @@ from app.services import operation_history
 from app.services import quotes
 from app.services import runtime_limits
 from app.services import biotech_evidence
+from app.services import biotech_evidence_validation
 from app.services import user_data
 from app import db as _db
 
@@ -181,6 +182,7 @@ def _build_health_payload() -> dict:
         "/api/final/recommendations",
         "/api/health/data-sources",
         "/api/data/audit",
+        "/api/research/biotech-evidence-validation",
     ]
     missing_routes = [path for path in required_routes if path not in route_paths]
     steps: list[dict] = [
@@ -316,6 +318,28 @@ def _build_health_payload() -> dict:
             source="reports/virtual_trade_journal_status.json",
             next_action="Inspect the journal status file and capture workflow.",
         ))
+    try:
+        biotech_validation = biotech_evidence_validation.read_validation()
+        biotech_gate_status = str(biotech_validation.get("status") or "RESEARCH_ONLY").upper()
+        biotech_error = biotech_gate_status == "ERROR"
+        steps.append(_health_step(
+            "biotech-evidence-validation",
+            "ERROR" if biotech_error else "GOOD",
+            (
+                f"status={biotech_gate_status}, evaluatedDirectionalEvents="
+                f"{int(biotech_validation.get('evaluatedDirectionalEventCount') or 0)}, "
+                f"promotions={int(biotech_validation.get('promotionCount') or 0)}"
+            ),
+            source="reports/biotech_evidence_validation.json",
+            next_action="Inspect official-source collection and validation report." if biotech_error else "",
+        ))
+    except Exception as exc:
+        biotech_validation = {"status": "ERROR", "error": str(exc)[:240]}
+        steps.append(_health_step(
+            "biotech-evidence-validation", "ERROR", str(exc)[:240],
+            source="reports/biotech_evidence_validation.json",
+            next_action="Inspect official-source collection and validation report.",
+        ))
     active_gaps: list[str] = []
     gap_next_actions: dict[str, str] = {}
     for quality in market_quality.values():
@@ -354,6 +378,7 @@ def _build_health_payload() -> dict:
         "gapNextActions": gap_next_actions,
         "dataSources": data_sources,
         "journalCapture": journal_capture,
+        "biotechEvidenceValidation": biotech_validation,
         "steps": steps,
         "checklist11to45": checklist,
         "dataVersions": _get_recommendation_data_versions(),
@@ -3653,9 +3678,14 @@ def api_research_biotech_evidence(
     market: str = Query("all", pattern="^(all|kr|us)$"),
     symbol: str = Query("", max_length=20),
 ) -> dict:
-    """Research-only official trial/publication evidence; never a score input."""
+    """Official trial/publication evidence with fail-closed score-promotion metadata."""
     return biotech_evidence.read_cache(market=market, symbol=symbol)
 
+
+@app.get("/api/research/biotech-evidence-validation")
+def api_research_biotech_evidence_validation() -> dict:
+    """Point-in-time residual-alpha gate for biotech evidence score promotion."""
+    return biotech_evidence_validation.read_validation()
 
 @app.get("/api/advanced/backtest")
 def api_advanced_backtest(market: str = Query("kr", pattern="^(kr|us)$")) -> dict:

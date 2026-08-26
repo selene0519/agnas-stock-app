@@ -81,6 +81,15 @@ def test_pubmed_persisted_source_url_never_contains_contact_or_api_key() -> None
     assert secret_key not in serialized
     assert result["sourceUrl"].startswith("https://pubmed.ncbi.nlm.nih.gov/")
 
+def test_candidate_universe_prioritizes_unique_curated_aliases() -> None:
+    universe = bio._candidate_universe()
+    keys = [f"{row['market']}:{row['symbol']}" for row in universe]
+
+    assert len(keys) == len(set(keys))
+    assert set(bio.COMPANY_QUERY_ALIASES).issubset(set(keys))
+    first_alias_or_recommendation = keys[: max(30, len(bio.COMPANY_QUERY_ALIASES))]
+    assert set(bio.COMPANY_QUERY_ALIASES).issubset(set(first_alias_or_recommendation))
+
 def test_collect_isolates_source_failure_and_never_changes_score(monkeypatch) -> None:
     monkeypatch.delenv("NCBI_EMAIL", raising=False)
     candidates = [{"market": "us", "symbol": "ACME", "company": "Acme Therapeutics", "sector": "Biotech"}]
@@ -101,6 +110,41 @@ def test_collect_isolates_source_failure_and_never_changes_score(monkeypatch) ->
     assert item["promotionEligible"] is False
     assert item["scoreAdjustment"] == 0.0
 
+
+def test_decorate_items_applies_only_promoted_bounded_adjustment(monkeypatch) -> None:
+    from app.services import biotech_evidence_validation as validation
+
+    monkeypatch.setattr(
+        bio,
+        "read_cache",
+        lambda market="all", symbol="": {
+            "items": [{
+                "market": "us", "symbol": "ACME", "researchOnly": True,
+                "clinicalTrials": {"status": "OK", "riskStatusStudyCountInFetchedPage": 1},
+                "pubMed": {"status": "OK"},
+            }],
+        },
+    )
+    monkeypatch.setattr(validation, "read_validation", lambda: {"gates": []})
+    monkeypatch.setattr(
+        validation,
+        "score_decision",
+        lambda item, gate: {
+            "scoreAdjustment": -1.5,
+            "promotionEligible": True,
+            "promotionStatus": "PROMOTED",
+            "researchOnly": False,
+        },
+    )
+    original = [{"market": "us", "symbol": "ACME", "finalRankScore": 77.5, "finalScore": 77.5}]
+
+    decorated = bio.decorate_items(original, "us")
+
+    assert decorated[0]["finalRankScore"] == 76.0
+    assert decorated[0]["finalScore"] == 76.0
+    assert decorated[0]["biotechEvidenceScoreApplied"] is True
+    assert decorated[0]["biotechEvidenceScoreAdjustment"] == -1.5
+    assert original[0]["finalRankScore"] == 77.5
 
 def test_decorate_items_adds_metadata_without_mutating_scores(monkeypatch) -> None:
     monkeypatch.setattr(

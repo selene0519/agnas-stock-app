@@ -382,7 +382,7 @@ jobs:
         env:
           NCBI_EMAIL: ${{ secrets.NCBI_EMAIL }}
           NCBI_API_KEY: ${{ secrets.NCBI_API_KEY }}
-        run: python scripts/collect_biotech_evidence.py --max-symbols 12
+        run: python scripts/collect_biotech_evidence.py --max-symbols 30
       - name: News sentiment cache 갱신 (공시+뉴스 → 종목별 감성 점수)
         working-directory: mone-web-app/backend
         env:
