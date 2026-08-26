@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { ChevronLeft, ChevronRight, Sparkles, Star } from "lucide-react";
 import SymbolSearchSelect, { type MoneSymbol } from "../SymbolSearchSelect";
 import { SentimentBadge } from "@/components/SentimentBadge";
+import { BiotechEvidencePanel } from "@/components/BiotechEvidencePanel";
 import { mone, readApiSnapshot, type ApiList, type Horizon, type Market, type Mode, type RecommendationItem } from "@/lib/api";
 import { toneClassName } from "@/lib/tone";
 import type { BootPreloadData } from "@/lib/bootPreload";
@@ -444,6 +445,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   const [mode, setMode] = useState<Mode>("balanced");
   const [horizon, setHorizon] = useState<Horizon>("swing");
   const [selected, setSelected] = useState<MoneSymbol | null>(null);
+  const [selectedBiotechEvidence, setSelectedBiotechEvidence] = useState<any | null>(null);
   const [watchOnly, setWatchOnly] = useState(false);
   const [items, setItems] = useState<any[]>(() =>
     _initBootItems ? dedupeBySymbol(_initBootItems) : []
@@ -494,6 +496,29 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
   const [sessionTick, setSessionTick] = useState(0);
   const autoMarket = getDefaultMarketBySession(new Date(Date.now() + sessionTick * 0));
   const resolvedMarket: Exclude<Market, "all"> = market === "all" ? autoMarket : market;
+
+  useEffect(() => {
+    let active = true;
+    const selectedSymbolRaw = String(selected?.symbol || "").trim();
+    if (!selectedSymbolRaw) {
+      setSelectedBiotechEvidence(null);
+      return () => { active = false; };
+    }
+    const selectedMarketRaw = cleanMarket(selected?.market || resolvedMarket || "kr");
+    const selectedMarket = selectedMarketRaw === "all" ? resolvedMarket : selectedMarketRaw;
+    const selectedSymbol = cleanSymbol(selectedSymbolRaw, selectedMarket);
+    setSelectedBiotechEvidence(null);
+    mone.researchBiotechEvidence({ market: selectedMarket, symbol: selectedSymbol })
+      .then((payload: any) => {
+        if (!active) return;
+        const evidence = Array.isArray(payload?.items) ? payload.items[0] : null;
+        setSelectedBiotechEvidence(evidence || null);
+      })
+      .catch(() => {
+        if (active) setSelectedBiotechEvidence(null);
+      });
+    return () => { active = false; };
+  }, [selected?.symbol, selected?.market, resolvedMarket]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setSessionTick((value) => value + 1), 60_000);
@@ -966,9 +991,23 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           (itemMarket === resolvedMarket)
         );
       });
-      if (matched.length > 0) return matched;
+      const attachSelectedEvidence = (item: any) => {
+        if (!selectedBiotechEvidence) return item;
+        const decision = selectedBiotechEvidence.validationDecision || {};
+        const scoreAdjustment = Number(decision.scoreAdjustment || 0);
+        return {
+          ...item,
+          biotechEvidence: selectedBiotechEvidence,
+          biotechEvidenceSummary: selectedBiotechEvidence.displaySummary,
+          biotechEvidenceValidation: decision,
+          biotechEvidenceResearchOnly: Boolean(decision.researchOnly ?? true),
+          biotechEvidenceScoreAdjustment: scoreAdjustment,
+          biotechEvidenceScoreApplied: scoreAdjustment !== 0,
+        };
+      };
+      if (matched.length > 0) return matched.map(attachSelectedEvidence);
       return [
-        {
+        attachSelectedEvidence({
           market: selectedMarket === "all" ? "kr" : selectedMarket,
           symbol: selectedSymbol,
           name: selected.name || selectedSymbol,
@@ -979,13 +1018,13 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           priceTime: selected.priceTime,
           sourceStatus: "SEARCH_ONLY",
           isSearchOnly: true,
-        },
+        }),
       ];
     }
     // 발굴 렌즈에서는 '조기성(발굴 점수)' 순으로 정렬해 아직 덜 오른 후보를 위로.
     const _sortKey = lens === "discovery" ? "discoveryScore" : sortBy;
     return [...result].sort((a, b) => Number(b[_sortKey] ?? 0) - Number(a[_sortKey] ?? 0));
-  }, [explorationItems, selected, resolvedMarket, sectorFiltered, sectorFilter, groupFilter, minScore, tagFilter, hideDataPending, hideBlockedOnly, filterEvPositive, filterWinRate40, supplyFilter, excludeOverheated, excludeStopRisk, advTags, nameQuery, sortBy, lens]);
+  }, [explorationItems, selected, selectedBiotechEvidence, resolvedMarket, sectorFiltered, sectorFilter, groupFilter, minScore, tagFilter, hideDataPending, hideBlockedOnly, filterEvPositive, filterWinRate40, supplyFilter, excludeOverheated, excludeStopRisk, advTags, nameQuery, sortBy, lens]);
 
   const filterStats = useMemo(() => {
     // 실제로 표시되는 후보(visible)를 단일 기준으로 분할해 합이 '표시 후보'와 맞아떨어지게 한다.
@@ -2154,6 +2193,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                     <span className="break-keep font-mono text-sm font-bold text-cyan-300">{current}</span>
                   </div>
                 )}
+                <BiotechEvidencePanel item={item} />
                 <div className="mt-3 flex gap-2">
                   <button
                     type="button"
@@ -2389,6 +2429,8 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
                   </div>
                 )}
               </div>
+
+              <BiotechEvidencePanel item={item} />
 
               {/* 가격 4개 — stale 계획이면 손절·목표가는 "재산출 대기"로 억제(옛 기준가 산출값을 실행가처럼 안 보이게) */}
               {(() => {

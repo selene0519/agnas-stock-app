@@ -68,12 +68,30 @@ function buildBadges(item: any): BadgeItem[] {
     }
   }
 
-  // ── 8. Adaptive 보정 적용
+  // ── 8. 공식 바이오 근거와 승격 상태
+  const biotechSummary = item?.biotechEvidenceSummary;
+  if (biotechSummary?.officialEvidenceAvailable === true) {
+    if (item?.biotechEvidenceScoreApplied === true) {
+      const adjustment = Number(item?.biotechEvidenceScoreAdjustment || 0);
+      badges.push({
+        key: "biotechApplied",
+        label: `바이오 검증반영 ${adjustment > 0 ? "+" : ""}${adjustment.toFixed(1)}`,
+        cls: adjustment < 0
+          ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
+          : "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
+      });
+    } else if (Number(biotechSummary?.riskClinicalStudies || 0) > 0) {
+      badges.push({ key: "biotechRisk", label: "임상위험·검증중", cls: "border-amber-500/40 bg-amber-500/10 text-amber-300" });
+    } else {
+      badges.push({ key: "biotechResearch", label: "공식 바이오 근거", cls: "border-cyan-500/30 bg-cyan-500/10 text-cyan-300" });
+    }
+  }
+  // ── 9. Adaptive 보정 적용
   if (item?.adaptiveScoreUsed === true && item?.adaptiveLearningStatus === "ACTIVE") {
     badges.push({ key: "adaptive", label: "AI보정", cls: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" });
   }
 
-  // ── 9. 검증 부족 (LOW_SAMPLE) — adaptive 보정 상태이거나, 백테스트 표본(<30건)이 부족한 경우 모두 경고
+  // ── 10. 검증 부족 (LOW_SAMPLE) — adaptive 보정 상태이거나, 백테스트 표본(<30건)이 부족한 경우 모두 경고
   const wrSampleCount = Number(item?.winRateSampleCount ?? 0);
   if (item?.adaptiveLearningStatus === "LOW_SAMPLE" || (wrSampleCount > 0 && wrSampleCount < 30)) {
     badges.push({ key: "lowSample", label: `검증부족${wrSampleCount > 0 ? ` n=${wrSampleCount}` : ""}`, cls: "border-amber-500/30 bg-amber-500/10 text-amber-300" });

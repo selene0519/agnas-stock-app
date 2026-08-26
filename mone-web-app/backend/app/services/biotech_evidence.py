@@ -3,7 +3,7 @@
 This module is deliberately research-only. Counts of trials or publications
 are not investment returns, and fuzzy company-name matches are especially
 dangerous. The collector therefore verifies the lead sponsor name, preserves
-source URLs and timestamps, and never changes a recommendation score.
+source URLs and timestamps, and changes a recommendation score only after a point-in-time holdout gate is promoted.
 """
 
 from __future__ import annotations
@@ -162,7 +162,7 @@ def _clinical_evidence(company: str, payload: dict[str, Any], *, as_of: date) ->
         "phase3StudyCountInFetchedPage": len(phase3),
         "riskStatusStudyCountInFetchedPage": len(risky),
         "upcomingCompletion180dCountInFetchedPage": len(upcoming),
-        "studies": matched[:10],
+        "studies": matched,
         "source": "ClinicalTrials.gov API v2",
         "sourceUrl": _clinical_url(company),
     }
@@ -312,7 +312,27 @@ def _candidate_universe() -> list[dict[str, str]]:
             if depth < len(master_rows[market]):
                 supplement.append(master_rows[market][depth])
         depth += 1
-    return recommended + supplement
+    alias_rows = []
+    for key, query_company in COMPANY_QUERY_ALIASES.items():
+        alias_market, alias_symbol = key.split(":", 1)
+        alias_rows.append({
+            "market": alias_market,
+            "symbol": alias_symbol,
+            "company": query_company,
+            "queryCompany": query_company,
+            "sector": "Bio/Healthcare",
+            "universeSource": "curated_official_query_alias",
+        })
+    ordered = recommended + alias_rows + supplement
+    deduplicated: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for row in ordered:
+        key = f"{row['market']}:{row['symbol']}"
+        if key in seen:
+            continue
+        seen.add(key)
+        deduplicated.append(row)
+    return deduplicated
 
 
 def collect(
@@ -326,7 +346,7 @@ def collect(
 ) -> dict[str, Any]:
     today = as_of or date.today()
     universe = list(candidates if candidates is not None else _candidate_universe())
-    limit = max_symbols if max_symbols is not None else int(os.getenv("MONE_BIOTECH_MAX_SYMBOLS", "12"))
+    limit = max_symbols if max_symbols is not None else int(os.getenv("MONE_BIOTECH_MAX_SYMBOLS", "30"))
     universe = universe[: max(0, min(limit, 50))]
     email = _text(os.getenv("NCBI_EMAIL"))
     api_key = _text(os.getenv("NCBI_API_KEY"))
@@ -378,6 +398,13 @@ def collect(
         ],
     }
     if save:
+        from app.services import biotech_evidence_validation as validation
+
+        ledger = validation.persist_point_in_time(payload)
+        payload["pointInTimeLedger"] = {
+            key: value for key, value in ledger.items() if key != "validation"
+        }
+        payload["validationGate"] = ledger.get("validation") or {}
         REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
         temp = REPORT_PATH.with_suffix(".json.tmp")
         temp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -400,19 +427,66 @@ def read_cache(market: str = "all", symbol: str = "") -> dict[str, Any]:
         if (normalized_market == "all" or _text(row.get("market")).lower() == normalized_market)
         and (not normalized_symbol or _text(row.get("symbol")).upper() == normalized_symbol)
     ]
-    return {**payload, "items": filtered, "count": len(filtered)}
+    try:
+        from app.services import biotech_evidence_validation as validation
+        validation_gate = validation.read_validation()
+    except Exception:
+        validation_gate = {"status": "ERROR", "operationalScoreAdjustmentAllowed": False}
+    public_items = []
+    for row in filtered:
+        public_items.append({
+            **row,
+            "displaySummary": _evidence_summary(row),
+            "validationDecision": validation.score_decision(row, validation_gate) if validation_gate.get("status") != "ERROR" else {
+                "scoreAdjustment": 0.0,
+                "promotionEligible": False,
+                "promotionStatus": "ERROR",
+                "researchOnly": True,
+            },
+        })
+    return {**payload, "items": public_items, "count": len(public_items), "validationGate": validation_gate}
+
+
+def _evidence_summary(match: dict[str, Any]) -> dict[str, Any]:
+    clinical = match.get("clinicalTrials") if isinstance(match.get("clinicalTrials"), dict) else {}
+    pubmed = match.get("pubMed") if isinstance(match.get("pubMed"), dict) else {}
+    return {
+        "officialEvidenceAvailable": clinical.get("status") == "OK" or pubmed.get("status") == "OK",
+        "verifiedClinicalStudies": int(clinical.get("verifiedStudyCountInFetchedPage") or 0),
+        "activeClinicalStudies": int(clinical.get("activeStudyCountInFetchedPage") or 0),
+        "phase3ClinicalStudies": int(clinical.get("phase3StudyCountInFetchedPage") or 0),
+        "riskClinicalStudies": int(clinical.get("riskStatusStudyCountInFetchedPage") or 0),
+        "pubMedStatus": _text(pubmed.get("status")) or "NOT_AVAILABLE",
+        "recentPublicationCount": pubmed.get("publicationCountRecent5y"),
+        "asOfDate": _text(match.get("asOfDate")),
+        "scopeNote": "Clinical counts cover the fetched official API page; PubMed affiliation matches are not sponsor verification.",
+    }
 
 
 def decorate_items(items: list[dict[str, Any]], market: str) -> list[dict[str, Any]]:
+    from app.services import biotech_evidence_validation as validation
+
     evidence = read_cache(market)
+    gate = validation.read_validation()
     index = {_text(row.get("symbol")).upper(): row for row in evidence.get("items") or []}
     decorated: list[dict[str, Any]] = []
     for original in items:
         row = dict(original)
         match = index.get(_text(row.get("symbol")).upper())
         if match:
+            decision = validation.score_decision(match, gate)
+            adjustment = float(decision.get("scoreAdjustment") or 0.0)
             row["biotechEvidence"] = match
-            row["biotechEvidenceResearchOnly"] = True
-            row["biotechEvidenceScoreAdjustment"] = 0.0
+            row["biotechEvidenceSummary"] = _evidence_summary(match)
+            row["biotechEvidenceValidation"] = decision
+            row["biotechEvidenceResearchOnly"] = bool(decision.get("researchOnly", True))
+            row["biotechEvidenceScoreAdjustment"] = adjustment
+            row["biotechEvidenceScoreApplied"] = bool(adjustment)
+            if adjustment:
+                for key in ("finalRankScore", "finalScore"):
+                    try:
+                        row[key] = round(max(0.0, min(100.0, float(row.get(key)) + adjustment)), 1)
+                    except (TypeError, ValueError):
+                        continue
         decorated.append(row)
     return decorated
