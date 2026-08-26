@@ -1,6 +1,6 @@
 {
   "status": "OK",
-  "lastRunAt": "2026-08-26T22:05:43+09:00",
+  "lastRunAt": "2026-08-26T22:57:57+09:00",
   "market": "us",
   "execute": true,
   "repair": {
@@ -35,12 +35,12 @@
     "recordingStatus": "OK",
     "evaluationStatus": "OK",
     "latestCapturedAt": "2026-08-19T06:57:40",
-    "latestEvaluatedAt": "2026-08-26T22:05:42"
+    "latestEvaluatedAt": "2026-08-26T22:57:56"
   },
   "paper": {
     "status": "OK",
     "dryRun": false,
-    "createdAt": "2026-08-26T22:05:42",
+    "createdAt": "2026-08-26T22:57:56",
     "market": "us",
     "markets": {
       "us": {
@@ -87,26 +87,26 @@
         "liveMetrics": {
           "status": "OK",
           "proofStatus": "RUNNING",
-          "sampleCount": 12,
-          "navPointCount": 13,
+          "sampleCount": 13,
+          "navPointCount": 14,
           "totalReturnPct": -0.04,
           "mddPct": -0.12,
-          "sharpe": -1.36,
-          "winRate": 8.3,
+          "sharpe": -1.31,
+          "winRate": 7.7,
           "avgPeriodReturnPct": -0.0,
           "cashPct": 93.2,
           "peakValue": 4999.91,
           "currentValue": 4998.16,
           "lastNavDate": "2026-08-26",
           "recentReturnsPct": [
-            0.0,
             -0.01,
             0.0,
             0.0,
             -0.06,
             0.0,
             0.0,
-            0.08
+            0.08,
+            0.0
           ],
           "equityCurve": [
             {
@@ -171,6 +171,11 @@
             },
             {
               "index": 12,
+              "value": 4998.16,
+              "returnPct": -0.04
+            },
+            {
+              "index": 13,
               "value": 4998.16,
               "returnPct": -0.04
             }
@@ -718,11 +723,11 @@
           },
           "priceSession": {
             "market": "us",
-            "priceSession": "us_premarket",
-            "sessionLabel": "미장 장전",
-            "priceBasis": "미장 장전 · 프리마켓 업데이트 기준",
-            "nowKst": "2026-08-26T22:05:43.022078+09:00",
-            "nowLocal": "2026-08-26T09:05:43.022078-04:00",
+            "priceSession": "us_intraday",
+            "sessionLabel": "미장 장중",
+            "priceBasis": "미장 장중 · KIS 현재가 기준",
+            "nowKst": "2026-08-26T22:57:56.868741+09:00",
+            "nowLocal": "2026-08-26T09:57:56.868741-04:00",
             "isHoliday": false,
             "isReviewMode": false,
             "isUsDst": true
@@ -749,7 +754,7 @@
         },
         "nav": {
           "date": "2026-08-26",
-          "createdAt": "2026-08-26T22:05:43",
+          "createdAt": "2026-08-26T22:57:57",
           "market": "us",
           "agentId": "ml_rank_conservative_swing",
           "agentLabel": "ML Rank Conservative Swing",
@@ -1510,7 +1515,7 @@
     },
     "us": {
       "status": "OK",
-      "lastRunAt": "2026-08-26T22:05:43+09:00",
+      "lastRunAt": "2026-08-26T22:57:57+09:00",
       "market": "us",
       "execute": true,
       "repair": {
@@ -1545,12 +1550,12 @@
         "recordingStatus": "OK",
         "evaluationStatus": "OK",
         "latestCapturedAt": "2026-08-19T06:57:40",
-        "latestEvaluatedAt": "2026-08-26T22:05:42"
+        "latestEvaluatedAt": "2026-08-26T22:57:56"
       },
       "paper": {
         "status": "OK",
         "dryRun": false,
-        "createdAt": "2026-08-26T22:05:42",
+        "createdAt": "2026-08-26T22:57:56",
         "market": "us",
         "markets": {
           "us": {
@@ -1597,26 +1602,26 @@
             "liveMetrics": {
               "status": "OK",
               "proofStatus": "RUNNING",
-              "sampleCount": 12,
-              "navPointCount": 13,
+              "sampleCount": 13,
+              "navPointCount": 14,
               "totalReturnPct": -0.04,
               "mddPct": -0.12,
-              "sharpe": -1.36,
-              "winRate": 8.3,
+              "sharpe": -1.31,
+              "winRate": 7.7,
               "avgPeriodReturnPct": -0.0,
               "cashPct": 93.2,
               "peakValue": 4999.91,
               "currentValue": 4998.16,
               "lastNavDate": "2026-08-26",
               "recentReturnsPct": [
-                0.0,
                 -0.01,
                 0.0,
                 0.0,
                 -0.06,
                 0.0,
                 0.0,
-                0.08
+                0.08,
+                0.0
               ],
               "equityCurve": [
                 {
@@ -1681,6 +1686,11 @@
                 },
                 {
                   "index": 12,
+                  "value": 4998.16,
+                  "returnPct": -0.04
+                },
+                {
+                  "index": 13,
                   "value": 4998.16,
                   "returnPct": -0.04
                 }
@@ -2228,11 +2238,11 @@
               },
               "priceSession": {
                 "market": "us",
-                "priceSession": "us_premarket",
-                "sessionLabel": "미장 장전",
-                "priceBasis": "미장 장전 · 프리마켓 업데이트 기준",
-                "nowKst": "2026-08-26T22:05:43.022078+09:00",
-                "nowLocal": "2026-08-26T09:05:43.022078-04:00",
+                "priceSession": "us_intraday",
+                "sessionLabel": "미장 장중",
+                "priceBasis": "미장 장중 · KIS 현재가 기준",
+                "nowKst": "2026-08-26T22:57:56.868741+09:00",
+                "nowLocal": "2026-08-26T09:57:56.868741-04:00",
                 "isHoliday": false,
                 "isReviewMode": false,
                 "isUsDst": true
@@ -2259,7 +2269,7 @@
             },
             "nav": {
               "date": "2026-08-26",
-              "createdAt": "2026-08-26T22:05:43",
+              "createdAt": "2026-08-26T22:57:57",
               "market": "us",
               "agentId": "ml_rank_conservative_swing",
               "agentLabel": "ML Rank Conservative Swing",
