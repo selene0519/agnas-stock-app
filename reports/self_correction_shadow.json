@@ -1,6 +1,6 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-08-27T03:37:58.842463+00:00",
+  "generatedAt": "2026-08-27T07:17:13.353266+00:00",
   "policy": {
     "version": "self-correction-shadow-v1.5.0",
     "inputContractVersion": "correction-shadow-input-v1",
@@ -43,7 +43,7 @@
   },
   "calibrationPolicy": {
     "version": "vtj-self-calibration-v2.3.0",
-    "fingerprint": "6a3f9d0c903db0842b46"
+    "fingerprint": "b26eede8898e6a75c429"
   },
   "residualAlphaGate": {
     "passed": false,
@@ -101,7 +101,13 @@
     "appended": 0,
     "conflicts": 0,
     "total": 0,
-    "recordMarket": "none"
+    "recordMarket": "all",
+    "skippedInputContract": 0,
+    "skippedForwardSeal": 0,
+    "skippedBeforeSignalClose": 0,
+    "skippedAfterNextSessionOpen": 0,
+    "runAt": "2026-08-27T07:17:13.352898+00:00",
+    "candidateDiagnostics": []
   },
   "lastRecordingRun": {
     "appended": 0,
@@ -112,7 +118,7 @@
     "skippedForwardSeal": 0,
     "skippedBeforeSignalClose": 0,
     "skippedAfterNextSessionOpen": 0,
-    "runAt": "2026-08-26T23:31:35.742701+00:00",
+    "runAt": "2026-08-27T07:17:13.352898+00:00",
     "candidateDiagnostics": [
       {
         "candidateFingerprint": "776f38cd63fa6335313a54bdc8cc7512035aceb368fba7e95ac46873ba0a9f47",
@@ -137,7 +143,7 @@
   "candidateGate": {
     "status": "SHADOW_ONLY",
     "policyVersion": "vtj-self-calibration-v2.3.0",
-    "policyFingerprint": "6a3f9d0c903db0842b46",
+    "policyFingerprint": "b26eede8898e6a75c429",
     "items": [],
     "blocked": [
       {
