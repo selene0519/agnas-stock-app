@@ -1,6 +1,6 @@
 {
   "status": "OK",
-  "lastRunAt": "2026-08-27T22:05:44+09:00",
+  "lastRunAt": "2026-08-27T23:05:40+09:00",
   "market": "us",
   "execute": true,
   "repair": {
@@ -36,12 +36,12 @@
     "recordingStatus": "OK",
     "evaluationStatus": "OK",
     "latestCapturedAt": "2026-08-27T21:51:31",
-    "latestEvaluatedAt": "2026-08-27T22:05:44"
+    "latestEvaluatedAt": "2026-08-27T23:05:39"
   },
   "paper": {
     "status": "OK",
     "dryRun": false,
-    "createdAt": "2026-08-27T22:05:44",
+    "createdAt": "2026-08-27T23:05:40",
     "market": "us",
     "markets": {
       "us": {
@@ -85,26 +85,26 @@
         "liveMetrics": {
           "status": "OK",
           "proofStatus": "RUNNING",
-          "sampleCount": 15,
-          "navPointCount": 16,
+          "sampleCount": 16,
+          "navPointCount": 17,
           "totalReturnPct": -0.06,
           "mddPct": -0.12,
-          "sharpe": -2.07,
-          "winRate": 6.7,
+          "sharpe": -2.0,
+          "winRate": 6.2,
           "avgPeriodReturnPct": -0.0,
           "cashPct": 93.3,
           "peakValue": 4999.91,
           "currentValue": 4996.91,
           "lastNavDate": "2026-08-27",
           "recentReturnsPct": [
-            0.0,
             -0.06,
             0.0,
             0.0,
             0.08,
             0.0,
             0.0,
-            -0.03
+            -0.03,
+            0.0
           ],
           "equityCurve": [
             {
@@ -119,8 +119,8 @@
             },
             {
               "index": 2,
-              "value": 4999.91,
-              "returnPct": -0.0
+              "value": 4997.53,
+              "returnPct": -0.05
             },
             {
               "index": 3,
@@ -134,7 +134,7 @@
             },
             {
               "index": 5,
-              "value": 4997.53,
+              "value": 4997.27,
               "returnPct": -0.05
             },
             {
@@ -149,8 +149,8 @@
             },
             {
               "index": 8,
-              "value": 4997.27,
-              "returnPct": -0.05
+              "value": 4994.12,
+              "returnPct": -0.12
             },
             {
               "index": 9,
@@ -164,8 +164,8 @@
             },
             {
               "index": 11,
-              "value": 4994.12,
-              "returnPct": -0.12
+              "value": 4998.16,
+              "returnPct": -0.04
             },
             {
               "index": 12,
@@ -179,8 +179,8 @@
             },
             {
               "index": 14,
-              "value": 4998.16,
-              "returnPct": -0.04
+              "value": 4996.91,
+              "returnPct": -0.06
             },
             {
               "index": 15,
@@ -733,11 +733,11 @@
           },
           "priceSession": {
             "market": "us",
-            "priceSession": "us_premarket",
-            "sessionLabel": "미장 장전",
-            "priceBasis": "미장 장전 · 프리마켓 업데이트 기준",
-            "nowKst": "2026-08-27T22:05:44.726528+09:00",
-            "nowLocal": "2026-08-27T09:05:44.726528-04:00",
+            "priceSession": "us_intraday",
+            "sessionLabel": "미장 장중",
+            "priceBasis": "미장 장중 · KIS 현재가 기준",
+            "nowKst": "2026-08-27T23:05:40.341444+09:00",
+            "nowLocal": "2026-08-27T10:05:40.341444-04:00",
             "isHoliday": false,
             "isReviewMode": false,
             "isUsDst": true
@@ -764,7 +764,7 @@
         },
         "nav": {
           "date": "2026-08-27",
-          "createdAt": "2026-08-27T22:05:44",
+          "createdAt": "2026-08-27T23:05:40",
           "market": "us",
           "agentId": "ml_rank_conservative_swing",
           "agentLabel": "ML Rank Conservative Swing",
@@ -1531,7 +1531,7 @@
     },
     "us": {
       "status": "OK",
-      "lastRunAt": "2026-08-27T22:05:44+09:00",
+      "lastRunAt": "2026-08-27T23:05:40+09:00",
       "market": "us",
       "execute": true,
       "repair": {
@@ -1567,12 +1567,12 @@
         "recordingStatus": "OK",
         "evaluationStatus": "OK",
         "latestCapturedAt": "2026-08-27T21:51:31",
-        "latestEvaluatedAt": "2026-08-27T22:05:44"
+        "latestEvaluatedAt": "2026-08-27T23:05:39"
       },
       "paper": {
         "status": "OK",
         "dryRun": false,
-        "createdAt": "2026-08-27T22:05:44",
+        "createdAt": "2026-08-27T23:05:40",
         "market": "us",
         "markets": {
           "us": {
@@ -1616,26 +1616,26 @@
             "liveMetrics": {
               "status": "OK",
               "proofStatus": "RUNNING",
-              "sampleCount": 15,
-              "navPointCount": 16,
+              "sampleCount": 16,
+              "navPointCount": 17,
               "totalReturnPct": -0.06,
               "mddPct": -0.12,
-              "sharpe": -2.07,
-              "winRate": 6.7,
+              "sharpe": -2.0,
+              "winRate": 6.2,
               "avgPeriodReturnPct": -0.0,
               "cashPct": 93.3,
               "peakValue": 4999.91,
               "currentValue": 4996.91,
               "lastNavDate": "2026-08-27",
               "recentReturnsPct": [
-                0.0,
                 -0.06,
                 0.0,
                 0.0,
                 0.08,
                 0.0,
                 0.0,
-                -0.03
+                -0.03,
+                0.0
               ],
               "equityCurve": [
                 {
@@ -1650,8 +1650,8 @@
                 },
                 {
                   "index": 2,
-                  "value": 4999.91,
-                  "returnPct": -0.0
+                  "value": 4997.53,
+                  "returnPct": -0.05
                 },
                 {
                   "index": 3,
@@ -1665,7 +1665,7 @@
                 },
                 {
                   "index": 5,
-                  "value": 4997.53,
+                  "value": 4997.27,
                   "returnPct": -0.05
                 },
                 {
@@ -1680,8 +1680,8 @@
                 },
                 {
                   "index": 8,
-                  "value": 4997.27,
-                  "returnPct": -0.05
+                  "value": 4994.12,
+                  "returnPct": -0.12
                 },
                 {
                   "index": 9,
@@ -1695,8 +1695,8 @@
                 },
                 {
                   "index": 11,
-                  "value": 4994.12,
-                  "returnPct": -0.12
+                  "value": 4998.16,
+                  "returnPct": -0.04
                 },
                 {
                   "index": 12,
@@ -1710,8 +1710,8 @@
                 },
                 {
                   "index": 14,
-                  "value": 4998.16,
-                  "returnPct": -0.04
+                  "value": 4996.91,
+                  "returnPct": -0.06
                 },
                 {
                   "index": 15,
@@ -2264,11 +2264,11 @@
               },
               "priceSession": {
                 "market": "us",
-                "priceSession": "us_premarket",
-                "sessionLabel": "미장 장전",
-                "priceBasis": "미장 장전 · 프리마켓 업데이트 기준",
-                "nowKst": "2026-08-27T22:05:44.726528+09:00",
-                "nowLocal": "2026-08-27T09:05:44.726528-04:00",
+                "priceSession": "us_intraday",
+                "sessionLabel": "미장 장중",
+                "priceBasis": "미장 장중 · KIS 현재가 기준",
+                "nowKst": "2026-08-27T23:05:40.341444+09:00",
+                "nowLocal": "2026-08-27T10:05:40.341444-04:00",
                 "isHoliday": false,
                 "isReviewMode": false,
                 "isUsDst": true
@@ -2295,7 +2295,7 @@
             },
             "nav": {
               "date": "2026-08-27",
-              "createdAt": "2026-08-27T22:05:44",
+              "createdAt": "2026-08-27T23:05:40",
               "market": "us",
               "agentId": "ml_rank_conservative_swing",
               "agentLabel": "ML Rank Conservative Swing",
