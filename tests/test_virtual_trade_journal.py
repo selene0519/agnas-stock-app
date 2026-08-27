@@ -262,6 +262,78 @@ def isolated_vtj(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     return tmp_path
 
 
+def test_research_mode_relaxes_only_predictive_thresholds() -> None:
+    candidate = {
+        **_valid_recommendation("RESEARCH"),
+        "finalRankScore": 40,
+        "expectedValue": -2,
+        "riskRewardRatio": 0.5,
+        "probability": 20,
+        "riskScore": 20,
+        "eventRiskScore": 90,
+    }
+
+    assert vtj._reject_reason(candidate) == "LOW_SCORE"
+    assert vtj._reject_reason(candidate, research_mode=True) == ""
+    assert vtj._reject_reason({**candidate, "tradeBlockStatus": "CAUTION"}, research_mode=True) == "TRADE_BLOCKED"
+    assert vtj._reject_reason({**candidate, "expectedValue": None}, research_mode=True) == "MISSING_EV"
+    assert vtj._candidate_numbers({**candidate, "expectedValue": 0})["ev"] == 0.0
+
+
+def test_ev_neutral_research_order_is_deterministic_and_spans_all_strata() -> None:
+    candidates = [
+        {
+            **_valid_recommendation(f"R{index}"),
+            "expectedValue": float(index - 4),
+            "finalRankScore": 60 + index,
+        }
+        for index in range(8)
+    ]
+
+    first = vtj._ev_neutral_stratified_order(candidates, as_of_date="2026-08-27", scope="kr|balanced|swing")
+    second = vtj._ev_neutral_stratified_order(candidates, as_of_date="2026-08-27", scope="kr|balanced|swing")
+
+    assert [row["symbol"] for row in first] == [row["symbol"] for row in second]
+    assert {row["researchEvStratum"] for row in first} == {1, 2, 3, 4}
+    assert all(row["researchOnly"] is True for row in first)
+    assert all(row["researchSelectionPolicy"] == "EV_NEUTRAL_STRATIFIED" for row in first)
+
+
+def test_self_learning_quality_uses_current_identity_window_and_excludes_research(monkeypatch) -> None:
+    rows = [
+        {
+            "as_of_date": "2026-01-02", "market": "kr", "symbol": "LEGACY",
+            "source_type": "FORWARD_PAPER_TRADE", "status": "EVALUATED",
+            "net_pnl_pct": "-10", "strategy_fingerprint": "LEGACY_UNFINGERPRINTED",
+        },
+        {
+            "as_of_date": "2026-08-26", "market": "kr", "symbol": "CURRENT",
+            "source_type": "FORWARD_PAPER_TRADE", "status": "EVALUATED", "net_pnl_pct": "2.5",
+            "strategy_contract_version": vtj.STRATEGY_CONTRACT_VERSION,
+            "strategy_fingerprint": "current-fingerprint",
+        },
+        {
+            "as_of_date": "2026-08-27", "market": "kr", "symbol": "RESEARCH",
+            "source_type": "FORWARD_RESEARCH_TRADE", "status": "EVALUATED", "net_pnl_pct": "-99",
+            "strategy_contract_version": vtj.STRATEGY_CONTRACT_VERSION,
+            "strategy_fingerprint": "research-fingerprint",
+        },
+    ]
+    monkeypatch.setattr(vtj, "_read_journal_rows", lambda: rows)
+    monkeypatch.setattr(vtj, "_merge_evaluations", lambda source: source)
+
+    quality = vtj._self_learning_quality("kr")
+
+    assert quality["evaluatedSamples"] == 3
+    assert quality["calibrationAdmissibleSamples"] == 2
+    assert quality["qualityWindowSamples"] == 1
+    assert quality["researchOnlySamples"] == 1
+    assert quality["avgNetPnlPct"] == 2.5
+    assert quality["effectiveSamples"] == 1.0
+    assert quality["strategyFingerprintCoverage"] == 1.0
+    assert quality["allHistoryStrategyFingerprintCoverage"] == 0.5
+    assert quality["currentIdentityWindowStart"] == "2026-08-26"
+
 def test_stop_wins_when_target_and_stop_touch_same_daily_candle() -> None:
     holding = pd.DataFrame([{"date": "2026-01-02", "open": 100, "high": 112, "low": 94, "close": 104}])
 
@@ -2251,17 +2323,75 @@ def test_performance_dashboard_reports_bounded_mdd_and_fixed_notional_return(mon
 
 def _ev_gate_rows(direction: float) -> list[dict[str, object]]:
     rows: list[dict[str, object]] = []
-    for day in range(10):
+    for day in range(24):
+        signal_date = (datetime(2026, 7, 10) + timedelta(days=day)).date().isoformat()
         for offset in range(6):
             ev = float(day * 2 + offset / 10)
             rows.append({
                 "decision_unit_id": f"ev-{direction}-{day}-{offset}",
-                "as_of_date": f"2026-07-{10 + day:02d}",
+                "as_of_date": signal_date,
                 "expected_value": ev,
                 "net_pnl_pct": direction * ev,
             })
     return rows
 
+
+def test_ev_research_diagnostics_can_validate_direction_but_never_grants_authority(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    rows = [
+        {
+            **row,
+            "source_type": "FORWARD_RESEARCH_TRADE",
+            "status": "EVALUATED",
+        }
+        for row in _ev_gate_rows(1.0)
+    ]
+    monkeypatch.setattr(vtj, "_clean_window_start", lambda: "2026-07-10")
+    monkeypatch.setattr(vtj, "_read_journal_rows", lambda: rows)
+    monkeypatch.setattr(vtj, "_merge_evaluations", lambda source: source)
+    monkeypatch.setattr(vtj, "_has_consistent_realized_outcome", lambda row: True)
+
+    diagnostics = vtj.ev_research_diagnostics("all")
+
+    assert diagnostics["status"] == "VALID"
+    assert diagnostics["authority"] == "DIAGNOSTIC_ONLY"
+    assert diagnostics["sourceType"] == "FORWARD_RESEARCH_TRADE"
+    assert diagnostics["operationalEntryAllowed"] is False
+    assert diagnostics["calibrationWeight"] == 0.0
+
+
+def test_operational_ev_gate_ignores_research_lane_even_when_it_looks_profitable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    operational = [
+        {**row, "source_type": "FORWARD_PAPER_TRADE", "status": "EVALUATED"}
+        for row in _ev_gate_rows(-1.0)
+    ]
+    research = [
+        {**row, "decision_unit_id": f"research-{row['decision_unit_id']}", "source_type": "FORWARD_RESEARCH_TRADE", "status": "EVALUATED"}
+        for row in _ev_gate_rows(1.0)
+    ]
+    monkeypatch.setattr(vtj, "_clean_window_start", lambda: "2026-07-10")
+    monkeypatch.setattr(vtj, "_read_journal_rows", lambda: operational + research)
+    monkeypatch.setattr(vtj, "_merge_evaluations", lambda source: source)
+    monkeypatch.setattr(vtj, "_has_consistent_realized_outcome", lambda row: True)
+
+    gate = vtj.ev_calibration_gate("all")
+
+    assert gate["status"] == "INVERTED"
+    assert gate["operationalEntryAllowed"] is False
+    assert gate["rowSamples"] == len(operational)
+
+def test_ev_calibration_gate_cannot_promote_ten_clustered_dates() -> None:
+    ten_dates = _ev_gate_rows(1.0)[:60]
+
+    gate = vtj._ev_calibration_from_rows(ten_dates, clean_window_start="2026-07-10")
+
+    assert gate["status"] == "INSUFFICIENT"
+    assert gate["operationalEntryAllowed"] is False
+    assert gate["distinctSignalDates"] == 10
+    assert gate["minimums"] == {"rows": 120, "dates": 20, "trainDates": 12, "holdoutDates": 6}
 
 def test_ev_calibration_gate_detects_inverse_signal_in_later_holdout() -> None:
     gate = vtj._ev_calibration_from_rows(_ev_gate_rows(-1.0), clean_window_start="2026-07-10")

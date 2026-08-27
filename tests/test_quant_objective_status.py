@@ -109,3 +109,16 @@ def test_public_objective_status_api_returns_the_same_contract(monkeypatch) -> N
 
     assert response.status_code == 200
     assert response.json() == expected
+
+
+def test_low_sample_cannot_pass_even_when_point_metrics_look_perfect() -> None:
+    comparison, residual = _passing_reports()
+    comparison["comparison"]["completedSignalDates"] = 5
+    comparison["comparison"]["challenger"]["selectedEvaluatedTrades"] = 10
+
+    result = objective.build_objective_status(comparison, residual)
+
+    assert result["overall"] == "WAIT"
+    assert result["evidenceMature"] is False
+    assert result["evaluatedChallengerTrades"] == 10
+    assert {row["status"] for row in result["objectives"].values()} == {"WAIT"}

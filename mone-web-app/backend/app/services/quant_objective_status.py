@@ -58,7 +58,7 @@ def build_objective_status(
 
     expectancy = _num(challenger.get("afterCostExpectancyPct") or challenger.get("avgDailyReturnPct"))
     expectancy_ci = _ci(challenger.get("afterCostExpectancyBootstrapCi95"))
-    if not comparison_policy_current:
+    if not comparison_policy_current or not mature:
         expectancy_state = "WAIT"
     elif expectancy_ci and expectancy_ci[0] > 0:
         expectancy_state = "PASS"
@@ -69,7 +69,7 @@ def build_objective_status(
 
     payoff = _num(challenger.get("payoffRatio"))
     profit_factor = _num(challenger.get("profitFactor"))
-    if not comparison_policy_current:
+    if not comparison_policy_current or not mature:
         payoff_state = "WAIT"
     elif payoff is not None and payoff >= MIN_PAYOFF_RATIO and profit_factor is not None and profit_factor > MIN_PROFIT_FACTOR:
         payoff_state = "PASS"
@@ -80,7 +80,7 @@ def build_objective_status(
 
     champion_drawdown = _num(champion.get("maxDrawdownPct"))
     challenger_drawdown = _num(challenger.get("maxDrawdownPct"))
-    if not comparison_policy_current:
+    if not comparison_policy_current or not mature:
         drawdown_state = "WAIT"
     elif champion_drawdown is not None and challenger_drawdown is not None and challenger_drawdown <= champion_drawdown:
         drawdown_state = "PASS"
@@ -94,7 +94,7 @@ def build_objective_status(
     residual_policy_current = residual_policy.get("version") == REQUIRED_RESIDUAL_POLICY_VERSION
     residual_ci = _ci(validation.get("selectedBlockBootstrapCi95"))
     residual_evidence = str(validation.get("evidenceStatus") or "MISSING").upper()
-    if not residual_policy_current:
+    if not residual_policy_current or not mature:
         residual_state = "WAIT"
     elif residual_evidence == "PASS" and residual_ci and residual_ci[0] > 0:
         residual_state = "PASS"
@@ -140,6 +140,8 @@ def build_objective_status(
         "overall": overall,
         "allObjectivesPassed": overall == "PASS",
         "completedSignalDates": completed_dates,
+        "evaluatedChallengerTrades": int(_num(challenger.get("selectedEvaluatedTrades")) or 0),
+        "evidenceMature": mature,
         "requiredSignalDates": 60,
         "requiredEvaluatedTrades": 120,
         "policyLineage": {

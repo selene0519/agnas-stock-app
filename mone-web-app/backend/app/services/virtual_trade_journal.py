@@ -40,6 +40,7 @@ MODES = {"conservative", "balanced", "aggressive"}
 HORIZONS = {"short", "swing", "mid"}
 SOURCE_TYPES = {
     "FORWARD_PAPER_TRADE",
+    "FORWARD_RESEARCH_TRADE",
     "MANUAL_REVIEWED",
     "HISTORICAL_REPLAY",
     "BACKTEST_EXPERIMENT",
@@ -56,6 +57,9 @@ INACTIVE_V1_FAILURE_TAGS = {"REGIME_MISMATCH", "SECTOR_WEAKNESS"}
 HISTORICAL_REPLAY_METHOD = "synthetic_cutoff_ohlcv_v1"
 SOURCE_CALIBRATION_WEIGHTS = {
     "FORWARD_PAPER_TRADE": 1.0,
+    # EV-neutral discovery samples validate rank direction only. They never
+    # influence advisory calibration, promotion, or reported strategy PnL.
+    "FORWARD_RESEARCH_TRADE": 0.0,
     "MANUAL_REVIEWED": 1.2,
     # Historical replay is hypothesis-generation evidence only.  It cannot
     # auto-adjust live recommendation parameters.
@@ -99,12 +103,14 @@ AUTO_CALIBRATION_POLICY = {
     "sourceMinSamples": {
         "FORWARD_PAPER_TRADE": 50,
         "MANUAL_REVIEWED": 35,
+        "FORWARD_RESEARCH_TRADE": 999999,
         "HISTORICAL_REPLAY": 999999,
         "BACKTEST_EXPERIMENT": 999999,
     },
     "sourceConfidenceCaps": {
         "FORWARD_PAPER_TRADE": 0.78,
         "MANUAL_REVIEWED": 0.86,
+        "FORWARD_RESEARCH_TRADE": 0.0,
         "HISTORICAL_REPLAY": 0.0,
         "BACKTEST_EXPERIMENT": 0.35,
     },
@@ -514,6 +520,14 @@ def _safe_float(value: Any) -> float | None:
         return None
 
 
+def _first_number(*values: Any) -> float | None:
+    """Return the first numeric value while preserving legitimate zeroes."""
+    for value in values:
+        parsed = _safe_float(value)
+        if parsed is not None:
+            return parsed
+    return None
+
 def _pct(value: Any) -> float | None:
     out = _safe_float(value)
     return out
@@ -829,7 +843,7 @@ def _source_breakdown(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def _candidate_numbers(item: dict[str, Any]) -> dict[str, float | None]:
     return {
         "score": _safe_float(item.get("finalRankScore") or item.get("finalScore") or item.get("recommendationScore")),
-        "ev": _safe_float(item.get("expectedValue") or item.get("ev")),
+        "ev": _first_number(item.get("expectedValue"), item.get("ev")),
         "rr": _safe_float(item.get("rrActual") or item.get("riskRewardRatio") or item.get("rr")),
         "probability": _pct(item.get("probability")),
         "risk_score": _safe_float(item.get("riskScore")),
@@ -841,7 +855,12 @@ def _candidate_numbers(item: dict[str, Any]) -> dict[str, float | None]:
     }
 
 
-def _reject_reason(item: dict[str, Any]) -> str:
+def _reject_reason(item: dict[str, Any], *, research_mode: bool = False) -> str:
+    """Validate an actionable candidate or a zero-authority research sample.
+
+    Research mode relaxes predictive thresholds only. Point-in-time data and
+    structurally valid price levels remain mandatory.
+    """
     market = _text(item.get("market")).lower()
     mode = _text(item.get("mode")).lower()
     horizon = _text(item.get("horizon")).lower()
@@ -856,21 +875,26 @@ def _reject_reason(item: dict[str, Any]) -> str:
         return "INVALID_MODE"
     if horizon not in HORIZONS:
         return "INVALID_HORIZON"
-    if nums["score"] is None or nums["score"] < 68.0:
+    if nums["score"] is None:
+        return "MISSING_SCORE"
+    if nums["ev"] is None:
+        return "MISSING_EV"
+    if not research_mode and nums["score"] < 68.0:
         return "LOW_SCORE"
-    if nums["ev"] is None or nums["ev"] < 1.0:
+    if not research_mode and nums["ev"] < 1.0:
         return "LOW_EV"
-    if nums["rr"] is None or nums["rr"] < 1.5:
+    if not research_mode and (nums["rr"] is None or nums["rr"] < 1.5):
         return "LOW_RR"
-    if nums["probability"] is not None and nums["probability"] < 60.0:
+    if not research_mode and nums["probability"] is not None and nums["probability"] < 60.0:
         return "LOW_PROBABILITY"
-    if nums["risk_score"] is not None and nums["risk_score"] < 45.0:
+    if not research_mode and nums["risk_score"] is not None and nums["risk_score"] < 45.0:
         return "LOW_RISK_SCORE"
-    if nums["event_risk"] is not None and nums["event_risk"] > 60.0:
+    if not research_mode and nums["event_risk"] is not None and nums["event_risk"] > 60.0:
         return "HIGH_EVENT_RISK"
     if not data_status or data_status in BAD_DATA_STATUS:
         return "BAD_DATA_STATUS"
-    if trade_block in BAD_TRADE_BLOCKS:
+    hard_blocks = {"BLOCK", "CAUTION"}
+    if trade_block in hard_blocks or (not research_mode and trade_block in BAD_TRADE_BLOCKS):
         return "TRADE_BLOCKED"
     if nums["entry"] is None or nums["stop"] is None or nums["target"] is None:
         return "MISSING_PRICE_LEVELS"
@@ -879,6 +903,34 @@ def _reject_reason(item: dict[str, Any]) -> str:
     if decision not in ALLOWED_DECISIONS:
         return "UNSUPPORTED_DECISION"
     return ""
+
+
+def _ev_neutral_stratified_order(items: list[dict[str, Any]], *, as_of_date: str, scope: str) -> list[dict[str, Any]]:
+    """Interleave EV quartiles with deterministic daily rotation."""
+    if not items:
+        return []
+    ordered = sorted(items, key=lambda item: ((_candidate_numbers(item)["ev"] or 0.0), _text(item.get("symbol"))))
+    strata: list[list[dict[str, Any]]] = [[] for _ in range(4)]
+    for position, item in enumerate(ordered):
+        index = min(3, position * 4 // len(ordered))
+        strata[index].append(item)
+    for rows in strata:
+        rows.sort(key=lambda item: (-(_candidate_numbers(item)["score"] or 0.0), _text(item.get("symbol"))))
+    rotation_seed = hashlib.sha256(f"{as_of_date}|{scope}".encode("utf-8")).hexdigest()
+    rotation = int(rotation_seed[:8], 16) % 4
+    stratum_order = [(rotation + offset) % 4 for offset in range(4)]
+    result: list[dict[str, Any]] = []
+    depth = 0
+    while any(depth < len(strata[index]) for index in stratum_order):
+        for index in stratum_order:
+            if depth < len(strata[index]):
+                work = dict(strata[index][depth])
+                work["researchOnly"] = True
+                work["researchSelectionPolicy"] = "EV_NEUTRAL_STRATIFIED"
+                work["researchEvStratum"] = index + 1
+                result.append(work)
+        depth += 1
+    return result
 
 
 def _session_note_from_item(
@@ -1021,6 +1073,7 @@ def capture(
     limit: int = 5,
     as_of_date: str | None = None,
     include_engine: bool = True,
+    selection_policy: str = "QUALIFIED",
 ) -> dict[str, Any]:
     _ensure()
     market = market.lower().strip()
@@ -1028,6 +1081,8 @@ def capture(
     horizon = horizon.lower().strip()
     source_type = source_type.upper().strip()
     journal_session = _journal_session(journal_session)
+    selection_policy = _upper(selection_policy or "QUALIFIED")
+    research_mode = source_type == "FORWARD_RESEARCH_TRADE" or selection_policy == "EV_NEUTRAL_STRATIFIED"
     if market not in MARKETS or mode not in MODES or horizon not in HORIZONS:
         return {"status": "ERROR", "error": "INVALID_SCOPE", "items": []}
     if source_type not in SOURCE_TYPES:
@@ -1039,15 +1094,20 @@ def capture(
     for item in source_items:
         if not isinstance(item, dict):
             continue
-        reason = _reject_reason(item)
+        reason = _reject_reason(item, research_mode=research_mode)
         if reason:
             rejected[reason] += 1
             continue
         accepted_items.append(item)
 
-    accepted_items.sort(key=_rank_key)
+    snap_date = (as_of_date or _infer_as_of_date(accepted_items) or _today())[:10]
+    if research_mode:
+        accepted_items = _ev_neutral_stratified_order(
+            accepted_items, as_of_date=snap_date, scope=f"{market}:{mode}:{horizon}",
+        )
+    else:
+        accepted_items.sort(key=_rank_key)
     selected = _unique_by_symbol(accepted_items)[:safe_limit]
-    snap_date = (as_of_date or _infer_as_of_date(selected) or _today())[:10]
     new_rows = [_snapshot_from_item(item, source_type, snap_date, journal_session) for item in selected]
     added, duplicates = _append_new_snapshots(new_rows)
     return {
@@ -1057,6 +1117,8 @@ def capture(
         "mode": mode,
         "horizon": horizon,
         "sourceType": source_type,
+        "selectionPolicy": selection_policy,
+        "researchOnly": research_mode,
         "journalSession": journal_session,
         "asOfDate": snap_date,
         "includeEngine": include_engine,
@@ -3717,19 +3779,46 @@ def _self_learning_quality(market: str = "all") -> dict[str, Any]:
     ]
     evaluated = _dedupe_decision_units(raw_evaluated)
     by_source = Counter(_upper(row.get("source_type") or "UNKNOWN") for row in evaluated)
-    effective_samples = sum(_source_weight(row.get("source_type")) for row in evaluated)
-    forward = by_source.get("FORWARD_PAPER_TRADE", 0) + by_source.get("MANUAL_REVIEWED", 0)
+    admissible = [row for row in evaluated if _is_calibration_admissible(row)]
     historical = by_source.get("HISTORICAL_REPLAY", 0)
-    source_count = sum(1 for source, count in by_source.items() if count > 0 and source != "UNKNOWN")
-    pnl_values = [_safe_float(row.get("net_pnl_pct")) for row in evaluated]
-    pnl_values = [v for v in pnl_values if v is not None]
-    avg_pnl = round(sum(pnl_values) / len(pnl_values), 4) if pnl_values else None
-    distinct_signal_dates = len({_text(row.get("as_of_date"))[:10] for row in evaluated if _text(row.get("as_of_date"))})
-    fingerprinted = sum(
-        1 for row in evaluated
+    all_history_fingerprinted = sum(
+        1 for row in admissible
         if _text(row.get("strategy_fingerprint")) not in {"", "LEGACY_UNFINGERPRINTED"}
     )
-    fingerprint_coverage = fingerprinted / len(evaluated) if evaluated else 0.0
+    all_history_fingerprint_coverage = all_history_fingerprinted / len(admissible) if admissible else 0.0
+    current_identity_rows = [
+        row for row in admissible
+        if _text(row.get("strategy_contract_version")) == STRATEGY_CONTRACT_VERSION
+        and _text(row.get("strategy_fingerprint")) not in {"", "LEGACY_UNFINGERPRINTED"}
+    ]
+    current_identity_dates = [
+        _text(row.get("as_of_date"))[:10]
+        for row in current_identity_rows
+        if _text(row.get("as_of_date"))
+    ]
+    current_identity_start = min(current_identity_dates) if current_identity_dates else ""
+    identity_window = [
+        row for row in admissible
+        if current_identity_start and _text(row.get("as_of_date"))[:10] >= current_identity_start
+    ]
+    fingerprinted = sum(
+        1 for row in identity_window
+        if _text(row.get("strategy_contract_version")) == STRATEGY_CONTRACT_VERSION
+        and _text(row.get("strategy_fingerprint")) not in {"", "LEGACY_UNFINGERPRINTED"}
+    )
+    fingerprint_coverage = fingerprinted / len(identity_window) if identity_window else 0.0
+    quality_rows = identity_window if current_identity_start else admissible
+    quality_by_source = Counter(_upper(row.get("source_type") or "UNKNOWN") for row in quality_rows)
+    effective_samples = sum(_source_weight(row.get("source_type")) for row in quality_rows)
+    forward = quality_by_source.get("FORWARD_PAPER_TRADE", 0) + quality_by_source.get("MANUAL_REVIEWED", 0)
+    pnl_values = [_safe_float(row.get("net_pnl_pct")) for row in quality_rows]
+    pnl_values = [value for value in pnl_values if value is not None]
+    avg_pnl = round(sum(pnl_values) / len(pnl_values), 4) if pnl_values else None
+    distinct_signal_dates = len({
+        _text(row.get("as_of_date"))[:10]
+        for row in quality_rows
+        if _text(row.get("as_of_date"))
+    })
     score = 0
     score += min(35, int(effective_samples / 120 * 35))
     score += min(25, int(forward / 50 * 25))
@@ -3748,12 +3837,18 @@ def _self_learning_quality(market: str = "all") -> dict[str, Any]:
         "grade": "A" if score >= 85 else "B" if score >= 70 else "C" if score >= 50 else "D",
         "evaluatedSamples": len(evaluated),
         "rawEvaluatedRows": len(raw_evaluated),
+        "calibrationAdmissibleSamples": len(admissible),
         "sampleUnit": "UNIQUE_AS_OF_DATE_MARKET_SYMBOL",
         "distinctSignalDates": distinct_signal_dates,
         "strategyFingerprintCoverage": round(fingerprint_coverage, 4),
+        "allHistoryStrategyFingerprintCoverage": round(all_history_fingerprint_coverage, 4),
+        "currentIdentityWindowStart": current_identity_start or None,
+        "currentIdentityWindowSamples": len(identity_window),
+        "qualityWindowSamples": len(quality_rows),
         "effectiveSamples": round(effective_samples, 3),
         "forwardSamples": forward,
         "historicalReplaySamples": historical,
+        "researchOnlySamples": by_source.get("FORWARD_RESEARCH_TRADE", 0),
         "sourceCounts": dict(by_source),
         "avgNetPnlPct": avg_pnl,
         "gates": gates,
@@ -4865,6 +4960,7 @@ def run_auto_capture(
     evaluate_after: bool = True,
     force: bool = False,
     source: str = "manual",
+    research_capture: bool = True,
 ) -> dict[str, Any]:
     mk_list = ["kr", "us"] if str(market).lower() == "all" else [str(market).lower()]
     source_type = _upper(source_type or "FORWARD_PAPER_TRADE")
@@ -4872,6 +4968,7 @@ def run_auto_capture(
     now = _kst_now()
     runs: list[dict[str, Any]] = []
     before = _read_auto_status()
+    research_run_enabled = False
     for mk in mk_list:
         if mk not in MARKETS:
             continue
@@ -4889,10 +4986,15 @@ def run_auto_capture(
                 "runKey": run_key,
             })
             continue
+        research_enabled = bool(research_capture and source_type == "FORWARD_PAPER_TRADE")
+        research_run_enabled = research_run_enabled or research_enabled
         market_items: list[dict[str, Any]] = []
         added_total = 0
         selected_total = 0
         rejected_total: Counter[str] = Counter()
+        research_added_total = 0
+        research_selected_total = 0
+        research_rejected_total: Counter[str] = Counter()
         for mode in sorted(MODES):
             for horizon in sorted(HORIZONS):
                 result = capture(
@@ -4916,7 +5018,32 @@ def run_auto_capture(
                     "duplicates": result.get("duplicates", 0),
                     "status": result.get("status", "UNKNOWN"),
                 })
-        run_status = "OK" if selected_total or added_total else "NO_CANDIDATES"
+                if research_enabled:
+                    research_result = capture(
+                        market=mk,
+                        mode=mode,
+                        horizon=horizon,
+                        source_type="FORWARD_RESEARCH_TRADE",
+                        journal_session=journal_session,
+                        limit=limit,
+                        as_of_date=trade_date,
+                        include_engine=include_engine,
+                        selection_policy="EV_NEUTRAL_STRATIFIED",
+                    )
+                    research_selected_total += int(research_result.get("selected") or 0)
+                    research_added_total += int(research_result.get("added") or 0)
+                    research_rejected_total.update(research_result.get("rejected") or {})
+                    market_items.append({
+                        "mode": mode,
+                        "horizon": horizon,
+                        "selected": research_result.get("selected", 0),
+                        "added": research_result.get("added", 0),
+                        "duplicates": research_result.get("duplicates", 0),
+                        "status": research_result.get("status", "UNKNOWN"),
+                        "sourceType": "FORWARD_RESEARCH_TRADE",
+                        "selectionPolicy": "EV_NEUTRAL_STRATIFIED",
+                    })
+        run_status = "OK" if selected_total or added_total or research_selected_total or research_added_total else "NO_CANDIDATES"
         runs.append({
             "market": mk,
             "tradeDate": trade_date,
@@ -4924,6 +5051,9 @@ def run_auto_capture(
             "status": run_status,
             "runKey": run_key,
             "selected": selected_total,
+            "researchSelected": research_selected_total,
+            "researchAdded": research_added_total,
+            "researchRejected": dict(research_rejected_total),
             "added": added_total,
             "rejected": dict(rejected_total),
             "items": market_items,
@@ -4933,10 +5063,22 @@ def run_auto_capture(
         # NO_CANDIDATES is not terminal: recommendation files can arrive after
         # the first scheduled attempt, so the later same-day retry must run.
         # Only a captured/duplicate-bearing run or a closed market is complete.
-        if item.get("status") in {"OK", "SKIPPED_MARKET_CLOSED"}:
+        operational_capture_complete = (
+            item.get("status") == "OK" and int(item.get("selected") or 0) > 0
+        )
+        if operational_capture_complete or item.get("status") == "SKIPPED_MARKET_CLOSED":
             completed.add(str(item.get("runKey")))
     should_evaluate = evaluate_after and journal_session not in PLAN_ONLY_SESSIONS
-    evaluation = evaluate(market=market, source_type=source_type, journal_session=journal_session, limit=500) if should_evaluate else {"status": "SKIPPED", "reason": "PLAN_ONLY_SESSION" if evaluate_after else "EVALUATE_AFTER_FALSE"}
+    skipped_evaluation = {"status": "SKIPPED", "reason": "PLAN_ONLY_SESSION" if evaluate_after else "EVALUATE_AFTER_FALSE"}
+    evaluation = evaluate(market=market, source_type=source_type, journal_session=journal_session, limit=500) if should_evaluate else skipped_evaluation
+    research_evaluation = evaluate(
+        market=market, source_type="FORWARD_RESEARCH_TRADE", journal_session=journal_session, limit=500,
+    ) if should_evaluate and research_capture else skipped_evaluation
+    research_diagnostics = ev_research_diagnostics(market) if research_capture else {
+        "status": "DISABLED",
+        "authority": "DIAGNOSTIC_ONLY",
+        "operationalEntryAllowed": False,
+    }
     status = {
         "status": "OK",
         "enabled": auto_capture_enabled(),
@@ -4946,6 +5088,10 @@ def run_auto_capture(
         "includeEngine": include_engine,
         "evaluateAfter": evaluate_after,
         "journalSession": journal_session,
+        "researchCaptureEnabled": research_capture,
+        "researchRunEnabled": research_run_enabled,
+        "researchEvaluation": research_evaluation,
+        "evResearchDiagnostics": research_diagnostics,
         "evaluation": evaluation,
         "completedKeys": sorted(completed)[-120:],
         "runs": runs,
@@ -5301,7 +5447,7 @@ def _ev_accuracy(rows: list[dict[str, Any]]) -> dict[str, Any]:
     """EV > 0 예측 신호의 실제 적중률 및 EV-실수익 상관 분석."""
     ev_pos, ev_neg, ev_zero = [], [], []
     for r in rows:
-        ev = _safe_float(r.get("expected_value") or r.get("ev"))
+        ev = _first_number(r.get("expected_value"), r.get("ev"))
         pnl = _safe_float(r.get("net_pnl_pct"))
         if ev is None or pnl is None:
             continue
@@ -5318,7 +5464,7 @@ def _ev_accuracy(rows: list[dict[str, Any]]) -> dict[str, Any]:
     # EV vs PnL 상관 (rank 없이 선형 근사: cov/var)
     all_ev, all_pnl = [], []
     for r in rows:
-        ev = _safe_float(r.get("expected_value") or r.get("ev"))
+        ev = _first_number(r.get("expected_value"), r.get("ev"))
         pnl = _safe_float(r.get("net_pnl_pct"))
         if ev is not None and pnl is not None:
             all_ev.append(ev)
@@ -5391,6 +5537,44 @@ def _clean_window_start() -> str:
     return _text(marker.get("cleanWindowStart"))[:10]
 
 
+def _ev_quartile_gap(pairs: list[tuple[float, float]]) -> tuple[float | None, float | None, float | None]:
+    ordered = sorted(pairs)
+    quartile_size = len(ordered) // 4
+    if quartile_size <= 0:
+        return None, None, None
+    low = ordered[:quartile_size]
+    high = ordered[-quartile_size:]
+    low_avg = sum(pnl for _, pnl in low) / len(low)
+    high_avg = sum(pnl for _, pnl in high) / len(high)
+    return low_avg, high_avg, high_avg - low_avg
+
+
+def _date_block_bootstrap_ev_gap_ci(
+    by_date: dict[str, list[tuple[float, float]]],
+    *,
+    iterations: int = 1000,
+) -> list[float] | None:
+    """Deterministic date-block bootstrap for the high-minus-low EV payoff gap."""
+    dates = sorted(day for day, pairs in by_date.items() if pairs)
+    if len(dates) < 8:
+        return None
+    estimates: list[float] = []
+    seed = hashlib.sha256("|".join(dates).encode("utf-8")).hexdigest()
+    for iteration in range(max(200, int(iterations))):
+        sampled: list[tuple[float, float]] = []
+        for draw in range(len(dates)):
+            digest = hashlib.sha256(f"{seed}|{iteration}|{draw}".encode("utf-8")).digest()
+            sampled.extend(by_date[dates[int.from_bytes(digest[:8], "big") % len(dates)]])
+        _low, _high, gap = _ev_quartile_gap(sampled)
+        if gap is not None:
+            estimates.append(gap)
+    if len(estimates) < 100:
+        return None
+    estimates.sort()
+    lower = estimates[max(0, int(len(estimates) * 0.025) - 1)]
+    upper = estimates[min(len(estimates) - 1, int(len(estimates) * 0.975))]
+    return [round(lower, 4), round(upper, 4)]
+
 def _ev_calibration_from_rows(
     rows: list[dict[str, Any]],
     *,
@@ -5405,7 +5589,7 @@ def _ev_calibration_from_rows(
     cutoff = clean_window_start[:10]
     eligible: list[tuple[str, float, float]] = []
     for row in _dedupe_decision_units(rows):
-        ev = _safe_float(row.get("expected_value") or row.get("ev"))
+        ev = _first_number(row.get("expected_value"), row.get("ev"))
         pnl = _safe_float(row.get("net_pnl_pct"))
         signal_date = _text(row.get("as_of_date") or row.get("generated_at"))[:10]
         if ev is None or pnl is None or not signal_date:
@@ -5436,21 +5620,17 @@ def _ev_calibration_from_rows(
     train_correlation = _pearson_correlation(train_pairs)
     holdout_correlation = _pearson_correlation(holdout_pairs)
 
-    sorted_rows = sorted(row_pairs)
-    quartile_size = len(sorted_rows) // 4
-    low_quartile = sorted_rows[:quartile_size] if quartile_size else []
-    high_quartile = sorted_rows[-quartile_size:] if quartile_size else []
-    low_avg = sum(pnl for _, pnl in low_quartile) / len(low_quartile) if low_quartile else None
-    high_avg = sum(pnl for _, pnl in high_quartile) / len(high_quartile) if high_quartile else None
-    quartile_gap = high_avg - low_avg if low_avg is not None and high_avg is not None else None
+    low_avg, high_avg, quartile_gap = _ev_quartile_gap(row_pairs)
+    quartile_gap_ci = _date_block_bootstrap_ev_gap_ci(by_date)
 
-    sample_ready = len(row_pairs) >= 50 and len(date_pairs) >= 8 and len(train_pairs) >= 5 and len(holdout_pairs) >= 3
+    sample_ready = len(row_pairs) >= 120 and len(date_pairs) >= 20 and len(train_pairs) >= 12 and len(holdout_pairs) >= 6
     inverse = bool(
         sample_ready
         and row_correlation is not None and row_correlation <= -0.10
         and train_correlation is not None and train_correlation < 0
         and holdout_correlation is not None and holdout_correlation < 0
         and quartile_gap is not None and quartile_gap <= -1.0
+        and quartile_gap_ci is not None and quartile_gap_ci[1] < 0
     )
     valid = bool(
         sample_ready
@@ -5458,6 +5638,7 @@ def _ev_calibration_from_rows(
         and train_correlation is not None and train_correlation > 0
         and holdout_correlation is not None and holdout_correlation > 0
         and quartile_gap is not None and quartile_gap >= 0.5
+        and quartile_gap_ci is not None and quartile_gap_ci[0] > 0
     )
     status = "INVERTED" if inverse else "VALID" if valid else "INSUFFICIENT" if not sample_ready else "UNSTABLE"
     return {
@@ -5471,7 +5652,8 @@ def _ev_calibration_from_rows(
         "distinctSignalDates": len(date_pairs),
         "trainDateSamples": len(train_pairs),
         "holdoutDateSamples": len(holdout_pairs),
-        "minimums": {"rows": 50, "dates": 8, "trainDates": 5, "holdoutDates": 3},
+        "minimums": {"rows": 120, "dates": 20, "trainDates": 12, "holdoutDates": 6},
+        "highMinusLowBootstrapCi95": quartile_gap_ci,
         "rowCorrelation": round(row_correlation, 4) if row_correlation is not None else None,
         "dateCorrelation": round(date_correlation, 4) if date_correlation is not None else None,
         "trainDateCorrelation": round(train_correlation, 4) if train_correlation is not None else None,
@@ -5481,6 +5663,39 @@ def _ev_calibration_from_rows(
         "highMinusLowPnlPct": round(quartile_gap, 4) if quartile_gap is not None else None,
     }
 
+
+def ev_research_diagnostics(market: str = "all") -> dict[str, Any]:
+    """Measure EV direction on the zero-authority research lane only."""
+    _ensure()
+    clean_start = _clean_window_start()
+    if not clean_start:
+        return {
+            "market": market,
+            "status": "ERROR",
+            "sourceType": "FORWARD_RESEARCH_TRADE",
+            "authority": "DIAGNOSTIC_ONLY",
+            "operationalEntryAllowed": False,
+            "reason": "CLEAN_WINDOW_MARKER_MISSING",
+        }
+    rows = _filter_rows(
+        _merge_evaluations(_read_journal_rows()),
+        market, "all", "all", "FORWARD_RESEARCH_TRADE", "all", "all",
+    )
+    evaluated = [
+        row for row in rows
+        if _upper(row.get("status")) in {"EVALUATED", "CANCELLED"}
+        and _safe_float(row.get("net_pnl_pct")) is not None
+        and _has_consistent_realized_outcome(row)
+    ]
+    result = _ev_calibration_from_rows(evaluated, clean_window_start=clean_start)
+    result.update({
+        "market": market,
+        "sourceType": "FORWARD_RESEARCH_TRADE",
+        "authority": "DIAGNOSTIC_ONLY",
+        "operationalEntryAllowed": False,
+        "calibrationWeight": 0.0,
+    })
+    return result
 
 def ev_calibration_gate(market: str = "all") -> dict[str, Any]:
     """Canonical clean-window EV promotion gate used by operating authority."""

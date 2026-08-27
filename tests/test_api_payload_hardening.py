@@ -23,6 +23,29 @@ def _items() -> list[dict]:
     ]
 
 
+def test_recommendation_summary_excludes_pending_rows_from_performance_denominator(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    (reports / "virtual_validation_results.csv").write_text(
+        "market,mode,horizon,symbol,pnlPct,decisionBucket\n"
+        "kr,balanced,swing,WINNER,2.5,TODAY_ENTRY\n"
+        "kr,balanced,swing,PENDING,,TODAY_ENTRY\n",
+        encoding="utf-8",
+    )
+    fake_main = tmp_path / "mone-web-app" / "backend" / "app" / "main.py"
+    monkeypatch.setattr(main, "__file__", str(fake_main))
+
+    result = main.api_validation_recommendations_summary("kr", "", "")
+
+    assert result["totalRows"] == 2
+    assert result["evaluatedRows"] == 1
+    assert result["pendingRows"] == 1
+    assert result["performanceDenominator"] == "REALIZED_RETURN_ONLY"
+    assert result["byMarket"]["kr"] == {"count": 1, "winRate": 1.0, "avgReturn": 2.5}
+
 def test_news_endpoint_filters_symbol_limit_and_internal_raw(monkeypatch) -> None:
     monkeypatch.setattr(main.data, "news_rows", lambda market: {"status": "OK", "items": _items(), "count": 2})
 

@@ -4196,6 +4196,15 @@ def api_validation_recommendations_summary(
 
     all_rows = rows_v or rows_l
 
+    def _realized_return(row: dict) -> float | None:
+        for field in ("pnlPct", "returnPct", "virtual_return_pct", "net_pnl_pct"):
+            value = _safe_num(row.get(field))
+            if value is not None:
+                return value
+        return None
+
+    performance_rows = [row for row in all_rows if _realized_return(row) is not None]
+
     by_signal_key: dict[str, dict] = _sdd(lambda: {"count": 0, "wins": 0, "returnSum": 0.0})
     by_signal_type: dict[str, dict] = _sdd(lambda: {"count": 0, "wins": 0, "returnSum": 0.0})
     by_horizon: dict[str, dict] = _sdd(lambda: {"count": 0, "wins": 0, "returnSum": 0.0})
@@ -4207,10 +4216,12 @@ def api_validation_recommendations_summary(
 
     from app.services import adaptive_weights as _aw_sum
 
-    for row in all_rows:
-        pnl = _safe_num(row.get("pnlPct") or row.get("returnPct") or row.get("virtual_return_pct"))
-        is_win = pnl is not None and pnl >= 0
-        ret = pnl or 0.0
+    for row in performance_rows:
+        pnl = _realized_return(row)
+        if pnl is None:  # performance_rows already enforces this; keeps the invariant explicit.
+            continue
+        is_win = pnl > 0
+        ret = pnl
 
         keys = _aw_sum._make_signal_keys(row)
         for k in keys:
@@ -4264,6 +4275,9 @@ def api_validation_recommendations_summary(
         "mode": mode,
         "horizon": horizon,
         "totalRows": len(all_rows),
+        "evaluatedRows": len(performance_rows),
+        "pendingRows": len(all_rows) - len(performance_rows),
+        "performanceDenominator": "REALIZED_RETURN_ONLY",
         "bySignalKey": _fmt(by_signal_key),
         "bySignalType": _fmt(by_signal_type),
         "byHorizon": _fmt(by_horizon),
@@ -8740,6 +8754,14 @@ def api_journal_calibration_apply_approved(payload: dict = Body(default_factory=
         max_applications=payload.get("maxApplications") or payload.get("max_applications"),
     )
 
+
+@app.get("/api/journal/ev-research-diagnostics")
+def api_journal_ev_research_diagnostics(
+    market: str = Query("all", pattern="^(kr|us|all)$"),
+) -> dict:
+    from app.services import virtual_trade_journal as vtj
+
+    return vtj.ev_research_diagnostics(market=market)
 
 @app.get("/api/journal/self-learning/status")
 def api_journal_self_learning_status(
