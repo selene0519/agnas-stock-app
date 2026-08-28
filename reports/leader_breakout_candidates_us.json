@@ -1,51 +1,14 @@
 {
   "version": "leader-breakout-v1",
   "market": "us",
-  "asOf": "2026-08-27",
+  "asOf": "2026-08-28",
   "status": "OK",
   "usBackdropFavorable": true,
   "scanned": 131,
   "validatedEdge": {
     "note": "leader breakout only holds up on SPY>MA50; deep 2014-2026 train+OOS forward-return, not cost/trade-sim"
   },
-  "candidates": [
-    {
-      "symbol": "OKTA",
-      "asOf": "2026-08-27",
-      "entry": 172.91,
-      "stop": 127.6,
-      "target": 263.53,
-      "rrRatio": 2.0,
-      "ret60Pct": 27.78,
-      "posRange250": 1.0,
-      "volRatio50": 4.97,
-      "setup": "LEADER_BREAKOUT"
-    },
-    {
-      "symbol": "CRWD",
-      "asOf": "2026-08-27",
-      "entry": 227.96,
-      "stop": 181.24,
-      "target": 321.4,
-      "rrRatio": 2.0,
-      "ret60Pct": 18.58,
-      "posRange250": 1.0,
-      "volRatio50": 2.48,
-      "setup": "LEADER_BREAKOUT"
-    },
-    {
-      "symbol": "NVDA",
-      "asOf": "2026-08-27",
-      "entry": 227.98,
-      "stop": 207.25,
-      "target": 269.44,
-      "rrRatio": 2.0,
-      "ret60Pct": 2.32,
-      "posRange250": 0.89,
-      "volRatio50": 2.28,
-      "setup": "LEADER_BREAKOUT"
-    }
-  ],
+  "candidates": [],
   "heldForUnfavorableBackdrop": [],
   "note": "Research/paper only. Feed the paper loop for live proof before promotion."
 }
