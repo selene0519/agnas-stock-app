@@ -1,13 +1,195 @@
 {
   "version": "relative-strength-v1",
   "market": "kr",
-  "asOf": "2026-08-27",
+  "asOf": "2026-08-28",
   "regime": "BULL",
   "status": "OK",
   "lensNote": "Long the RS leaders, avoid the laggards. RS edge holds in BULL/SIDE.",
-  "universeCount": 0,
-  "leaders": [],
-  "laggardsToAvoid": [],
+  "universeCount": 100,
+  "leaders": [
+    {
+      "symbol": "078930",
+      "rs60Pct": 77.96,
+      "relToIndexPp": 100.89,
+      "vol60Pct": 4.59
+    },
+    {
+      "symbol": "214450",
+      "rs60Pct": 58.86,
+      "relToIndexPp": 81.79,
+      "vol60Pct": 4.87
+    },
+    {
+      "symbol": "010950",
+      "rs60Pct": 37.77,
+      "relToIndexPp": 60.69,
+      "vol60Pct": 4.36
+    },
+    {
+      "symbol": "006360",
+      "rs60Pct": 31.74,
+      "relToIndexPp": 54.66,
+      "vol60Pct": 7.08
+    },
+    {
+      "symbol": "006340",
+      "rs60Pct": 22.5,
+      "relToIndexPp": 45.43,
+      "vol60Pct": 9.1
+    },
+    {
+      "symbol": "222800",
+      "rs60Pct": 17.62,
+      "relToIndexPp": 40.55,
+      "vol60Pct": 9.28
+    },
+    {
+      "symbol": "086790",
+      "rs60Pct": 16.24,
+      "relToIndexPp": 39.16,
+      "vol60Pct": 2.98
+    },
+    {
+      "symbol": "028670",
+      "rs60Pct": 15.8,
+      "relToIndexPp": 38.73,
+      "vol60Pct": 4.25
+    },
+    {
+      "symbol": "278470",
+      "rs60Pct": 15.09,
+      "relToIndexPp": 38.01,
+      "vol60Pct": 4.14
+    },
+    {
+      "symbol": "138040",
+      "rs60Pct": 14.99,
+      "relToIndexPp": 37.91,
+      "vol60Pct": 2.57
+    },
+    {
+      "symbol": "055550",
+      "rs60Pct": 13.8,
+      "relToIndexPp": 36.72,
+      "vol60Pct": 3.02
+    },
+    {
+      "symbol": "240810",
+      "rs60Pct": 13.48,
+      "relToIndexPp": 36.41,
+      "vol60Pct": 10.53
+    },
+    {
+      "symbol": "003490",
+      "rs60Pct": 13.44,
+      "relToIndexPp": 36.36,
+      "vol60Pct": 3.36
+    },
+    {
+      "symbol": "011200",
+      "rs60Pct": 11.23,
+      "relToIndexPp": 34.15,
+      "vol60Pct": 2.96
+    },
+    {
+      "symbol": "403870",
+      "rs60Pct": 9.66,
+      "relToIndexPp": 32.58,
+      "vol60Pct": 8.84
+    }
+  ],
+  "laggardsToAvoid": [
+    {
+      "symbol": "108320",
+      "rs60Pct": -30.73,
+      "relToIndexPp": -7.8,
+      "vol60Pct": 4.4
+    },
+    {
+      "symbol": "064350",
+      "rs60Pct": -31.48,
+      "relToIndexPp": -8.55,
+      "vol60Pct": 5.51
+    },
+    {
+      "symbol": "353200",
+      "rs60Pct": -31.68,
+      "relToIndexPp": -8.76,
+      "vol60Pct": 7.87
+    },
+    {
+      "symbol": "329180",
+      "rs60Pct": -32.1,
+      "relToIndexPp": -9.17,
+      "vol60Pct": 3.8
+    },
+    {
+      "symbol": "032830",
+      "rs60Pct": -35.42,
+      "relToIndexPp": -12.49,
+      "vol60Pct": 6.03
+    },
+    {
+      "symbol": "277810",
+      "rs60Pct": -40.24,
+      "relToIndexPp": -17.31,
+      "vol60Pct": 6.22
+    },
+    {
+      "symbol": "108490",
+      "rs60Pct": -40.25,
+      "relToIndexPp": -17.32,
+      "vol60Pct": 7.2
+    },
+    {
+      "symbol": "247540",
+      "rs60Pct": -40.3,
+      "relToIndexPp": -17.38,
+      "vol60Pct": 5.9
+    },
+    {
+      "symbol": "012330",
+      "rs60Pct": -40.65,
+      "relToIndexPp": -17.72,
+      "vol60Pct": 4.15
+    },
+    {
+      "symbol": "000990",
+      "rs60Pct": -44.8,
+      "relToIndexPp": -21.87,
+      "vol60Pct": 6.52
+    },
+    {
+      "symbol": "005380",
+      "rs60Pct": -45.2,
+      "relToIndexPp": -22.27,
+      "vol60Pct": 3.98
+    },
+    {
+      "symbol": "131970",
+      "rs60Pct": -45.31,
+      "relToIndexPp": -22.39,
+      "vol60Pct": 7.85
+    },
+    {
+      "symbol": "454910",
+      "rs60Pct": -48.27,
+      "relToIndexPp": -25.34,
+      "vol60Pct": 5.79
+    },
+    {
+      "symbol": "090360",
+      "rs60Pct": -50.94,
+      "relToIndexPp": -28.02,
+      "vol60Pct": 6.88
+    },
+    {
+      "symbol": "011070",
+      "rs60Pct": -51.2,
+      "relToIndexPp": -28.27,
+      "vol60Pct": 6.71
+    }
+  ],
   "defensiveHolds": [],
   "note": "Research/paper only."
 }

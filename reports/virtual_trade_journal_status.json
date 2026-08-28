@@ -2,7 +2,7 @@
   "status": "OK",
   "enabled": true,
   "source": "github-actions",
-  "lastRunAt": "2026-08-28T15:27:34+09:00",
+  "lastRunAt": "2026-08-28T16:16:16+09:00",
   "timezone": "Asia/Seoul",
   "includeEngine": false,
   "evaluateAfter": true,
@@ -12,11 +12,10 @@
   "researchEvaluation": {
     "status": "OK",
     "source": "data/virtual_trade_evaluations.csv",
-    "evaluated": 38,
+    "evaluated": 37,
     "repairedEvaluationRows": 0,
     "outcomes": {
       "PENDING": 20,
-      "TARGET_HIT": 1,
       "DATA_PENDING": 17
     },
     "items": [
@@ -60,7 +59,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "9869bd42114b8f2a9574a639",
@@ -102,7 +101,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "a72d339a0fba9b63576a7a8f",
@@ -144,7 +143,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "c0e1b2c4560414234ff96eb1",
@@ -186,49 +185,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
-      },
-      {
-        "journal_id": "474c8b558ca7b4adb5148004",
-        "evaluation_policy_version": "vtj-evaluation-v2.0.0",
-        "evaluation_policy_fingerprint": "811f3ad6438ee650b036",
-        "status": "EVALUATED",
-        "outcome": "TARGET_HIT",
-        "filled": true,
-        "fill_date": "2026-08-27",
-        "fill_price": 230.280053,
-        "exit_date": "2026-08-27",
-        "exit_price": 246.506,
-        "gross_pnl_pct": 7.368,
-        "net_pnl_pct": 7.0462,
-        "mfe_pct": 23.7623,
-        "mae_pct": 11.8811,
-        "bars_held": 1,
-        "entry_window_days": 10,
-        "evaluation_window_days": 60,
-        "target_progress": 1.1808,
-        "stop_progress": 1.671,
-        "failure_reason": "NONE",
-        "entryTouched": true,
-        "targetTouched": true,
-        "stopTouched": false,
-        "targetBeforeStop": true,
-        "entryTouchDate": "2026-08-27",
-        "targetTouchDate": "2026-08-27",
-        "stopTouchDate": "",
-        "maxFavorableExcursion": 23.7623,
-        "maxAdverseExcursion": 11.8811,
-        "holdingDays": 1,
-        "failureReason": "TARGET_BEFORE_STOP",
-        "diagnosticReason": "NONE",
-        "unknownDetail": "",
-        "secondary_tags": "",
-        "regime_at_entry": "SIDE",
-        "regime_at_exit": "RISK_ON",
-        "signal_confidence": "LOW",
-        "data_confidence": "HIGH",
-        "review_text": "추천 당시 낮은 신호 신뢰도 (SIDE 환경)로 진입 검토됐습니다. 목표가에 도달하며 성공 종료됐습니다, 손익 +7.05% (MFE +23.76% / MAE +11.88%). [NONE] 유형으로 기록합니다.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "7c57892c2db685e3995d4209",
@@ -270,7 +227,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "eeb0c5cac0e2eabbf78de333",
@@ -312,7 +269,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "9cf5d8eea6711c3fc35d4afb",
@@ -354,7 +311,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "7a0ca30c3850aed9aff03fc1",
@@ -396,7 +353,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "e6f114106e4859e1ba110bd4",
@@ -438,7 +395,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "8605ce099b76431372f9015a",
@@ -480,7 +437,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "32ea4c4df788974ff26fd827",
@@ -522,7 +479,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "bbe76bc379d3c306217e057a",
@@ -564,7 +521,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "c7da0a2354e4925df12aaaac",
@@ -606,7 +563,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:21"
       },
       {
         "journal_id": "7541cfe7394c21690c84547d",
@@ -648,7 +605,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:21"
       },
       {
         "journal_id": "5735132977e2c09b57ac7842",
@@ -690,7 +647,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:42"
+        "evaluated_at": "2026-08-28T16:16:21"
       },
       {
         "journal_id": "c8eebd8938131d12427a1d2a",
@@ -732,7 +689,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:42"
+        "evaluated_at": "2026-08-28T16:16:21"
       },
       {
         "journal_id": "e2603214a5ee99ea8ab2cecc",
@@ -774,7 +731,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:42"
+        "evaluated_at": "2026-08-28T16:16:21"
       },
       {
         "journal_id": "bb56319c06082244c1bcf0c4",
@@ -816,7 +773,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:42"
+        "evaluated_at": "2026-08-28T16:16:21"
       },
       {
         "journal_id": "42dfb992ee3987bf4b7d0c3d",
@@ -858,7 +815,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:42"
+        "evaluated_at": "2026-08-28T16:16:21"
       },
       {
         "journal_id": "ad28270495d57fab57d66aa3",
@@ -900,7 +857,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:42"
+        "evaluated_at": "2026-08-28T16:16:21"
       },
       {
         "journal_id": "f0634f5598d565f8e713bcf8",
@@ -942,7 +899,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "No future bars yet.",
-        "evaluated_at": "2026-08-28T15:27:42"
+        "evaluated_at": "2026-08-28T16:16:21"
       },
       {
         "journal_id": "e518478a435d7bb076ab5cdd",
@@ -984,7 +941,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "No future bars yet.",
-        "evaluated_at": "2026-08-28T15:27:42"
+        "evaluated_at": "2026-08-28T16:16:21"
       },
       {
         "journal_id": "210d8d5ae652773c89cb7e96",
@@ -1026,7 +983,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "No future bars yet.",
-        "evaluated_at": "2026-08-28T15:27:42"
+        "evaluated_at": "2026-08-28T16:16:21"
       },
       {
         "journal_id": "a5151a447ee5ed2152381c24",
@@ -1068,7 +1025,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "No future bars yet.",
-        "evaluated_at": "2026-08-28T15:27:42"
+        "evaluated_at": "2026-08-28T16:16:21"
       },
       {
         "journal_id": "2d14e701cc2df0b44a8c42b5",
@@ -1110,7 +1067,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "No future bars yet.",
-        "evaluated_at": "2026-08-28T15:27:42"
+        "evaluated_at": "2026-08-28T16:16:21"
       },
       {
         "journal_id": "f243e5ac4283386cd3b80a29",
@@ -1152,7 +1109,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "No future bars yet.",
-        "evaluated_at": "2026-08-28T15:27:42"
+        "evaluated_at": "2026-08-28T16:16:21"
       },
       {
         "journal_id": "f1a6797481a6c241645427d1",
@@ -1194,7 +1151,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "No future bars yet.",
-        "evaluated_at": "2026-08-28T15:27:42"
+        "evaluated_at": "2026-08-28T16:16:21"
       },
       {
         "journal_id": "7b54a3caaefd6473b19f8377",
@@ -1236,7 +1193,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "No future bars yet.",
-        "evaluated_at": "2026-08-28T15:27:42"
+        "evaluated_at": "2026-08-28T16:16:21"
       },
       {
         "journal_id": "d61ca7e3e8ead6eb62b3561c",
@@ -1278,7 +1235,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "No future bars yet.",
-        "evaluated_at": "2026-08-28T15:27:42"
+        "evaluated_at": "2026-08-28T16:16:21"
       },
       {
         "journal_id": "7e15aaf4ee0372d2457e0465",
@@ -1320,7 +1277,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "No future bars yet.",
-        "evaluated_at": "2026-08-28T15:27:42"
+        "evaluated_at": "2026-08-28T16:16:21"
       },
       {
         "journal_id": "d7215fa970397f8a21aba2c6",
@@ -1362,7 +1319,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "No future bars yet.",
-        "evaluated_at": "2026-08-28T15:27:42"
+        "evaluated_at": "2026-08-28T16:16:21"
       },
       {
         "journal_id": "91e0792288b2ef1d32198002",
@@ -1404,7 +1361,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "No future bars yet.",
-        "evaluated_at": "2026-08-28T15:27:42"
+        "evaluated_at": "2026-08-28T16:16:21"
       },
       {
         "journal_id": "14517422146769c18fc9add1",
@@ -1446,7 +1403,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "No future bars yet.",
-        "evaluated_at": "2026-08-28T15:27:42"
+        "evaluated_at": "2026-08-28T16:16:21"
       },
       {
         "journal_id": "a13ef97421eb4e8e2ae1b178",
@@ -1488,7 +1445,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "No future bars yet.",
-        "evaluated_at": "2026-08-28T15:27:42"
+        "evaluated_at": "2026-08-28T16:16:21"
       },
       {
         "journal_id": "f5e6cff3e8a387ac4da7cf9e",
@@ -1530,7 +1487,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "No future bars yet.",
-        "evaluated_at": "2026-08-28T15:27:42"
+        "evaluated_at": "2026-08-28T16:16:21"
       },
       {
         "journal_id": "b3d865ef9def5277d1ef0867",
@@ -1572,7 +1529,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "No future bars yet.",
-        "evaluated_at": "2026-08-28T15:27:42"
+        "evaluated_at": "2026-08-28T16:16:21"
       },
       {
         "journal_id": "dccc37798cedd414b4e72b2a",
@@ -1614,7 +1571,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "No future bars yet.",
-        "evaluated_at": "2026-08-28T15:27:42"
+        "evaluated_at": "2026-08-28T16:16:21"
       }
     ]
   },
@@ -1697,7 +1654,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:39"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "1e69ee1d019711ccfa708789",
@@ -1739,7 +1696,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:39"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "b875c42dd1927f18da1b22a3",
@@ -1781,7 +1738,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:39"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "7aaeda7e8b2a6ef9d4ca39f9",
@@ -1823,7 +1780,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:39"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "beb543fce6dca64bdcb5ae78",
@@ -1865,7 +1822,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:39"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "4a80e1e83c4a112c0ceb6f4c",
@@ -1907,7 +1864,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:39"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "0c656e2b0eb8b512966919f2",
@@ -1949,7 +1906,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:39"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "252afb684357da8d45535d12",
@@ -1991,7 +1948,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:39"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "6c7618c0d7954bc59ae44954",
@@ -2033,7 +1990,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:39"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "e05b3a8b11c71809a334bd59",
@@ -2075,7 +2032,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:39"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "5d2e6011924bf01d19d12943",
@@ -2117,7 +2074,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:39"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "d9f1ac84a5ac680cc2692cb4",
@@ -2159,7 +2116,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:39"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "8d99a2d90d5b0daccbef3278",
@@ -2201,7 +2158,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:39"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "ac489b3341cd8c727c3504fd",
@@ -2243,7 +2200,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:39"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "4fa1110d9ab255dbbafb4873",
@@ -2285,7 +2242,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:39"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "28538b07b64f47fc89a53d2d",
@@ -2327,7 +2284,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:39"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "91d4a0c2a884c1f8a3343026",
@@ -2369,7 +2326,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:39"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "2d7ed046aa491a37a658a1bb",
@@ -2411,7 +2368,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:39"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "86145a27b7efa59703719510",
@@ -2453,7 +2410,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:39"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "77a4ecf13cd24c8b410eb145",
@@ -2495,7 +2452,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:39"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "e34ca0db8042d7a183175c23",
@@ -2537,7 +2494,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:39"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "bcc8103db076a687ff9532f9",
@@ -2579,7 +2536,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:39"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "ae56c20b6dc76de8bd511e66",
@@ -2621,7 +2578,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:39"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "a84da538f394ef36b1f90dcd",
@@ -2663,7 +2620,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:39"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "f4084f0638feb655facd60cc",
@@ -2705,7 +2662,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:39"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "d80daf0447cc0c3799bdc870",
@@ -2747,7 +2704,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "33ec5cb561c2da8f75ccd3dd",
@@ -2789,7 +2746,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "6724a7ce1d92cb9af1563fc7",
@@ -2831,7 +2788,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "606610799620cfeb322157f4",
@@ -2873,7 +2830,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "2154ec8edab27e4f458b186f",
@@ -2915,7 +2872,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "52bdfc4d10c95b6ca346fe65",
@@ -2957,7 +2914,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "b358a38042c7f364e787baee",
@@ -2999,7 +2956,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "3372b32f877c8d9acbaf7274",
@@ -3041,7 +2998,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "238769c07d3df8299c92cc7d",
@@ -3083,7 +3040,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "4dcd7366c95b45cb4994d86d",
@@ -3125,7 +3082,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "18ebaae7a978e65ddc76f308",
@@ -3167,7 +3124,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "fb201d75f4f66ae21351e66b",
@@ -3209,7 +3166,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "e185fe8bd56aea07607fb19f",
@@ -3251,7 +3208,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "8d0300f0d84623d0b1787056",
@@ -3293,7 +3250,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "e886c3d9b7125052e43fa4e4",
@@ -3335,7 +3292,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "aae981ea03fd5a56c73a06fd",
@@ -3377,7 +3334,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:19"
       },
       {
         "journal_id": "91f91ff2e8fe12272ccb09f2",
@@ -3419,7 +3376,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "17b234b931cf9eafbc536a06",
@@ -3461,7 +3418,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "7b783f8e96d626e9611a84eb",
@@ -3503,7 +3460,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "9125232437c84a649365b275",
@@ -3545,7 +3502,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "48d620e4616fec9205cb9b9d",
@@ -3587,7 +3544,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "ff064bc1e2067e76151a70f5",
@@ -3629,7 +3586,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "70bc993cb3f7031149519eef",
@@ -3671,7 +3628,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "0f019632b80f1a2eb66591ee",
@@ -3713,7 +3670,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "ad985bd10ac5db2c83f370ed",
@@ -3755,7 +3712,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "bad557cb167d53c289a11d89",
@@ -3797,7 +3754,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "7ff5d9a94cf35943c681d593",
@@ -3839,7 +3796,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "3beb661dc36949c655567222",
@@ -3881,7 +3838,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "1d17c915f112a486f1401391",
@@ -3923,7 +3880,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "387995299424d2ba35a42f8b",
@@ -3965,7 +3922,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "6f82e44e64aa3b6bf719c052",
@@ -4007,7 +3964,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "bab4b90199d7c381e8769014",
@@ -4049,7 +4006,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "cb10bc7507c10edd63988228",
@@ -4091,7 +4048,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "fc70982cb599e77e762e86c0",
@@ -4133,7 +4090,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "5e7a7f7592abb529638d4d03",
@@ -4175,7 +4132,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "d3f938f39dd5004ec7f31fc3",
@@ -4217,7 +4174,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "88476fa5367a9671c064dac3",
@@ -4259,7 +4216,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "5453035f4d4b2205ced3228a",
@@ -4301,7 +4258,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "c0b1eeb3e81b078fc1dfb0b0",
@@ -4343,7 +4300,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:40"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "4eeeb3a319fc72d901aea903",
@@ -4385,7 +4342,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "5dba16ec104c302be0bb93bb",
@@ -4427,7 +4384,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "896e61c118bc55e7e1b75bc2",
@@ -4469,7 +4426,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "9293832e911e7b14bf9d4cb1",
@@ -4511,7 +4468,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "a449a25a2fc74dc4afdb8ac0",
@@ -4553,7 +4510,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "7684991a24e714181d8952b3",
@@ -4595,7 +4552,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "93ffedaa5ee69191df3ffcbb",
@@ -4637,7 +4594,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "175053976018b2cbea40cacf",
@@ -4679,7 +4636,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "222a42f9f851a9409783d1fd",
@@ -4721,7 +4678,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "e238c2b20c01cad931fc79eb",
@@ -4763,7 +4720,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "10a0e2d917d23b56be528a2f",
@@ -4805,7 +4762,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "0b377bb974a5e8ac7560792a",
@@ -4847,7 +4804,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "a3c9a4dd0f5e256cf2c4b147",
@@ -4889,7 +4846,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "958679a273cf4e102e093f9f",
@@ -4931,7 +4888,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "48640d13558540f0f7be013a",
@@ -4973,7 +4930,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "7ee5a658027c356374d215ac",
@@ -5015,7 +4972,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "90309bf111d2af005efd2f20",
@@ -5057,7 +5014,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "7102edb318fc62c9504de350",
@@ -5099,7 +5056,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "a1d219028557f991f67a3dfa",
@@ -5141,7 +5098,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "47c1060d721f812f71719828",
@@ -5183,7 +5140,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:20"
       },
       {
         "journal_id": "ed4c9eaa2fcfe26bf9ecc086",
@@ -5225,7 +5182,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-08-28T15:27:41"
+        "evaluated_at": "2026-08-28T16:16:20"
       }
     ]
   },
@@ -5497,7 +5454,7 @@
       "runKey": "us:2026-08-27:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
       "selected": 0,
       "researchSelected": 17,
-      "researchAdded": 17,
+      "researchAdded": 0,
       "researchRejected": {},
       "added": 0,
       "rejected": {
@@ -5518,8 +5475,8 @@
           "mode": "aggressive",
           "horizon": "mid",
           "selected": 5,
-          "added": 5,
-          "duplicates": 0,
+          "added": 0,
+          "duplicates": 5,
           "status": "OK",
           "sourceType": "FORWARD_RESEARCH_TRADE",
           "selectionPolicy": "EV_NEUTRAL_STRATIFIED"
@@ -5536,8 +5493,8 @@
           "mode": "aggressive",
           "horizon": "short",
           "selected": 1,
-          "added": 1,
-          "duplicates": 0,
+          "added": 0,
+          "duplicates": 1,
           "status": "OK",
           "sourceType": "FORWARD_RESEARCH_TRADE",
           "selectionPolicy": "EV_NEUTRAL_STRATIFIED"
@@ -5590,8 +5547,8 @@
           "mode": "balanced",
           "horizon": "short",
           "selected": 4,
-          "added": 4,
-          "duplicates": 0,
+          "added": 0,
+          "duplicates": 4,
           "status": "OK",
           "sourceType": "FORWARD_RESEARCH_TRADE",
           "selectionPolicy": "EV_NEUTRAL_STRATIFIED"
@@ -5626,8 +5583,8 @@
           "mode": "conservative",
           "horizon": "mid",
           "selected": 5,
-          "added": 5,
-          "duplicates": 0,
+          "added": 0,
+          "duplicates": 5,
           "status": "OK",
           "sourceType": "FORWARD_RESEARCH_TRADE",
           "selectionPolicy": "EV_NEUTRAL_STRATIFIED"
@@ -5644,8 +5601,8 @@
           "mode": "conservative",
           "horizon": "short",
           "selected": 2,
-          "added": 2,
-          "duplicates": 0,
+          "added": 0,
+          "duplicates": 2,
           "status": "OK",
           "sourceType": "FORWARD_RESEARCH_TRADE",
           "selectionPolicy": "EV_NEUTRAL_STRATIFIED"
