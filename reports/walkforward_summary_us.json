@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-08-22T08:20:32.107575+00:00",
+  "generatedAt": "2026-08-29T14:06:19.714596+00:00",
   "market": "us",
-  "asOf": "2026-08-22",
+  "asOf": "2026-08-29",
   "windowMonths": 3,
   "combos": {
     "us_conservative_short": {
@@ -9,9 +9,9 @@
       "market": "us",
       "mode": "conservative",
       "horizon": "short",
-      "asOf": "2026-08-22",
+      "asOf": "2026-08-29",
       "excludedFutureRows": 0,
-      "dataRange": "2010-02-16 ~ 2026-08-21",
+      "dataRange": "2010-02-16 ~ 2026-08-28",
       "windowCount": 66,
       "windows": [
         {
@@ -4782,16 +4782,16 @@
         "universeSource": "OHLCV_glob(market_*_daily.csv)",
         "note": "backtest winRate는 생존편향으로 낙관. 실측 신뢰는 live_calibration 참조."
       },
-      "generatedAt": "2026-08-22T08:04:37.522464+00:00"
+      "generatedAt": "2026-08-29T13:37:43.161627+00:00"
     },
     "us_conservative_swing": {
       "status": "OK",
       "market": "us",
       "mode": "conservative",
       "horizon": "swing",
-      "asOf": "2026-08-22",
+      "asOf": "2026-08-29",
       "excludedFutureRows": 0,
-      "dataRange": "2010-02-16 ~ 2026-08-21",
+      "dataRange": "2010-02-16 ~ 2026-08-28",
       "windowCount": 66,
       "windows": [
         {
@@ -9810,16 +9810,16 @@
         "universeSource": "OHLCV_glob(market_*_daily.csv)",
         "note": "backtest winRate는 생존편향으로 낙관. 실측 신뢰는 live_calibration 참조."
       },
-      "generatedAt": "2026-08-22T08:06:55.256295+00:00"
+      "generatedAt": "2026-08-29T13:41:49.900478+00:00"
     },
     "us_conservative_mid": {
       "status": "OK",
       "market": "us",
       "mode": "conservative",
       "horizon": "mid",
-      "asOf": "2026-08-22",
+      "asOf": "2026-08-29",
       "excludedFutureRows": 0,
-      "dataRange": "2010-02-16 ~ 2026-08-21",
+      "dataRange": "2010-02-16 ~ 2026-08-28",
       "windowCount": 66,
       "windows": [
         {
@@ -14804,32 +14804,31 @@
             "recommendationCount": 52,
             "executionCount": 34,
             "executionRate": 65.4,
-            "winCount": 9,
-            "winRate": 26.5,
-            "stopCount": 7,
-            "stopHitRate": 20.6,
-            "expiredCount": 18,
+            "winCount": 10,
+            "winRate": 29.4,
+            "stopCount": 9,
+            "stopHitRate": 26.5,
+            "expiredCount": 15,
             "missEntryCount": 18,
             "missEntryRate": 34.6,
-            "avgNetPnlPct": 1.484,
-            "cumulativeNetPnlPct": 50.455,
+            "avgNetPnlPct": 1.824,
+            "cumulativeNetPnlPct": 62.023,
             "mddPct": -19.08,
             "mddMethod": "fixed_notional_equity_100",
             "avgHoldingDays": 22.0,
-            "profitLossRatio": 1.71,
+            "profitLossRatio": 1.29,
             "reasonCounts": {
-              "GOOD_SIGNAL_WEAK_EXIT": 9,
-              "ENTRY_TOO_AGGRESSIVE": 1,
+              "GOOD_SIGNAL_WEAK_EXIT": 12,
+              "ENTRY_TOO_AGGRESSIVE": 3,
               "TARGET_TOO_CLOSE": 4,
-              "VOLATILITY_TOO_HIGH": 10,
-              "TARGET_TOO_FAR": 4,
+              "VOLATILITY_TOO_HIGH": 6,
+              "TARGET_TOO_FAR": 3,
               "MISS_ENTRY_TOO_LOW": 13,
-              "LOW_LIQUIDITY": 1,
-              "GOOD": 5,
+              "GOOD": 6,
               "DATA_STALE": 5
             },
             "regimeAvgPnl": {
-              "SIDE": 1.484
+              "SIDE": 1.824
             }
           },
           "corrected": {
@@ -14837,39 +14836,39 @@
             "recommendationCount": 52,
             "executionCount": 32,
             "executionRate": 61.5,
-            "winCount": 9,
-            "winRate": 28.1,
-            "stopCount": 7,
-            "stopHitRate": 21.9,
-            "expiredCount": 16,
+            "winCount": 10,
+            "winRate": 31.2,
+            "stopCount": 9,
+            "stopHitRate": 28.1,
+            "expiredCount": 13,
             "missEntryCount": 20,
             "missEntryRate": 38.5,
-            "avgNetPnlPct": 1.756,
-            "cumulativeNetPnlPct": 56.182,
+            "avgNetPnlPct": 2.056,
+            "cumulativeNetPnlPct": 65.778,
             "mddPct": -18.66,
             "mddMethod": "fixed_notional_equity_100",
             "avgHoldingDays": 22.0,
-            "profitLossRatio": 1.43,
+            "profitLossRatio": 1.5,
             "reasonCounts": {
-              "GOOD_SIGNAL_WEAK_EXIT": 11,
-              "ENTRY_TOO_AGGRESSIVE": 2,
+              "GOOD_SIGNAL_WEAK_EXIT": 10,
+              "ENTRY_TOO_AGGRESSIVE": 3,
               "TARGET_TOO_CLOSE": 4,
-              "TARGET_TOO_FAR": 4,
-              "MISS_ENTRY_TOO_LOW": 15,
               "VOLATILITY_TOO_HIGH": 6,
-              "GOOD": 5,
+              "TARGET_TOO_FAR": 3,
+              "MISS_ENTRY_TOO_LOW": 15,
+              "GOOD": 6,
               "DATA_STALE": 5
             },
             "regimeAvgPnl": {
-              "SIDE": 1.756
+              "SIDE": 2.056
             }
           },
           "diff": {
-            "winRateDiff": 1.6,
-            "stopHitRateDiff": 1.3,
+            "winRateDiff": 1.8,
+            "stopHitRateDiff": 1.6,
             "missEntryRateDiff": 3.9,
-            "avgNetPnlPctDiff": 0.272,
-            "cumulativeNetPnlPctDiff": 5.727,
+            "avgNetPnlPctDiff": 0.232,
+            "cumulativeNetPnlPctDiff": 3.755,
             "mddPctDiff": 0.42,
             "executionRateDiff": -3.9
           }
@@ -14881,25 +14880,24 @@
         "recommendationCount": 4201,
         "executionCount": 2703,
         "executionRate": 64.342,
-        "winCount": 551,
-        "winRate": 21.009,
-        "stopCount": 365,
-        "stopHitRate": 50.768,
+        "winCount": 552,
+        "winRate": 21.046,
+        "stopCount": 367,
+        "stopHitRate": 51.047,
         "missEntryRate": 35.658,
-        "avgNetPnlPct": 0.582,
-        "cumulativeNetPnlPct": 1572.074,
+        "avgNetPnlPct": 0.586,
+        "cumulativeNetPnlPct": 1583.642,
         "mddPct": -100.0,
-        "profitLossRatio": 1.764,
+        "profitLossRatio": 1.759,
         "reasonCounts": {
-          "VOLATILITY_TOO_HIGH": 1070,
-          "ENTRY_TOO_AGGRESSIVE": 446,
+          "VOLATILITY_TOO_HIGH": 1066,
+          "ENTRY_TOO_AGGRESSIVE": 448,
           "MISS_ENTRY_TOO_LOW": 1493,
-          "GOOD": 349,
-          "TARGET_TOO_FAR": 136,
-          "GOOD_SIGNAL_WEAK_EXIT": 407,
+          "GOOD": 350,
+          "TARGET_TOO_FAR": 135,
+          "GOOD_SIGNAL_WEAK_EXIT": 410,
           "TARGET_TOO_CLOSE": 190,
           "STOP_TOO_TIGHT": 104,
-          "LOW_LIQUIDITY": 1,
           "DATA_STALE": 5
         }
       },
@@ -14909,33 +14907,33 @@
         "recommendationCount": 4201,
         "executionCount": 2706,
         "executionRate": 64.414,
-        "winCount": 528,
-        "winRate": 20.097,
-        "stopCount": 374,
-        "stopHitRate": 52.612,
+        "winCount": 529,
+        "winRate": 20.135,
+        "stopCount": 376,
+        "stopHitRate": 52.891,
         "missEntryRate": 35.586,
-        "avgNetPnlPct": 0.567,
-        "cumulativeNetPnlPct": 1533.478,
+        "avgNetPnlPct": 0.57,
+        "cumulativeNetPnlPct": 1543.074,
         "mddPct": -100.0,
-        "profitLossRatio": 1.846,
+        "profitLossRatio": 1.847,
         "reasonCounts": {
           "VOLATILITY_TOO_HIGH": 1069,
-          "ENTRY_TOO_AGGRESSIVE": 448,
+          "ENTRY_TOO_AGGRESSIVE": 449,
           "MISS_ENTRY_TOO_LOW": 1490,
-          "GOOD": 338,
-          "TARGET_TOO_FAR": 131,
+          "GOOD": 339,
+          "TARGET_TOO_FAR": 130,
           "STOP_TOO_TIGHT": 120,
-          "GOOD_SIGNAL_WEAK_EXIT": 421,
+          "GOOD_SIGNAL_WEAK_EXIT": 420,
           "TARGET_TOO_CLOSE": 179,
           "DATA_STALE": 5
         }
       },
       "diff": {
-        "winRateDiff": -0.912,
+        "winRateDiff": -0.911,
         "stopHitRateDiff": 1.844,
         "missEntryRateDiff": -0.072,
-        "avgNetPnlPctDiff": -0.015,
-        "cumulativeNetPnlPctDiff": -38.596,
+        "avgNetPnlPctDiff": -0.016,
+        "cumulativeNetPnlPctDiff": -40.568,
         "mddPctDiff": 0.0,
         "executionRateDiff": 0.072
       },
@@ -14949,16 +14947,16 @@
         "universeSource": "OHLCV_glob(market_*_daily.csv)",
         "note": "backtest winRate는 생존편향으로 낙관. 실측 신뢰는 live_calibration 참조."
       },
-      "generatedAt": "2026-08-22T08:09:14.816879+00:00"
+      "generatedAt": "2026-08-29T13:46:05.255351+00:00"
     },
     "us_balanced_short": {
       "status": "OK",
       "market": "us",
       "mode": "balanced",
       "horizon": "short",
-      "asOf": "2026-08-22",
+      "asOf": "2026-08-29",
       "excludedFutureRows": 0,
-      "dataRange": "2010-02-16 ~ 2026-08-21",
+      "dataRange": "2010-02-16 ~ 2026-08-28",
       "windowCount": 66,
       "windows": [
         {
@@ -19223,16 +19221,16 @@
         "universeSource": "OHLCV_glob(market_*_daily.csv)",
         "note": "backtest winRate는 생존편향으로 낙관. 실측 신뢰는 live_calibration 참조."
       },
-      "generatedAt": "2026-08-22T08:11:08.934322+00:00"
+      "generatedAt": "2026-08-29T13:49:24.965994+00:00"
     },
     "us_balanced_swing": {
       "status": "OK",
       "market": "us",
       "mode": "balanced",
       "horizon": "swing",
-      "asOf": "2026-08-22",
+      "asOf": "2026-08-29",
       "excludedFutureRows": 0,
-      "dataRange": "2010-02-16 ~ 2026-08-21",
+      "dataRange": "2010-02-16 ~ 2026-08-28",
       "windowCount": 66,
       "windows": [
         {
@@ -23934,16 +23932,16 @@
         "universeSource": "OHLCV_glob(market_*_daily.csv)",
         "note": "backtest winRate는 생존편향으로 낙관. 실측 신뢰는 live_calibration 참조."
       },
-      "generatedAt": "2026-08-22T08:13:11.520335+00:00"
+      "generatedAt": "2026-08-29T13:53:03.000368+00:00"
     },
     "us_balanced_mid": {
       "status": "OK",
       "market": "us",
       "mode": "balanced",
       "horizon": "mid",
-      "asOf": "2026-08-22",
+      "asOf": "2026-08-29",
       "excludedFutureRows": 0,
-      "dataRange": "2010-02-16 ~ 2026-08-21",
+      "dataRange": "2010-02-16 ~ 2026-08-28",
       "windowCount": 66,
       "windows": [
         {
@@ -28911,32 +28909,31 @@
             "recommendationCount": 48,
             "executionCount": 32,
             "executionRate": 66.7,
-            "winCount": 7,
-            "winRate": 21.9,
-            "stopCount": 7,
-            "stopHitRate": 21.9,
-            "expiredCount": 18,
+            "winCount": 8,
+            "winRate": 25.0,
+            "stopCount": 9,
+            "stopHitRate": 28.1,
+            "expiredCount": 15,
             "missEntryCount": 16,
             "missEntryRate": 33.3,
-            "avgNetPnlPct": 1.161,
-            "cumulativeNetPnlPct": 37.148,
+            "avgNetPnlPct": 1.522,
+            "cumulativeNetPnlPct": 48.716,
             "mddPct": -19.08,
             "mddMethod": "fixed_notional_equity_100",
             "avgHoldingDays": 22.0,
-            "profitLossRatio": 1.64,
+            "profitLossRatio": 1.24,
             "reasonCounts": {
-              "GOOD_SIGNAL_WEAK_EXIT": 9,
-              "ENTRY_TOO_AGGRESSIVE": 1,
+              "GOOD_SIGNAL_WEAK_EXIT": 12,
+              "ENTRY_TOO_AGGRESSIVE": 3,
               "TARGET_TOO_CLOSE": 2,
-              "VOLATILITY_TOO_HIGH": 10,
-              "TARGET_TOO_FAR": 4,
+              "VOLATILITY_TOO_HIGH": 6,
+              "TARGET_TOO_FAR": 3,
               "MISS_ENTRY_TOO_LOW": 12,
-              "LOW_LIQUIDITY": 1,
-              "GOOD": 5,
+              "GOOD": 6,
               "DATA_STALE": 4
             },
             "regimeAvgPnl": {
-              "SIDE": 1.161
+              "SIDE": 1.522
             }
           },
           "corrected": {
@@ -28944,39 +28941,39 @@
             "recommendationCount": 48,
             "executionCount": 29,
             "executionRate": 60.4,
-            "winCount": 7,
-            "winRate": 24.1,
-            "stopCount": 7,
-            "stopHitRate": 24.1,
-            "expiredCount": 15,
+            "winCount": 8,
+            "winRate": 27.6,
+            "stopCount": 9,
+            "stopHitRate": 31.0,
+            "expiredCount": 12,
             "missEntryCount": 19,
             "missEntryRate": 39.6,
-            "avgNetPnlPct": 1.461,
-            "cumulativeNetPnlPct": 42.378,
+            "avgNetPnlPct": 1.78,
+            "cumulativeNetPnlPct": 51.626,
             "mddPct": -18.67,
             "mddMethod": "fixed_notional_equity_100",
             "avgHoldingDays": 22.0,
-            "profitLossRatio": 1.44,
+            "profitLossRatio": 1.53,
             "reasonCounts": {
-              "GOOD_SIGNAL_WEAK_EXIT": 10,
-              "ENTRY_TOO_AGGRESSIVE": 2,
+              "GOOD_SIGNAL_WEAK_EXIT": 9,
+              "ENTRY_TOO_AGGRESSIVE": 3,
               "TARGET_TOO_CLOSE": 2,
-              "TARGET_TOO_FAR": 4,
-              "MISS_ENTRY_TOO_LOW": 15,
               "VOLATILITY_TOO_HIGH": 6,
-              "GOOD": 5,
+              "TARGET_TOO_FAR": 3,
+              "MISS_ENTRY_TOO_LOW": 15,
+              "GOOD": 6,
               "DATA_STALE": 4
             },
             "regimeAvgPnl": {
-              "SIDE": 1.461
+              "SIDE": 1.78
             }
           },
           "diff": {
-            "winRateDiff": 2.2,
-            "stopHitRateDiff": 2.2,
+            "winRateDiff": 2.6,
+            "stopHitRateDiff": 2.9,
             "missEntryRateDiff": 6.3,
-            "avgNetPnlPctDiff": 0.3,
-            "cumulativeNetPnlPctDiff": 5.23,
+            "avgNetPnlPctDiff": 0.258,
+            "cumulativeNetPnlPctDiff": 2.91,
             "mddPctDiff": 0.41,
             "executionRateDiff": -6.3
           }
@@ -28988,25 +28985,24 @@
         "recommendationCount": 3765,
         "executionCount": 2438,
         "executionRate": 64.757,
-        "winCount": 477,
-        "winRate": 20.235,
-        "stopCount": 295,
-        "stopHitRate": 48.521,
+        "winCount": 478,
+        "winRate": 20.277,
+        "stopCount": 297,
+        "stopHitRate": 48.847,
         "missEntryRate": 35.243,
-        "avgNetPnlPct": 0.594,
-        "cumulativeNetPnlPct": 1447.931,
+        "avgNetPnlPct": 0.599,
+        "cumulativeNetPnlPct": 1459.499,
         "mddPct": -100.0,
-        "profitLossRatio": 1.776,
+        "profitLossRatio": 1.77,
         "reasonCounts": {
-          "VOLATILITY_TOO_HIGH": 963,
+          "VOLATILITY_TOO_HIGH": 959,
           "MISS_ENTRY_TOO_LOW": 1323,
-          "ENTRY_TOO_AGGRESSIVE": 398,
-          "GOOD": 315,
-          "TARGET_TOO_FAR": 132,
-          "GOOD_SIGNAL_WEAK_EXIT": 392,
+          "ENTRY_TOO_AGGRESSIVE": 400,
+          "GOOD": 316,
+          "TARGET_TOO_FAR": 131,
+          "GOOD_SIGNAL_WEAK_EXIT": 395,
           "TARGET_TOO_CLOSE": 151,
           "STOP_TOO_TIGHT": 86,
-          "LOW_LIQUIDITY": 1,
           "DATA_STALE": 4
         }
       },
@@ -29016,33 +29012,33 @@
         "recommendationCount": 3765,
         "executionCount": 2448,
         "executionRate": 65.02,
-        "winCount": 458,
-        "winRate": 19.321,
-        "stopCount": 305,
-        "stopHitRate": 50.417,
+        "winCount": 459,
+        "winRate": 19.364,
+        "stopCount": 307,
+        "stopHitRate": 50.748,
         "missEntryRate": 35.055,
-        "avgNetPnlPct": 0.582,
-        "cumulativeNetPnlPct": 1425.974,
+        "avgNetPnlPct": 0.586,
+        "cumulativeNetPnlPct": 1435.222,
         "mddPct": -100.0,
-        "profitLossRatio": 1.864,
+        "profitLossRatio": 1.865,
         "reasonCounts": {
           "VOLATILITY_TOO_HIGH": 966,
           "MISS_ENTRY_TOO_LOW": 1313,
-          "ENTRY_TOO_AGGRESSIVE": 405,
-          "GOOD": 307,
-          "TARGET_TOO_FAR": 128,
-          "GOOD_SIGNAL_WEAK_EXIT": 403,
+          "ENTRY_TOO_AGGRESSIVE": 406,
+          "GOOD": 308,
+          "TARGET_TOO_FAR": 127,
+          "GOOD_SIGNAL_WEAK_EXIT": 402,
           "STOP_TOO_TIGHT": 98,
           "TARGET_TOO_CLOSE": 141,
           "DATA_STALE": 4
         }
       },
       "diff": {
-        "winRateDiff": -0.914,
-        "stopHitRateDiff": 1.896,
+        "winRateDiff": -0.913,
+        "stopHitRateDiff": 1.901,
         "missEntryRateDiff": -0.188,
-        "avgNetPnlPctDiff": -0.012,
-        "cumulativeNetPnlPctDiff": -21.957,
+        "avgNetPnlPctDiff": -0.013,
+        "cumulativeNetPnlPctDiff": -24.277,
         "mddPctDiff": 0.0,
         "executionRateDiff": 0.263
       },
@@ -29056,16 +29052,16 @@
         "universeSource": "OHLCV_glob(market_*_daily.csv)",
         "note": "backtest winRate는 생존편향으로 낙관. 실측 신뢰는 live_calibration 참조."
       },
-      "generatedAt": "2026-08-22T08:15:24.780572+00:00"
+      "generatedAt": "2026-08-29T13:57:06.096684+00:00"
     },
     "us_aggressive_short": {
       "status": "OK",
       "market": "us",
       "mode": "aggressive",
       "horizon": "short",
-      "asOf": "2026-08-22",
+      "asOf": "2026-08-29",
       "excludedFutureRows": 0,
-      "dataRange": "2010-02-16 ~ 2026-08-21",
+      "dataRange": "2010-02-16 ~ 2026-08-28",
       "windowCount": 66,
       "windows": [
         {
@@ -32987,16 +32983,16 @@
         "universeSource": "OHLCV_glob(market_*_daily.csv)",
         "note": "backtest winRate는 생존편향으로 낙관. 실측 신뢰는 live_calibration 참조."
       },
-      "generatedAt": "2026-08-22T08:16:59.773664+00:00"
+      "generatedAt": "2026-08-29T13:59:52.950527+00:00"
     },
     "us_aggressive_swing": {
       "status": "OK",
       "market": "us",
       "mode": "aggressive",
       "horizon": "swing",
-      "asOf": "2026-08-22",
+      "asOf": "2026-08-29",
       "excludedFutureRows": 0,
-      "dataRange": "2010-02-16 ~ 2026-08-21",
+      "dataRange": "2010-02-16 ~ 2026-08-28",
       "windowCount": 66,
       "windows": [
         {
@@ -37294,16 +37290,16 @@
         "universeSource": "OHLCV_glob(market_*_daily.csv)",
         "note": "backtest winRate는 생존편향으로 낙관. 실측 신뢰는 live_calibration 참조."
       },
-      "generatedAt": "2026-08-22T08:18:41.665204+00:00"
+      "generatedAt": "2026-08-29T14:02:56.613445+00:00"
     },
     "us_aggressive_mid": {
       "status": "OK",
       "market": "us",
       "mode": "aggressive",
       "horizon": "mid",
-      "asOf": "2026-08-22",
+      "asOf": "2026-08-29",
       "excludedFutureRows": 0,
-      "dataRange": "2010-02-16 ~ 2026-08-21",
+      "dataRange": "2010-02-16 ~ 2026-08-28",
       "windowCount": 66,
       "windows": [
         {
@@ -41627,32 +41623,31 @@
             "recommendationCount": 44,
             "executionCount": 28,
             "executionRate": 63.6,
-            "winCount": 6,
-            "winRate": 21.4,
-            "stopCount": 6,
-            "stopHitRate": 21.4,
-            "expiredCount": 16,
+            "winCount": 7,
+            "winRate": 25.0,
+            "stopCount": 8,
+            "stopHitRate": 28.6,
+            "expiredCount": 13,
             "missEntryCount": 16,
             "missEntryRate": 36.4,
-            "avgNetPnlPct": 1.183,
-            "cumulativeNetPnlPct": 33.129,
+            "avgNetPnlPct": 1.537,
+            "cumulativeNetPnlPct": 43.033,
             "mddPct": -13.93,
             "mddMethod": "fixed_notional_equity_100",
             "avgHoldingDays": 22.0,
-            "profitLossRatio": 1.65,
+            "profitLossRatio": 1.16,
             "reasonCounts": {
-              "GOOD_SIGNAL_WEAK_EXIT": 7,
-              "ENTRY_TOO_AGGRESSIVE": 1,
+              "GOOD_SIGNAL_WEAK_EXIT": 10,
+              "ENTRY_TOO_AGGRESSIVE": 3,
               "TARGET_TOO_CLOSE": 2,
-              "VOLATILITY_TOO_HIGH": 9,
-              "TARGET_TOO_FAR": 4,
+              "VOLATILITY_TOO_HIGH": 5,
+              "TARGET_TOO_FAR": 3,
               "MISS_ENTRY_TOO_LOW": 12,
-              "LOW_LIQUIDITY": 1,
-              "GOOD": 4,
+              "GOOD": 5,
               "DATA_STALE": 4
             },
             "regimeAvgPnl": {
-              "SIDE": 1.183
+              "SIDE": 1.537
             }
           },
           "corrected": {
@@ -41660,39 +41655,39 @@
             "recommendationCount": 44,
             "executionCount": 25,
             "executionRate": 56.8,
-            "winCount": 6,
-            "winRate": 24.0,
-            "stopCount": 6,
-            "stopHitRate": 24.0,
-            "expiredCount": 13,
+            "winCount": 7,
+            "winRate": 28.0,
+            "stopCount": 8,
+            "stopHitRate": 32.0,
+            "expiredCount": 10,
             "missEntryCount": 19,
             "missEntryRate": 43.2,
-            "avgNetPnlPct": 1.506,
-            "cumulativeNetPnlPct": 37.649,
+            "avgNetPnlPct": 1.809,
+            "cumulativeNetPnlPct": 45.224,
             "mddPct": -13.65,
             "mddMethod": "fixed_notional_equity_100",
             "avgHoldingDays": 22.0,
-            "profitLossRatio": 1.39,
+            "profitLossRatio": 1.45,
             "reasonCounts": {
-              "GOOD_SIGNAL_WEAK_EXIT": 8,
-              "ENTRY_TOO_AGGRESSIVE": 2,
+              "GOOD_SIGNAL_WEAK_EXIT": 7,
+              "ENTRY_TOO_AGGRESSIVE": 3,
               "TARGET_TOO_CLOSE": 2,
-              "TARGET_TOO_FAR": 4,
-              "MISS_ENTRY_TOO_LOW": 15,
               "VOLATILITY_TOO_HIGH": 5,
-              "GOOD": 4,
+              "TARGET_TOO_FAR": 3,
+              "MISS_ENTRY_TOO_LOW": 15,
+              "GOOD": 5,
               "DATA_STALE": 4
             },
             "regimeAvgPnl": {
-              "SIDE": 1.506
+              "SIDE": 1.809
             }
           },
           "diff": {
-            "winRateDiff": 2.6,
-            "stopHitRateDiff": 2.6,
+            "winRateDiff": 3.0,
+            "stopHitRateDiff": 3.4,
             "missEntryRateDiff": 6.8,
-            "avgNetPnlPctDiff": 0.323,
-            "cumulativeNetPnlPctDiff": 4.52,
+            "avgNetPnlPctDiff": 0.272,
+            "cumulativeNetPnlPctDiff": 2.191,
             "mddPctDiff": 0.28,
             "executionRateDiff": -6.8
           }
@@ -41704,25 +41699,24 @@
         "recommendationCount": 3216,
         "executionCount": 2124,
         "executionRate": 66.043,
-        "winCount": 406,
-        "winRate": 19.85,
-        "stopCount": 238,
-        "stopHitRate": 48.077,
+        "winCount": 407,
+        "winRate": 19.9,
+        "stopCount": 240,
+        "stopHitRate": 48.484,
         "missEntryRate": 33.957,
-        "avgNetPnlPct": 0.641,
-        "cumulativeNetPnlPct": 1362.035,
+        "avgNetPnlPct": 0.646,
+        "cumulativeNetPnlPct": 1371.939,
         "mddPct": -100.0,
-        "profitLossRatio": 1.767,
+        "profitLossRatio": 1.761,
         "reasonCounts": {
-          "VOLATILITY_TOO_HIGH": 853,
+          "VOLATILITY_TOO_HIGH": 849,
           "MISS_ENTRY_TOO_LOW": 1088,
-          "ENTRY_TOO_AGGRESSIVE": 324,
-          "GOOD": 280,
-          "TARGET_TOO_FAR": 124,
-          "GOOD_SIGNAL_WEAK_EXIT": 367,
+          "ENTRY_TOO_AGGRESSIVE": 326,
+          "GOOD": 281,
+          "TARGET_TOO_FAR": 123,
+          "GOOD_SIGNAL_WEAK_EXIT": 370,
           "TARGET_TOO_CLOSE": 118,
           "STOP_TOO_TIGHT": 57,
-          "LOW_LIQUIDITY": 1,
           "DATA_STALE": 4
         }
       },
@@ -41732,33 +41726,33 @@
         "recommendationCount": 3216,
         "executionCount": 2117,
         "executionRate": 65.832,
-        "winCount": 392,
-        "winRate": 19.218,
-        "stopCount": 244,
-        "stopHitRate": 49.391,
+        "winCount": 393,
+        "winRate": 19.267,
+        "stopCount": 246,
+        "stopHitRate": 49.796,
         "missEntryRate": 34.168,
-        "avgNetPnlPct": 0.639,
-        "cumulativeNetPnlPct": 1351.756,
+        "avgNetPnlPct": 0.642,
+        "cumulativeNetPnlPct": 1359.331,
         "mddPct": -100.0,
-        "profitLossRatio": 1.847,
+        "profitLossRatio": 1.848,
         "reasonCounts": {
           "VOLATILITY_TOO_HIGH": 855,
           "MISS_ENTRY_TOO_LOW": 1095,
-          "ENTRY_TOO_AGGRESSIVE": 327,
-          "GOOD": 272,
-          "TARGET_TOO_FAR": 117,
-          "GOOD_SIGNAL_WEAK_EXIT": 367,
+          "ENTRY_TOO_AGGRESSIVE": 328,
+          "GOOD": 273,
+          "TARGET_TOO_FAR": 116,
+          "GOOD_SIGNAL_WEAK_EXIT": 366,
           "TARGET_TOO_CLOSE": 112,
           "STOP_TOO_TIGHT": 67,
           "DATA_STALE": 4
         }
       },
       "diff": {
-        "winRateDiff": -0.632,
-        "stopHitRateDiff": 1.314,
+        "winRateDiff": -0.633,
+        "stopHitRateDiff": 1.312,
         "missEntryRateDiff": 0.211,
-        "avgNetPnlPctDiff": -0.002,
-        "cumulativeNetPnlPctDiff": -10.279,
+        "avgNetPnlPctDiff": -0.004,
+        "cumulativeNetPnlPctDiff": -12.608,
         "mddPctDiff": 0.0,
         "executionRateDiff": -0.211
       },
@@ -41772,7 +41766,7 @@
         "universeSource": "OHLCV_glob(market_*_daily.csv)",
         "note": "backtest winRate는 생존편향으로 낙관. 실측 신뢰는 live_calibration 참조."
       },
-      "generatedAt": "2026-08-22T08:20:32.099804+00:00"
+      "generatedAt": "2026-08-29T14:06:19.702734+00:00"
     }
   }
 }
