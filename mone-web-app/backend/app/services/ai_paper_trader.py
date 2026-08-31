@@ -45,6 +45,8 @@ PAPER_DISCOVERY_MAX_GROSS = float(os.getenv("AI_PAPER_DISCOVERY_MAX_GROSS", "0.1
 PAPER_DISCOVERY_MAX_POSITION = float(os.getenv("AI_PAPER_DISCOVERY_MAX_POSITION", "0.05"))
 PAPER_DISCOVERY_RISK_PER_TRADE = float(os.getenv("AI_PAPER_DISCOVERY_RISK_PER_TRADE", "0.0025"))
 PAPER_DISCOVERY_MAX_SIGNAL_AGE_DAYS = int(os.getenv("AI_PAPER_DISCOVERY_MAX_SIGNAL_AGE_DAYS", "7"))
+PAPER_DISCOVERY_MAX_ENTRY_DISTANCE_PCT = float(os.getenv("AI_PAPER_DISCOVERY_MAX_ENTRY_DISTANCE_PCT", "0.03"))
+PAPER_DISCOVERY_MIN_RR = float(os.getenv("AI_PAPER_DISCOVERY_MIN_RR", "1.40"))
 
 TRADE_COSTS = {
     "kr": {"buy": 0.0010, "sell": 0.0031},
@@ -380,6 +382,68 @@ def _collect_recommendations(market: str, agent: dict[str, str] | None = None) -
     )
 
 
+
+
+def _collect_research_candidates(market: str, agent: dict[str, str] | None = None) -> list[dict[str, Any]]:
+    """Read pre-gate cache only for zero-authority paper discovery."""
+    agents = [agent] if agent else list(AGENT_POOL)
+    seen: dict[str, dict[str, Any]] = {}
+    for profile in agents:
+        if not profile:
+            continue
+        mode, horizon = profile["mode"], profile["horizon"]
+        path = REPORTS / "reco_cache" / f"{market}_{mode}_{horizon}.json"
+        payload = _read_json(path, {})
+        rows = payload.get("items") if isinstance(payload, dict) else []
+        generated_at = str(payload.get("generatedAt") or payload.get("precomputedAt") or "") if isinstance(payload, dict) else ""
+        for row in rows if isinstance(rows, list) else []:
+            if not isinstance(row, dict):
+                continue
+            symbol = str(row.get("symbol") or "").strip().upper()
+            if not _is_tradeable_symbol(market, symbol):
+                continue
+            current = _num(row.get("currentPrice") or row.get("current") or row.get("entry") or row.get("entryPrice"))
+            planned_entry = _num(row.get("entry") or row.get("entryPrice"))
+            stop = _num(row.get("stop") or row.get("stopPrice"))
+            target = _num(row.get("target") or row.get("targetPrice"))
+            score = _num(row.get("finalRankScore") or row.get("finalScore") or row.get("score"))
+            ev = _num(row.get("expectedValue") if row.get("expectedValue") is not None else row.get("ev"))
+            block = str(row.get("tradeBlockStatus") or "").upper()
+            decision = str(row.get("decisionBucket") or row.get("newEntryDecision") or "")
+            data_status = str(row.get("dataStatus") or "")
+            signal_date = str(row.get("dataDate") or row.get("latestDataDate") or row.get("ohlcvLatestDate") or row.get("generatedAt") or generated_at)[:10]
+            if _is_bad_data_status(data_status) or block in {"BLOCK", "CAUTION"} or _decision_priority(decision) > 1:
+                continue
+            if not (current > 0 and planned_entry > 0 and target > current > stop > 0):
+                continue
+            entry_distance = abs(current / planned_entry - 1.0)
+            downside = (current - stop) / current
+            upside = (target - current) / current
+            current_rr = upside / downside if downside > 0 else 0.0
+            if entry_distance > max(0.0, PAPER_DISCOVERY_MAX_ENTRY_DISTANCE_PCT) or downside <= 0 or downside > 0.12 or current_rr < PAPER_DISCOVERY_MIN_RR:
+                continue
+            item = {
+                "market": market, "agentId": profile["id"], "agentLabel": profile["label"],
+                "symbol": symbol, "name": str(row.get("name") or row.get("companyName") or symbol).strip(),
+                "mode": mode, "horizon": horizon, "decision": decision,
+                "entry": current, "plannedEntry": planned_entry,
+                "entryDistancePct": round(entry_distance * 100.0, 4),
+                "stop": stop, "target": target, "current": current,
+                "score": score, "expectedValue": ev, "riskScore": _num(row.get("riskScore")),
+                "riskRewardRatio": round(current_rr, 4),
+                "source": str(path.relative_to(REPO_ROOT) if path.is_relative_to(REPO_ROOT) else path).replace("\\", "/"),
+                "generatedAt": generated_at, "signalDate": signal_date,
+                "researchOnly": True, "promotionAuthority": False,
+            }
+            item["candidateKey"] = _candidate_key(item, signal_date)
+            old = seen.get(symbol)
+            new_key = (item["entryDistancePct"], -item["riskRewardRatio"], -item["score"])
+            old_key = (old["entryDistancePct"], -old["riskRewardRatio"], -old["score"]) if old else None
+            if old is None or new_key < old_key:
+                seen[symbol] = item
+    return sorted(seen.values(), key=lambda row: (row["entryDistancePct"], -row["riskRewardRatio"], -row["score"], row["symbol"]))
+
+
 def _market_regime_snapshot(market: str) -> dict[str, Any]:
     try:
         payload = load_market_regime(REPO_ROOT, market)
@@ -445,7 +509,11 @@ def _suggest_agent(market: str, selection_policy: str = "EXPECTED_VALUE") -> dic
     regime = str(regime_info.get("regime") or "SIDE").upper()
     rows: list[dict[str, Any]] = []
     for profile in AGENT_POOL:
-        candidates = _collect_recommendations(market, profile)
+        candidates = (
+            _collect_research_candidates(market, profile)
+            if selection_policy == "EV_NEUTRAL_STRATIFIED"
+            else _collect_recommendations(market, profile)
+        )
         realized = _strategy_realized_stats(market, profile)
         if candidates:
             top = max(candidates, key=lambda row: _num(row.get("score"))) if selection_policy == "EV_NEUTRAL_STRATIFIED" else candidates[0]
@@ -1161,7 +1229,7 @@ def _buy_candidates(
     cash = float(summary.get("cash") or 0)
     equity = float(summary.get("portfolioValue") if summary.get("portfolioValue") is not None else cash)
     min_trade = MIN_TRADE_KR if market == "kr" else MIN_TRADE_US
-    candidates = _collect_recommendations(market, agent)
+    candidates = _collect_research_candidates(market, agent) if research_mode else _collect_recommendations(market, agent)
     if research_mode and research_selection_policy == "EV_NEUTRAL_STRATIFIED":
         candidates = _research_candidate_order(candidates)
     plan = execution_plan or (_paper_discovery_plan(market, agent, candidates) if research_mode else quant_execution_plan.execution_plan(market))
@@ -1509,6 +1577,8 @@ def status(market: str = "all") -> dict[str, Any]:
         performance_gate = _realized_performance_gate(mk, agent)
         active_candidates = _collect_recommendations(mk, agent)
         all_candidates = _collect_recommendations(mk)
+        active_research_candidates = _collect_research_candidates(mk, agent)
+        all_research_candidates = _collect_research_candidates(mk)
         suggestion = _suggest_agent(mk)
         survival = _survival_state(mk, summary)
         scoreboard = []
@@ -1535,6 +1605,8 @@ def status(market: str = "all") -> dict[str, Any]:
             "candidateCount": len(active_candidates) if performance_gate["allowed"] else 0,
             "activeRawCandidateCount": len(active_candidates),
             "rawCandidateCount": len(all_candidates),
+            "activeResearchCandidateCount": len(active_research_candidates),
+            "researchCandidateCount": len(all_research_candidates),
             "blockedCandidateCount": len(all_candidates) if not performance_gate["allowed"] else max(0, len(all_candidates) - len(active_candidates)),
             "entryPerformanceGate": performance_gate,
             "paperDiscovery": {

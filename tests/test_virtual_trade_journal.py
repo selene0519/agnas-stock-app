@@ -2262,6 +2262,7 @@ def test_no_candidates_auto_capture_remains_retryable(
 ) -> None:
     monkeypatch.setattr(vtj, "_kst_now", lambda: datetime(2026, 6, 18, 17, 30, tzinfo=vtj.ZoneInfo("Asia/Seoul")))
     monkeypatch.setattr(vtj, "_source_recommendation_items", lambda *args, **kwargs: [])
+    monkeypatch.setattr(vtj, "_source_research_items", lambda *args, **kwargs: [])
 
     first = vtj.run_auto_capture("kr", journal_session="AFTER_CLOSE_TRADE", evaluate_after=False, force=False)
 
@@ -2410,3 +2411,43 @@ def test_ev_calibration_gate_requires_positive_train_and_holdout_before_promotio
     assert gate["status"] == "VALID"
     assert gate["operationalEntryAllowed"] is True
     assert gate["researchSelectionPolicy"] == "EXPECTED_VALUE"
+
+def test_forward_research_capture_reads_pre_gate_cache_only(
+    monkeypatch: pytest.MonkeyPatch,
+    isolated_vtj: Path,
+) -> None:
+    report_dir = isolated_vtj / "reports"
+    cache = report_dir / "reco_cache"
+    cache.mkdir(parents=True)
+    item = {
+        **_valid_recommendation("RESEARCH-CACHE"),
+        "expectedValue": -1.5,
+        "finalRankScore": 35,
+        "decisionBucket": vtj.CONDITIONAL_ENTRY,
+        "newEntryDecision": vtj.CONDITIONAL_ENTRY,
+        "dataDate": "2026-08-27",
+    }
+    (cache / "kr_balanced_swing.json").write_text(
+        json.dumps({"generatedAt": "2026-08-27 15:40:00", "items": [item]}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(vtj.data, "REPORT_DIR", report_dir)
+    monkeypatch.setattr(
+        vtj,
+        "_source_recommendation_items",
+        lambda *args, **kwargs: pytest.fail("research capture must not read final recommendations"),
+    )
+
+    out = vtj.capture(
+        "kr", "balanced", "swing",
+        source_type="FORWARD_RESEARCH_TRADE",
+        as_of_date="2026-08-27",
+        selection_policy="EV_NEUTRAL_STRATIFIED",
+    )
+
+    assert out["status"] == "OK"
+    assert out["selected"] == 1
+    assert out["added"] == 1
+    assert out["researchOnly"] is True
+    assert out["items"][0]["source_type"] == "FORWARD_RESEARCH_TRADE"
+    assert vtj._source_weight(out["items"][0]["source_type"]) == 0.0

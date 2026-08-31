@@ -1088,7 +1088,11 @@ def capture(
     if source_type not in SOURCE_TYPES:
         return {"status": "ERROR", "error": "INVALID_SOURCE_TYPE", "items": []}
     safe_limit = max(1, min(int(limit or 5), 10))
-    source_items = _source_recommendation_items(market, mode, horizon, include_engine=include_engine)
+    source_items = (
+        _source_research_items(market, mode, horizon)
+        if source_type == "FORWARD_RESEARCH_TRADE"
+        else _source_recommendation_items(market, mode, horizon, include_engine=include_engine)
+    )
     rejected = Counter()
     accepted_items: list[dict[str, Any]] = []
     for item in source_items:
@@ -1704,6 +1708,36 @@ def _historical_item_from_cutoff(
         "dataCutoffDate": as_of_date,
         "futureDataBlocked": True,
     }
+
+
+
+
+def _source_research_items(market: str, mode: str, horizon: str) -> list[dict[str, Any]]:
+    """Read the pre-gate cache without giving it calibration authority."""
+    path = data.REPORT_DIR / "reco_cache" / f"{market}_{mode}_{horizon}.json"
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    except Exception:
+        payload = {}
+    rows = payload.get("items") if isinstance(payload, dict) else []
+    generated_at = _text(payload.get("generatedAt") or payload.get("precomputedAt")) if isinstance(payload, dict) else ""
+    items: list[dict[str, Any]] = []
+    for raw in rows if isinstance(rows, list) else []:
+        if not isinstance(raw, dict):
+            continue
+        item = dict(raw)
+        cutoff = _text(item.get("dataDate") or item.get("latestDataDate") or item.get("ohlcvLatestDate"))[:10]
+        item.setdefault("market", market)
+        item.setdefault("mode", mode)
+        item.setdefault("horizon", horizon)
+        item.setdefault("generatedAt", generated_at)
+        item.setdefault("journalCaptureSource", _relative(path))
+        item["researchOnly"] = True
+        item["promotionAuthority"] = False
+        item["dataCutoffDate"] = cutoff
+        item["futureDataBlocked"] = True
+        items.append(item)
+    return items
 
 
 def _source_recommendation_items(market: str, mode: str, horizon: str, include_engine: bool = True) -> list[dict[str, Any]]:

@@ -197,6 +197,7 @@ def _govern_market(market: str, user_id: str = "", shadow: dict[str, Any] | None
         reasons.append("EV_CALIBRATION_INVERTED" if ev_gate.get("status") == "INVERTED" else "EV_CALIBRATION_NOT_VALIDATED")
 
     raw_candidate_count = int(paper_status.get("rawCandidateCount") or paper_status.get("activeRawCandidateCount") or paper_status.get("candidateCount") or 0)
+    research_candidate_count = int(paper_status.get("researchCandidateCount") or paper_status.get("activeResearchCandidateCount") or 0)
     candidate_count = len(execution_plan.get("positions") or []) if execution_ready and raw_candidate_count > 0 else 0
     if not reasons and candidate_count <= 0:
         reasons.append("NO_ELIGIBLE_CANDIDATE")
@@ -227,7 +228,7 @@ def _govern_market(market: str, user_id: str = "", shadow: dict[str, Any] | None
     paper_research_ready = bool(
         ai_paper_trader.PAPER_DISCOVERY_ENABLED
         and data_ready
-        and raw_candidate_count > 0
+        and research_candidate_count > 0
         and not is_review_session
         and ev_research_ready
     )
@@ -245,6 +246,7 @@ def _govern_market(market: str, user_id: str = "", shadow: dict[str, Any] | None
         "productScope": scope,
         "candidateCount": candidate_count if proof_ready and shadow_signal_ready else 0,
         "rawCandidateCount": raw_candidate_count,
+        "researchCandidateCount": research_candidate_count,
         "paperResearch": {
             "enabled": ai_paper_trader.PAPER_DISCOVERY_ENABLED,
             "entryAllowed": paper_research_ready,
@@ -252,7 +254,7 @@ def _govern_market(market: str, user_id: str = "", shadow: dict[str, Any] | None
             "promotionAuthority": False,
             "blockedReasons": list(dict.fromkeys(
                 ([] if data_ready else ["DATA_QUALITY_KILL_SWITCH"])
-                + ([] if raw_candidate_count > 0 else ["NO_ELIGIBLE_CANDIDATE"])
+                + ([] if research_candidate_count > 0 else ["NO_ELIGIBLE_RESEARCH_CANDIDATE"])
                 + (["MARKET_CLOSED_REVIEW"] if is_review_session else [])
                 + ([] if ev_research_ready else ["EV_CALIBRATION_INVERTED"])
             )),

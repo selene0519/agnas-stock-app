@@ -10,7 +10,7 @@ from app.services import quant_operating_governor as governor
 
 
 def _stub_dependencies(monkeypatch, *, allowed=True, journal_status="RUNNING", risk_status="OK", kill_switch=False, review=False, candidates=2):
-    monkeypatch.setattr(governor.ai_paper_trader, "status", lambda market: {"markets": {market: {"activeAgent": {"mode": "balanced", "horizon": "mid"}, "candidateCount": candidates, "entryPerformanceGate": {"allowed": allowed, "reason": "REALIZED_AND_OOS_EDGE_CONFIRMED"}, "proofBoard": {"status": "OK"}}}})
+    monkeypatch.setattr(governor.ai_paper_trader, "status", lambda market: {"markets": {market: {"activeAgent": {"mode": "balanced", "horizon": "mid"}, "candidateCount": candidates, "researchCandidateCount": candidates, "entryPerformanceGate": {"allowed": allowed, "reason": "REALIZED_AND_OOS_EDGE_CONFIRMED"}, "proofBoard": {"status": "OK"}}}})
     monkeypatch.setattr(governor.virtual_trade_journal, "ops_dashboard", lambda market: {"status": "OK", "operational": {"status": journal_status, "recordingStatus": "OK", "evaluationStatus": "OK"}})
     monkeypatch.setattr(governor.portfolio_risk_budget, "risk_budget", lambda market, user_id="": {"status": risk_status, "policy": {"maxPortfolioLossPct": 6.0}})
     monkeypatch.setattr(governor.data_quality, "data_quality", lambda market, mode: {"status": "OK", "killSwitch": kill_switch})
@@ -232,3 +232,29 @@ def test_governor_abstains_when_ev_calibration_is_unstable_even_if_other_gates_p
     assert result["paperEntryAllowed"] is False
     assert result["paperResearchEntryAllowed"] is True
     assert "EV_CALIBRATION_NOT_VALIDATED" in result["reasonCodes"]
+
+def test_governor_uses_separate_research_count_when_final_recommendations_are_empty(monkeypatch) -> None:
+    _stub_dependencies(monkeypatch, allowed=False, candidates=0)
+    monkeypatch.setattr(
+        governor.ai_paper_trader,
+        "status",
+        lambda market: {
+            "markets": {
+                market: {
+                    "activeAgent": {"mode": "balanced", "horizon": "mid"},
+                    "candidateCount": 0,
+                    "rawCandidateCount": 0,
+                    "researchCandidateCount": 2,
+                    "entryPerformanceGate": {"allowed": False, "reason": "INSUFFICIENT_REALIZED_SAMPLES"},
+                    "proofBoard": {"status": "NO_DATA"},
+                }
+            }
+        },
+    )
+
+    result = governor.operating_status("kr")["markets"]["kr"]
+
+    assert result["entryAllowed"] is False
+    assert result["rawCandidateCount"] == 0
+    assert result["researchCandidateCount"] == 2
+    assert result["paperResearchEntryAllowed"] is True

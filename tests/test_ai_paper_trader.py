@@ -387,3 +387,38 @@ def test_research_candidate_order_interleaves_ev_strata() -> None:
     assert any(4 <= ev < 8 for ev in first_four_ev)
     assert any(8 <= ev < 12 for ev in first_four_ev)
     assert any(ev >= 12 for ev in first_four_ev)
+
+def test_research_candidates_use_current_pre_gate_cache_without_relaxing_structure(monkeypatch, tmp_path) -> None:
+    profile = trader.AGENT_POOL[0]
+    cache = tmp_path / "reco_cache"
+    cache.mkdir()
+    base = {
+        "market": "us", "name": "Test", "currentPrice": 100.0,
+        "entry": 101.0, "stop": 95.0, "target": 112.0,
+        "finalRankScore": 40.0, "expectedValue": -1.0, "riskScore": 0,
+        "newEntryDecision": "\uc870\uac74\ubd80 \uc9c4\uc785", "dataStatus": "NORMAL",
+        "dataDate": date.today().isoformat(),
+    }
+    payload = {
+        "generatedAt": f"{date.today().isoformat()} 08:00:00",
+        "items": [
+            {**base, "symbol": "GOOD"},
+            {**base, "symbol": "RESTRICT", "newEntryDecision": "\uc2e0\uaddc \uc9c4\uc785 \uc81c\ud55c"},
+            {**base, "symbol": "FAR", "entry": 130.0},
+            {**base, "symbol": "BROKEN", "stop": 105.0},
+        ],
+    }
+    (cache / f"us_{profile['mode']}_{profile['horizon']}.json").write_text(
+        json.dumps(payload), encoding="utf-8",
+    )
+    monkeypatch.setattr(trader, "REPORTS", tmp_path)
+
+    candidates = trader._collect_research_candidates("us", profile)
+
+    assert [row["symbol"] for row in candidates] == ["GOOD"]
+    assert candidates[0]["entry"] == 100.0
+    assert candidates[0]["plannedEntry"] == 101.0
+    assert candidates[0]["expectedValue"] == -1.0
+    assert candidates[0]["researchOnly"] is True
+    assert candidates[0]["promotionAuthority"] is False
+    assert trader._collect_recommendations("us", profile) == []
