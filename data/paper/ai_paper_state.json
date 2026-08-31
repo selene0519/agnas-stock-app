@@ -16,7 +16,7 @@
   "lastRun": {
     "status": "OK",
     "dryRun": false,
-    "createdAt": "2026-08-31T22:05:46",
+    "createdAt": "2026-08-31T23:05:48",
     "market": "us",
     "markets": {
       "us": {
@@ -27,54 +27,7 @@
           "horizon": "swing"
         },
         "generation": 2,
-        "actions": [
-          {
-            "action": "BUY",
-            "market": "us",
-            "agentId": "ml_rank_conservative_swing",
-            "agentLabel": "ML Rank Conservative Swing",
-            "symbol": "TSLA",
-            "name": "TSLA",
-            "price": 345.78,
-            "quantity": 0.6651,
-            "totalValue": 229.98,
-            "costAmount": 0.23,
-            "researchMode": true,
-            "stopPrice": 327.0,
-            "targetPrice": 402.0,
-            "expectedValue": 3.59,
-            "score": 70.4,
-            "decision": "오늘 진입",
-            "paperOnly": false,
-            "paperSetup": "",
-            "paperRegime": "",
-            "paperSizeMultiplier": "",
-            "calibrationGate": "",
-            "executionAuthority": {
-              "allowed": true,
-              "reason": "EXACT_CANDIDATE_AND_RISK_WEIGHT_AUTHORIZED",
-              "decisionId": "5f7f664dab8496887477",
-              "candidateKey": "08aaf6f1b15336641e84d924",
-              "market": "us",
-              "symbol": "TSLA",
-              "mode": "conservative",
-              "horizon": "swing",
-              "entryPrice": 345.78,
-              "stopPrice": 327.0,
-              "weight": 0.04603035,
-              "signalDate": "2026-08-28",
-              "metaPolicyFingerprint": "paper-discovery-only-v1",
-              "riskPolicyVersion": "paper-discovery-risk-v1",
-              "riskPolicyFingerprint": "paper-discovery-risk-v1",
-              "allocationFingerprint": "b00f5ccdda4f4292731f7670600913c571b20f3c9c8739ba6a8db518ce4cb93b",
-              "researchOnly": true
-            },
-            "result": {
-              "ok": true,
-              "dryRun": false
-            }
-          }
-        ],
+        "actions": [],
         "summary": {
           "agentId": "ml_rank_conservative_swing",
           "agentLabel": "ML Rank Conservative Swing",
@@ -93,26 +46,26 @@
         "liveMetrics": {
           "status": "OK",
           "proofStatus": "RUNNING",
-          "sampleCount": 19,
-          "navPointCount": 20,
+          "sampleCount": 20,
+          "navPointCount": 21,
           "totalReturnPct": -0.08,
           "mddPct": -0.12,
-          "sharpe": -1.46,
-          "winRate": 10.5,
+          "sharpe": -1.43,
+          "winRate": 10.0,
           "avgPeriodReturnPct": -0.0,
           "cashPct": 88.7,
           "peakValue": 5001.58,
           "currentValue": 4996.1,
           "lastNavDate": "2026-08-31",
           "recentReturnsPct": [
-            0.08,
             0.0,
             0.0,
             -0.03,
             0.0,
             0.09,
             0.0,
-            -0.11
+            -0.11,
+            0.0
           ],
           "equityCurve": [
             {
@@ -122,7 +75,7 @@
             },
             {
               "index": 1,
-              "value": 4997.53,
+              "value": 4997.27,
               "returnPct": -0.05
             },
             {
@@ -137,8 +90,8 @@
             },
             {
               "index": 4,
-              "value": 4997.27,
-              "returnPct": -0.05
+              "value": 4994.12,
+              "returnPct": -0.12
             },
             {
               "index": 5,
@@ -152,8 +105,8 @@
             },
             {
               "index": 7,
-              "value": 4994.12,
-              "returnPct": -0.12
+              "value": 4998.16,
+              "returnPct": -0.04
             },
             {
               "index": 8,
@@ -167,8 +120,8 @@
             },
             {
               "index": 10,
-              "value": 4998.16,
-              "returnPct": -0.04
+              "value": 4996.91,
+              "returnPct": -0.06
             },
             {
               "index": 11,
@@ -177,8 +130,8 @@
             },
             {
               "index": 12,
-              "value": 4996.91,
-              "returnPct": -0.06
+              "value": 5001.58,
+              "returnPct": 0.03
             },
             {
               "index": 13,
@@ -187,8 +140,8 @@
             },
             {
               "index": 14,
-              "value": 5001.58,
-              "returnPct": 0.03
+              "value": 4996.1,
+              "returnPct": -0.08
             },
             {
               "index": 15,
@@ -739,11 +692,11 @@
           },
           "priceSession": {
             "market": "us",
-            "priceSession": "us_premarket",
-            "sessionLabel": "미장 장전",
-            "priceBasis": "미장 장전 · 프리마켓 업데이트 기준",
-            "nowKst": "2026-08-31T22:05:47.003894+09:00",
-            "nowLocal": "2026-08-31T09:05:47.003894-04:00",
+            "priceSession": "us_intraday",
+            "sessionLabel": "미장 장중",
+            "priceBasis": "미장 장중 · KIS 현재가 기준",
+            "nowKst": "2026-08-31T23:05:48.330479+09:00",
+            "nowLocal": "2026-08-31T10:05:48.330479-04:00",
             "isHoliday": false,
             "isReviewMode": false,
             "isUsDst": true
@@ -767,7 +720,7 @@
         },
         "nav": {
           "date": "2026-08-31",
-          "createdAt": "2026-08-31T22:05:47",
+          "createdAt": "2026-08-31T23:05:48",
           "market": "us",
           "agentId": "ml_rank_conservative_swing",
           "agentLabel": "ML Rank Conservative Swing",
@@ -782,7 +735,7 @@
           "survivalPct": 99.92,
           "positionCount": 3,
           "tradeCount": 3,
-          "buyCount": 1,
+          "buyCount": 0,
           "sellCount": 0,
           "proofStatus": "RUNNING"
         }
