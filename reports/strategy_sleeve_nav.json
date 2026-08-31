@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-31T00:59:28.512213+00:00",
+  "generatedAt": "2026-08-31T15:58:31.679065+00:00",
   "basis": {
     "positionFraction": 0.1,
     "startNav": 100.0,
@@ -9,11 +9,11 @@
     "forwardSourcesOnly": true
   },
   "dataQuality": {
-    "totalTrades": 319,
-    "estimatedTimingTrades": 319,
+    "totalTrades": 363,
+    "estimatedTimingTrades": 363,
     "estimatedTimingNote": "exitDate가 없는 과거 정산분은 만기일로 실현 시점을 근사했다. 곡선의 시점 정확도만 영향받고 최종 NAV는 영향받지 않는다.",
     "excluded": {
-      "nonRealized": 168,
+      "nonRealized": 170,
       "replaySource": 0,
       "beforeCleanWindow": 660,
       "unknownSleeve": 0,
@@ -26,9 +26,9 @@
   },
   "byRegime": {
     "UNRECORDED": {
-      "trades": 319,
-      "winRate": 0.4577,
-      "avgReturnPct": -0.1602,
+      "trades": 363,
+      "winRate": 0.4325,
+      "avgReturnPct": -0.1752,
       "sampleWarning": null
     }
   },
@@ -36,26 +36,26 @@
   "ranking": [
     "balanced_swing",
     "conservative_short",
-    "aggressive_mid",
     "aggressive_short",
+    "aggressive_mid",
     "balanced_mid",
     "conservative_swing",
     "conservative_mid",
-    "balanced_short",
-    "aggressive_swing"
+    "aggressive_swing",
+    "balanced_short"
   ],
   "sleeves": {
     "conservative_short": {
-      "trades": 46,
-      "nav": 100.3263,
-      "totalReturnPct": 0.3263,
-      "winRate": 0.5,
-      "avgReturnPct": 0.0719,
-      "avgGainPct": 0.9916,
+      "trades": 48,
+      "nav": 100.625,
+      "totalReturnPct": 0.625,
+      "winRate": 0.5208,
+      "avgReturnPct": 0.1309,
+      "avgGainPct": 1.0313,
       "avgLossPct": -0.8479,
-      "payoffRatio": 1.169,
+      "payoffRatio": 1.216,
       "maxDrawdownPct": 0.65,
-      "estimatedTimingTrades": 46,
+      "estimatedTimingTrades": 48,
       "curve": [
         {
           "date": "2026-08-06",
@@ -332,20 +332,32 @@
           "nav": 100.3263,
           "symbol": "HIMS",
           "returnPct": -2.959
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 100.3993,
+          "symbol": "CAVA",
+          "returnPct": 0.7283
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 100.625,
+          "symbol": "RXRX",
+          "returnPct": 2.2477
         }
       ]
     },
     "conservative_swing": {
-      "trades": 26,
-      "nav": 99.3274,
-      "totalReturnPct": -0.6726,
+      "trades": 28,
+      "nav": 99.2453,
+      "totalReturnPct": -0.7547,
       "winRate": 0.5,
-      "avgReturnPct": -0.2576,
-      "avgGainPct": 1.1868,
-      "avgLossPct": -1.7021,
-      "payoffRatio": 0.697,
+      "avgReturnPct": -0.2687,
+      "avgGainPct": 1.1272,
+      "avgLossPct": -1.6647,
+      "payoffRatio": 0.677,
       "maxDrawdownPct": 1.24,
-      "estimatedTimingTrades": 26,
+      "estimatedTimingTrades": 28,
       "curve": [
         {
           "date": "2026-07-27",
@@ -499,23 +511,35 @@
         },
         {
           "date": "2026-08-31",
-          "nav": 99.3274,
+          "nav": 99.0844,
           "symbol": "SMR",
-          "returnPct": 1.2712
+          "returnPct": -1.1782
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 99.1823,
+          "symbol": "005490",
+          "returnPct": 0.9886
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 99.2453,
+          "symbol": "AMAT",
+          "returnPct": 0.6346
         }
       ]
     },
     "conservative_mid": {
-      "trades": 18,
-      "nav": 99.2244,
-      "totalReturnPct": -0.7756,
-      "winRate": 0.6111,
-      "avgReturnPct": -0.4304,
-      "avgGainPct": 0.5723,
-      "avgLossPct": -2.0062,
-      "payoffRatio": 0.285,
-      "maxDrawdownPct": 1.21,
-      "estimatedTimingTrades": 18,
+      "trades": 23,
+      "nav": 99.0,
+      "totalReturnPct": -1.0,
+      "winRate": 0.5652,
+      "avgReturnPct": -0.4352,
+      "avgGainPct": 0.498,
+      "avgLossPct": -1.6484,
+      "payoffRatio": 0.302,
+      "maxDrawdownPct": 1.45,
+      "estimatedTimingTrades": 23,
       "curve": [
         {
           "date": "2026-08-12",
@@ -624,20 +648,50 @@
           "nav": 99.2244,
           "symbol": "JNJ",
           "returnPct": -0.06
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 99.0691,
+          "symbol": "ABBV",
+          "returnPct": -1.565
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 99.0626,
+          "symbol": "DIS",
+          "returnPct": -0.0651
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 98.9823,
+          "symbol": "F",
+          "returnPct": -0.8111
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 98.9914,
+          "symbol": "HPE",
+          "returnPct": 0.0921
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 99.0,
+          "symbol": "MCD",
+          "returnPct": 0.0869
         }
       ]
     },
     "balanced_short": {
-      "trades": 59,
-      "nav": 97.9159,
-      "totalReturnPct": -2.0841,
-      "winRate": 0.4576,
-      "avgReturnPct": -0.3554,
-      "avgGainPct": 0.8374,
-      "avgLossPct": -1.3618,
-      "payoffRatio": 0.615,
-      "maxDrawdownPct": 2.35,
-      "estimatedTimingTrades": 59,
+      "trades": 64,
+      "nav": 97.0036,
+      "totalReturnPct": -2.9964,
+      "winRate": 0.4062,
+      "avgReturnPct": -0.4737,
+      "avgGainPct": 0.8589,
+      "avgLossPct": -1.3855,
+      "payoffRatio": 0.62,
+      "maxDrawdownPct": 3.16,
+      "estimatedTimingTrades": 64,
       "curve": [
         {
           "date": "2026-08-04",
@@ -983,14 +1037,44 @@
         },
         {
           "date": "2026-08-31",
-          "nav": 97.9217,
+          "nav": 97.7827,
           "symbol": "MELI",
-          "returnPct": 0.2774
+          "returnPct": -1.1431
         },
         {
           "date": "2026-08-31",
-          "nav": 97.9159,
+          "nav": 97.7768,
           "symbol": "PEP",
+          "returnPct": -0.06
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 97.3714,
+          "symbol": "HIMS",
+          "returnPct": -4.1462
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 97.2601,
+          "symbol": "MELI",
+          "returnPct": -1.1431
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 97.2543,
+          "symbol": "PEP",
+          "returnPct": -0.06
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 97.0094,
+          "symbol": "RIVN",
+          "returnPct": -2.5178
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 97.0036,
+          "symbol": "RXRX",
           "returnPct": -0.06
         }
       ]
@@ -1106,16 +1190,16 @@
       ]
     },
     "balanced_mid": {
-      "trades": 17,
-      "nav": 99.773,
-      "totalReturnPct": -0.227,
-      "winRate": 0.2353,
-      "avgReturnPct": -0.1336,
-      "avgGainPct": 0.3598,
-      "avgLossPct": -0.2854,
-      "payoffRatio": 1.261,
-      "maxDrawdownPct": 0.25,
-      "estimatedTimingTrades": 17,
+      "trades": 25,
+      "nav": 99.6415,
+      "totalReturnPct": -0.3585,
+      "winRate": 0.24,
+      "avgReturnPct": -0.1435,
+      "avgGainPct": 0.4361,
+      "avgLossPct": -0.3266,
+      "payoffRatio": 1.335,
+      "maxDrawdownPct": 0.36,
+      "estimatedTimingTrades": 25,
       "curve": [
         {
           "date": "2026-08-26",
@@ -1218,20 +1302,68 @@
           "nav": 99.773,
           "symbol": "TMDX",
           "returnPct": -0.2385
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 99.7666,
+          "symbol": "COP",
+          "returnPct": -0.0638
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 99.8499,
+          "symbol": "DUOL",
+          "returnPct": 0.8347
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 99.7817,
+          "symbol": "ELF",
+          "returnPct": -0.6827
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 99.8159,
+          "symbol": "F",
+          "returnPct": 0.3427
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 99.6749,
+          "symbol": "GM",
+          "returnPct": -1.4129
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 99.6672,
+          "symbol": "LYFT",
+          "returnPct": -0.0769
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 99.6475,
+          "symbol": "S",
+          "returnPct": -0.198
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 99.6415,
+          "symbol": "SNAP",
+          "returnPct": -0.06
         }
       ]
     },
     "aggressive_short": {
-      "trades": 63,
-      "nav": 99.9541,
-      "totalReturnPct": -0.0459,
-      "winRate": 0.5397,
-      "avgReturnPct": -0.0068,
-      "avgGainPct": 0.5678,
-      "avgLossPct": -0.6804,
-      "payoffRatio": 0.835,
-      "maxDrawdownPct": 1.32,
-      "estimatedTimingTrades": 63,
+      "trades": 67,
+      "nav": 100.1947,
+      "totalReturnPct": 0.1947,
+      "winRate": 0.5224,
+      "avgReturnPct": 0.0295,
+      "avgGainPct": 0.617,
+      "avgLossPct": -0.613,
+      "payoffRatio": 1.007,
+      "maxDrawdownPct": 1.3,
+      "estimatedTimingTrades": 67,
       "curve": [
         {
           "date": "2026-08-04",
@@ -1577,53 +1709,77 @@
         },
         {
           "date": "2026-08-31",
-          "nav": 99.8784,
+          "nav": 99.9326,
           "symbol": "AI",
-          "returnPct": -0.6923
+          "returnPct": -0.1502
         },
         {
           "date": "2026-08-31",
-          "nav": 99.8724,
+          "nav": 99.9266,
           "symbol": "JNJ",
           "returnPct": -0.06
         },
         {
           "date": "2026-08-31",
-          "nav": 99.8417,
+          "nav": 99.8959,
           "symbol": "KO",
           "returnPct": -0.3071
         },
         {
           "date": "2026-08-31",
-          "nav": 99.9201,
+          "nav": 99.9743,
           "symbol": "LLY",
           "returnPct": 0.7849
         },
         {
           "date": "2026-08-31",
-          "nav": 99.9141,
+          "nav": 99.9683,
           "symbol": "MA",
           "returnPct": -0.06
         },
         {
           "date": "2026-08-31",
-          "nav": 99.9541,
+          "nav": 100.1619,
           "symbol": "RXRX",
-          "returnPct": 0.4001
+          "returnPct": 1.937
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 100.1559,
+          "symbol": "JNJ",
+          "returnPct": -0.06
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 100.1252,
+          "symbol": "KO",
+          "returnPct": -0.3071
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 100.1192,
+          "symbol": "MA",
+          "returnPct": -0.06
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 100.1947,
+          "symbol": "SMR",
+          "returnPct": 0.7543
         }
       ]
     },
     "aggressive_swing": {
-      "trades": 24,
-      "nav": 97.5392,
-      "totalReturnPct": -2.4608,
-      "winRate": 0.25,
-      "avgReturnPct": -1.0362,
-      "avgGainPct": 1.0084,
-      "avgLossPct": -1.7178,
-      "payoffRatio": 0.587,
+      "trades": 26,
+      "nav": 97.5632,
+      "totalReturnPct": -2.4368,
+      "winRate": 0.2692,
+      "avgReturnPct": -0.9465,
+      "avgGainPct": 1.4444,
+      "avgLossPct": -1.8273,
+      "payoffRatio": 0.79,
       "maxDrawdownPct": 2.46,
-      "estimatedTimingTrades": 24,
+      "estimatedTimingTrades": 26,
       "curve": [
         {
           "date": "2026-08-14",
@@ -1768,20 +1924,32 @@
           "nav": 97.5392,
           "symbol": "DELL",
           "returnPct": -3.5012
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 97.9352,
+          "symbol": "CELH",
+          "returnPct": 4.0604
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 97.5632,
+          "symbol": "LRCX",
+          "returnPct": -3.7989
         }
       ]
     },
     "aggressive_mid": {
-      "trades": 50,
-      "nav": 100.1379,
-      "totalReturnPct": 0.1379,
-      "winRate": 0.36,
-      "avgReturnPct": 0.0288,
-      "avgGainPct": 0.9206,
-      "avgLossPct": -0.4728,
-      "payoffRatio": 1.947,
-      "maxDrawdownPct": 0.64,
-      "estimatedTimingTrades": 50,
+      "trades": 66,
+      "nav": 99.701,
+      "totalReturnPct": -0.299,
+      "winRate": 0.3182,
+      "avgReturnPct": -0.0444,
+      "avgGainPct": 0.8282,
+      "avgLossPct": -0.4516,
+      "payoffRatio": 1.834,
+      "maxDrawdownPct": 0.85,
+      "estimatedTimingTrades": 66,
       "curve": [
         {
           "date": "2026-08-26",
@@ -1995,93 +2163,189 @@
         },
         {
           "date": "2026-08-31",
-          "nav": 99.6535,
+          "nav": 99.5789,
           "symbol": "068270",
-          "returnPct": 1.8382
+          "returnPct": 1.0884
         },
         {
           "date": "2026-08-31",
-          "nav": 100.5291,
+          "nav": 100.4539,
           "symbol": "078930",
           "returnPct": 8.7864
         },
         {
           "date": "2026-08-31",
-          "nav": 100.0823,
+          "nav": 100.0074,
           "symbol": "138040",
           "returnPct": -4.4448
         },
         {
           "date": "2026-08-31",
-          "nav": 100.0761,
+          "nav": 100.0014,
           "symbol": "ADBE",
-          "returnPct": -0.0617
+          "returnPct": -0.06
         },
         {
           "date": "2026-08-31",
-          "nav": 100.0739,
+          "nav": 99.9991,
           "symbol": "CRM",
           "returnPct": -0.0224
         },
         {
           "date": "2026-08-31",
-          "nav": 100.0213,
+          "nav": 99.9466,
           "symbol": "DDOG",
           "returnPct": -0.5256
         },
         {
           "date": "2026-08-31",
-          "nav": 100.0291,
+          "nav": 99.9544,
           "symbol": "ELF",
           "returnPct": 0.0783
         },
         {
           "date": "2026-08-31",
-          "nav": 99.9083,
+          "nav": 99.8337,
           "symbol": "GM",
           "returnPct": -1.2078
         },
         {
           "date": "2026-08-31",
-          "nav": 99.8857,
+          "nav": 99.8111,
           "symbol": "KO",
           "returnPct": -0.2263
         },
         {
           "date": "2026-08-31",
-          "nav": 99.9152,
+          "nav": 99.8406,
           "symbol": "LMT",
           "returnPct": 0.2957
         },
         {
           "date": "2026-08-31",
-          "nav": 99.9092,
+          "nav": 99.8346,
           "symbol": "MA",
           "returnPct": -0.06
         },
         {
           "date": "2026-08-31",
-          "nav": 100.0288,
+          "nav": 99.9542,
           "symbol": "NET",
           "returnPct": 1.1974
         },
         {
           "date": "2026-08-31",
-          "nav": 100.0228,
+          "nav": 99.9482,
           "symbol": "RSP",
           "returnPct": -0.06
         },
         {
           "date": "2026-08-31",
-          "nav": 100.0183,
+          "nav": 99.9436,
           "symbol": "SCHD",
           "returnPct": -0.0458
         },
         {
           "date": "2026-08-31",
-          "nav": 100.1379,
+          "nav": 100.0632,
           "symbol": "SNOW",
           "returnPct": 1.1964
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 100.0541,
+          "symbol": "214450",
+          "returnPct": -0.09
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 100.0481,
+          "symbol": "ADBE",
+          "returnPct": -0.06
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 99.9754,
+          "symbol": "AI",
+          "returnPct": -0.7267
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 99.8698,
+          "symbol": "BMNR",
+          "returnPct": -1.0562
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 99.8676,
+          "symbol": "CRM",
+          "returnPct": -0.0224
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 99.8616,
+          "symbol": "CVX",
+          "returnPct": -0.06
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 99.8556,
+          "symbol": "DASH",
+          "returnPct": -0.06
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 99.8031,
+          "symbol": "DDOG",
+          "returnPct": -0.5256
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 99.811,
+          "symbol": "ELF",
+          "returnPct": 0.0783
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 99.725,
+          "symbol": "ESTC",
+          "returnPct": -0.8614
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 99.6045,
+          "symbol": "GM",
+          "returnPct": -1.2078
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 99.634,
+          "symbol": "LMT",
+          "returnPct": 0.2957
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 99.628,
+          "symbol": "MA",
+          "returnPct": -0.06
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 99.6234,
+          "symbol": "SCHD",
+          "returnPct": -0.0458
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 99.7426,
+          "symbol": "SNOW",
+          "returnPct": 1.1964
+        },
+        {
+          "date": "2026-09-01",
+          "nav": 99.701,
+          "symbol": "TMDX",
+          "returnPct": -0.4171
         }
       ]
     }
