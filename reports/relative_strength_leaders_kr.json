@@ -1,13 +1,195 @@
 {
   "version": "relative-strength-v1",
   "market": "kr",
-  "asOf": "2026-08-31",
+  "asOf": "2026-09-01",
   "regime": "BULL",
   "status": "OK",
   "lensNote": "Long the RS leaders, avoid the laggards. RS edge holds in BULL/SIDE.",
-  "universeCount": 0,
-  "leaders": [],
-  "laggardsToAvoid": [],
+  "universeCount": 100,
+  "leaders": [
+    {
+      "symbol": "078930",
+      "rs60Pct": 68.29,
+      "relToIndexPp": 84.77,
+      "vol60Pct": 4.56
+    },
+    {
+      "symbol": "214450",
+      "rs60Pct": 44.5,
+      "relToIndexPp": 60.99,
+      "vol60Pct": 4.98
+    },
+    {
+      "symbol": "010950",
+      "rs60Pct": 34.49,
+      "relToIndexPp": 50.97,
+      "vol60Pct": 4.3
+    },
+    {
+      "symbol": "006340",
+      "rs60Pct": 26.36,
+      "relToIndexPp": 42.84,
+      "vol60Pct": 9.07
+    },
+    {
+      "symbol": "222800",
+      "rs60Pct": 21.94,
+      "relToIndexPp": 38.43,
+      "vol60Pct": 9.17
+    },
+    {
+      "symbol": "006360",
+      "rs60Pct": 20.22,
+      "relToIndexPp": 36.7,
+      "vol60Pct": 7.17
+    },
+    {
+      "symbol": "096770",
+      "rs60Pct": 17.75,
+      "relToIndexPp": 34.24,
+      "vol60Pct": 5.1
+    },
+    {
+      "symbol": "138040",
+      "rs60Pct": 16.87,
+      "relToIndexPp": 33.35,
+      "vol60Pct": 2.59
+    },
+    {
+      "symbol": "003490",
+      "rs60Pct": 15.46,
+      "relToIndexPp": 31.95,
+      "vol60Pct": 3.38
+    },
+    {
+      "symbol": "207940",
+      "rs60Pct": 13.43,
+      "relToIndexPp": 29.92,
+      "vol60Pct": 3.37
+    },
+    {
+      "symbol": "278470",
+      "rs60Pct": 11.18,
+      "relToIndexPp": 27.67,
+      "vol60Pct": 4.21
+    },
+    {
+      "symbol": "086790",
+      "rs60Pct": 11.17,
+      "relToIndexPp": 27.65,
+      "vol60Pct": 2.94
+    },
+    {
+      "symbol": "011200",
+      "rs60Pct": 9.77,
+      "relToIndexPp": 26.25,
+      "vol60Pct": 2.96
+    },
+    {
+      "symbol": "068270",
+      "rs60Pct": 9.68,
+      "relToIndexPp": 26.17,
+      "vol60Pct": 2.82
+    },
+    {
+      "symbol": "028670",
+      "rs60Pct": 9.38,
+      "relToIndexPp": 25.86,
+      "vol60Pct": 4.24
+    }
+  ],
+  "laggardsToAvoid": [
+    {
+      "symbol": "353200",
+      "rs60Pct": -26.84,
+      "relToIndexPp": -10.35,
+      "vol60Pct": 7.88
+    },
+    {
+      "symbol": "001440",
+      "rs60Pct": -28.29,
+      "relToIndexPp": -11.8,
+      "vol60Pct": 5.8
+    },
+    {
+      "symbol": "039440",
+      "rs60Pct": -28.64,
+      "relToIndexPp": -12.16,
+      "vol60Pct": 6.77
+    },
+    {
+      "symbol": "058470",
+      "rs60Pct": -30.39,
+      "relToIndexPp": -13.91,
+      "vol60Pct": 5.26
+    },
+    {
+      "symbol": "329180",
+      "rs60Pct": -31.78,
+      "relToIndexPp": -15.29,
+      "vol60Pct": 3.78
+    },
+    {
+      "symbol": "064350",
+      "rs60Pct": -31.92,
+      "relToIndexPp": -15.44,
+      "vol60Pct": 5.5
+    },
+    {
+      "symbol": "277810",
+      "rs60Pct": -32.71,
+      "relToIndexPp": -16.23,
+      "vol60Pct": 6.13
+    },
+    {
+      "symbol": "247540",
+      "rs60Pct": -35.48,
+      "relToIndexPp": -19.0,
+      "vol60Pct": 5.83
+    },
+    {
+      "symbol": "012330",
+      "rs60Pct": -36.37,
+      "relToIndexPp": -19.89,
+      "vol60Pct": 4.09
+    },
+    {
+      "symbol": "131970",
+      "rs60Pct": -42.18,
+      "relToIndexPp": -25.7,
+      "vol60Pct": 7.79
+    },
+    {
+      "symbol": "005380",
+      "rs60Pct": -42.79,
+      "relToIndexPp": -26.3,
+      "vol60Pct": 3.97
+    },
+    {
+      "symbol": "000990",
+      "rs60Pct": -45.68,
+      "relToIndexPp": -29.2,
+      "vol60Pct": 6.5
+    },
+    {
+      "symbol": "090360",
+      "rs60Pct": -48.75,
+      "relToIndexPp": -32.27,
+      "vol60Pct": 6.66
+    },
+    {
+      "symbol": "011070",
+      "rs60Pct": -49.14,
+      "relToIndexPp": -32.65,
+      "vol60Pct": 6.79
+    },
+    {
+      "symbol": "454910",
+      "rs60Pct": -56.3,
+      "relToIndexPp": -39.82,
+      "vol60Pct": 5.05
+    }
+  ],
   "defensiveHolds": [],
   "note": "Research/paper only."
 }
