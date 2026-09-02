@@ -16,7 +16,7 @@
   "lastRun": {
     "status": "OK",
     "dryRun": false,
-    "createdAt": "2026-09-02T22:05:45",
+    "createdAt": "2026-09-02T23:05:45",
     "market": "us",
     "markets": {
       "us": {
@@ -28,21 +28,6 @@
         },
         "generation": 2,
         "actions": [
-          {
-            "action": "SELL",
-            "reason": "STOP_HIT",
-            "market": "us",
-            "agentId": "ml_rank_conservative_swing",
-            "agentLabel": "ML Rank Conservative Swing",
-            "symbol": "LMT",
-            "name": "LMT",
-            "price": 544.5,
-            "quantity": 0.4372,
-            "result": {
-              "ok": true,
-              "dryRun": false
-            }
-          },
           {
             "action": "SKIP",
             "scope": "NEW_ENTRY",
@@ -75,32 +60,32 @@
         "liveMetrics": {
           "status": "OK",
           "proofStatus": "RUNNING",
-          "sampleCount": 23,
-          "navPointCount": 24,
+          "sampleCount": 24,
+          "navPointCount": 25,
           "totalReturnPct": -0.12,
           "mddPct": -0.23,
-          "sharpe": -1.08,
-          "winRate": 13.0,
-          "avgPeriodReturnPct": -0.01,
+          "sharpe": -1.06,
+          "winRate": 12.5,
+          "avgPeriodReturnPct": -0.0,
           "cashPct": 93.5,
           "peakValue": 5005.55,
           "currentValue": 4994.11,
           "lastNavDate": "2026-09-02",
           "recentReturnsPct": [
-            0.0,
             0.09,
             0.0,
             -0.11,
             0.0,
             0.19,
             -0.0,
-            -0.22
+            -0.22,
+            0.0
           ],
           "equityCurve": [
             {
               "index": 0,
-              "value": 4997.27,
-              "returnPct": -0.05
+              "value": 4994.12,
+              "returnPct": -0.12
             },
             {
               "index": 1,
@@ -114,8 +99,8 @@
             },
             {
               "index": 3,
-              "value": 4994.12,
-              "returnPct": -0.12
+              "value": 4998.16,
+              "returnPct": -0.04
             },
             {
               "index": 4,
@@ -129,8 +114,8 @@
             },
             {
               "index": 6,
-              "value": 4998.16,
-              "returnPct": -0.04
+              "value": 4996.91,
+              "returnPct": -0.06
             },
             {
               "index": 7,
@@ -139,8 +124,8 @@
             },
             {
               "index": 8,
-              "value": 4996.91,
-              "returnPct": -0.06
+              "value": 5001.58,
+              "returnPct": 0.03
             },
             {
               "index": 9,
@@ -149,8 +134,8 @@
             },
             {
               "index": 10,
-              "value": 5001.58,
-              "returnPct": 0.03
+              "value": 4996.1,
+              "returnPct": -0.08
             },
             {
               "index": 11,
@@ -159,18 +144,18 @@
             },
             {
               "index": 12,
-              "value": 4996.1,
-              "returnPct": -0.08
-            },
-            {
-              "index": 13,
               "value": 5005.55,
               "returnPct": 0.11
             },
             {
-              "index": 14,
+              "index": 13,
               "value": 5005.3,
               "returnPct": 0.11
+            },
+            {
+              "index": 14,
+              "value": 4994.11,
+              "returnPct": -0.12
             },
             {
               "index": 15,
@@ -723,11 +708,11 @@
           },
           "priceSession": {
             "market": "us",
-            "priceSession": "us_premarket",
-            "sessionLabel": "미장 장전",
-            "priceBasis": "미장 장전 · 프리마켓 업데이트 기준",
-            "nowKst": "2026-09-02T22:05:45.523353+09:00",
-            "nowLocal": "2026-09-02T09:05:45.523353-04:00",
+            "priceSession": "us_intraday",
+            "sessionLabel": "미장 장중",
+            "priceBasis": "미장 장중 · KIS 현재가 기준",
+            "nowKst": "2026-09-02T23:05:45.538005+09:00",
+            "nowLocal": "2026-09-02T10:05:45.538005-04:00",
             "isHoliday": false,
             "isReviewMode": false,
             "isUsDst": true
@@ -754,7 +739,7 @@
         },
         "nav": {
           "date": "2026-09-02",
-          "createdAt": "2026-09-02T22:05:45",
+          "createdAt": "2026-09-02T23:05:45",
           "market": "us",
           "agentId": "ml_rank_conservative_swing",
           "agentLabel": "ML Rank Conservative Swing",
@@ -770,7 +755,7 @@
           "positionCount": 2,
           "tradeCount": 4,
           "buyCount": 0,
-          "sellCount": 1,
+          "sellCount": 0,
           "proofStatus": "RUNNING"
         }
       }
