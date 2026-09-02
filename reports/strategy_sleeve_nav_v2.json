@@ -1,6 +1,6 @@
 {
   "status": "OK",
-  "generatedAt": "2026-09-02T12:38:37.748641+00:00",
+  "generatedAt": "2026-09-02T17:50:50.509002+00:00",
   "basis": {
     "startNav": 100.0,
     "positionFraction": 0.1,
@@ -16,8 +16,8 @@
   },
   "dataQuality": {
     "excluded": {
-      "notEvaluated": 147,
-      "nonForwardSource": 1419
+      "notEvaluated": 146,
+      "nonForwardSource": 1426
     }
   },
   "ranking": [
@@ -2074,17 +2074,17 @@
       "distinctSignalDates": 20
     },
     "aggressive_mid": {
-      "trades": 21,
-      "candidateTrades": 124,
+      "trades": 22,
+      "candidateTrades": 125,
       "capacityRejectedTrades": 103,
-      "nav": 90.8008,
-      "cash": 90.8008,
+      "nav": 90.2874,
+      "cash": 90.2874,
       "openPositions": 0,
-      "totalReturnPct": -9.1992,
-      "winRate": 0.2381,
-      "avgNetPnlPct": -2.7854,
-      "payoffRatio": 2.2542,
-      "profitFactor": 0.5167,
+      "totalReturnPct": -9.7126,
+      "winRate": 0.2273,
+      "avgNetPnlPct": -2.9161,
+      "payoffRatio": 2.3285,
+      "profitFactor": 0.5031,
       "maxDrawdownPct": 15.3884,
       "maxInvestedPct": 100.0,
       "curve": [
@@ -2199,8 +2199,8 @@
         {
           "date": "2026-07-27",
           "nav": 89.7996,
-          "cash": 24.2964,
-          "openPositions": 8,
+          "cash": 15.2243,
+          "openPositions": 9,
           "symbol": "ASML",
           "market": "us",
           "netPnlPct": -10.4093
@@ -2208,8 +2208,8 @@
         {
           "date": "2026-07-28",
           "nav": 88.3551,
-          "cash": 31.2076,
-          "openPositions": 7,
+          "cash": 22.1354,
+          "openPositions": 8,
           "symbol": "DELL",
           "market": "us",
           "netPnlPct": -17.2876
@@ -2217,8 +2217,8 @@
         {
           "date": "2026-07-28",
           "nav": 87.3229,
-          "cash": 40.1754,
-          "openPositions": 6,
+          "cash": 31.1032,
+          "openPositions": 7,
           "symbol": "ASML",
           "market": "us",
           "netPnlPct": -10.3219
@@ -2226,8 +2226,8 @@
         {
           "date": "2026-07-28",
           "nav": 86.0576,
-          "cash": 48.91,
-          "openPositions": 5,
+          "cash": 39.8379,
+          "openPositions": 6,
           "symbol": "AMD",
           "market": "us",
           "netPnlPct": -12.6535
@@ -2235,8 +2235,8 @@
         {
           "date": "2026-08-03",
           "nav": 85.7609,
-          "cash": 57.1124,
-          "openPositions": 4,
+          "cash": 48.0403,
+          "openPositions": 5,
           "symbol": "ABBV",
           "market": "us",
           "netPnlPct": -3.4904
@@ -2244,8 +2244,8 @@
         {
           "date": "2026-08-07",
           "nav": 86.4855,
-          "cash": 60.3515,
-          "openPositions": 3,
+          "cash": 51.2793,
+          "openPositions": 4,
           "symbol": "SNOW",
           "market": "us",
           "netPnlPct": 28.8199
@@ -2253,8 +2253,8 @@
         {
           "date": "2026-08-07",
           "nav": 89.1881,
-          "cash": 73.054,
-          "openPositions": 2,
+          "cash": 63.9818,
+          "openPositions": 3,
           "symbol": "DASH",
           "market": "us",
           "netPnlPct": 27.0251
@@ -2262,8 +2262,8 @@
         {
           "date": "2026-08-11",
           "nav": 91.3108,
-          "cash": 81.3241,
-          "openPositions": 1,
+          "cash": 72.2519,
+          "openPositions": 2,
           "symbol": "214450",
           "market": "kr",
           "netPnlPct": 34.5298
@@ -2271,16 +2271,25 @@
         {
           "date": "2026-08-14",
           "nav": 90.8008,
-          "cash": 90.8008,
-          "openPositions": 0,
+          "cash": 81.7286,
+          "openPositions": 1,
           "symbol": "UNH",
           "market": "us",
           "netPnlPct": -5.1065
+        },
+        {
+          "date": "2026-09-02",
+          "nav": 90.2874,
+          "cash": 90.2874,
+          "openPositions": 0,
+          "symbol": "LMT",
+          "market": "us",
+          "netPnlPct": -5.6591
         }
       ],
       "strategyFingerprint": "LEGACY_UNFINGERPRINTED",
       "duplicateDecisionRowsRemoved": 0,
-      "distinctSignalDates": 22
+      "distinctSignalDates": 23
     }
   }
 }
