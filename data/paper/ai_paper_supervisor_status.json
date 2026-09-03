@@ -1,6 +1,6 @@
 {
   "status": "OK",
-  "lastRunAt": "2026-09-03T22:05:43+09:00",
+  "lastRunAt": "2026-09-03T23:05:51+09:00",
   "market": "us",
   "execute": true,
   "repair": {
@@ -36,12 +36,12 @@
     "recordingStatus": "OK",
     "evaluationStatus": "OK",
     "latestCapturedAt": "2026-09-03T21:25:08",
-    "latestEvaluatedAt": "2026-09-03T22:05:42"
+    "latestEvaluatedAt": "2026-09-03T23:05:50"
   },
   "paper": {
     "status": "OK",
     "dryRun": false,
-    "createdAt": "2026-09-03T22:05:43",
+    "createdAt": "2026-09-03T23:05:51",
     "market": "us",
     "markets": {
       "us": {
@@ -52,54 +52,7 @@
           "horizon": "swing"
         },
         "generation": 2,
-        "actions": [
-          {
-            "action": "BUY",
-            "market": "us",
-            "agentId": "ml_rank_conservative_swing",
-            "agentLabel": "ML Rank Conservative Swing",
-            "symbol": "PLTR",
-            "name": "Palantir",
-            "price": 169.46,
-            "quantity": 1.1953,
-            "totalValue": 202.56,
-            "costAmount": 0.2,
-            "researchMode": true,
-            "stopPrice": 159.0,
-            "targetPrice": 202.0,
-            "expectedValue": 4.15,
-            "score": 77.9,
-            "decision": "오늘 진입",
-            "paperOnly": false,
-            "paperSetup": "",
-            "paperRegime": "",
-            "paperSizeMultiplier": "",
-            "calibrationGate": "",
-            "executionAuthority": {
-              "allowed": true,
-              "reason": "EXACT_CANDIDATE_AND_RISK_WEIGHT_AUTHORIZED",
-              "decisionId": "7526d06433dadc0351f9",
-              "candidateKey": "d7874bb36260128622ad17b0",
-              "market": "us",
-              "symbol": "PLTR",
-              "mode": "conservative",
-              "horizon": "swing",
-              "entryPrice": 169.46,
-              "stopPrice": 159.0,
-              "weight": 0.04050191,
-              "signalDate": "2026-09-02",
-              "metaPolicyFingerprint": "paper-discovery-only-v1",
-              "riskPolicyVersion": "paper-discovery-risk-v1",
-              "riskPolicyFingerprint": "paper-discovery-risk-v1",
-              "allocationFingerprint": "004b4480dd929436bfbae48f0f691d15105b7b6c28124edbc2236849daa759de",
-              "researchOnly": true
-            },
-            "result": {
-              "ok": true,
-              "dryRun": false
-            }
-          }
-        ],
+        "actions": [],
         "summary": {
           "agentId": "ml_rank_conservative_swing",
           "agentLabel": "ML Rank Conservative Swing",
@@ -118,26 +71,26 @@
         "liveMetrics": {
           "status": "OK",
           "proofStatus": "RUNNING",
-          "sampleCount": 25,
-          "navPointCount": 26,
+          "sampleCount": 26,
+          "navPointCount": 27,
           "totalReturnPct": 0.03,
           "mddPct": -0.23,
           "sharpe": 0.24,
-          "winRate": 16.0,
+          "winRate": 15.4,
           "avgPeriodReturnPct": 0.0,
           "cashPct": 89.3,
           "peakValue": 5005.55,
           "currentValue": 5001.34,
           "lastNavDate": "2026-09-03",
           "recentReturnsPct": [
-            0.0,
             -0.11,
             0.0,
             0.19,
             -0.0,
             -0.22,
             0.0,
-            0.14
+            0.14,
+            0.0
           ],
           "equityCurve": [
             {
@@ -147,8 +100,8 @@
             },
             {
               "index": 1,
-              "value": 4994.12,
-              "returnPct": -0.12
+              "value": 4998.16,
+              "returnPct": -0.04
             },
             {
               "index": 2,
@@ -162,8 +115,8 @@
             },
             {
               "index": 4,
-              "value": 4998.16,
-              "returnPct": -0.04
+              "value": 4996.91,
+              "returnPct": -0.06
             },
             {
               "index": 5,
@@ -172,8 +125,8 @@
             },
             {
               "index": 6,
-              "value": 4996.91,
-              "returnPct": -0.06
+              "value": 5001.58,
+              "returnPct": 0.03
             },
             {
               "index": 7,
@@ -182,8 +135,8 @@
             },
             {
               "index": 8,
-              "value": 5001.58,
-              "returnPct": 0.03
+              "value": 4996.1,
+              "returnPct": -0.08
             },
             {
               "index": 9,
@@ -192,18 +145,18 @@
             },
             {
               "index": 10,
-              "value": 4996.1,
-              "returnPct": -0.08
-            },
-            {
-              "index": 11,
               "value": 5005.55,
               "returnPct": 0.11
             },
             {
-              "index": 12,
+              "index": 11,
               "value": 5005.3,
               "returnPct": 0.11
+            },
+            {
+              "index": 12,
+              "value": 4994.11,
+              "returnPct": -0.12
             },
             {
               "index": 13,
@@ -212,8 +165,8 @@
             },
             {
               "index": 14,
-              "value": 4994.11,
-              "returnPct": -0.12
+              "value": 5001.34,
+              "returnPct": 0.03
             },
             {
               "index": 15,
@@ -766,11 +719,11 @@
           },
           "priceSession": {
             "market": "us",
-            "priceSession": "us_premarket",
-            "sessionLabel": "미장 장전",
-            "priceBasis": "미장 장전 · 프리마켓 업데이트 기준",
-            "nowKst": "2026-09-03T22:05:43.165981+09:00",
-            "nowLocal": "2026-09-03T09:05:43.165981-04:00",
+            "priceSession": "us_intraday",
+            "sessionLabel": "미장 장중",
+            "priceBasis": "미장 장중 · KIS 현재가 기준",
+            "nowKst": "2026-09-03T23:05:51.205790+09:00",
+            "nowLocal": "2026-09-03T10:05:51.205790-04:00",
             "isHoliday": false,
             "isReviewMode": false,
             "isUsDst": true
@@ -797,7 +750,7 @@
         },
         "nav": {
           "date": "2026-09-03",
-          "createdAt": "2026-09-03T22:05:43",
+          "createdAt": "2026-09-03T23:05:51",
           "market": "us",
           "agentId": "ml_rank_conservative_swing",
           "agentLabel": "ML Rank Conservative Swing",
@@ -812,7 +765,7 @@
           "survivalPct": 100.03,
           "positionCount": 3,
           "tradeCount": 5,
-          "buyCount": 1,
+          "buyCount": 0,
           "sellCount": 0,
           "proofStatus": "RUNNING"
         }
@@ -1600,7 +1553,7 @@
     },
     "us": {
       "status": "OK",
-      "lastRunAt": "2026-09-03T22:05:43+09:00",
+      "lastRunAt": "2026-09-03T23:05:51+09:00",
       "market": "us",
       "execute": true,
       "repair": {
@@ -1636,12 +1589,12 @@
         "recordingStatus": "OK",
         "evaluationStatus": "OK",
         "latestCapturedAt": "2026-09-03T21:25:08",
-        "latestEvaluatedAt": "2026-09-03T22:05:42"
+        "latestEvaluatedAt": "2026-09-03T23:05:50"
       },
       "paper": {
         "status": "OK",
         "dryRun": false,
-        "createdAt": "2026-09-03T22:05:43",
+        "createdAt": "2026-09-03T23:05:51",
         "market": "us",
         "markets": {
           "us": {
@@ -1652,54 +1605,7 @@
               "horizon": "swing"
             },
             "generation": 2,
-            "actions": [
-              {
-                "action": "BUY",
-                "market": "us",
-                "agentId": "ml_rank_conservative_swing",
-                "agentLabel": "ML Rank Conservative Swing",
-                "symbol": "PLTR",
-                "name": "Palantir",
-                "price": 169.46,
-                "quantity": 1.1953,
-                "totalValue": 202.56,
-                "costAmount": 0.2,
-                "researchMode": true,
-                "stopPrice": 159.0,
-                "targetPrice": 202.0,
-                "expectedValue": 4.15,
-                "score": 77.9,
-                "decision": "오늘 진입",
-                "paperOnly": false,
-                "paperSetup": "",
-                "paperRegime": "",
-                "paperSizeMultiplier": "",
-                "calibrationGate": "",
-                "executionAuthority": {
-                  "allowed": true,
-                  "reason": "EXACT_CANDIDATE_AND_RISK_WEIGHT_AUTHORIZED",
-                  "decisionId": "7526d06433dadc0351f9",
-                  "candidateKey": "d7874bb36260128622ad17b0",
-                  "market": "us",
-                  "symbol": "PLTR",
-                  "mode": "conservative",
-                  "horizon": "swing",
-                  "entryPrice": 169.46,
-                  "stopPrice": 159.0,
-                  "weight": 0.04050191,
-                  "signalDate": "2026-09-02",
-                  "metaPolicyFingerprint": "paper-discovery-only-v1",
-                  "riskPolicyVersion": "paper-discovery-risk-v1",
-                  "riskPolicyFingerprint": "paper-discovery-risk-v1",
-                  "allocationFingerprint": "004b4480dd929436bfbae48f0f691d15105b7b6c28124edbc2236849daa759de",
-                  "researchOnly": true
-                },
-                "result": {
-                  "ok": true,
-                  "dryRun": false
-                }
-              }
-            ],
+            "actions": [],
             "summary": {
               "agentId": "ml_rank_conservative_swing",
               "agentLabel": "ML Rank Conservative Swing",
@@ -1718,26 +1624,26 @@
             "liveMetrics": {
               "status": "OK",
               "proofStatus": "RUNNING",
-              "sampleCount": 25,
-              "navPointCount": 26,
+              "sampleCount": 26,
+              "navPointCount": 27,
               "totalReturnPct": 0.03,
               "mddPct": -0.23,
               "sharpe": 0.24,
-              "winRate": 16.0,
+              "winRate": 15.4,
               "avgPeriodReturnPct": 0.0,
               "cashPct": 89.3,
               "peakValue": 5005.55,
               "currentValue": 5001.34,
               "lastNavDate": "2026-09-03",
               "recentReturnsPct": [
-                0.0,
                 -0.11,
                 0.0,
                 0.19,
                 -0.0,
                 -0.22,
                 0.0,
-                0.14
+                0.14,
+                0.0
               ],
               "equityCurve": [
                 {
@@ -1747,8 +1653,8 @@
                 },
                 {
                   "index": 1,
-                  "value": 4994.12,
-                  "returnPct": -0.12
+                  "value": 4998.16,
+                  "returnPct": -0.04
                 },
                 {
                   "index": 2,
@@ -1762,8 +1668,8 @@
                 },
                 {
                   "index": 4,
-                  "value": 4998.16,
-                  "returnPct": -0.04
+                  "value": 4996.91,
+                  "returnPct": -0.06
                 },
                 {
                   "index": 5,
@@ -1772,8 +1678,8 @@
                 },
                 {
                   "index": 6,
-                  "value": 4996.91,
-                  "returnPct": -0.06
+                  "value": 5001.58,
+                  "returnPct": 0.03
                 },
                 {
                   "index": 7,
@@ -1782,8 +1688,8 @@
                 },
                 {
                   "index": 8,
-                  "value": 5001.58,
-                  "returnPct": 0.03
+                  "value": 4996.1,
+                  "returnPct": -0.08
                 },
                 {
                   "index": 9,
@@ -1792,18 +1698,18 @@
                 },
                 {
                   "index": 10,
-                  "value": 4996.1,
-                  "returnPct": -0.08
-                },
-                {
-                  "index": 11,
                   "value": 5005.55,
                   "returnPct": 0.11
                 },
                 {
-                  "index": 12,
+                  "index": 11,
                   "value": 5005.3,
                   "returnPct": 0.11
+                },
+                {
+                  "index": 12,
+                  "value": 4994.11,
+                  "returnPct": -0.12
                 },
                 {
                   "index": 13,
@@ -1812,8 +1718,8 @@
                 },
                 {
                   "index": 14,
-                  "value": 4994.11,
-                  "returnPct": -0.12
+                  "value": 5001.34,
+                  "returnPct": 0.03
                 },
                 {
                   "index": 15,
@@ -2366,11 +2272,11 @@
               },
               "priceSession": {
                 "market": "us",
-                "priceSession": "us_premarket",
-                "sessionLabel": "미장 장전",
-                "priceBasis": "미장 장전 · 프리마켓 업데이트 기준",
-                "nowKst": "2026-09-03T22:05:43.165981+09:00",
-                "nowLocal": "2026-09-03T09:05:43.165981-04:00",
+                "priceSession": "us_intraday",
+                "sessionLabel": "미장 장중",
+                "priceBasis": "미장 장중 · KIS 현재가 기준",
+                "nowKst": "2026-09-03T23:05:51.205790+09:00",
+                "nowLocal": "2026-09-03T10:05:51.205790-04:00",
                 "isHoliday": false,
                 "isReviewMode": false,
                 "isUsDst": true
@@ -2397,7 +2303,7 @@
             },
             "nav": {
               "date": "2026-09-03",
-              "createdAt": "2026-09-03T22:05:43",
+              "createdAt": "2026-09-03T23:05:51",
               "market": "us",
               "agentId": "ml_rank_conservative_swing",
               "agentLabel": "ML Rank Conservative Swing",
@@ -2412,7 +2318,7 @@
               "survivalPct": 100.03,
               "positionCount": 3,
               "tradeCount": 5,
-              "buyCount": 1,
+              "buyCount": 0,
               "sellCount": 0,
               "proofStatus": "RUNNING"
             }
