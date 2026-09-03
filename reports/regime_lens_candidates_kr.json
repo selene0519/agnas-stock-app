@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-03T12:23:40.485991+00:00",
+  "generatedAt": "2026-09-03T12:50:37.835373+00:00",
   "asOfDate": "2026-09-03",
   "market": "kr",
   "marketRegime": "BEAR",
@@ -22,22 +22,6 @@
   "disclaimer": "생존편향(현상장 glob만)로 백테스트 낙관. actionable(ACTIVE)만 자가보정 통과 — 실사이징은 라이브 VTJ forward 검증 후.",
   "candidates": [
     {
-      "symbol": "000810",
-      "name": "삼성화재",
-      "setup": "BREAKOUT",
-      "asOfDate": "2026-09-03",
-      "close": 702000.0,
-      "entryRef": 702000.0,
-      "stop": 673920,
-      "target": 758160,
-      "rrRatio": 2.0,
-      "rsi14": 68.1,
-      "distMa20Pct": 8.2,
-      "calibrationGate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "actionable": false
-    },
-    {
       "symbol": "055550",
       "name": "신한지주",
       "setup": "BREAKOUT",
@@ -49,6 +33,22 @@
       "rrRatio": 2.0,
       "rsi14": 65.9,
       "distMa20Pct": 6.8,
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
+    },
+    {
+      "symbol": "000810",
+      "name": "삼성화재",
+      "setup": "BREAKOUT",
+      "asOfDate": "2026-09-03",
+      "close": 702000.0,
+      "entryRef": 702000.0,
+      "stop": 673920,
+      "target": 758160,
+      "rrRatio": 2.0,
+      "rsi14": 68.1,
+      "distMa20Pct": 8.2,
       "calibrationGate": "SUPPRESSED_LOW_EDGE",
       "sizeMultiplier": 0.0,
       "actionable": false
@@ -70,22 +70,6 @@
       "actionable": false
     },
     {
-      "symbol": "086790",
-      "name": "하나금융지주",
-      "setup": "BREAKOUT",
-      "asOfDate": "2026-09-03",
-      "close": 139500.0,
-      "entryRef": 139500.0,
-      "stop": 133920,
-      "target": 150660,
-      "rrRatio": 2.0,
-      "rsi14": 62.9,
-      "distMa20Pct": 5.7,
-      "calibrationGate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "actionable": false
-    },
-    {
       "symbol": "105560",
       "name": "KB금융",
       "setup": "BREAKOUT",
@@ -97,6 +81,22 @@
       "rrRatio": 2.0,
       "rsi14": 63.0,
       "distMa20Pct": 5.4,
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
+    },
+    {
+      "symbol": "086790",
+      "name": "하나금융지주",
+      "setup": "BREAKOUT",
+      "asOfDate": "2026-09-03",
+      "close": 139500.0,
+      "entryRef": 139500.0,
+      "stop": 133920,
+      "target": 150660,
+      "rrRatio": 2.0,
+      "rsi14": 62.9,
+      "distMa20Pct": 5.7,
       "calibrationGate": "SUPPRESSED_LOW_EDGE",
       "sizeMultiplier": 0.0,
       "actionable": false
