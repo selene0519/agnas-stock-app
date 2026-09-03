@@ -1,15 +1,15 @@
 {
-  "version": 614,
-  "generatedAt": "2026-09-03T21:59:40.352387+00:00",
+  "version": 612,
+  "generatedAt": "2026-09-03T14:05:03.729424+00:00",
   "market": "us",
-  "totalSamples": 8188,
+  "totalSamples": 8145,
   "markets": {
     "us_aggressive_short": {
       "market": "us",
       "mode": "aggressive",
       "horizon": "short",
-      "sampleCount": 624,
-      "learnableSampleCount": 97,
+      "sampleCount": 623,
+      "learnableSampleCount": 96,
       "confidence": 0.9,
       "weightAdjustments": {},
       "priceAdjustments": {
@@ -18,7 +18,7 @@
         "stopAtrMultiplier": 0.0
       },
       "filterAdjustments": {
-        "maxDistanceToEntryPct": 1.546,
+        "maxDistanceToEntryPct": 1.542,
         "minRiskRewardRatio": 0.0
       },
       "topFailureReasons": [
@@ -28,12 +28,12 @@
       ],
       "reasonCounts": {
         "ENTRY_TOO_AGGRESSIVE": 14,
-        "MISS_ENTRY_TOO_LOW": 75,
+        "MISS_ENTRY_TOO_LOW": 74,
         "GOOD": 6,
         "GOOD_SIGNAL_WEAK_EXIT": 2,
         "DATA_STALE": 527
       },
-      "appliedAt": "2026-09-03T21:59:40.349489+00:00"
+      "appliedAt": "2026-09-03T14:05:03.726887+00:00"
     },
     "us_balanced_swing": {
       "market": "us",
@@ -66,23 +66,23 @@
         "GOOD": 7,
         "DATA_STALE": 507
       },
-      "appliedAt": "2026-09-03T21:59:40.349769+00:00"
+      "appliedAt": "2026-09-03T14:05:03.727118+00:00"
     },
     "us_conservative_mid": {
       "market": "us",
       "mode": "conservative",
       "horizon": "mid",
-      "sampleCount": 1277,
-      "learnableSampleCount": 53,
+      "sampleCount": 1273,
+      "learnableSampleCount": 49,
       "confidence": 0.9,
       "weightAdjustments": {},
       "priceAdjustments": {
-        "entryAggressiveness": 0.404,
+        "entryAggressiveness": 0.371,
         "targetMultiplier": 0.0,
         "stopAtrMultiplier": 0.0
       },
       "filterAdjustments": {
-        "maxDistanceToEntryPct": 1.009,
+        "maxDistanceToEntryPct": 0.929,
         "minRiskRewardRatio": 0.0
       },
       "topFailureReasons": [
@@ -92,19 +92,19 @@
       ],
       "reasonCounts": {
         "ENTRY_TOO_AGGRESSIVE": 11,
-        "MISS_ENTRY_TOO_LOW": 35,
+        "MISS_ENTRY_TOO_LOW": 31,
         "GOOD_SIGNAL_WEAK_EXIT": 6,
         "GOOD": 1,
         "DATA_STALE": 1224
       },
-      "appliedAt": "2026-09-03T21:59:40.350252+00:00"
+      "appliedAt": "2026-09-03T14:05:03.727509+00:00"
     },
     "us_aggressive_mid": {
       "market": "us",
       "mode": "aggressive",
       "horizon": "mid",
-      "sampleCount": 1824,
-      "learnableSampleCount": 138,
+      "sampleCount": 1804,
+      "learnableSampleCount": 118,
       "confidence": 0.9,
       "weightAdjustments": {},
       "priceAdjustments": {
@@ -113,7 +113,7 @@
         "stopAtrMultiplier": 0.0
       },
       "filterAdjustments": {
-        "maxDistanceToEntryPct": 1.638,
+        "maxDistanceToEntryPct": 1.576,
         "minRiskRewardRatio": 0.0
       },
       "topFailureReasons": [
@@ -123,11 +123,11 @@
       ],
       "reasonCounts": {
         "ENTRY_TOO_AGGRESSIVE": 13,
-        "MISS_ENTRY_TOO_LOW": 113,
+        "MISS_ENTRY_TOO_LOW": 93,
         "GOOD_SIGNAL_WEAK_EXIT": 12,
         "DATA_STALE": 1686
       },
-      "appliedAt": "2026-09-03T21:59:40.350917+00:00"
+      "appliedAt": "2026-09-03T14:05:03.728146+00:00"
     },
     "us_aggressive_swing": {
       "market": "us",
@@ -158,23 +158,23 @@
         "GOOD_SIGNAL_WEAK_EXIT": 11,
         "DATA_STALE": 504
       },
-      "appliedAt": "2026-09-03T21:59:40.351150+00:00"
+      "appliedAt": "2026-09-03T14:05:03.728347+00:00"
     },
     "us_conservative_short": {
       "market": "us",
       "mode": "conservative",
       "horizon": "short",
-      "sampleCount": 539,
-      "learnableSampleCount": 84,
+      "sampleCount": 536,
+      "learnableSampleCount": 81,
       "confidence": 0.9,
       "weightAdjustments": {},
       "priceAdjustments": {
-        "entryAggressiveness": 0.424,
+        "entryAggressiveness": 0.41,
         "targetMultiplier": 0.0,
         "stopAtrMultiplier": 0.0
       },
       "filterAdjustments": {
-        "maxDistanceToEntryPct": 1.06,
+        "maxDistanceToEntryPct": 1.025,
         "minRiskRewardRatio": 0.0
       },
       "topFailureReasons": [
@@ -186,26 +186,26 @@
         "ENTRY_TOO_AGGRESSIVE": 18,
         "GOOD": 6,
         "GOOD_SIGNAL_WEAK_EXIT": 2,
-        "MISS_ENTRY_TOO_LOW": 58,
+        "MISS_ENTRY_TOO_LOW": 55,
         "DATA_STALE": 455
       },
-      "appliedAt": "2026-09-03T21:59:40.351365+00:00"
+      "appliedAt": "2026-09-03T14:05:03.728517+00:00"
     },
     "us_conservative_swing": {
       "market": "us",
       "mode": "conservative",
       "horizon": "swing",
-      "sampleCount": 568,
-      "learnableSampleCount": 58,
+      "sampleCount": 567,
+      "learnableSampleCount": 57,
       "confidence": 0.9,
       "weightAdjustments": {},
       "priceAdjustments": {
-        "entryAggressiveness": 0.307,
+        "entryAggressiveness": 0.298,
         "targetMultiplier": 0.0,
         "stopAtrMultiplier": 0.0
       },
       "filterAdjustments": {
-        "maxDistanceToEntryPct": 0.767,
+        "maxDistanceToEntryPct": 0.746,
         "minRiskRewardRatio": 0.0
       },
       "topFailureReasons": [
@@ -214,13 +214,13 @@
         "GOOD_SIGNAL_WEAK_EXIT"
       ],
       "reasonCounts": {
-        "MISS_ENTRY_TOO_LOW": 35,
+        "MISS_ENTRY_TOO_LOW": 34,
         "ENTRY_TOO_AGGRESSIVE": 17,
         "GOOD": 2,
         "GOOD_SIGNAL_WEAK_EXIT": 4,
         "DATA_STALE": 510
       },
-      "appliedAt": "2026-09-03T21:59:40.351556+00:00"
+      "appliedAt": "2026-09-03T14:05:03.728698+00:00"
     },
     "us_mid_1566.2100": {
       "market": "us",
@@ -245,23 +245,23 @@
       "reasonCounts": {
         "MISS_ENTRY_TOO_LOW": 1
       },
-      "appliedAt": "2026-09-03T21:59:40.351570+00:00"
+      "appliedAt": "2026-09-03T14:05:03.728712+00:00"
     },
     "us_balanced_mid": {
       "market": "us",
       "mode": "balanced",
       "horizon": "mid",
-      "sampleCount": 1514,
-      "learnableSampleCount": 69,
+      "sampleCount": 1505,
+      "learnableSampleCount": 60,
       "confidence": 0.9,
       "weightAdjustments": {},
       "priceAdjustments": {
-        "entryAggressiveness": 0.354,
+        "entryAggressiveness": 0.287,
         "targetMultiplier": 0.0,
         "stopAtrMultiplier": 0.0
       },
       "filterAdjustments": {
-        "maxDistanceToEntryPct": 0.884,
+        "maxDistanceToEntryPct": 0.717,
         "minRiskRewardRatio": 0.0
       },
       "topFailureReasons": [
@@ -272,17 +272,17 @@
       "reasonCounts": {
         "ENTRY_TOO_AGGRESSIVE": 18,
         "GOOD_SIGNAL_WEAK_EXIT": 7,
-        "MISS_ENTRY_TOO_LOW": 44,
+        "MISS_ENTRY_TOO_LOW": 35,
         "DATA_STALE": 1445
       },
-      "appliedAt": "2026-09-03T21:59:40.352112+00:00"
+      "appliedAt": "2026-09-03T14:05:03.729193+00:00"
     },
     "us_balanced_short": {
       "market": "us",
       "mode": "balanced",
       "horizon": "short",
-      "sampleCount": 652,
-      "learnableSampleCount": 103,
+      "sampleCount": 647,
+      "learnableSampleCount": 98,
       "confidence": 0.9,
       "weightAdjustments": {},
       "priceAdjustments": {
@@ -291,7 +291,7 @@
         "stopAtrMultiplier": 0.0
       },
       "filterAdjustments": {
-        "maxDistanceToEntryPct": 1.534,
+        "maxDistanceToEntryPct": 1.51,
         "minRiskRewardRatio": 0.0
       },
       "topFailureReasons": [
@@ -301,15 +301,15 @@
       "reasonCounts": {
         "ENTRY_TOO_AGGRESSIVE": 15,
         "GOOD": 9,
-        "MISS_ENTRY_TOO_LOW": 79,
+        "MISS_ENTRY_TOO_LOW": 74,
         "DATA_STALE": 549
       },
-      "appliedAt": "2026-09-03T21:59:40.352384+00:00"
+      "appliedAt": "2026-09-03T14:05:03.729421+00:00"
     }
   },
-  "savedAt": "2026-09-03T21:59:40.353883+00:00",
+  "savedAt": "2026-09-03T14:05:03.730810+00:00",
   "paramsIntegrity": {
     "version": "self-correction-params-integrity-v1",
-    "payloadHash": "403b12884e28b80825d2c860cd71a58c9acaf65e5defff1e6d05e9926c25c658"
+    "payloadHash": "1bfe70b568006ed58fb390403b1c5594d52e3cd4d05e234e075bf993b4e2f4ed"
   }
 }
