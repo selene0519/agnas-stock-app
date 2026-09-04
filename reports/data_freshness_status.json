@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-03T17:47:35.907076+00:00",
+  "generatedAt": "2026-09-04T12:35:43.121574+00:00",
   "overall": "WARN",
   "criticalFailures": 0,
   "hardFailures": 0,
@@ -15,30 +15,30 @@
     {
       "name": "kr_ohlcv",
       "status": "OK",
-      "detail": "0.74d, asOf=2026-09-03",
+      "detail": "0.52d, asOf=2026-09-04",
       "critical": true,
-      "ageDays": 0.74
+      "ageDays": 0.52
     },
     {
       "name": "kr_kospi_ohlcv",
       "status": "OK",
-      "detail": "0.74d, asOf=2026-09-03, kr_KOSPI_daily.csv trailing OHLC is valid",
+      "detail": "0.52d, asOf=2026-09-04, kr_KOSPI_daily.csv trailing OHLC is valid",
       "critical": true,
-      "ageDays": 0.74
+      "ageDays": 0.52
     },
     {
       "name": "kr_kosdaq_ohlcv",
       "status": "OK",
-      "detail": "0.74d, asOf=2026-09-03, kr_KOSDAQ_daily.csv trailing OHLC is valid",
+      "detail": "0.52d, asOf=2026-09-04, kr_KOSDAQ_daily.csv trailing OHLC is valid",
       "critical": true,
-      "ageDays": 0.74
+      "ageDays": 0.52
     },
     {
       "name": "kr_recommendations",
       "status": "OK",
-      "detail": "0.16d, asOf=2026-09-03T14:03:11.708104+00:00",
+      "detail": "0.01d, asOf=2026-09-04T12:24:54.239984+00:00",
       "critical": true,
-      "ageDays": 0.16
+      "ageDays": 0.01
     },
     {
       "name": "collector_steps",
@@ -50,70 +50,70 @@
     {
       "name": "collector_run",
       "status": "OK",
-      "detail": "0.15d, asOf=2026-09-03T23:04:57+09:00, source=cloud:benchmarks, reportedAt=2026-09-03T23:04:57",
+      "detail": "0.01d, asOf=2026-09-04T21:26:47+09:00, source=cloud:benchmarks, reportedAt=2026-09-04T21:26:47",
       "critical": true,
-      "ageDays": 0.15
+      "ageDays": 0.01
     },
     {
       "name": "local_collector_run",
       "status": "STALE",
-      "detail": "optional local collector 37.42d old; cloud source remains authoritative",
+      "detail": "optional local collector 38.2d old; cloud source remains authoritative",
       "critical": false,
-      "ageDays": 37.42
+      "ageDays": 38.2
     },
     {
       "name": "vtj_journal",
       "status": "OK",
-      "detail": "0.15d, asOf=2026-09-03T23:05:04+09:00",
+      "detail": "0.01d, asOf=2026-09-04T21:26:53+09:00",
       "critical": false,
-      "ageDays": 0.15
+      "ageDays": 0.01
     },
     {
       "name": "live_calibration",
       "status": "OK",
-      "detail": "0.74d, asOf=2026-09-03",
+      "detail": "0.52d, asOf=2026-09-04",
       "critical": false,
-      "ageDays": 0.74
+      "ageDays": 0.52
     },
     {
       "name": "strategy_win_rates",
       "status": "OK",
-      "detail": "-0.37d, asOf=2026-09-04 02:47:31",
+      "detail": "-0.37d, asOf=2026-09-04 21:35:38",
       "critical": false,
       "ageDays": -0.37
     },
     {
       "name": "prediction_capture",
       "status": "OK",
-      "detail": "0.74d, asOf=2026-09-03",
+      "detail": "0.52d, asOf=2026-09-04",
       "critical": true,
-      "ageDays": 0.74
+      "ageDays": 0.52
     },
     {
       "name": "capture_continuity",
       "status": "OK",
-      "detail": "거래일 14일 중 캡처 14일 (기준일 2026-08-13~, 유예 1일)",
+      "detail": "거래일 14일 중 캡처 14일 (기준일 2026-08-14~, 유예 1일)",
       "critical": true,
       "ageDays": null
     },
     {
       "name": "settlement_backlog",
       "status": "OK",
-      "detail": "만기경과 미정산 0건 / 대기중 549건",
+      "detail": "만기경과 미정산 0건 / 대기중 568건",
       "critical": false,
       "ageDays": null
     },
     {
       "name": "clean_window_samples",
       "status": "OK",
-      "detail": "clean window(2026-07-10) 정산표본 485건 / 전체 정산 1145건 / 원장 1864행",
+      "detail": "clean window(2026-07-10) 정산표본 485건 / 전체 정산 1145건 / 원장 1883행",
       "critical": false,
       "ageDays": null
     },
     {
       "name": "live_gate_promotion",
       "status": "WARN",
-      "detail": "승격 0/14셀 (기준 effN≥30, 최대 16.3, global effN 43.8 승률 25.2%) — 아직 백테스트 소스 사용 중",
+      "detail": "승격 0/14셀 (기준 effN≥30, 최대 15.9, global effN 42.8 승률 25.2%) — 아직 백테스트 소스 사용 중",
       "critical": false,
       "ageDays": null
     }
