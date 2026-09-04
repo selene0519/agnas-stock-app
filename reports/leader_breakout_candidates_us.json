@@ -4,11 +4,36 @@
   "asOf": "2026-09-03",
   "status": "OK",
   "usBackdropFavorable": true,
-  "scanned": 132,
+  "scanned": 131,
   "validatedEdge": {
     "note": "leader breakout only holds up on SPY>MA50; deep 2014-2026 train+OOS forward-return, not cost/trade-sim"
   },
-  "candidates": [],
+  "candidates": [
+    {
+      "symbol": "SNOW",
+      "asOf": "2026-09-03",
+      "entry": 356.47,
+      "stop": 303.89,
+      "target": 461.63,
+      "rrRatio": 2.0,
+      "ret60Pct": 48.74,
+      "posRange250": 1.0,
+      "volRatio50": 3.98,
+      "setup": "LEADER_BREAKOUT"
+    },
+    {
+      "symbol": "DELL",
+      "asOf": "2026-09-03",
+      "entry": 516.39,
+      "stop": 421.89,
+      "target": 705.39,
+      "rrRatio": 2.0,
+      "ret60Pct": 35.26,
+      "posRange250": 1.0,
+      "volRatio50": 2.77,
+      "setup": "LEADER_BREAKOUT"
+    }
+  ],
   "heldForUnfavorableBackdrop": [],
   "note": "Research/paper only. Feed the paper loop for live proof before promotion."
 }
