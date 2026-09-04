@@ -1,6 +1,6 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-09-04T00:31:37.418050+00:00",
+  "generatedAt": "2026-09-04T00:28:31.339098+00:00",
   "policy": {
     "version": "shadow-residual-alpha-v1.1.2",
     "label": "POST_SIGNAL_PRE_EVENT_MARKET_MODEL_CAR_BY_HORIZON",
@@ -163,35 +163,12 @@
     "integrityBlockingReasons": []
   },
   "summary": {
-    "candidates": 1,
-    "predicted": 1,
+    "candidates": 0,
+    "predicted": 0,
     "positiveLower90": 0,
     "evidenceStatus": "WAIT"
   },
-  "predictions": [
-    {
-      "candidateKey": "db3ac92ccca6a6b982aae251",
-      "economicEventKey": "1e13b4e4f76460b1cad73607",
-      "signalDate": "2026-09-03",
-      "generatedAt": "2026-09-03T23:33:36.562654+00:00",
-      "market": "us",
-      "mode": "aggressive",
-      "horizon": "mid",
-      "symbol": "DELL",
-      "modelFingerprint": "7f3642213237690bb880",
-      "trainingDataFingerprint": "850c1bc9693273448ab06c85f50024fc242a6bb62fed79160da633c0af365128",
-      "modelInstanceFingerprint": "a7d9a5ce33daf865e618874b",
-      "trainRows": 501,
-      "trainDates": 25,
-      "status": "PREDICTED",
-      "trainMaxLabelAvailableDate": "2026-08-25",
-      "predictedResidualAlphaPct": -2.403919,
-      "predictionLower90Pct": -20.509434,
-      "baselinePredictionPct": -3.304817,
-      "predictionId": "225d820766fed1637f0c7a08b667",
-      "forwardSealStatus": "UNSEALED"
-    }
-  ],
+  "predictions": [],
   "forwardOosAudit": [],
   "researchOosAudit": [
     {
