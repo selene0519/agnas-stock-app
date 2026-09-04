@@ -18,7 +18,7 @@
   "lastRun": {
     "status": "OK",
     "dryRun": false,
-    "createdAt": "2026-09-04T22:05:45",
+    "createdAt": "2026-09-04T23:05:51",
     "market": "us",
     "markets": {
       "us": {
@@ -31,48 +31,15 @@
         "generation": 2,
         "actions": [
           {
-            "action": "BUY",
+            "action": "SKIP",
+            "scope": "NEW_ENTRY",
             "market": "us",
-            "agentId": "ml_rank_conservative_swing",
-            "agentLabel": "ML Rank Conservative Swing",
-            "symbol": "CRWD",
-            "name": "CrowdStrike",
-            "price": 212.6,
-            "quantity": 0.6091,
-            "totalValue": 129.49,
-            "costAmount": 0.13,
-            "researchMode": true,
-            "stopPrice": 192.0,
-            "targetPrice": 275.0,
-            "expectedValue": 5.27,
-            "score": 68.7,
-            "decision": "오늘 진입",
-            "paperOnly": false,
-            "paperSetup": "",
-            "paperRegime": "",
-            "paperSizeMultiplier": "",
-            "calibrationGate": "",
-            "executionAuthority": {
-              "allowed": true,
-              "reason": "EXACT_CANDIDATE_AND_RISK_WEIGHT_AUTHORIZED",
-              "decisionId": "c20d3cbcd85d20b3a8b2",
-              "candidateKey": "54156304562e0d0957c5255f",
-              "market": "us",
-              "symbol": "CRWD",
-              "mode": "conservative",
-              "horizon": "swing",
-              "entryPrice": 212.6,
-              "stopPrice": 192.0,
-              "weight": 0.02580097,
-              "signalDate": "2026-09-03",
-              "metaPolicyFingerprint": "paper-discovery-only-v1",
-              "riskPolicyVersion": "paper-discovery-risk-v1",
-              "riskPolicyFingerprint": "paper-discovery-risk-v1",
-              "allocationFingerprint": "402da121fa6433c5b1cb8e6863600a2ba971204afedec980d97b91f0ce0acbb3",
-              "researchOnly": true
-            },
+            "reason": "QUANT_EXECUTION_PLAN_INVALID",
+            "reasonCodes": [
+              "NO_CURRENT_DISCOVERY_CANDIDATE"
+            ],
             "result": {
-              "ok": true,
+              "ok": false,
               "dryRun": false
             }
           }
@@ -84,37 +51,37 @@
           "seed": 5000.0,
           "cash": 4334.78,
           "invested": 652.7,
-          "valuation": 684.83,
-          "portfolioValue": 5019.61,
-          "unrealizedPnl": 32.13,
-          "totalPnl": 19.61,
-          "totalReturnPct": 0.39,
+          "valuation": 674.53,
+          "portfolioValue": 5009.31,
+          "unrealizedPnl": 21.84,
+          "totalPnl": 9.31,
+          "totalReturnPct": 0.19,
           "positionCount": 4,
           "tradeCount": 6
         },
         "liveMetrics": {
           "status": "OK",
           "proofStatus": "RUNNING",
-          "sampleCount": 27,
-          "navPointCount": 28,
-          "totalReturnPct": 0.39,
+          "sampleCount": 28,
+          "navPointCount": 29,
+          "totalReturnPct": 0.19,
           "mddPct": -0.23,
-          "sharpe": 2.28,
-          "winRate": 18.5,
+          "sharpe": 0.99,
+          "winRate": 17.9,
           "avgPeriodReturnPct": 0.01,
-          "cashPct": 86.4,
+          "cashPct": 86.5,
           "peakValue": 5019.61,
-          "currentValue": 5019.61,
+          "currentValue": 5009.31,
           "lastNavDate": "2026-09-04",
           "recentReturnsPct": [
-            0.0,
             0.19,
             -0.0,
             -0.22,
             0.0,
             0.14,
             0.0,
-            0.37
+            0.37,
+            -0.21
           ],
           "equityCurve": [
             {
@@ -129,8 +96,8 @@
             },
             {
               "index": 2,
-              "value": 4998.16,
-              "returnPct": -0.04
+              "value": 4996.91,
+              "returnPct": -0.06
             },
             {
               "index": 3,
@@ -139,8 +106,8 @@
             },
             {
               "index": 4,
-              "value": 4996.91,
-              "returnPct": -0.06
+              "value": 5001.58,
+              "returnPct": 0.03
             },
             {
               "index": 5,
@@ -149,8 +116,8 @@
             },
             {
               "index": 6,
-              "value": 5001.58,
-              "returnPct": 0.03
+              "value": 4996.1,
+              "returnPct": -0.08
             },
             {
               "index": 7,
@@ -159,18 +126,18 @@
             },
             {
               "index": 8,
-              "value": 4996.1,
-              "returnPct": -0.08
-            },
-            {
-              "index": 9,
               "value": 5005.55,
               "returnPct": 0.11
             },
             {
-              "index": 10,
+              "index": 9,
               "value": 5005.3,
               "returnPct": 0.11
+            },
+            {
+              "index": 10,
+              "value": 4994.11,
+              "returnPct": -0.12
             },
             {
               "index": 11,
@@ -179,8 +146,8 @@
             },
             {
               "index": 12,
-              "value": 4994.11,
-              "returnPct": -0.12
+              "value": 5001.34,
+              "returnPct": 0.03
             },
             {
               "index": 13,
@@ -189,13 +156,13 @@
             },
             {
               "index": 14,
-              "value": 5001.34,
-              "returnPct": 0.03
+              "value": 5019.61,
+              "returnPct": 0.39
             },
             {
               "index": 15,
-              "value": 5019.61,
-              "returnPct": 0.39
+              "value": 5009.31,
+              "returnPct": 0.19
             }
           ]
         },
@@ -216,8 +183,8 @@
         "survival": {
           "state": "ALIVE",
           "seed": 5000.0,
-          "portfolioValue": 5019.61,
-          "survivalPct": 100.39
+          "portfolioValue": 5009.31,
+          "survivalPct": 100.19
         },
         "proofBoard": {
           "status": "OK",
@@ -430,7 +397,7 @@
             ]
           },
           "candidateCount": 0,
-          "rawCandidateCount": 5,
+          "rawCandidateCount": 3,
           "paperResearch": {
             "enabled": true,
             "entryAllowed": true,
@@ -743,11 +710,11 @@
           },
           "priceSession": {
             "market": "us",
-            "priceSession": "us_premarket",
-            "sessionLabel": "미장 장전",
-            "priceBasis": "미장 장전 · 프리마켓 업데이트 기준",
-            "nowKst": "2026-09-04T22:05:45.940692+09:00",
-            "nowLocal": "2026-09-04T09:05:45.940692-04:00",
+            "priceSession": "us_intraday",
+            "sessionLabel": "미장 장중",
+            "priceBasis": "미장 장중 · KIS 현재가 기준",
+            "nowKst": "2026-09-04T23:05:51.665653+09:00",
+            "nowLocal": "2026-09-04T10:05:51.665653-04:00",
             "isHoliday": false,
             "isReviewMode": false,
             "isUsDst": true
@@ -774,7 +741,7 @@
         },
         "nav": {
           "date": "2026-09-04",
-          "createdAt": "2026-09-04T22:05:46",
+          "createdAt": "2026-09-04T23:05:51",
           "market": "us",
           "agentId": "ml_rank_conservative_swing",
           "agentLabel": "ML Rank Conservative Swing",
@@ -782,14 +749,14 @@
           "state": "ALIVE",
           "seed": 5000.0,
           "cash": 4334.78,
-          "valuation": 684.83,
-          "portfolioValue": 5019.61,
-          "totalPnl": 19.61,
-          "totalReturnPct": 0.39,
-          "survivalPct": 100.39,
+          "valuation": 674.53,
+          "portfolioValue": 5009.31,
+          "totalPnl": 9.31,
+          "totalReturnPct": 0.19,
+          "survivalPct": 100.19,
           "positionCount": 4,
           "tradeCount": 6,
-          "buyCount": 1,
+          "buyCount": 0,
           "sellCount": 0,
           "proofStatus": "RUNNING"
         }
