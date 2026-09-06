@@ -4,7 +4,7 @@
   "baseline20dPct": {
     "BULL": 2.09,
     "SIDE": 1.203,
-    "BEAR": 2.288
+    "BEAR": 2.323
   },
   "method": "geometric=train/OOS trade-sim qualified; engine=excess over survivorship baseline",
   "patterns": {
@@ -13,8 +13,8 @@
         "source": "geo_tradesim",
         "tier": "PROVEN",
         "qualified": true,
-        "oosN": 77,
-        "oosEvPct": 2.383
+        "oosN": 78,
+        "oosEvPct": 2.291
       }
     },
     "BULL_FLAG": {
@@ -39,14 +39,14 @@
         "tier": "WEAK",
         "qualified": false,
         "oosN": 108,
-        "oosEvPct": 2.32
+        "oosEvPct": 2.28
       },
       "SIDE": {
         "source": "geo_tradesim",
         "tier": "NONE",
         "qualified": false,
-        "oosN": 85,
-        "oosEvPct": -0.771
+        "oosN": 87,
+        "oosEvPct": -0.814
       }
     },
     "RESISTANCE_FLIP_SUPPORT": {
@@ -54,8 +54,8 @@
         "source": "geo_tradesim",
         "tier": "WEAK",
         "qualified": false,
-        "oosN": 563,
-        "oosEvPct": 0.337
+        "oosN": 570,
+        "oosEvPct": 0.304
       },
       "BEAR": {
         "source": "geo_tradesim",
@@ -69,7 +69,7 @@
         "tier": "NONE",
         "qualified": false,
         "oosN": 283,
-        "oosEvPct": -0.361
+        "oosEvPct": -0.395
       }
     },
     "RISING_CHANNEL": {
@@ -77,8 +77,8 @@
         "source": "geo_tradesim",
         "tier": "WEAK",
         "qualified": false,
-        "oosN": 833,
-        "oosEvPct": 0.411
+        "oosN": 839,
+        "oosEvPct": 0.396
       }
     },
     "DOUBLE_BOTTOM": {
@@ -87,14 +87,14 @@
         "tier": "WEAK",
         "qualified": false,
         "oosN": 187,
-        "oosEvPct": 1.666
+        "oosEvPct": 1.681
       },
       "SIDE": {
         "source": "geo_tradesim",
         "tier": "NONE",
         "qualified": false,
         "oosN": 190,
-        "oosEvPct": -1.507
+        "oosEvPct": -1.485
       }
     },
     "INVERSE_HEAD_AND_SHOULDERS": {
@@ -103,7 +103,7 @@
         "tier": "WEAK",
         "qualified": false,
         "oosN": 35,
-        "oosEvPct": 0.969
+        "oosEvPct": 0.874
       }
     },
     "FAILED_BREAKDOWN": {
@@ -112,7 +112,7 @@
         "tier": "NONE",
         "qualified": false,
         "oosN": 69,
-        "oosEvPct": -0.368
+        "oosEvPct": -0.41
       }
     },
     "zombie_breakout": {
@@ -139,8 +139,8 @@
       "BEAR": {
         "source": "engine_excess",
         "tier": "NONE",
-        "excessPct": -0.218,
-        "n": 3094
+        "excessPct": -0.273,
+        "n": 3124
       }
     },
     "trend_up_pullback": {
@@ -159,8 +159,8 @@
       "BEAR": {
         "source": "engine_excess",
         "tier": "NONE",
-        "excessPct": -0.768,
-        "n": 1260
+        "excessPct": -0.793,
+        "n": 1268
       }
     },
     "structure_breakdown_risk": {
@@ -179,48 +179,8 @@
       "BEAR": {
         "source": "engine_excess",
         "tier": "NONE",
-        "excessPct": 0.882,
-        "n": 9755
-      }
-    },
-    "overheated_pullback_risk": {
-      "BULL": {
-        "source": "engine_excess",
-        "tier": "WEAK",
-        "excessPct": 2.0,
-        "n": 840
-      },
-      "SIDE": {
-        "source": "engine_excess",
-        "tier": "NONE",
-        "excessPct": -1.703,
-        "n": 436
-      },
-      "BEAR": {
-        "source": "engine_excess",
-        "tier": "WEAK",
-        "excessPct": 2.562,
-        "n": 755
-      }
-    },
-    "horizontal_support_rebound": {
-      "BULL": {
-        "source": "engine_excess",
-        "tier": "NONE",
-        "excessPct": 0.05,
-        "n": 3475
-      },
-      "SIDE": {
-        "source": "engine_excess",
-        "tier": "NONE",
-        "excessPct": -0.543,
-        "n": 1974
-      },
-      "BEAR": {
-        "source": "engine_excess",
-        "tier": "NONE",
-        "excessPct": -0.458,
-        "n": 2175
+        "excessPct": 0.857,
+        "n": 9767
       }
     },
     "resistance_breakout": {
@@ -239,28 +199,48 @@
       "BEAR": {
         "source": "engine_excess",
         "tier": "NONE",
-        "excessPct": 0.022,
-        "n": 129
+        "excessPct": -0.013,
+        "n": 130
       }
     },
-    "overheated_chase_risk": {
+    "horizontal_support_rebound": {
       "BULL": {
         "source": "engine_excess",
-        "tier": "WEAK",
-        "excessPct": 3.66,
-        "n": 697
+        "tier": "NONE",
+        "excessPct": 0.05,
+        "n": 3475
       },
       "SIDE": {
         "source": "engine_excess",
+        "tier": "NONE",
+        "excessPct": -0.543,
+        "n": 1974
+      },
+      "BEAR": {
+        "source": "engine_excess",
+        "tier": "NONE",
+        "excessPct": -0.493,
+        "n": 2185
+      }
+    },
+    "overheated_pullback_risk": {
+      "BULL": {
+        "source": "engine_excess",
         "tier": "WEAK",
-        "excessPct": 3.517,
-        "n": 159
+        "excessPct": 2.0,
+        "n": 840
+      },
+      "SIDE": {
+        "source": "engine_excess",
+        "tier": "NONE",
+        "excessPct": -1.703,
+        "n": 436
       },
       "BEAR": {
         "source": "engine_excess",
         "tier": "WEAK",
-        "excessPct": 4.442,
-        "n": 137
+        "excessPct": 2.527,
+        "n": 755
       }
     },
     "range_bottom_rebound": {
@@ -279,8 +259,28 @@
       "BEAR": {
         "source": "engine_excess",
         "tier": "NONE",
-        "excessPct": 0.772,
-        "n": 990
+        "excessPct": 0.917,
+        "n": 1030
+      }
+    },
+    "overheated_chase_risk": {
+      "BULL": {
+        "source": "engine_excess",
+        "tier": "WEAK",
+        "excessPct": 3.66,
+        "n": 697
+      },
+      "SIDE": {
+        "source": "engine_excess",
+        "tier": "WEAK",
+        "excessPct": 3.517,
+        "n": 159
+      },
+      "BEAR": {
+        "source": "engine_excess",
+        "tier": "WEAK",
+        "excessPct": 4.407,
+        "n": 137
       }
     }
   }
