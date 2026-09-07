@@ -1,18 +1,18 @@
 {
-  "updatedAt": "2026-09-07 09:26:28",
-  "totalRows": 2490,
+  "updatedAt": "2026-09-07 16:16:18",
+  "totalRows": 2492,
   "olsSampleSize": 1921,
   "byStrategy": {
     "conservative_short": {
-      "total": 253,
+      "total": 254,
       "wins": 69,
-      "losses": 184,
-      "winRate": 0.2727,
+      "losses": 185,
+      "winRate": 0.2717,
       "avgWinPct": 4.27,
-      "avgLossPct": 3.515,
-      "payoffRatio": 1.215,
-      "avgProbability": 60.9,
-      "probAccuracy": -0.336
+      "avgLossPct": 3.503,
+      "payoffRatio": 1.219,
+      "avgProbability": 60.8,
+      "probAccuracy": -0.337
     },
     "conservative_swing": {
       "total": 276,
@@ -37,15 +37,15 @@
       "probAccuracy": -0.374
     },
     "balanced_short": {
-      "total": 216,
+      "total": 217,
       "wins": 65,
-      "losses": 151,
-      "winRate": 0.3009,
+      "losses": 152,
+      "winRate": 0.2995,
       "avgWinPct": 5.451,
-      "avgLossPct": 3.945,
-      "payoffRatio": 1.382,
-      "avgProbability": 58.3,
-      "probAccuracy": -0.282
+      "avgLossPct": 3.929,
+      "payoffRatio": 1.387,
+      "avgProbability": 58.2,
+      "probAccuracy": -0.283
     },
     "balanced_swing": {
       "total": 336,
@@ -112,17 +112,17 @@
       "payoffRatio": 1.354
     },
     "us": {
-      "total": 1359,
-      "winRate": 0.2627,
+      "total": 1361,
+      "winRate": 0.2623,
       "avgWinPct": 10.342,
-      "avgLossPct": 7.271,
-      "payoffRatio": 1.422
+      "avgLossPct": 7.26,
+      "payoffRatio": 1.425
     }
   },
   "byProbBand": {
     "low_50-60": {
-      "count": 410,
-      "actualWinRate": 0.1512
+      "count": 412,
+      "actualWinRate": 0.1505
     },
     "mid_60-75": {
       "count": 915,
@@ -200,9 +200,9 @@
     }
   },
   "insight": [
-    "호라이즌: short 전략 평균 승률 28.4%로 최고",
-    "모드: conservative 전략 평균 payoff 1.44x로 최고",
-    "마켓: US 승률 26.3%로 우위",
+    "호라이즌: short 전략 평균 승률 28.3%로 최고",
+    "모드: conservative 전략 평균 payoff 1.45x로 최고",
+    "마켓: US 승률 26.2%로 우위",
     "회귀분석: intercept 낮을수록 수익률 향상 (β=-20.416)",
     "전체 팩터 설명력 R²=0.044 (0~1, 높을수록 예측력 강함)",
     "Kelly 최대: conservative_short → 포트폴리오 0.0% 권장"

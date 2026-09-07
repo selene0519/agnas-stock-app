@@ -1,13 +1,195 @@
 {
   "version": "relative-strength-v1",
   "market": "kr",
-  "asOf": "2026-09-04",
-  "regime": "SIDE",
+  "asOf": "2026-09-07",
+  "regime": "BULL",
   "status": "OK",
   "lensNote": "Long the RS leaders, avoid the laggards. RS edge holds in BULL/SIDE.",
-  "universeCount": 0,
-  "leaders": [],
-  "laggardsToAvoid": [],
+  "universeCount": 100,
+  "leaders": [
+    {
+      "symbol": "078930",
+      "rs60Pct": 75.17,
+      "relToIndexPp": 86.39,
+      "vol60Pct": 4.48
+    },
+    {
+      "symbol": "010950",
+      "rs60Pct": 39.35,
+      "relToIndexPp": 50.56,
+      "vol60Pct": 4.33
+    },
+    {
+      "symbol": "006360",
+      "rs60Pct": 34.35,
+      "relToIndexPp": 45.57,
+      "vol60Pct": 7.11
+    },
+    {
+      "symbol": "096770",
+      "rs60Pct": 33.62,
+      "relToIndexPp": 44.84,
+      "vol60Pct": 5.01
+    },
+    {
+      "symbol": "006340",
+      "rs60Pct": 32.9,
+      "relToIndexPp": 44.12,
+      "vol60Pct": 9.04
+    },
+    {
+      "symbol": "214450",
+      "rs60Pct": 30.5,
+      "relToIndexPp": 41.72,
+      "vol60Pct": 4.83
+    },
+    {
+      "symbol": "138040",
+      "rs60Pct": 26.13,
+      "relToIndexPp": 37.35,
+      "vol60Pct": 2.52
+    },
+    {
+      "symbol": "003490",
+      "rs60Pct": 22.38,
+      "relToIndexPp": 33.59,
+      "vol60Pct": 3.27
+    },
+    {
+      "symbol": "028670",
+      "rs60Pct": 21.32,
+      "relToIndexPp": 32.54,
+      "vol60Pct": 4.2
+    },
+    {
+      "symbol": "086790",
+      "rs60Pct": 20.99,
+      "relToIndexPp": 32.21,
+      "vol60Pct": 2.68
+    },
+    {
+      "symbol": "055550",
+      "rs60Pct": 17.54,
+      "relToIndexPp": 28.76,
+      "vol60Pct": 2.57
+    },
+    {
+      "symbol": "105560",
+      "rs60Pct": 16.11,
+      "relToIndexPp": 27.32,
+      "vol60Pct": 2.72
+    },
+    {
+      "symbol": "003550",
+      "rs60Pct": 15.81,
+      "relToIndexPp": 27.03,
+      "vol60Pct": 3.3
+    },
+    {
+      "symbol": "128940",
+      "rs60Pct": 15.69,
+      "relToIndexPp": 26.91,
+      "vol60Pct": 6.3
+    },
+    {
+      "symbol": "207940",
+      "rs60Pct": 14.0,
+      "relToIndexPp": 25.21,
+      "vol60Pct": 3.22
+    }
+  ],
+  "laggardsToAvoid": [
+    {
+      "symbol": "267260",
+      "rs60Pct": -26.14,
+      "relToIndexPp": -14.92,
+      "vol60Pct": 5.72
+    },
+    {
+      "symbol": "090360",
+      "rs60Pct": -27.19,
+      "relToIndexPp": -15.97,
+      "vol60Pct": 6.31
+    },
+    {
+      "symbol": "035900",
+      "rs60Pct": -28.05,
+      "relToIndexPp": -16.84,
+      "vol60Pct": 3.32
+    },
+    {
+      "symbol": "329180",
+      "rs60Pct": -30.5,
+      "relToIndexPp": -19.28,
+      "vol60Pct": 3.78
+    },
+    {
+      "symbol": "058470",
+      "rs60Pct": -31.46,
+      "relToIndexPp": -20.25,
+      "vol60Pct": 4.53
+    },
+    {
+      "symbol": "214150",
+      "rs60Pct": -31.7,
+      "relToIndexPp": -20.48,
+      "vol60Pct": 3.88
+    },
+    {
+      "symbol": "064350",
+      "rs60Pct": -32.48,
+      "relToIndexPp": -21.27,
+      "vol60Pct": 5.4
+    },
+    {
+      "symbol": "039440",
+      "rs60Pct": -33.78,
+      "relToIndexPp": -22.56,
+      "vol60Pct": 6.22
+    },
+    {
+      "symbol": "353200",
+      "rs60Pct": -33.93,
+      "relToIndexPp": -22.71,
+      "vol60Pct": 7.74
+    },
+    {
+      "symbol": "454910",
+      "rs60Pct": -33.96,
+      "relToIndexPp": -22.74,
+      "vol60Pct": 4.63
+    },
+    {
+      "symbol": "005380",
+      "rs60Pct": -34.17,
+      "relToIndexPp": -22.96,
+      "vol60Pct": 3.86
+    },
+    {
+      "symbol": "000990",
+      "rs60Pct": -35.05,
+      "relToIndexPp": -23.84,
+      "vol60Pct": 6.47
+    },
+    {
+      "symbol": "247540",
+      "rs60Pct": -35.06,
+      "relToIndexPp": -23.84,
+      "vol60Pct": 5.68
+    },
+    {
+      "symbol": "011070",
+      "rs60Pct": -45.34,
+      "relToIndexPp": -34.12,
+      "vol60Pct": 6.77
+    },
+    {
+      "symbol": "131970",
+      "rs60Pct": -45.66,
+      "relToIndexPp": -34.45,
+      "vol60Pct": 7.54
+    }
+  ],
   "defensiveHolds": [],
   "note": "Research/paper only."
 }
