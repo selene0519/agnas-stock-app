@@ -1,6 +1,6 @@
 {
-  "status": "PARTIAL",
-  "generatedAt": "2026-09-07T12:44:57+00:00",
+  "status": "OK",
+  "generatedAt": "2026-09-07T13:45:07+00:00",
   "asOfDate": "2026-09-07",
   "count": 21,
   "items": [
@@ -500,13 +500,52 @@
         "sourceUrl": "https://clinicaltrials.gov/api/v2/studies?query.spons=Amgen&pageSize=20&countTotal=true&format=json"
       },
       "pubMed": {
-        "status": "ERROR",
-        "error": "URLError"
+        "status": "OK",
+        "queryCompany": "Amgen",
+        "publicationCountRecent5y": 2251,
+        "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
+        "publications": [
+          {
+            "pmid": "42453072",
+            "title": "Setting expectations for current and future directions of native mass spectrometry in the biopharmaceutical industry.",
+            "publicationDate": "2026 Dec",
+            "journal": "mAbs",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42453072/"
+          },
+          {
+            "pmid": "41709689",
+            "title": "Treatment patterns of bone-targeted agents for the prevention of skeletal-related events in multiple myeloma in Bulgaria: a cross-sectional chart review study.",
+            "publicationDate": "2026 Dec",
+            "journal": "Hematology (Amsterdam, Netherlands)",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41709689/"
+          },
+          {
+            "pmid": "41383027",
+            "title": "Fine-tuning affinity and spacer design enhances T cell potency in DLL3 and BCMA CAR T cells.",
+            "publicationDate": "2026 Dec",
+            "journal": "mAbs",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41383027/"
+          },
+          {
+            "pmid": "42476440",
+            "title": "Testicular Toxicity. An International Consortium for Innovation and Quality in Pharmaceutical Development (IQ) DruSafe Industry-Wide Survey.",
+            "publicationDate": "2026 Nov",
+            "journal": "Regulatory toxicology and pharmacology : RTP",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42476440/"
+          },
+          {
+            "pmid": "42316969",
+            "title": "Assessment of Cryogen-Free NMR as Process Analytical Technology for Chemical Process Understanding Across Field Strengths.",
+            "publicationDate": "2026 Oct",
+            "journal": "Magnetic resonance in chemistry : MRC",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42316969/"
+          }
+        ],
+        "source": "NCBI PubMed E-utilities",
+        "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22Amgen%22%5BAffiliation%5D"
       },
-      "status": "PARTIAL",
-      "errors": [
-        "PUBMED_UNAVAILABLE"
-      ]
+      "status": "OK",
+      "errors": []
     },
     {
       "market": "us",
@@ -668,13 +707,52 @@
         "sourceUrl": "https://clinicaltrials.gov/api/v2/studies?query.spons=Bristol-Myers+Squibb&pageSize=20&countTotal=true&format=json"
       },
       "pubMed": {
-        "status": "ERROR",
-        "error": "URLError"
+        "status": "OK",
+        "queryCompany": "Bristol-Myers Squibb",
+        "publicationCountRecent5y": 3015,
+        "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
+        "publications": [
+          {
+            "pmid": "42258343",
+            "title": "A global model for symptomatic obstructive hypertrophic cardiomyopathy to assess the cost-effectiveness of mavacamten: results from a Dutch societal perspective.",
+            "publicationDate": "2026 Dec",
+            "journal": "Journal of medical economics",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42258343/"
+          },
+          {
+            "pmid": "42253269",
+            "title": "Subcutaneous drug delivery of high concentration antibody products - part 2: formulation, device options, and clinical bridging strategies for patient-centric commercial presentations.",
+            "publicationDate": "2026 Dec",
+            "journal": "mAbs",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42253269/"
+          },
+          {
+            "pmid": "42105309",
+            "title": "Cost-effectiveness analysis of xanomeline and trospium chloride for the treatment of adults with schizophrenia in the US.",
+            "publicationDate": "2026 Dec",
+            "journal": "Journal of medical economics",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42105309/"
+          },
+          {
+            "pmid": "42020185",
+            "title": "Value frameworks for digital health technologies: a comparative analysis.",
+            "publicationDate": "2026 Dec",
+            "journal": "Journal of medical economics",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42020185/"
+          },
+          {
+            "pmid": "41725198",
+            "title": "Plain language summary examining clinical event related costs associated with changing medication from apixaban to rivaroxaban in people with non-valvular atrial fibrillation in the USA and Germany.",
+            "publicationDate": "2026 Dec",
+            "journal": "Journal of medical economics",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41725198/"
+          }
+        ],
+        "source": "NCBI PubMed E-utilities",
+        "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22Bristol-Myers+Squibb%22%5BAffiliation%5D"
       },
-      "status": "PARTIAL",
-      "errors": [
-        "PUBMED_UNAVAILABLE"
-      ]
+      "status": "OK",
+      "errors": []
     },
     {
       "market": "us",
@@ -1246,13 +1324,52 @@
         "sourceUrl": "https://clinicaltrials.gov/api/v2/studies?query.spons=Eli+Lilly+and+Company&pageSize=20&countTotal=true&format=json"
       },
       "pubMed": {
-        "status": "ERROR",
-        "error": "URLError"
+        "status": "OK",
+        "queryCompany": "Eli Lilly and Company",
+        "publicationCountRecent5y": 2814,
+        "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
+        "publications": [
+          {
+            "pmid": "42100922",
+            "title": "Machine learning predictions of IgG1 and IgG4 self-association and high-concentration solution properties.",
+            "publicationDate": "2026 Dec 31",
+            "journal": "mAbs",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42100922/"
+          },
+          {
+            "pmid": "41275875",
+            "title": "Orforglipron, an oral small-molecule GLP-1 receptor agonist, for the treatment of obesity in people with type 2 diabetes (ATTAIN-2): a phase 3, double-blind, randomised, multicentre, placebo-controlled trial.",
+            "publicationDate": "2026 Dec 20",
+            "journal": "Lancet (London, England)",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41275875/"
+          },
+          {
+            "pmid": "42021523",
+            "title": "Enhancing economic modelling in obesity: integrating novel type 2 diabetes progression & obstructive sleep apnea remission - a UK case study.",
+            "publicationDate": "2026 Dec",
+            "journal": "Journal of medical economics",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42021523/"
+          },
+          {
+            "pmid": "42012820",
+            "title": "Cost-effectiveness of tirzepatide versus semaglutide for patients with obesity or overweight in the US: evidence from the SURMOUNT-5 head-to-head phase-3 trial.",
+            "publicationDate": "2026 Dec",
+            "journal": "Journal of medical economics",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42012820/"
+          },
+          {
+            "pmid": "41814992",
+            "title": "Lebrikizumab off-therapy remission sustained up to 38 weeks in atopic dermatitis.",
+            "publicationDate": "2026 Dec",
+            "journal": "The Journal of dermatological treatment",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41814992/"
+          }
+        ],
+        "source": "NCBI PubMed E-utilities",
+        "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22Eli+Lilly+and+Company%22%5BAffiliation%5D"
       },
-      "status": "PARTIAL",
-      "errors": [
-        "PUBMED_UNAVAILABLE"
-      ]
+      "status": "OK",
+      "errors": []
     },
     {
       "market": "us",
@@ -1933,13 +2050,52 @@
         "sourceUrl": "https://clinicaltrials.gov/api/v2/studies?query.spons=Pfizer&pageSize=20&countTotal=true&format=json"
       },
       "pubMed": {
-        "status": "ERROR",
-        "error": "URLError"
+        "status": "OK",
+        "queryCompany": "Pfizer",
+        "publicationCountRecent5y": 6947,
+        "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
+        "publications": [
+          {
+            "pmid": "42273738",
+            "title": "Discovery and optimization of marstacimab, a human monoclonal antibody targeting tissue factor pathway inhibitor for the treatment of hemophilia A and B.",
+            "publicationDate": "2026 Dec 31",
+            "journal": "mAbs",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42273738/"
+          },
+          {
+            "pmid": "42693756",
+            "title": "Real-world healthcare resource utilization and cost burden of COVID-19 in commercially insured adults at high-risk of severe disease in the US: a retrospective database analysis.",
+            "publicationDate": "2026 Dec",
+            "journal": "Journal of medical economics",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42693756/"
+          },
+          {
+            "pmid": "42677503",
+            "title": "Costs and healthcare resource utilization after COVID-19 hospitalization among US Medicare patients: a retrospective claims analysis.",
+            "publicationDate": "2026 Dec",
+            "journal": "Journal of medical economics",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42677503/"
+          },
+          {
+            "pmid": "42565345",
+            "title": "Simulating real-world abrocitinib use in atopic dermatitis: results from JADE REAL.",
+            "publicationDate": "2026 Dec",
+            "journal": "The Journal of dermatological treatment",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42565345/"
+          },
+          {
+            "pmid": "42549932",
+            "title": "Response to letter to the editor: sustained on/off-treatment disease control with abrocitinib for moderate-to-severe atopic dermatitis.",
+            "publicationDate": "2026 Dec",
+            "journal": "The Journal of dermatological treatment",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42549932/"
+          }
+        ],
+        "source": "NCBI PubMed E-utilities",
+        "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22Pfizer%22%5BAffiliation%5D"
       },
-      "status": "PARTIAL",
-      "errors": [
-        "PUBMED_UNAVAILABLE"
-      ]
+      "status": "OK",
+      "errors": []
     },
     {
       "market": "us",
@@ -2418,8 +2574,269 @@
       "scoreAdjustment": 0.0,
       "promotionEligible": false,
       "clinicalTrials": {
-        "status": "ERROR",
-        "error": "URLError"
+        "status": "OK",
+        "queryCompany": "Yuhan Corporation",
+        "apiTotalCount": 120,
+        "fetchedStudyCount": 20,
+        "verifiedStudyCountInFetchedPage": 19,
+        "rejectedIdentityCountInFetchedPage": 1,
+        "ambiguousSponsorMatches": [],
+        "identityStatus": "VERIFIED",
+        "identityConfidence": "HIGH",
+        "activeStudyCountInFetchedPage": 2,
+        "phase3StudyCountInFetchedPage": 2,
+        "riskStatusStudyCountInFetchedPage": 0,
+        "upcomingCompletion180dCountInFetchedPage": 2,
+        "studies": [
+          {
+            "nctId": "NCT07584304",
+            "title": "Bioequivalence Study Between YHP2508C and YHR2603 in Healthy Subjects",
+            "leadSponsor": "Yuhan Corporation",
+            "identityConfidence": "HIGH",
+            "overallStatus": "NOT_YET_RECRUITING",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2026-09-15",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT07584304"
+          },
+          {
+            "nctId": "NCT06623526",
+            "title": "Clinical Trial to Evaluate the PK Interactions of YHR2402 Monotherapy and YHR2402 and YHR2403 Co-Administration in Healthy Volunteers",
+            "leadSponsor": "Yuhan Corporation",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2024-11-11",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT06623526"
+          },
+          {
+            "nctId": "NCT02152969",
+            "title": "Drug-drug Interaction Study (Telmisartan, Amlodipine, Chlorthalidone)",
+            "leadSponsor": "Yuhan Corporation",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2014-11",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02152969"
+          },
+          {
+            "nctId": "NCT02538367",
+            "title": "Phase 1/2a Trial of YH12852 in Healthy Subjects and Patients With Functional Constipation",
+            "leadSponsor": "Yuhan Corporation",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1",
+              "PHASE2"
+            ],
+            "completionDate": "2016-09",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02538367"
+          },
+          {
+            "nctId": "NCT06247280",
+            "title": "Korean Registry of Non-Small Cell Lung Cancer Patients with EGFR Mutation",
+            "leadSponsor": "Yuhan Corporation",
+            "identityConfidence": "HIGH",
+            "overallStatus": "ACTIVE_NOT_RECRUITING",
+            "phases": [],
+            "completionDate": "2026-12-31",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT06247280"
+          },
+          {
+            "nctId": "NCT02951962",
+            "title": "A Study to Investigate Pharmacokinetic Drug Interaction and Safety of Telmisartan/Amlodipine and Rosuvastatin",
+            "leadSponsor": "Yuhan Corporation",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2016-09",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02951962"
+          },
+          {
+            "nctId": "NCT03474562",
+            "title": "High-Dose Statin Combined With Telmisartan vs Amlodipine on Glucose Metabolism in ASCVD Patients With IFG and Hypertension",
+            "leadSponsor": "Yuhan Corporation",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE4"
+            ],
+            "completionDate": "2019-06-07",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT03474562"
+          },
+          {
+            "nctId": "NCT06775522",
+            "title": "Bioequivalence (BE) Study Between YHP2205 and YHR2401 in Healthy Volunteers",
+            "leadSponsor": "Yuhan Corporation",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2025-01-21",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT06775522"
+          },
+          {
+            "nctId": "NCT01870674",
+            "title": "Safety/Tolerability and Pharmacokinetics/Pharmacodynamics of YH12852 After Oral Administration in Healthy Male Subjects",
+            "leadSponsor": "Yuhan Corporation",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2015-04",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01870674"
+          },
+          {
+            "nctId": "NCT01423370",
+            "title": "Safety and Efficacy of YHD1023 in Erectile Dysfunction",
+            "leadSponsor": "Yuhan Corporation",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE2"
+            ],
+            "completionDate": "2013-03",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01423370"
+          },
+          {
+            "nctId": "NCT03441516",
+            "title": "Effect of Choline Alphoscerate on Cognitive Function in Alzheimer's Dementia",
+            "leadSponsor": "Yuhan Corporation",
+            "identityConfidence": "HIGH",
+            "overallStatus": "UNKNOWN",
+            "phases": [
+              "PHASE4"
+            ],
+            "completionDate": "2021-12-31",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT03441516"
+          },
+          {
+            "nctId": "NCT07111468",
+            "title": "Clinical Trial to Evaluate the Efficacy and Safety of YHP2401 Compared to YHR2402 and YHR2403 for Acute Bronchitis",
+            "leadSponsor": "Yuhan Corporation",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE3"
+            ],
+            "completionDate": "2026-01-26",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT07111468"
+          },
+          {
+            "nctId": "NCT01609907",
+            "title": "Pharmacokinetic Drug Interaction Between Rosuvastatin and Valsartan",
+            "leadSponsor": "Yuhan Corporation",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2012-05",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01609907"
+          },
+          {
+            "nctId": "NCT02783638",
+            "title": "PK and Food Effect of Pregabalin Study After Dosing in Healthy Male Volunteers",
+            "leadSponsor": "Yuhan Corporation",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2016-09",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02783638"
+          },
+          {
+            "nctId": "NCT02233218",
+            "title": "The Pharmacokinetic Drug-drug Interaction and Safety of Telmisartan/Amlodipine and Rosuvastatin in Healthy Male Volunteers",
+            "leadSponsor": "Yuhan Corporation",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2015-01",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02233218"
+          },
+          {
+            "nctId": "NCT04248829",
+            "title": "Clinical Trial of YH25448(Lazertinib) as the First-line Treatment in Patients With EGFR Mutation Positive Locally Advanced or Metastatic NSCLC (LASER301)",
+            "leadSponsor": "Yuhan Corporation",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE3"
+            ],
+            "completionDate": "2026-04-22",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT04248829"
+          },
+          {
+            "nctId": "NCT02125227",
+            "title": "Phase 1 Clinical Trial to Investigate the Effect on the Pharmacokinetics of YH14755 Compared to Co-administration of Rosuvastatin and Metformin SR in Healthy Volunteers",
+            "leadSponsor": "Yuhan Corporation",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2014-09",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02125227"
+          },
+          {
+            "nctId": "NCT03232177",
+            "title": "Anagre Cap. in Patients With High-Risk Essential Thrombocythemia",
+            "leadSponsor": "Yuhan Corporation",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE4"
+            ],
+            "completionDate": "2020-12-05",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT03232177"
+          },
+          {
+            "nctId": "NCT01507038",
+            "title": "Safety and Efficacy of YH14617 in Diabetes Mellitus",
+            "leadSponsor": "Yuhan Corporation",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE2"
+            ],
+            "completionDate": "2015-02",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01507038"
+          }
+        ],
+        "source": "ClinicalTrials.gov API v2",
+        "sourceUrl": "https://clinicaltrials.gov/api/v2/studies?query.spons=Yuhan+Corporation&pageSize=20&countTotal=true&format=json"
       },
       "pubMed": {
         "status": "OK",
@@ -2466,10 +2883,8 @@
         "source": "NCBI PubMed E-utilities",
         "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22Yuhan+Corporation%22%5BAffiliation%5D"
       },
-      "status": "PARTIAL",
-      "errors": [
-        "CLINICALTRIALS_UNAVAILABLE"
-      ]
+      "status": "OK",
+      "errors": []
     },
     {
       "market": "kr",
@@ -2767,13 +3182,52 @@
         "sourceUrl": "https://clinicaltrials.gov/api/v2/studies?query.spons=Medytox&pageSize=20&countTotal=true&format=json"
       },
       "pubMed": {
-        "status": "ERROR",
-        "error": "URLError"
+        "status": "OK",
+        "queryCompany": "Medytox",
+        "publicationCountRecent5y": 18,
+        "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
+        "publications": [
+          {
+            "pmid": "42401423",
+            "title": "A Randomized, Double-blind, Placebo-controlled, Dose Ranging, Parallel, Multi-Centre, Phase II Study to Evaluate the Efficacy and Safety of MT921 in Subjects with Moderate to Severe Submental Fat.",
+            "publicationDate": "2026 Jul 5",
+            "journal": "Aesthetic surgery journal",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42401423/"
+          },
+          {
+            "pmid": "41304889",
+            "title": "Comparison of Cholic Acid (MT921) and Deoxycholic Acid (DCA) in Fat Reduction Efficacy and Skin Adverse Reactions in Mini Pigs and Rodent Models.",
+            "publicationDate": "2025 Oct 30",
+            "journal": "Pharmaceuticals (Basel, Switzerland)",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41304889/"
+          },
+          {
+            "pmid": "40398669",
+            "title": "Advancements on heparin-based hydrogel/scaffolds in biomedical and tissue engineering applications: Delivery carrier and pre-clinical implications.",
+            "publicationDate": "2025 Jun 30",
+            "journal": "International journal of pharmaceutics",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/40398669/"
+          },
+          {
+            "pmid": "40194579",
+            "title": "Silk fibroin: An innovative protein macromolecule-based hydrogel/ scaffold revolutionizing breast cancer treatment and diagnosis - Mechanisms, advancements, and targeting capabilities.",
+            "publicationDate": "2025 May",
+            "journal": "International journal of biological macromolecules",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/40194579/"
+          },
+          {
+            "pmid": "40218949",
+            "title": "A 12-Week, Randomized, Double-Blind, Placebo-Controlled Study to Evaluate the Efficacy and Safety of Lactobacillus plantarum LMT1-48 on Body Fat Loss.",
+            "publicationDate": "2025 Mar 28",
+            "journal": "Nutrients",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/40218949/"
+          }
+        ],
+        "source": "NCBI PubMed E-utilities",
+        "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22Medytox%22%5BAffiliation%5D"
       },
-      "status": "PARTIAL",
-      "errors": [
-        "PUBMED_UNAVAILABLE"
-      ]
+      "status": "OK",
+      "errors": []
     },
     {
       "market": "kr",
@@ -3228,8 +3682,207 @@
       "scoreAdjustment": 0.0,
       "promotionEligible": false,
       "clinicalTrials": {
-        "status": "ERROR",
-        "error": "URLError"
+        "status": "OK",
+        "queryCompany": "LigaChem Biosciences",
+        "apiTotalCount": 16,
+        "fetchedStudyCount": 16,
+        "verifiedStudyCountInFetchedPage": 14,
+        "rejectedIdentityCountInFetchedPage": 2,
+        "ambiguousSponsorMatches": [],
+        "identityStatus": "VERIFIED",
+        "identityConfidence": "HIGH",
+        "activeStudyCountInFetchedPage": 2,
+        "phase3StudyCountInFetchedPage": 0,
+        "riskStatusStudyCountInFetchedPage": 2,
+        "upcomingCompletion180dCountInFetchedPage": 0,
+        "studies": [
+          {
+            "nctId": "NCT02538003",
+            "title": "To Evaluate the Effect of Food on Pharmacokinetics(PK), Phase I Clinical Study of LCB01-0371",
+            "leadSponsor": "LigaChem Biosciences, Inc.",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2015-12",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02538003"
+          },
+          {
+            "nctId": "NCT04550832",
+            "title": "PanACEA DElpazolid Dose-finding and COmbination DEvelopment (DECODE)",
+            "leadSponsor": "LigaChem Biosciences, Inc.",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE2"
+            ],
+            "completionDate": "2023-09-11",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT04550832"
+          },
+          {
+            "nctId": "NCT01554995",
+            "title": "A Clinical Study, Randomized, Double-blind, Placebo-controlled, Single Dose Study",
+            "leadSponsor": "LigaChem Biosciences, Inc.",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2013-02",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01554995"
+          },
+          {
+            "nctId": "NCT02836483",
+            "title": "A Phase II Clinical Study of LCB01-0371 to Evaluate the EBA, Safety and PK",
+            "leadSponsor": "LigaChem Biosciences, Inc.",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE2"
+            ],
+            "completionDate": "2019-07-01",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02836483"
+          },
+          {
+            "nctId": "NCT02529241",
+            "title": "An Open-label, Single Dose, Parallel Design, Phase 1 Clinical Study of LCB01-0371",
+            "leadSponsor": "LigaChem Biosciences, Inc.",
+            "identityConfidence": "HIGH",
+            "overallStatus": "TERMINATED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2015-12",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02529241"
+          },
+          {
+            "nctId": "NCT01842516",
+            "title": "Multiple Ascending Dose Study for LCB01-0371",
+            "leadSponsor": "LigaChem Biosciences, Inc.",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2013-12",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01842516"
+          },
+          {
+            "nctId": "NCT06004037",
+            "title": "Study to Evaluate the Efficacy of Delpazolid as Add-on Therapy in Refractory Mycobacterium Abscessus Complex",
+            "leadSponsor": "LigaChem Biosciences, Inc.",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE2"
+            ],
+            "completionDate": "2026-06-29",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT06004037"
+          },
+          {
+            "nctId": "NCT02540460",
+            "title": "Multiple Ascending Dose, Phase 1 Clinical Study of LCB01-0371",
+            "leadSponsor": "LigaChem Biosciences, Inc.",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2015-01",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02540460"
+          },
+          {
+            "nctId": "NCT05225558",
+            "title": "A Phase 2a Study, Effect of Vancomycin With vs Without Delpazolid (LCB01-0371) in Patients With MRSA Bacteremia",
+            "leadSponsor": "LigaChem Biosciences, Inc.",
+            "identityConfidence": "HIGH",
+            "overallStatus": "TERMINATED",
+            "phases": [
+              "PHASE2"
+            ],
+            "completionDate": "2024-03-18",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT05225558"
+          },
+          {
+            "nctId": "NCT05941507",
+            "title": "A Study to Evaluate TROP2 ADC LCB84 Single Agent and in Combination With an Anti-PD-1 Ab in Advanced Solid Tumors",
+            "leadSponsor": "LigaChem Biosciences, Inc.",
+            "identityConfidence": "HIGH",
+            "overallStatus": "RECRUITING",
+            "phases": [
+              "PHASE1",
+              "PHASE2"
+            ],
+            "completionDate": "2027-05",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT05941507"
+          },
+          {
+            "nctId": "NCT07460375",
+            "title": "A Study to Evaluate Claudin 18.2-Directed ADC LCB02A in Advanced Solid Tumors",
+            "leadSponsor": "LigaChem Biosciences, Inc.",
+            "identityConfidence": "HIGH",
+            "overallStatus": "RECRUITING",
+            "phases": [
+              "PHASE1",
+              "PHASE2"
+            ],
+            "completionDate": "2030-08",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT07460375"
+          },
+          {
+            "nctId": "NCT03492996",
+            "title": "A Mass Balance Study of LCB01-0371 After a Single Oral LCB01-0371 Dose With a [14C]LCB01-0371-microtrace",
+            "leadSponsor": "LigaChem Biosciences, Inc.",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2020-09-23",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT03492996"
+          },
+          {
+            "nctId": "NCT02882789",
+            "title": "IV Dosage Form of LCB01-0371 Phase I Study in Healthy Male Volunteers",
+            "leadSponsor": "LigaChem Biosciences, Inc.",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2017-07",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02882789"
+          },
+          {
+            "nctId": "NCT04939779",
+            "title": "Trial to Evaluate Bioequivalence of LCB01-0371 in Different Batches",
+            "leadSponsor": "LigaChem Biosciences, Inc.",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2021-02-01",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT04939779"
+          }
+        ],
+        "source": "ClinicalTrials.gov API v2",
+        "sourceUrl": "https://clinicaltrials.gov/api/v2/studies?query.spons=LigaChem+Biosciences&pageSize=20&countTotal=true&format=json"
       },
       "pubMed": {
         "status": "OK",
@@ -3276,10 +3929,8 @@
         "source": "NCBI PubMed E-utilities",
         "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22LigaChem+Biosciences%22%5BAffiliation%5D"
       },
-      "status": "PARTIAL",
-      "errors": [
-        "CLINICALTRIALS_UNAVAILABLE"
-      ]
+      "status": "OK",
+      "errors": []
     },
     {
       "market": "kr",
@@ -3391,13 +4042,52 @@
         "sourceUrl": "https://clinicaltrials.gov/api/v2/studies?query.spons=ABL+Bio&pageSize=20&countTotal=true&format=json"
       },
       "pubMed": {
-        "status": "ERROR",
-        "error": "URLError"
+        "status": "OK",
+        "queryCompany": "ABL Bio",
+        "publicationCountRecent5y": 18,
+        "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
+        "publications": [
+          {
+            "pmid": "41645963",
+            "title": "Expanding the horizons of cancer therapy with next-generation 4-1BB agonists: a review of molecular and clinical strategies to maximize efficacy and ensure safety.",
+            "publicationDate": "2026 Dec",
+            "journal": "mAbs",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41645963/"
+          },
+          {
+            "pmid": "42007988",
+            "title": "ABL209 (NEOK002) : Designing an EGFRxMUC1 bispecific TOP1i ADC with promising anti-tumor activity and enhanced therapeutic window.",
+            "publicationDate": "2026 Apr 20",
+            "journal": "Molecular cancer therapeutics",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42007988/"
+          },
+          {
+            "pmid": "40586719",
+            "title": "A First-in-Human Study of Givastomig, a CLDN18.2 and 4-1BB Bispecific Antibody, as Monotherapy in Patients with CLDN18.2-Positive Advanced or Metastatic Solid Tumors.",
+            "publicationDate": "2025 Dec 1",
+            "journal": "Clinical cancer research : an official journal of the American Association for Cancer Research",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/40586719/"
+          },
+          {
+            "pmid": "40287131",
+            "title": "Differential polyamine metabolism in CHO cell lines: Insights into cell growth and antibody quality.",
+            "publicationDate": "2025 Sep 25",
+            "journal": "New biotechnology",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/40287131/"
+          },
+          {
+            "pmid": "40847026",
+            "title": "A brain-shuttled antibody targeting alpha synuclein aggregates for the treatment of synucleinopathies.",
+            "publicationDate": "2025 Aug 22",
+            "journal": "NPJ Parkinson's disease",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/40847026/"
+          }
+        ],
+        "source": "NCBI PubMed E-utilities",
+        "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22ABL+Bio%22%5BAffiliation%5D"
       },
-      "status": "PARTIAL",
-      "errors": [
-        "PUBMED_UNAVAILABLE"
-      ]
+      "status": "OK",
+      "errors": []
     },
     {
       "market": "kr",
@@ -3729,14 +4419,14 @@
   ],
   "pointInTimeLedger": {
     "status": "OK",
-    "addedSnapshots": 10,
-    "addedEvents": 0,
-    "snapshotCount": 414,
-    "eventCount": 1391
+    "addedSnapshots": 2,
+    "addedEvents": 10,
+    "snapshotCount": 416,
+    "eventCount": 1401
   },
   "validationGate": {
     "status": "RESEARCH_ONLY",
-    "generatedAt": "2026-09-07T12:44:57+00:00",
+    "generatedAt": "2026-09-07T13:45:07+00:00",
     "evaluatedDirectionalEventCount": 0,
     "promotionCount": 0,
     "operationalScoreAdjustmentAllowed": false,
