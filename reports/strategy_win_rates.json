@@ -1,52 +1,52 @@
 {
-  "updatedAt": "2026-09-07 09:28:28",
-  "totalSamples": 1020,
-  "totalWins": 317,
-  "overallWinRate": 0.3108,
+  "updatedAt": "2026-09-08 03:42:39",
+  "totalSamples": 1046,
+  "totalWins": 325,
+  "overallWinRate": 0.3107,
   "minSamplesForUpdate": 20,
   "sampleCounts": {
-    "conservative_short": 100,
+    "conservative_short": 104,
     "conservative_swing": 97,
-    "conservative_mid": 74,
-    "balanced_short": 113,
+    "conservative_mid": 76,
+    "balanced_short": 114,
     "balanced_swing": 191,
-    "balanced_mid": 92,
-    "aggressive_short": 105,
+    "balanced_mid": 95,
+    "aggressive_short": 112,
     "aggressive_swing": 101,
-    "aggressive_mid": 147
+    "aggressive_mid": 156
   },
   "winRates": {
-    "conservative_short": 0.41,
+    "conservative_short": 0.4135,
     "conservative_swing": 0.3196,
-    "conservative_mid": 0.2568,
-    "balanced_short": 0.3894,
+    "conservative_mid": 0.2632,
+    "balanced_short": 0.386,
     "balanced_swing": 0.2304,
-    "balanced_mid": 0.25,
-    "aggressive_short": 0.4095,
+    "balanced_mid": 0.2526,
+    "aggressive_short": 0.3929,
     "aggressive_swing": 0.2277,
     "aggressive_mid": 0.3333
   },
   "observedWinRates": {
-    "conservative_short": 0.41,
+    "conservative_short": 0.4135,
     "conservative_swing": 0.3196,
-    "conservative_mid": 0.2568,
-    "balanced_short": 0.3894,
+    "conservative_mid": 0.2632,
+    "balanced_short": 0.386,
     "balanced_swing": 0.2304,
-    "balanced_mid": 0.25,
-    "aggressive_short": 0.4095,
+    "balanced_mid": 0.2526,
+    "aggressive_short": 0.3929,
     "aggressive_swing": 0.2277,
     "aggressive_mid": 0.3333
   },
   "averageReturnPct": {
-    "conservative_short": -0.3605,
+    "conservative_short": -0.3584,
     "conservative_swing": -1.6406,
-    "conservative_mid": -2.4709,
-    "balanced_short": -0.8295,
+    "conservative_mid": -2.4273,
+    "balanced_short": -0.8432,
     "balanced_swing": -3.7467,
-    "balanced_mid": -4.6885,
-    "aggressive_short": -0.9409,
+    "balanced_mid": -4.5422,
+    "aggressive_short": -0.9013,
     "aggressive_swing": -3.9597,
-    "aggressive_mid": -3.5805
+    "aggressive_mid": -3.3683
   },
   "byMarket": {
     "kr": {
@@ -99,52 +99,52 @@
       }
     },
     "us": {
-      "totalSamples": 680,
-      "totalWins": 245,
-      "overallWinRate": 0.3603,
+      "totalSamples": 706,
+      "totalWins": 253,
+      "overallWinRate": 0.3584,
       "sampleCounts": {
-        "conservative_short": 71,
+        "conservative_short": 75,
         "conservative_swing": 55,
-        "conservative_mid": 46,
-        "balanced_short": 86,
+        "conservative_mid": 48,
+        "balanced_short": 87,
         "balanced_swing": 103,
-        "balanced_mid": 62,
-        "aggressive_short": 78,
+        "balanced_mid": 65,
+        "aggressive_short": 85,
         "aggressive_swing": 68,
-        "aggressive_mid": 111
+        "aggressive_mid": 120
       },
       "winRates": {
-        "conservative_short": 0.4648,
+        "conservative_short": 0.4667,
         "conservative_swing": 0.3455,
-        "conservative_mid": 0.2826,
-        "balanced_short": 0.4535,
+        "conservative_mid": 0.2917,
+        "balanced_short": 0.4483,
         "balanced_swing": 0.2816,
-        "balanced_mid": 0.2742,
-        "aggressive_short": 0.4872,
+        "balanced_mid": 0.2769,
+        "aggressive_short": 0.4588,
         "aggressive_swing": 0.25,
-        "aggressive_mid": 0.3604
+        "aggressive_mid": 0.3583
       },
       "observedWinRates": {
-        "conservative_short": 0.4648,
+        "conservative_short": 0.4667,
         "conservative_swing": 0.3455,
-        "conservative_mid": 0.2826,
-        "balanced_short": 0.4535,
+        "conservative_mid": 0.2917,
+        "balanced_short": 0.4483,
         "balanced_swing": 0.2816,
-        "balanced_mid": 0.2742,
-        "aggressive_short": 0.4872,
+        "balanced_mid": 0.2769,
+        "aggressive_short": 0.4588,
         "aggressive_swing": 0.25,
-        "aggressive_mid": 0.3604
+        "aggressive_mid": 0.3583
       },
       "averageReturnPct": {
-        "conservative_short": -0.4575,
+        "conservative_short": -0.4495,
         "conservative_swing": -1.5718,
-        "conservative_mid": -2.3484,
-        "balanced_short": -0.2247,
+        "conservative_mid": -2.2846,
+        "balanced_short": -0.2495,
         "balanced_swing": -3.2502,
-        "balanced_mid": -4.6155,
-        "aggressive_short": -0.2124,
+        "balanced_mid": -4.4051,
+        "aggressive_short": -0.2203,
         "aggressive_swing": -3.1567,
-        "aggressive_mid": -2.836
+        "aggressive_mid": -2.616
       }
     }
   },
@@ -152,9 +152,9 @@
     "source": "reports/virtual_validation_results.csv",
     "requiresRealizedReturn": true,
     "excludedRows": {
-      "NON_EXECUTED_OR_PENDING": 169,
+      "NON_EXECUTED_OR_PENDING": 170,
       "MISSING_REALIZED_RETURN": 0,
-      "SAME_DAY_CLOSE_PLACEHOLDER": 151
+      "SAME_DAY_CLOSE_PLACEHOLDER": 163
     },
     "signalLedgerRowsExcluded": 0
   },
@@ -166,5 +166,5 @@
     "swing_scale": 0.14,
     "mid_scale": 0.15
   },
-  "note": "샘플 20건 미만 전략은 기본값 사용. 전체 1020건 검증됨."
+  "note": "샘플 20건 미만 전략은 기본값 사용. 전체 1046건 검증됨."
 }
