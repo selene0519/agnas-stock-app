@@ -18,7 +18,7 @@
   "lastRun": {
     "status": "OK",
     "dryRun": false,
-    "createdAt": "2026-09-08T08:35:39",
+    "createdAt": "2026-09-09T08:35:38",
     "market": "kr",
     "markets": {
       "kr": {
@@ -37,6 +37,7 @@
             "reason": "QUANT_OPERATING_GATE",
             "reasonCodes": [
               "REALIZED_WIN_RATE_BELOW_GATE",
+              "QUANT_EVIDENCE_INTEGRITY_NOT_READY",
               "QUANT_SHADOW_NOT_APPROVED",
               "EV_CALIBRATION_NOT_VALIDATED"
             ],
@@ -53,30 +54,31 @@
           "seed": 5000000.0,
           "cash": 4806807.0,
           "invested": 193193.0,
-          "valuation": 200000.0,
-          "portfolioValue": 5006807.0,
-          "unrealizedPnl": 6807.0,
-          "totalPnl": 6807.0,
-          "totalReturnPct": 0.14,
+          "valuation": 197500.0,
+          "portfolioValue": 5004307.0,
+          "unrealizedPnl": 4307.0,
+          "totalPnl": 4307.0,
+          "totalReturnPct": 0.09,
           "positionCount": 2,
           "tradeCount": 2
         },
         "liveMetrics": {
           "status": "OK",
           "proofStatus": "WARMING_UP",
-          "sampleCount": 1,
-          "navPointCount": 2,
-          "totalReturnPct": 0.14,
-          "mddPct": 0.0,
-          "sharpe": null,
-          "winRate": 100.0,
-          "avgPeriodReturnPct": 0.14,
-          "cashPct": 96.0,
+          "sampleCount": 2,
+          "navPointCount": 3,
+          "totalReturnPct": 0.09,
+          "mddPct": -0.05,
+          "sharpe": 5.32,
+          "winRate": 50.0,
+          "avgPeriodReturnPct": 0.05,
+          "cashPct": 96.1,
           "peakValue": 5006807.0,
-          "currentValue": 5006807.0,
-          "lastNavDate": "2026-09-08",
+          "currentValue": 5004307.0,
+          "lastNavDate": "2026-09-09",
           "recentReturnsPct": [
-            0.14
+            0.14,
+            -0.05
           ],
           "equityCurve": [
             {
@@ -88,6 +90,11 @@
               "index": 1,
               "value": 5006807.0,
               "returnPct": 0.14
+            },
+            {
+              "index": 2,
+              "value": 5004307.0,
+              "returnPct": 0.09
             }
           ]
         },
@@ -108,8 +115,8 @@
         "survival": {
           "state": "ALIVE",
           "seed": 5000000.0,
-          "portfolioValue": 5006807.0,
-          "survivalPct": 100.14
+          "portfolioValue": 5004307.0,
+          "survivalPct": 100.09
         },
         "proofBoard": {
           "status": "OK",
@@ -292,7 +299,7 @@
         },
         "operatingAuthority": {
           "market": "kr",
-          "operatingState": "ABSTAIN",
+          "operatingState": "BLOCKED",
           "recommendationActionable": false,
           "entryAllowed": false,
           "paperEntryAllowed": false,
@@ -334,11 +341,13 @@
           },
           "reasonCodes": [
             "REALIZED_WIN_RATE_BELOW_GATE",
+            "QUANT_EVIDENCE_INTEGRITY_NOT_READY",
             "QUANT_SHADOW_NOT_APPROVED",
             "EV_CALIBRATION_NOT_VALIDATED"
           ],
           "reasons": [
             "실현 승률이 운용 기준보다 낮습니다.",
+            "Quant V2 evidence reports are missing, stale, or invalid.",
             "Quant V2 evidence has not approved a new entry.",
             "Expected-value ranking has not passed clean chronological validation."
           ],
@@ -638,8 +647,8 @@
             "priceSession": "kr_premarket",
             "sessionLabel": "국장 장전",
             "priceBasis": "국장 장전 · 전일 OHLCV 종가 기준",
-            "nowKst": "2026-09-08T08:35:39.759781+09:00",
-            "nowLocal": "2026-09-08T08:35:39.759781+09:00",
+            "nowKst": "2026-09-09T08:35:38.835499+09:00",
+            "nowLocal": "2026-09-09T08:35:38.835499+09:00",
             "isHoliday": false,
             "isReviewMode": false,
             "isUsDst": false
@@ -649,6 +658,7 @@
             "mode": "SHADOW_ONLY",
             "decision": "ABSTAIN",
             "decisionReasons": [
+              "STALE_EVIDENCE_REPORTS",
               "ALPHA_NOT_PROVEN",
               "RESIDUAL_ALPHA_MODEL_NOT_PROVEN",
               "NO_APPROVED_RISK_EXPOSURE",
@@ -657,13 +667,15 @@
               "WALKFORWARD_NOT_PROMOTION_GRADE"
             ],
             "missingReports": [],
-            "staleReports": [],
+            "staleReports": [
+              "walkForward"
+            ],
             "liveTradingAllowed": false
           }
         },
         "nav": {
-          "date": "2026-09-08",
-          "createdAt": "2026-09-08T08:35:39",
+          "date": "2026-09-09",
+          "createdAt": "2026-09-09T08:35:39",
           "market": "kr",
           "agentId": "ml_rank_conservative_swing",
           "agentLabel": "ML Rank Conservative Swing",
@@ -671,11 +683,11 @@
           "state": "ALIVE",
           "seed": 5000000.0,
           "cash": 4806807.0,
-          "valuation": 200000.0,
-          "portfolioValue": 5006807.0,
-          "totalPnl": 6807.0,
-          "totalReturnPct": 0.14,
-          "survivalPct": 100.14,
+          "valuation": 197500.0,
+          "portfolioValue": 5004307.0,
+          "totalPnl": 4307.0,
+          "totalReturnPct": 0.09,
+          "survivalPct": 100.09,
           "positionCount": 2,
           "tradeCount": 2,
           "buyCount": 0,
