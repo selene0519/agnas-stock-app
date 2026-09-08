@@ -1,195 +1,104 @@
 {
   "version": "relative-strength-v1",
   "market": "us",
-  "asOf": "2026-09-04",
-  "regime": "SIDE",
-  "status": "OK",
-  "lensNote": "Long the RS leaders, avoid the laggards. RS edge holds in BULL/SIDE.",
+  "asOf": "2026-09-08",
+  "regime": "BEAR",
+  "status": "BEAR_DEFENSIVE",
+  "lensNote": "Bear: RS dispersion is gone; rotate to low-volatility defensives (halve the drawdown) instead of chasing returns.",
   "universeCount": 133,
-  "leaders": [
+  "leaders": [],
+  "laggardsToAvoid": [],
+  "defensiveHolds": [
     {
-      "symbol": "ELF",
-      "rs60Pct": 88.7,
-      "relToIndexPp": 82.25,
-      "vol60Pct": 3.55
+      "symbol": "BRK-B",
+      "rs60Pct": 3.8,
+      "relToIndexPp": -0.42,
+      "vol60Pct": 0.93
     },
     {
-      "symbol": "BMNR",
-      "rs60Pct": 59.65,
-      "relToIndexPp": 53.21,
-      "vol60Pct": 5.23
+      "symbol": "BAC",
+      "rs60Pct": 12.99,
+      "relToIndexPp": 8.78,
+      "vol60Pct": 1.13
     },
     {
-      "symbol": "CRM",
-      "rs60Pct": 51.67,
-      "relToIndexPp": 45.22,
-      "vol60Pct": 3.89
+      "symbol": "PG",
+      "rs60Pct": -2.17,
+      "relToIndexPp": -6.38,
+      "vol60Pct": 1.19
     },
     {
-      "symbol": "ESTC",
-      "rs60Pct": 51.05,
-      "relToIndexPp": 44.61,
-      "vol60Pct": 4.13
+      "symbol": "JPM",
+      "rs60Pct": 13.78,
+      "relToIndexPp": 9.56,
+      "vol60Pct": 1.27
     },
     {
-      "symbol": "OKTA",
-      "rs60Pct": 48.45,
-      "relToIndexPp": 42.01,
-      "vol60Pct": 4.78
+      "symbol": "V",
+      "rs60Pct": 16.81,
+      "relToIndexPp": 12.6,
+      "vol60Pct": 1.28
     },
     {
-      "symbol": "DELL",
-      "rs60Pct": 41.72,
-      "relToIndexPp": 35.28,
-      "vol60Pct": 4.91
+      "symbol": "COST",
+      "rs60Pct": -6.48,
+      "relToIndexPp": -10.69,
+      "vol60Pct": 1.29
     },
     {
-      "symbol": "HOOD",
-      "rs60Pct": 41.4,
-      "relToIndexPp": 34.95,
-      "vol60Pct": 4.73
+      "symbol": "MA",
+      "rs60Pct": 17.88,
+      "relToIndexPp": 13.67,
+      "vol60Pct": 1.4
     },
     {
-      "symbol": "PATH",
-      "rs60Pct": 41.3,
-      "relToIndexPp": 34.86,
-      "vol60Pct": 4.3
+      "symbol": "KO",
+      "rs60Pct": 7.84,
+      "relToIndexPp": 3.63,
+      "vol60Pct": 1.41
     },
     {
-      "symbol": "ABNB",
-      "rs60Pct": 40.93,
-      "relToIndexPp": 34.49,
-      "vol60Pct": 2.99
+      "symbol": "PFE",
+      "rs60Pct": 7.37,
+      "relToIndexPp": 3.16,
+      "vol60Pct": 1.41
     },
     {
-      "symbol": "SNOW",
-      "rs60Pct": 40.55,
-      "relToIndexPp": 34.11,
-      "vol60Pct": 3.31
+      "symbol": "MCD",
+      "rs60Pct": -10.21,
+      "relToIndexPp": -14.42,
+      "vol60Pct": 1.43
     },
     {
-      "symbol": "DASH",
-      "rs60Pct": 40.22,
-      "relToIndexPp": 33.78,
-      "vol60Pct": 2.85
+      "symbol": "UNH",
+      "rs60Pct": -2.96,
+      "relToIndexPp": -7.17,
+      "vol60Pct": 1.46
     },
     {
-      "symbol": "SE",
-      "rs60Pct": 35.97,
-      "relToIndexPp": 29.52,
-      "vol60Pct": 3.35
+      "symbol": "PEP",
+      "rs60Pct": -3.74,
+      "relToIndexPp": -7.95,
+      "vol60Pct": 1.49
     },
     {
-      "symbol": "SMCI",
-      "rs60Pct": 35.26,
-      "relToIndexPp": 28.81,
-      "vol60Pct": 6.09
+      "symbol": "CVX",
+      "rs60Pct": 14.44,
+      "relToIndexPp": 10.23,
+      "vol60Pct": 1.59
     },
     {
-      "symbol": "S",
-      "rs60Pct": 34.42,
-      "relToIndexPp": 27.97,
-      "vol60Pct": 3.5
+      "symbol": "JNJ",
+      "rs60Pct": 13.2,
+      "relToIndexPp": 8.99,
+      "vol60Pct": 1.62
     },
     {
-      "symbol": "SHOP",
-      "rs60Pct": 34.09,
-      "relToIndexPp": 27.65,
-      "vol60Pct": 3.9
+      "symbol": "HD",
+      "rs60Pct": -2.5,
+      "relToIndexPp": -6.71,
+      "vol60Pct": 1.73
     }
   ],
-  "laggardsToAvoid": [
-    {
-      "symbol": "ORCL",
-      "rs60Pct": -21.11,
-      "relToIndexPp": -27.55,
-      "vol60Pct": 3.59
-    },
-    {
-      "symbol": "RGTI",
-      "rs60Pct": -21.83,
-      "relToIndexPp": -28.27,
-      "vol60Pct": 5.29
-    },
-    {
-      "symbol": "OKLO",
-      "rs60Pct": -23.6,
-      "relToIndexPp": -30.05,
-      "vol60Pct": 5.06
-    },
-    {
-      "symbol": "JOBY",
-      "rs60Pct": -23.93,
-      "relToIndexPp": -30.37,
-      "vol60Pct": 3.85
-    },
-    {
-      "symbol": "CAVA",
-      "rs60Pct": -25.5,
-      "relToIndexPp": -31.95,
-      "vol60Pct": 3.85
-    },
-    {
-      "symbol": "BBAI",
-      "rs60Pct": -27.36,
-      "relToIndexPp": -33.81,
-      "vol60Pct": 3.61
-    },
-    {
-      "symbol": "CRDO",
-      "rs60Pct": -28.24,
-      "relToIndexPp": -34.68,
-      "vol60Pct": 6.87
-    },
-    {
-      "symbol": "ASTS",
-      "rs60Pct": -28.64,
-      "relToIndexPp": -35.08,
-      "vol60Pct": 6.65
-    },
-    {
-      "symbol": "SOXS",
-      "rs60Pct": -29.47,
-      "relToIndexPp": -35.91,
-      "vol60Pct": 11.07
-    },
-    {
-      "symbol": "IONQ",
-      "rs60Pct": -30.21,
-      "relToIndexPp": -36.66,
-      "vol60Pct": 5.06
-    },
-    {
-      "symbol": "ON",
-      "rs60Pct": -32.49,
-      "relToIndexPp": -38.93,
-      "vol60Pct": 4.91
-    },
-    {
-      "symbol": "APP",
-      "rs60Pct": -34.98,
-      "relToIndexPp": -41.42,
-      "vol60Pct": 4.39
-    },
-    {
-      "symbol": "RKLB",
-      "rs60Pct": -38.83,
-      "relToIndexPp": -45.27,
-      "vol60Pct": 5.31
-    },
-    {
-      "symbol": "AAOI",
-      "rs60Pct": -39.74,
-      "relToIndexPp": -46.18,
-      "vol60Pct": 8.29
-    },
-    {
-      "symbol": "LUNR",
-      "rs60Pct": -44.19,
-      "relToIndexPp": -50.63,
-      "vol60Pct": 5.44
-    }
-  ],
-  "defensiveHolds": [],
-  "note": "Research/paper only."
+  "note": "Research/paper only. Capital preservation, not return."
 }
