@@ -2,7 +2,7 @@
   "status": "OK",
   "enabled": true,
   "source": "github-actions",
-  "lastRunAt": "2026-09-09T23:03:46+09:00",
+  "lastRunAt": "2026-09-10T06:55:32+09:00",
   "timezone": "Asia/Seoul",
   "includeEngine": false,
   "evaluateAfter": true,
@@ -12,13 +12,11 @@
   "researchEvaluation": {
     "status": "OK",
     "source": "data/virtual_trade_evaluations.csv",
-    "evaluated": 159,
+    "evaluated": 147,
     "repairedEvaluationRows": 0,
     "outcomes": {
       "PENDING": 146,
-      "STOP_HIT": 9,
-      "TIME_EXIT_NEAR_STOP": 3,
-      "TARGET_HIT": 1
+      "DATA_PENDING": 1
     },
     "items": [
       {
@@ -61,7 +59,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-09-09T23:03:52"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "c0e1b2c4560414234ff96eb1",
@@ -103,7 +101,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:52"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "e6f114106e4859e1ba110bd4",
@@ -145,7 +143,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:52"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "8605ce099b76431372f9015a",
@@ -187,7 +185,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:52"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "32ea4c4df788974ff26fd827",
@@ -229,7 +227,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-09-09T23:03:52"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "5735132977e2c09b57ac7842",
@@ -271,7 +269,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:52"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "ad28270495d57fab57d66aa3",
@@ -313,7 +311,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:52"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "2d14e701cc2df0b44a8c42b5",
@@ -355,7 +353,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:52"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "d7215fa970397f8a21aba2c6",
@@ -397,7 +395,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:52"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "91e0792288b2ef1d32198002",
@@ -439,7 +437,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:52"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "14517422146769c18fc9add1",
@@ -481,7 +479,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:52"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "a13ef97421eb4e8e2ae1b178",
@@ -523,7 +521,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:52"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "f5e6cff3e8a387ac4da7cf9e",
@@ -565,49 +563,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:52"
-      },
-      {
-        "journal_id": "868fa49d5d1bc01a76521c38",
-        "evaluation_policy_version": "vtj-evaluation-v2.0.0",
-        "evaluation_policy_fingerprint": "811f3ad6438ee650b036",
-        "status": "EVALUATED",
-        "outcome": "STOP_HIT",
-        "filled": true,
-        "fill_date": "2026-08-28",
-        "fill_price": 258.928683,
-        "exit_date": "2026-09-09",
-        "exit_price": 247.234536,
-        "gross_pnl_pct": -4.2293,
-        "net_pnl_pct": -4.5164,
-        "mfe_pct": 2.363,
-        "mae_pct": -4.385,
-        "bars_held": 8,
-        "entry_window_days": 10,
-        "evaluation_window_days": 60,
-        "target_progress": 0.2114,
-        "stop_progress": 1.1153,
-        "failure_reason": "DATA_QUALITY",
-        "entryTouched": true,
-        "targetTouched": false,
-        "stopTouched": true,
-        "targetBeforeStop": false,
-        "entryTouchDate": "2026-08-28",
-        "targetTouchDate": "",
-        "stopTouchDate": "2026-09-09",
-        "maxFavorableExcursion": 2.363,
-        "maxAdverseExcursion": -4.385,
-        "holdingDays": 8,
-        "failureReason": "STOP_BEFORE_TARGET",
-        "diagnosticReason": "DATA_QUALITY",
-        "unknownDetail": "",
-        "secondary_tags": "",
-        "regime_at_entry": "SIDE",
-        "regime_at_exit": "NEUTRAL",
-        "signal_confidence": "MED",
-        "data_confidence": "MED",
-        "review_text": "추천 당시 중간 신호 신뢰도 (SIDE 환경)로 진입 검토됐습니다. 목표가 도달 전 손절가를 터치했습니다, 손익 -4.52% (MFE +2.36% / MAE -4.38%). 복기: 데이터 신뢰도가 낮아 신호 품질을 보장하기 어렵습니다. [DATA_QUALITY] 유형으로 기록합니다.",
-        "evaluated_at": "2026-09-09T23:03:52"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "67b09c7eb2a01ae149ae7864",
@@ -649,7 +605,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:52"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "3aa586e4442c20dbb5a0e3ee",
@@ -691,7 +647,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:52"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "a2042a074f64b316c65de0f1",
@@ -733,7 +689,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:52"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "abb37ae4a181fd66d62cd972",
@@ -775,7 +731,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:52"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "a05eeecd5b860d7a50e7be1d",
@@ -817,7 +773,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:52"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "f50d132bb693b2765cf7c6ed",
@@ -859,49 +815,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:52"
-      },
-      {
-        "journal_id": "6142945a10f14c1ff17e21ed",
-        "evaluation_policy_version": "vtj-evaluation-v2.0.0",
-        "evaluation_policy_fingerprint": "811f3ad6438ee650b036",
-        "status": "EVALUATED",
-        "outcome": "STOP_HIT",
-        "filled": true,
-        "fill_date": "2026-08-31",
-        "fill_price": 117.627512,
-        "exit_date": "2026-09-09",
-        "exit_price": 108.782,
-        "gross_pnl_pct": -7.2419,
-        "net_pnl_pct": -7.5199,
-        "mfe_pct": -0.93,
-        "mae_pct": -9.6431,
-        "bars_held": 7,
-        "entry_window_days": 10,
-        "evaluation_window_days": 60,
-        "target_progress": -0.0388,
-        "stop_progress": 1.111,
-        "failure_reason": "OVEREXTENDED_ENTRY",
-        "entryTouched": true,
-        "targetTouched": false,
-        "stopTouched": true,
-        "targetBeforeStop": false,
-        "entryTouchDate": "2026-08-31",
-        "targetTouchDate": "",
-        "stopTouchDate": "2026-09-09",
-        "maxFavorableExcursion": -0.93,
-        "maxAdverseExcursion": -9.6431,
-        "holdingDays": 7,
-        "failureReason": "STOP_BEFORE_TARGET",
-        "diagnosticReason": "OVEREXTENDED_ENTRY",
-        "unknownDetail": "",
-        "secondary_tags": "",
-        "regime_at_entry": "SIDE",
-        "regime_at_exit": "NEUTRAL",
-        "signal_confidence": "HIGH",
-        "data_confidence": "HIGH",
-        "review_text": "추천 당시 높은 신호 신뢰도 (SIDE 환경)로 진입 검토됐습니다. 목표가 도달 전 손절가를 터치했습니다, 손익 -7.52% (MFE -0.93% / MAE -9.64%). 복기: 진입 시점이 고점 부근이거나 이미 과매수 구간이었습니다. [OVEREXTENDED_ENTRY] 유형으로 기록합니다.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "f7940f157076ab7ef86444f5",
@@ -943,7 +857,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "164ff14d4cc53ca597c1dbec",
@@ -985,7 +899,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "6db7f79298fd5f60d572ab10",
@@ -1027,7 +941,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "46d526cf2d265f499058e13d",
@@ -1069,7 +983,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "cddc47946f33166f1d676cb3",
@@ -1111,7 +1025,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "0fb4c542c24f6d58161ac770",
@@ -1153,7 +1067,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "8cd108c6adec47575fc4e7e2",
@@ -1195,7 +1109,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "a0badf6cba8ee5b373303ba4",
@@ -1237,7 +1151,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "8718a955b349a33047519145",
@@ -1279,7 +1193,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "bdbeb6006891d4b8617fcaed",
@@ -1321,7 +1235,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "7c0e6a333c84c2a2777b14c5",
@@ -1363,7 +1277,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "25d19254108371bb1ff798fc",
@@ -1405,7 +1319,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "33405d27f650074481fc4ffc",
@@ -1447,7 +1361,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "d054c06492b394a3fa50c312",
@@ -1489,49 +1403,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
-      },
-      {
-        "journal_id": "f628f9526e864640f9466754",
-        "evaluation_policy_version": "vtj-evaluation-v2.0.0",
-        "evaluation_policy_fingerprint": "811f3ad6438ee650b036",
-        "status": "EVALUATED",
-        "outcome": "STOP_HIT",
-        "filled": true,
-        "fill_date": "2026-09-01",
-        "fill_price": 182.712529,
-        "exit_date": "2026-09-09",
-        "exit_price": 172.654,
-        "gross_pnl_pct": -5.2211,
-        "net_pnl_pct": -5.5051,
-        "mfe_pct": 2.2596,
-        "mae_pct": -7.6247,
-        "bars_held": 6,
-        "entry_window_days": 10,
-        "evaluation_window_days": 60,
-        "target_progress": 0.1439,
-        "stop_progress": 1.3669,
-        "failure_reason": "DATA_QUALITY",
-        "entryTouched": true,
-        "targetTouched": false,
-        "stopTouched": true,
-        "targetBeforeStop": false,
-        "entryTouchDate": "2026-09-01",
-        "targetTouchDate": "",
-        "stopTouchDate": "2026-09-09",
-        "maxFavorableExcursion": 2.2596,
-        "maxAdverseExcursion": -7.6247,
-        "holdingDays": 6,
-        "failureReason": "STOP_BEFORE_TARGET",
-        "diagnosticReason": "DATA_QUALITY",
-        "unknownDetail": "",
-        "secondary_tags": "",
-        "regime_at_entry": "SIDE",
-        "regime_at_exit": "NEUTRAL",
-        "signal_confidence": "MED",
-        "data_confidence": "MED",
-        "review_text": "추천 당시 중간 신호 신뢰도 (SIDE 환경)로 진입 검토됐습니다. 목표가 도달 전 손절가를 터치했습니다, 손익 -5.51% (MFE +2.26% / MAE -7.62%). 복기: 데이터 신뢰도가 낮아 신호 품질을 보장하기 어렵습니다. [DATA_QUALITY] 유형으로 기록합니다.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "c67686e641dbb5da2363e230",
@@ -1573,49 +1445,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
-      },
-      {
-        "journal_id": "bacce141168872f40f65d376",
-        "evaluation_policy_version": "vtj-evaluation-v2.0.0",
-        "evaluation_policy_fingerprint": "811f3ad6438ee650b036",
-        "status": "EVALUATED",
-        "outcome": "STOP_HIT",
-        "filled": true,
-        "fill_date": "2026-09-01",
-        "fill_price": 107.347238,
-        "exit_date": "2026-09-09",
-        "exit_price": 102.794,
-        "gross_pnl_pct": -3.9537,
-        "net_pnl_pct": -4.2416,
-        "mfe_pct": 1.5342,
-        "mae_pct": -4.2399,
-        "bars_held": 6,
-        "entry_window_days": 10,
-        "evaluation_window_days": 60,
-        "target_progress": 0.1325,
-        "stop_progress": 1.0022,
-        "failure_reason": "DATA_QUALITY",
-        "entryTouched": true,
-        "targetTouched": false,
-        "stopTouched": true,
-        "targetBeforeStop": false,
-        "entryTouchDate": "2026-09-01",
-        "targetTouchDate": "",
-        "stopTouchDate": "2026-09-09",
-        "maxFavorableExcursion": 1.5342,
-        "maxAdverseExcursion": -4.2399,
-        "holdingDays": 6,
-        "failureReason": "STOP_BEFORE_TARGET",
-        "diagnosticReason": "DATA_QUALITY",
-        "unknownDetail": "",
-        "secondary_tags": "",
-        "regime_at_entry": "SIDE",
-        "regime_at_exit": "RISK_ON",
-        "signal_confidence": "MED",
-        "data_confidence": "MED",
-        "review_text": "추천 당시 중간 신호 신뢰도 (SIDE 환경)로 진입 검토됐습니다. 목표가 도달 전 손절가를 터치했습니다, 손익 -4.24% (MFE +1.53% / MAE -4.24%). 복기: 데이터 신뢰도가 낮아 신호 품질을 보장하기 어렵습니다. [DATA_QUALITY] 유형으로 기록합니다.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "067d726cfd4bfc964ae1d453",
@@ -1657,7 +1487,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "d70368c3e9dd8338f585f8af",
@@ -1699,7 +1529,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "fd2363d02df654ff9f227929",
@@ -1741,7 +1571,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "40238007f58ca8577d307a91",
@@ -1783,7 +1613,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "f1637e2cf578e029c5e4b1ec",
@@ -1825,7 +1655,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "a4ef89ddbc208e14f04a1b13",
@@ -1867,7 +1697,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "f173e2e156f2f7a7e90e8752",
@@ -1909,7 +1739,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "02994a5b6e94360100a18d25",
@@ -1951,7 +1781,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "b90c24aa79e3306696137b2c",
@@ -1993,7 +1823,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "38087e9b869f1dff5c193e3c",
@@ -2035,7 +1865,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "116384314ccd2ec6674e0995",
@@ -2077,7 +1907,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "61a6fcfe08e72921d876986b",
@@ -2119,49 +1949,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
-      },
-      {
-        "journal_id": "be569455ca7f44b7e9648ebe",
-        "evaluation_policy_version": "vtj-evaluation-v2.0.0",
-        "evaluation_policy_fingerprint": "811f3ad6438ee650b036",
-        "status": "EVALUATED",
-        "outcome": "TIME_EXIT_NEAR_STOP",
-        "filled": true,
-        "fill_date": "2026-09-02",
-        "fill_price": 214.434221,
-        "exit_date": "2026-09-09",
-        "exit_price": 209.520122,
-        "gross_pnl_pct": -1.9979,
-        "net_pnl_pct": -2.2917,
-        "mfe_pct": 1.5065,
-        "mae_pct": -6.728,
-        "bars_held": 5,
-        "entry_window_days": 3,
-        "evaluation_window_days": 5,
-        "target_progress": 0.0877,
-        "stop_progress": 0.9004,
-        "failure_reason": "ENTRY_TIMING",
-        "entryTouched": true,
-        "targetTouched": false,
-        "stopTouched": false,
-        "targetBeforeStop": "",
-        "entryTouchDate": "2026-09-02",
-        "targetTouchDate": "",
-        "stopTouchDate": "",
-        "maxFavorableExcursion": 1.5065,
-        "maxAdverseExcursion": -6.728,
-        "holdingDays": 5,
-        "failureReason": "DIRECTION_FAILED",
-        "diagnosticReason": "ENTRY_TIMING",
-        "unknownDetail": "",
-        "secondary_tags": "",
-        "regime_at_entry": "SIDE",
-        "regime_at_exit": "NEUTRAL",
-        "signal_confidence": "LOW",
-        "data_confidence": "HIGH",
-        "review_text": "추천 당시 낮은 신호 신뢰도 (SIDE 환경)로 진입 검토됐습니다. 손절 구간에 근접한 채 평가 기간이 만료됐습니다, 손익 -2.29% (MFE +1.51% / MAE -6.73%). 복기: 진입 타이밍 또는 진입가 설정이 실제 가격 흐름과 맞지 않았습니다. [ENTRY_TIMING] 유형으로 기록합니다.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "7bb79e554fa8d4eba116c114",
@@ -2203,7 +1991,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "797fe4d66241ffcd21553eb3",
@@ -2245,7 +2033,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "4decb43ddf808b9740e81043",
@@ -2287,7 +2075,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "9ec378e72b6a67e3b2c769ac",
@@ -2329,7 +2117,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "d57044db271cd6696ab66c74",
@@ -2371,7 +2159,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "c60218d3f6838d868fbc2a04",
@@ -2413,91 +2201,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
-      },
-      {
-        "journal_id": "6390c315fe0a12f4c611d900",
-        "evaluation_policy_version": "vtj-evaluation-v2.0.0",
-        "evaluation_policy_fingerprint": "811f3ad6438ee650b036",
-        "status": "EVALUATED",
-        "outcome": "TIME_EXIT_NEAR_STOP",
-        "filled": true,
-        "fill_date": "2026-09-02",
-        "fill_price": 60.500439,
-        "exit_date": "2026-09-09",
-        "exit_price": 61.676399,
-        "gross_pnl_pct": 2.2502,
-        "net_pnl_pct": 1.9437,
-        "mfe_pct": 2.0673,
-        "mae_pct": -2.6251,
-        "bars_held": 5,
-        "entry_window_days": 3,
-        "evaluation_window_days": 5,
-        "target_progress": 0.3111,
-        "stop_progress": 0.8205,
-        "failure_reason": "DATA_QUALITY",
-        "entryTouched": true,
-        "targetTouched": false,
-        "stopTouched": false,
-        "targetBeforeStop": "",
-        "entryTouchDate": "2026-09-02",
-        "targetTouchDate": "",
-        "stopTouchDate": "",
-        "maxFavorableExcursion": 2.0673,
-        "maxAdverseExcursion": -2.6251,
-        "holdingDays": 5,
-        "failureReason": "DIRECTION_FAILED",
-        "diagnosticReason": "DATA_QUALITY",
-        "unknownDetail": "",
-        "secondary_tags": "",
-        "regime_at_entry": "SIDE",
-        "regime_at_exit": "RISK_ON",
-        "signal_confidence": "LOW",
-        "data_confidence": "MED",
-        "review_text": "추천 당시 낮은 신호 신뢰도 (SIDE 환경)로 진입 검토됐습니다. 손절 구간에 근접한 채 평가 기간이 만료됐습니다, 손익 +1.94% (MFE +2.07% / MAE -2.63%). 복기: 데이터 신뢰도가 낮아 신호 품질을 보장하기 어렵습니다. [DATA_QUALITY] 유형으로 기록합니다.",
-        "evaluated_at": "2026-09-09T23:03:53"
-      },
-      {
-        "journal_id": "3c892b6bfe9dee2ad4af549c",
-        "evaluation_policy_version": "vtj-evaluation-v2.0.0",
-        "evaluation_policy_fingerprint": "811f3ad6438ee650b036",
-        "status": "EVALUATED",
-        "outcome": "TIME_EXIT_NEAR_STOP",
-        "filled": true,
-        "fill_date": "2026-09-02",
-        "fill_price": 10.31545,
-        "exit_date": "2026-09-09",
-        "exit_price": 10.313152,
-        "gross_pnl_pct": 0.3786,
-        "net_pnl_pct": -0.0223,
-        "mfe_pct": 7.205,
-        "mae_pct": -2.7079,
-        "bars_held": 5,
-        "entry_window_days": 3,
-        "evaluation_window_days": 5,
-        "target_progress": 0.4488,
-        "stop_progress": 0.8235,
-        "failure_reason": "ENTRY_TIMING",
-        "entryTouched": true,
-        "targetTouched": false,
-        "stopTouched": false,
-        "targetBeforeStop": "",
-        "entryTouchDate": "2026-09-02",
-        "targetTouchDate": "",
-        "stopTouchDate": "",
-        "maxFavorableExcursion": 7.205,
-        "maxAdverseExcursion": -2.7079,
-        "holdingDays": 5,
-        "failureReason": "DIRECTION_FAILED",
-        "diagnosticReason": "ENTRY_TIMING",
-        "unknownDetail": "",
-        "secondary_tags": "",
-        "regime_at_entry": "SIDE",
-        "regime_at_exit": "NEUTRAL",
-        "signal_confidence": "HIGH",
-        "data_confidence": "HIGH",
-        "review_text": "추천 당시 높은 신호 신뢰도 (SIDE 환경)로 진입 검토됐습니다. 손절 구간에 근접한 채 평가 기간이 만료됐습니다, 손익 -0.02% (MFE +7.21% / MAE -2.71%). 복기: 진입 타이밍 또는 진입가 설정이 실제 가격 흐름과 맞지 않았습니다. [ENTRY_TIMING] 유형으로 기록합니다.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "dca5db63d683faf259d50fe5",
@@ -2539,7 +2243,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "514862eac5a2f15465431fdd",
@@ -2581,7 +2285,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "5614462e7df3015bc62e4265",
@@ -2623,7 +2327,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "07f4e6035a4ff143757d1f40",
@@ -2665,7 +2369,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "37d34750a1e2c4bab8eed2d3",
@@ -2707,91 +2411,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
-      },
-      {
-        "journal_id": "31079480c5f8bfcce5a719ef",
-        "evaluation_policy_version": "vtj-evaluation-v2.0.0",
-        "evaluation_policy_fingerprint": "811f3ad6438ee650b036",
-        "status": "EVALUATED",
-        "outcome": "STOP_HIT",
-        "filled": true,
-        "fill_date": "2026-09-02",
-        "fill_price": 146.566418,
-        "exit_date": "2026-09-09",
-        "exit_price": 142.714,
-        "gross_pnl_pct": -2.3357,
-        "net_pnl_pct": -2.6284,
-        "mfe_pct": 0.7061,
-        "mae_pct": -3.3134,
-        "bars_held": 5,
-        "entry_window_days": 10,
-        "evaluation_window_days": 60,
-        "target_progress": 0.0887,
-        "stop_progress": 1.1402,
-        "failure_reason": "DATA_QUALITY",
-        "entryTouched": true,
-        "targetTouched": false,
-        "stopTouched": true,
-        "targetBeforeStop": false,
-        "entryTouchDate": "2026-09-02",
-        "targetTouchDate": "",
-        "stopTouchDate": "2026-09-09",
-        "maxFavorableExcursion": 0.7061,
-        "maxAdverseExcursion": -3.3134,
-        "holdingDays": 5,
-        "failureReason": "STOP_BEFORE_TARGET",
-        "diagnosticReason": "DATA_QUALITY",
-        "unknownDetail": "",
-        "secondary_tags": "",
-        "regime_at_entry": "SIDE",
-        "regime_at_exit": "RISK_OFF",
-        "signal_confidence": "LOW",
-        "data_confidence": "MED",
-        "review_text": "추천 당시 낮은 신호 신뢰도 (SIDE 환경)로 진입 검토됐습니다. 목표가 도달 전 손절가를 터치했습니다, 손익 -2.63% (MFE +0.71% / MAE -3.31%). 복기: 데이터 신뢰도가 낮아 신호 품질을 보장하기 어렵습니다. [DATA_QUALITY] 유형으로 기록합니다.",
-        "evaluated_at": "2026-09-09T23:03:53"
-      },
-      {
-        "journal_id": "a8b4ae0c0bcf51a21127257d",
-        "evaluation_policy_version": "vtj-evaluation-v2.0.0",
-        "evaluation_policy_fingerprint": "811f3ad6438ee650b036",
-        "status": "EVALUATED",
-        "outcome": "TARGET_HIT",
-        "filled": true,
-        "fill_date": "2026-09-02",
-        "fill_price": 579.368768,
-        "exit_date": "2026-09-09",
-        "exit_price": 643.71,
-        "gross_pnl_pct": 11.4394,
-        "net_pnl_pct": 11.1054,
-        "mfe_pct": 9.8029,
-        "mae_pct": -2.7818,
-        "bars_held": 5,
-        "entry_window_days": 3,
-        "evaluation_window_days": 5,
-        "target_progress": 1.13,
-        "stop_progress": 0.7335,
-        "failure_reason": "NONE",
-        "entryTouched": true,
-        "targetTouched": true,
-        "stopTouched": false,
-        "targetBeforeStop": true,
-        "entryTouchDate": "2026-09-02",
-        "targetTouchDate": "2026-09-09",
-        "stopTouchDate": "",
-        "maxFavorableExcursion": 9.8029,
-        "maxAdverseExcursion": -2.7818,
-        "holdingDays": 5,
-        "failureReason": "TARGET_BEFORE_STOP",
-        "diagnosticReason": "NONE",
-        "unknownDetail": "",
-        "secondary_tags": "",
-        "regime_at_entry": "SIDE",
-        "regime_at_exit": "NEUTRAL",
-        "signal_confidence": "MED",
-        "data_confidence": "HIGH",
-        "review_text": "추천 당시 중간 신호 신뢰도 (SIDE 환경)로 진입 검토됐습니다. 목표가에 도달하며 성공 종료됐습니다, 손익 +11.11% (MFE +9.80% / MAE -2.78%). [NONE] 유형으로 기록합니다.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "36535792a133d6a1b7bc86ce",
@@ -2833,7 +2453,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "a792fd5fa7656a9ff0454a44",
@@ -2875,7 +2495,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "5dbe6dafc4a964135d6fdad2",
@@ -2917,7 +2537,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "5f70cca04112dbb12d99fa35",
@@ -2959,7 +2579,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "20e017527f9f687da99b908e",
@@ -3001,7 +2621,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:53"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "923d3605270848a5ccb8bc63",
@@ -3043,7 +2663,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "08990865cd9e3a65319a8259",
@@ -3085,7 +2705,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "fc60b80c7e0f80765ef784a7",
@@ -3127,7 +2747,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "95ed6fbcd95136fa62b8864a",
@@ -3169,7 +2789,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "1c5861ceaf6e7a83a543edd3",
@@ -3211,7 +2831,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "d0647be4e96a126a033bfaee",
@@ -3253,49 +2873,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
-      },
-      {
-        "journal_id": "d73f7c63a5b5a62d88a87284",
-        "evaluation_policy_version": "vtj-evaluation-v2.0.0",
-        "evaluation_policy_fingerprint": "811f3ad6438ee650b036",
-        "status": "EVALUATED",
-        "outcome": "STOP_HIT",
-        "filled": true,
-        "fill_date": "2026-09-03",
-        "fill_price": 108.728623,
-        "exit_date": "2026-09-09",
-        "exit_price": 102.794,
-        "gross_pnl_pct": -5.174,
-        "net_pnl_pct": -5.4582,
-        "mfe_pct": 1.1298,
-        "mae_pct": -4.6212,
-        "bars_held": 4,
-        "entry_window_days": 10,
-        "evaluation_window_days": 60,
-        "target_progress": 0.0937,
-        "stop_progress": 1.002,
-        "failure_reason": "DATA_QUALITY",
-        "entryTouched": true,
-        "targetTouched": false,
-        "stopTouched": true,
-        "targetBeforeStop": false,
-        "entryTouchDate": "2026-09-03",
-        "targetTouchDate": "",
-        "stopTouchDate": "2026-09-09",
-        "maxFavorableExcursion": 1.1298,
-        "maxAdverseExcursion": -4.6212,
-        "holdingDays": 4,
-        "failureReason": "STOP_BEFORE_TARGET",
-        "diagnosticReason": "DATA_QUALITY",
-        "unknownDetail": "",
-        "secondary_tags": "",
-        "regime_at_entry": "SIDE",
-        "regime_at_exit": "RISK_ON",
-        "signal_confidence": "LOW",
-        "data_confidence": "MED",
-        "review_text": "추천 당시 낮은 신호 신뢰도 (SIDE 환경)로 진입 검토됐습니다. 목표가 도달 전 손절가를 터치했습니다, 손익 -5.46% (MFE +1.13% / MAE -4.62%). 복기: 데이터 신뢰도가 낮아 신호 품질을 보장하기 어렵습니다. [DATA_QUALITY] 유형으로 기록합니다.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "59448a558b999518d3d56a65",
@@ -3337,7 +2915,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "17c12798f5fc0df73edd62b1",
@@ -3379,7 +2957,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "0e254110b6fd2e0280854d9c",
@@ -3421,7 +2999,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "a268de1d2b733a4184a0761c",
@@ -3463,7 +3041,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "dc66e74596da2ad6eae34ee5",
@@ -3505,7 +3083,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "01854d2d8ad5b174751d173d",
@@ -3547,7 +3125,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "f1e4360f8e61505ad15d6c77",
@@ -3589,7 +3167,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "d8341e0e8a33220a09606120",
@@ -3631,7 +3209,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "9dbc7c52442b7dc754d68e90",
@@ -3673,7 +3251,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "9a8c9283253a6046695d9866",
@@ -3715,7 +3293,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "c88fce27d3d298f094390ce2",
@@ -3757,7 +3335,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "f3df3249bedc601d17a8788b",
@@ -3799,7 +3377,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "1367ea15e6cb4f043e97e9b0",
@@ -3841,7 +3419,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "fdbdf0140c1b56802f4b6c8e",
@@ -3883,7 +3461,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "aad107f3037215293262635f",
@@ -3925,7 +3503,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "5044d5a0dcb96e0b08eea7f2",
@@ -3967,7 +3545,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "563c4b34dd5b3e7c5365fda6",
@@ -4009,7 +3587,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "0b6031fb4457d4c1a3660227",
@@ -4051,7 +3629,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "21016db8dd9a7cae87057c2f",
@@ -4093,7 +3671,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "ce74661f13082fc947e04a33",
@@ -4135,7 +3713,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "f9ce92791b61e5bccefde2d3",
@@ -4177,7 +3755,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "00ed9ef4f2419511563abbd2",
@@ -4219,7 +3797,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "3a83b114939e4037fc6bb3c6",
@@ -4261,7 +3839,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "829364855beaaf4e6c09fd2f",
@@ -4303,7 +3881,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "da415cca69759b6e137581db",
@@ -4345,7 +3923,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "e11440c5480c098904dfff49",
@@ -4387,7 +3965,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "e5e2a6bfd665542db6b13717",
@@ -4429,7 +4007,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "e1091b11aab7e03108be92fa",
@@ -4471,7 +4049,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "222491d2fe0f47b8eefce1a0",
@@ -4513,7 +4091,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "8a0141d0d3ce98e84df2f3f3",
@@ -4555,7 +4133,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "8aa080402d256184189083bb",
@@ -4597,7 +4175,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "3b46a0bb690b530728232a35",
@@ -4639,7 +4217,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "5afe6714abbc2868ba6a2181",
@@ -4681,7 +4259,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "a49deffba960f18657720678",
@@ -4723,49 +4301,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
-      },
-      {
-        "journal_id": "011ab000c2797e6bbc582f61",
-        "evaluation_policy_version": "vtj-evaluation-v2.0.0",
-        "evaluation_policy_fingerprint": "811f3ad6438ee650b036",
-        "status": "EVALUATED",
-        "outcome": "STOP_HIT",
-        "filled": true,
-        "fill_date": "2026-09-04",
-        "fill_price": 397.447038,
-        "exit_date": "2026-09-09",
-        "exit_price": 384.23,
-        "gross_pnl_pct": -3.0349,
-        "net_pnl_pct": -3.3255,
-        "mfe_pct": 1.5665,
-        "mae_pct": -5.5414,
-        "bars_held": 3,
-        "entry_window_days": 10,
-        "evaluation_window_days": 60,
-        "target_progress": 0.1539,
-        "stop_progress": 1.4535,
-        "failure_reason": "DATA_QUALITY",
-        "entryTouched": true,
-        "targetTouched": false,
-        "stopTouched": true,
-        "targetBeforeStop": false,
-        "entryTouchDate": "2026-09-04",
-        "targetTouchDate": "",
-        "stopTouchDate": "2026-09-09",
-        "maxFavorableExcursion": 1.5665,
-        "maxAdverseExcursion": -5.5414,
-        "holdingDays": 3,
-        "failureReason": "STOP_BEFORE_TARGET",
-        "diagnosticReason": "DATA_QUALITY",
-        "unknownDetail": "",
-        "secondary_tags": "",
-        "regime_at_entry": "SIDE",
-        "regime_at_exit": "RISK_OFF",
-        "signal_confidence": "LOW",
-        "data_confidence": "MED",
-        "review_text": "추천 당시 낮은 신호 신뢰도 (SIDE 환경)로 진입 검토됐습니다. 목표가 도달 전 손절가를 터치했습니다, 손익 -3.33% (MFE +1.57% / MAE -5.54%). 복기: 데이터 신뢰도가 낮아 신호 품질을 보장하기 어렵습니다. [DATA_QUALITY] 유형으로 기록합니다.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "b654b9c8a6f0cc8db1a857a2",
@@ -4807,7 +4343,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "fab91704e728b7cfe3272e6e",
@@ -4849,7 +4385,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "26a63e2e848873d2f4dc6ba9",
@@ -4891,7 +4427,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "51367d1721363d918ca9b5bc",
@@ -4933,7 +4469,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "3e0bcbe65fc2a2e3771d90b4",
@@ -4975,7 +4511,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "9dc2952fbcd95c8d2ade6692",
@@ -5017,7 +4553,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "a1bed87752bab64edb2d7f2e",
@@ -5059,49 +4595,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
-      },
-      {
-        "journal_id": "7d81270eb73f00e7e8f8c03f",
-        "evaluation_policy_version": "vtj-evaluation-v2.0.0",
-        "evaluation_policy_fingerprint": "811f3ad6438ee650b036",
-        "status": "EVALUATED",
-        "outcome": "STOP_HIT",
-        "filled": true,
-        "fill_date": "2026-09-08",
-        "fill_price": 109.77967,
-        "exit_date": "2026-09-09",
-        "exit_price": 100.798,
-        "gross_pnl_pct": -7.9055,
-        "net_pnl_pct": -8.1815,
-        "mfe_pct": 0.3374,
-        "mae_pct": -8.1882,
-        "bars_held": 2,
-        "entry_window_days": 10,
-        "evaluation_window_days": 60,
-        "target_progress": 0.0159,
-        "stop_progress": 1.0358,
-        "failure_reason": "OVEREXTENDED_ENTRY",
-        "entryTouched": true,
-        "targetTouched": false,
-        "stopTouched": true,
-        "targetBeforeStop": false,
-        "entryTouchDate": "2026-09-08",
-        "targetTouchDate": "",
-        "stopTouchDate": "2026-09-09",
-        "maxFavorableExcursion": 0.3374,
-        "maxAdverseExcursion": -8.1882,
-        "holdingDays": 2,
-        "failureReason": "STOP_BEFORE_TARGET",
-        "diagnosticReason": "OVEREXTENDED_ENTRY",
-        "unknownDetail": "",
-        "secondary_tags": "",
-        "regime_at_entry": "SIDE",
-        "regime_at_exit": "RISK_ON",
-        "signal_confidence": "MED",
-        "data_confidence": "HIGH",
-        "review_text": "추천 당시 중간 신호 신뢰도 (SIDE 환경)로 진입 검토됐습니다. 목표가 도달 전 손절가를 터치했습니다, 손익 -8.18% (MFE +0.34% / MAE -8.19%). 복기: 진입 시점이 고점 부근이거나 이미 과매수 구간이었습니다. [OVEREXTENDED_ENTRY] 유형으로 기록합니다.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "228052a0057a35ffd91b719b",
@@ -5143,7 +4637,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "a1e1bf19b4c8b1b42bcc6860",
@@ -5185,7 +4679,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "4248d6ddd1c08c6d38b43885",
@@ -5227,7 +4721,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "fc00e1c7062d23d1b3f3582f",
@@ -5269,7 +4763,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "12c407eb747258436735029d",
@@ -5311,7 +4805,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "0da25d40bba2051f5df1c167",
@@ -5353,7 +4847,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "32254c12d5c932b0e9ec5606",
@@ -5395,7 +4889,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "bb66c6a25a0119c7863e482c",
@@ -5437,7 +4931,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "161dcf46a0c8f685aae6a868",
@@ -5479,7 +4973,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "18d1446df5324c27fc2da4f9",
@@ -5521,7 +5015,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "a82c4fbd4e81eb2202b64c65",
@@ -5563,7 +5057,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "60bf665a2bbbde922ddb8090",
@@ -5605,7 +5099,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "a605c90df6764a535005c42a",
@@ -5647,7 +5141,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "4559b54ea0006cd2dda5cbca",
@@ -5689,49 +5183,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
-      },
-      {
-        "journal_id": "758fefa46ac739888c3efb2d",
-        "evaluation_policy_version": "vtj-evaluation-v2.0.0",
-        "evaluation_policy_fingerprint": "811f3ad6438ee650b036",
-        "status": "EVALUATED",
-        "outcome": "STOP_HIT",
-        "filled": true,
-        "fill_date": "2026-09-09",
-        "fill_price": 405.575183,
-        "exit_date": "2026-09-09",
-        "exit_price": 383.232,
-        "gross_pnl_pct": -5.225,
-        "net_pnl_pct": -5.509,
-        "mfe_pct": 1.4195,
-        "mae_pct": -5.678,
-        "bars_held": 1,
-        "entry_window_days": 10,
-        "evaluation_window_days": 60,
-        "target_progress": 0.126,
-        "stop_progress": 1.3515,
-        "failure_reason": "DATA_QUALITY",
-        "entryTouched": true,
-        "targetTouched": false,
-        "stopTouched": true,
-        "targetBeforeStop": false,
-        "entryTouchDate": "2026-09-09",
-        "targetTouchDate": "",
-        "stopTouchDate": "2026-09-09",
-        "maxFavorableExcursion": 1.4195,
-        "maxAdverseExcursion": -5.678,
-        "holdingDays": 1,
-        "failureReason": "STOP_BEFORE_TARGET",
-        "diagnosticReason": "DATA_QUALITY",
-        "unknownDetail": "",
-        "secondary_tags": "",
-        "regime_at_entry": "SIDE",
-        "regime_at_exit": "RISK_OFF",
-        "signal_confidence": "LOW",
-        "data_confidence": "MED",
-        "review_text": "추천 당시 낮은 신호 신뢰도 (SIDE 환경)로 진입 검토됐습니다. 목표가 도달 전 손절가를 터치했습니다, 손익 -5.51% (MFE +1.42% / MAE -5.68%). 복기: 데이터 신뢰도가 낮아 신호 품질을 보장하기 어렵습니다. [DATA_QUALITY] 유형으로 기록합니다.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "c42a7fc7c05bc99f1314e890",
@@ -5773,7 +5225,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "95726b1c0bc16a5609678f89",
@@ -5815,7 +5267,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "bdc1f60832a0a2e972540211",
@@ -5857,7 +5309,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "6654931befef7fa6d6fa281c",
@@ -5899,7 +5351,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "3ed249070391a68594dec9f9",
@@ -5941,7 +5393,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "72dfb6f46f52d3712d0f62e3",
@@ -5983,7 +5435,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "e7e9b17668be2de2a1eae855",
@@ -6025,7 +5477,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "b15127a55bf1c2fa0aa8cdb9",
@@ -6067,7 +5519,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "2b8d00de0404c789f1817281",
@@ -6109,7 +5561,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "463f466827c748d102cd5061",
@@ -6151,7 +5603,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "7b0ef13fce2d15adab554497",
@@ -6193,7 +5645,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "87ce557a13f255c655264179",
@@ -6235,7 +5687,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "a169c807cf05e68834aff9bd",
@@ -6277,7 +5729,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "3c36d16ed4ea341cff72c7d6",
@@ -6319,7 +5771,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "e670dfc213b23bb54cd59fa2",
@@ -6361,7 +5813,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "60dd90e2dc2066f75f155a92",
@@ -6403,7 +5855,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:37"
       },
       {
         "journal_id": "a165c9953b1458377a4eebbe",
@@ -6445,7 +5897,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:38"
       },
       {
         "journal_id": "1eee56b918e212aa92832cee",
@@ -6487,7 +5939,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:54"
+        "evaluated_at": "2026-09-10T06:55:38"
       },
       {
         "journal_id": "c15932d4bfce27fc426a5267",
@@ -6529,7 +5981,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:55"
+        "evaluated_at": "2026-09-10T06:55:38"
       },
       {
         "journal_id": "bd6b5438ea4dd649eb3d9710",
@@ -6571,7 +6023,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:55"
+        "evaluated_at": "2026-09-10T06:55:38"
       },
       {
         "journal_id": "18088f5909a42f279fbed489",
@@ -6613,7 +6065,7 @@
         "signal_confidence": "LOW",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:55"
+        "evaluated_at": "2026-09-10T06:55:38"
       },
       {
         "journal_id": "084febca9e55efe7ea3546ed",
@@ -6655,7 +6107,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:55"
+        "evaluated_at": "2026-09-10T06:55:38"
       },
       {
         "journal_id": "eeda0fdd2be4fae6110e929a",
@@ -6697,7 +6149,49 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:55"
+        "evaluated_at": "2026-09-10T06:55:38"
+      },
+      {
+        "journal_id": "143a5a120aa26c34d629824d",
+        "evaluation_policy_version": "vtj-evaluation-v2.0.0",
+        "evaluation_policy_fingerprint": "811f3ad6438ee650b036",
+        "status": "DATA_PENDING",
+        "outcome": "DATA_PENDING",
+        "filled": false,
+        "fill_date": "",
+        "fill_price": "",
+        "exit_date": "",
+        "exit_price": "",
+        "gross_pnl_pct": "",
+        "net_pnl_pct": "",
+        "mfe_pct": "",
+        "mae_pct": "",
+        "bars_held": 0,
+        "entry_window_days": "",
+        "evaluation_window_days": "",
+        "target_progress": "",
+        "stop_progress": "",
+        "failure_reason": "",
+        "entryTouched": false,
+        "targetTouched": false,
+        "stopTouched": false,
+        "targetBeforeStop": "",
+        "entryTouchDate": "",
+        "targetTouchDate": "",
+        "stopTouchDate": "",
+        "maxFavorableExcursion": "",
+        "maxAdverseExcursion": "",
+        "holdingDays": 0,
+        "failureReason": "NO_FUTURE_BARS_YET",
+        "diagnosticReason": "NO_FUTURE_BARS_YET",
+        "unknownDetail": "",
+        "secondary_tags": "",
+        "regime_at_entry": "BEAR",
+        "regime_at_exit": "",
+        "signal_confidence": "LOW",
+        "data_confidence": "HIGH",
+        "review_text": "No future bars yet.",
+        "evaluated_at": "2026-09-10T06:55:38"
       }
     ]
   },
@@ -6783,7 +6277,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:50"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "1e69ee1d019711ccfa708789",
@@ -6825,7 +6319,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:50"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "b875c42dd1927f18da1b22a3",
@@ -6867,7 +6361,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:50"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "7aaeda7e8b2a6ef9d4ca39f9",
@@ -6909,7 +6403,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:50"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "beb543fce6dca64bdcb5ae78",
@@ -6951,7 +6445,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:50"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "4a80e1e83c4a112c0ceb6f4c",
@@ -6993,7 +6487,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:50"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "0c656e2b0eb8b512966919f2",
@@ -7035,7 +6529,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:50"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "252afb684357da8d45535d12",
@@ -7077,7 +6571,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "6c7618c0d7954bc59ae44954",
@@ -7119,7 +6613,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "e05b3a8b11c71809a334bd59",
@@ -7161,7 +6655,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "5d2e6011924bf01d19d12943",
@@ -7203,7 +6697,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "d9f1ac84a5ac680cc2692cb4",
@@ -7245,7 +6739,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "8d99a2d90d5b0daccbef3278",
@@ -7287,7 +6781,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "ac489b3341cd8c727c3504fd",
@@ -7329,7 +6823,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "4fa1110d9ab255dbbafb4873",
@@ -7371,7 +6865,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "28538b07b64f47fc89a53d2d",
@@ -7413,7 +6907,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "91d4a0c2a884c1f8a3343026",
@@ -7455,7 +6949,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "2d7ed046aa491a37a658a1bb",
@@ -7497,7 +6991,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "86145a27b7efa59703719510",
@@ -7539,7 +7033,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "77a4ecf13cd24c8b410eb145",
@@ -7581,7 +7075,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "e34ca0db8042d7a183175c23",
@@ -7623,7 +7117,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "bcc8103db076a687ff9532f9",
@@ -7665,7 +7159,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "ae56c20b6dc76de8bd511e66",
@@ -7707,7 +7201,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "a84da538f394ef36b1f90dcd",
@@ -7749,7 +7243,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "33ec5cb561c2da8f75ccd3dd",
@@ -7791,7 +7285,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "6724a7ce1d92cb9af1563fc7",
@@ -7833,7 +7327,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "606610799620cfeb322157f4",
@@ -7875,7 +7369,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "52bdfc4d10c95b6ca346fe65",
@@ -7917,7 +7411,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "b358a38042c7f364e787baee",
@@ -7959,7 +7453,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "3372b32f877c8d9acbaf7274",
@@ -8001,7 +7495,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "238769c07d3df8299c92cc7d",
@@ -8043,7 +7537,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "4dcd7366c95b45cb4994d86d",
@@ -8085,7 +7579,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "18ebaae7a978e65ddc76f308",
@@ -8127,7 +7621,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "fb201d75f4f66ae21351e66b",
@@ -8169,7 +7663,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "e185fe8bd56aea07607fb19f",
@@ -8211,7 +7705,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "8d0300f0d84623d0b1787056",
@@ -8253,7 +7747,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "e886c3d9b7125052e43fa4e4",
@@ -8295,7 +7789,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "aae981ea03fd5a56c73a06fd",
@@ -8337,7 +7831,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "91f91ff2e8fe12272ccb09f2",
@@ -8379,7 +7873,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "17b234b931cf9eafbc536a06",
@@ -8421,7 +7915,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "7b783f8e96d626e9611a84eb",
@@ -8463,7 +7957,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "9125232437c84a649365b275",
@@ -8505,7 +7999,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "48d620e4616fec9205cb9b9d",
@@ -8547,7 +8041,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "ff064bc1e2067e76151a70f5",
@@ -8589,7 +8083,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "70bc993cb3f7031149519eef",
@@ -8631,7 +8125,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "0f019632b80f1a2eb66591ee",
@@ -8673,7 +8167,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "ad985bd10ac5db2c83f370ed",
@@ -8715,7 +8209,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "bad557cb167d53c289a11d89",
@@ -8757,7 +8251,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "7ff5d9a94cf35943c681d593",
@@ -8799,7 +8293,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "3beb661dc36949c655567222",
@@ -8841,7 +8335,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "1d17c915f112a486f1401391",
@@ -8883,7 +8377,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "387995299424d2ba35a42f8b",
@@ -8925,7 +8419,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "6f82e44e64aa3b6bf719c052",
@@ -8967,7 +8461,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "bab4b90199d7c381e8769014",
@@ -9009,7 +8503,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "cb10bc7507c10edd63988228",
@@ -9051,7 +8545,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "fc70982cb599e77e762e86c0",
@@ -9093,7 +8587,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "5e7a7f7592abb529638d4d03",
@@ -9135,7 +8629,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "d3f938f39dd5004ec7f31fc3",
@@ -9177,7 +8671,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "88476fa5367a9671c064dac3",
@@ -9219,7 +8713,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "5453035f4d4b2205ced3228a",
@@ -9261,7 +8755,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "c0b1eeb3e81b078fc1dfb0b0",
@@ -9303,7 +8797,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "4eeeb3a319fc72d901aea903",
@@ -9345,7 +8839,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "5dba16ec104c302be0bb93bb",
@@ -9387,7 +8881,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "896e61c118bc55e7e1b75bc2",
@@ -9429,7 +8923,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "9293832e911e7b14bf9d4cb1",
@@ -9471,7 +8965,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "a449a25a2fc74dc4afdb8ac0",
@@ -9513,7 +9007,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:51"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "7684991a24e714181d8952b3",
@@ -9555,7 +9049,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:52"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "93ffedaa5ee69191df3ffcbb",
@@ -9597,7 +9091,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:52"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "175053976018b2cbea40cacf",
@@ -9639,7 +9133,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:52"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "222a42f9f851a9409783d1fd",
@@ -9681,7 +9175,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:52"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "e238c2b20c01cad931fc79eb",
@@ -9723,7 +9217,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:52"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "10a0e2d917d23b56be528a2f",
@@ -9765,7 +9259,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:52"
+        "evaluated_at": "2026-09-10T06:55:35"
       },
       {
         "journal_id": "0b377bb974a5e8ac7560792a",
@@ -9807,7 +9301,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:52"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "a3c9a4dd0f5e256cf2c4b147",
@@ -9849,7 +9343,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:52"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "958679a273cf4e102e093f9f",
@@ -9891,7 +9385,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:52"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "48640d13558540f0f7be013a",
@@ -9933,7 +9427,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:52"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "7ee5a658027c356374d215ac",
@@ -9975,7 +9469,7 @@
         "signal_confidence": "MED",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:52"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "90309bf111d2af005efd2f20",
@@ -10017,7 +9511,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-09-09T23:03:52"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "7102edb318fc62c9504de350",
@@ -10059,7 +9553,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:52"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "a1d219028557f991f67a3dfa",
@@ -10101,7 +9595,7 @@
         "signal_confidence": "HIGH",
         "data_confidence": "HIGH",
         "review_text": "Evaluation window still open.",
-        "evaluated_at": "2026-09-09T23:03:52"
+        "evaluated_at": "2026-09-10T06:55:36"
       },
       {
         "journal_id": "47c1060d721f812f71719828",
@@ -10143,7 +9637,7 @@
         "signal_confidence": "MED",
         "data_confidence": "MED",
         "review_text": "Entry window still open.",
-        "evaluated_at": "2026-09-09T23:03:52"
+        "evaluated_at": "2026-09-10T06:55:36"
       }
     ]
   },
@@ -10235,10 +9729,189 @@
   "runs": [
     {
       "market": "kr",
+      "tradeDate": "2026-09-10",
+      "journalSession": "AFTER_CLOSE_TRADE",
+      "status": "OK",
+      "runKey": "kr:2026-09-10:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
+      "selected": 0,
+      "researchSelected": 1,
+      "researchAdded": 1,
+      "researchRejected": {},
+      "added": 0,
+      "rejected": {
+        "LOW_EV": 1
+      },
+      "items": [
+        {
+          "mode": "aggressive",
+          "horizon": "mid",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "aggressive",
+          "horizon": "mid",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK",
+          "sourceType": "FORWARD_RESEARCH_TRADE",
+          "selectionPolicy": "EV_NEUTRAL_STRATIFIED"
+        },
+        {
+          "mode": "aggressive",
+          "horizon": "short",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "aggressive",
+          "horizon": "short",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK",
+          "sourceType": "FORWARD_RESEARCH_TRADE",
+          "selectionPolicy": "EV_NEUTRAL_STRATIFIED"
+        },
+        {
+          "mode": "aggressive",
+          "horizon": "swing",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "aggressive",
+          "horizon": "swing",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK",
+          "sourceType": "FORWARD_RESEARCH_TRADE",
+          "selectionPolicy": "EV_NEUTRAL_STRATIFIED"
+        },
+        {
+          "mode": "balanced",
+          "horizon": "mid",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "balanced",
+          "horizon": "mid",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK",
+          "sourceType": "FORWARD_RESEARCH_TRADE",
+          "selectionPolicy": "EV_NEUTRAL_STRATIFIED"
+        },
+        {
+          "mode": "balanced",
+          "horizon": "short",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "balanced",
+          "horizon": "short",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK",
+          "sourceType": "FORWARD_RESEARCH_TRADE",
+          "selectionPolicy": "EV_NEUTRAL_STRATIFIED"
+        },
+        {
+          "mode": "balanced",
+          "horizon": "swing",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "balanced",
+          "horizon": "swing",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK",
+          "sourceType": "FORWARD_RESEARCH_TRADE",
+          "selectionPolicy": "EV_NEUTRAL_STRATIFIED"
+        },
+        {
+          "mode": "conservative",
+          "horizon": "mid",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "conservative",
+          "horizon": "mid",
+          "selected": 1,
+          "added": 1,
+          "duplicates": 0,
+          "status": "OK",
+          "sourceType": "FORWARD_RESEARCH_TRADE",
+          "selectionPolicy": "EV_NEUTRAL_STRATIFIED"
+        },
+        {
+          "mode": "conservative",
+          "horizon": "short",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "conservative",
+          "horizon": "short",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK",
+          "sourceType": "FORWARD_RESEARCH_TRADE",
+          "selectionPolicy": "EV_NEUTRAL_STRATIFIED"
+        },
+        {
+          "mode": "conservative",
+          "horizon": "swing",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK"
+        },
+        {
+          "mode": "conservative",
+          "horizon": "swing",
+          "selected": 0,
+          "added": 0,
+          "duplicates": 0,
+          "status": "OK",
+          "sourceType": "FORWARD_RESEARCH_TRADE",
+          "selectionPolicy": "EV_NEUTRAL_STRATIFIED"
+        }
+      ]
+    },
+    {
+      "market": "us",
       "tradeDate": "2026-09-09",
       "journalSession": "AFTER_CLOSE_TRADE",
       "status": "NO_CANDIDATES",
-      "runKey": "kr:2026-09-09:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
+      "runKey": "us:2026-09-09:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
       "selected": 0,
       "researchSelected": 0,
       "researchAdded": 0,
@@ -10403,187 +10076,6 @@
           "horizon": "swing",
           "selected": 0,
           "added": 0,
-          "duplicates": 0,
-          "status": "OK",
-          "sourceType": "FORWARD_RESEARCH_TRADE",
-          "selectionPolicy": "EV_NEUTRAL_STRATIFIED"
-        }
-      ]
-    },
-    {
-      "market": "us",
-      "tradeDate": "2026-09-08",
-      "journalSession": "AFTER_CLOSE_TRADE",
-      "status": "OK",
-      "runKey": "us:2026-09-08:FORWARD_PAPER_TRADE:AFTER_CLOSE_TRADE",
-      "selected": 0,
-      "researchSelected": 16,
-      "researchAdded": 13,
-      "researchRejected": {},
-      "added": 0,
-      "rejected": {
-        "LOW_PROBABILITY": 14,
-        "LOW_SCORE": 7,
-        "LOW_EV": 2
-      },
-      "items": [
-        {
-          "mode": "aggressive",
-          "horizon": "mid",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "aggressive",
-          "horizon": "mid",
-          "selected": 5,
-          "added": 5,
-          "duplicates": 0,
-          "status": "OK",
-          "sourceType": "FORWARD_RESEARCH_TRADE",
-          "selectionPolicy": "EV_NEUTRAL_STRATIFIED"
-        },
-        {
-          "mode": "aggressive",
-          "horizon": "short",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "aggressive",
-          "horizon": "short",
-          "selected": 1,
-          "added": 0,
-          "duplicates": 1,
-          "status": "OK",
-          "sourceType": "FORWARD_RESEARCH_TRADE",
-          "selectionPolicy": "EV_NEUTRAL_STRATIFIED"
-        },
-        {
-          "mode": "aggressive",
-          "horizon": "swing",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "aggressive",
-          "horizon": "swing",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK",
-          "sourceType": "FORWARD_RESEARCH_TRADE",
-          "selectionPolicy": "EV_NEUTRAL_STRATIFIED"
-        },
-        {
-          "mode": "balanced",
-          "horizon": "mid",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "balanced",
-          "horizon": "mid",
-          "selected": 2,
-          "added": 2,
-          "duplicates": 0,
-          "status": "OK",
-          "sourceType": "FORWARD_RESEARCH_TRADE",
-          "selectionPolicy": "EV_NEUTRAL_STRATIFIED"
-        },
-        {
-          "mode": "balanced",
-          "horizon": "short",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "balanced",
-          "horizon": "short",
-          "selected": 1,
-          "added": 1,
-          "duplicates": 0,
-          "status": "OK",
-          "sourceType": "FORWARD_RESEARCH_TRADE",
-          "selectionPolicy": "EV_NEUTRAL_STRATIFIED"
-        },
-        {
-          "mode": "balanced",
-          "horizon": "swing",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "balanced",
-          "horizon": "swing",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK",
-          "sourceType": "FORWARD_RESEARCH_TRADE",
-          "selectionPolicy": "EV_NEUTRAL_STRATIFIED"
-        },
-        {
-          "mode": "conservative",
-          "horizon": "mid",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "conservative",
-          "horizon": "mid",
-          "selected": 5,
-          "added": 3,
-          "duplicates": 2,
-          "status": "OK",
-          "sourceType": "FORWARD_RESEARCH_TRADE",
-          "selectionPolicy": "EV_NEUTRAL_STRATIFIED"
-        },
-        {
-          "mode": "conservative",
-          "horizon": "short",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "conservative",
-          "horizon": "short",
-          "selected": 1,
-          "added": 1,
-          "duplicates": 0,
-          "status": "OK",
-          "sourceType": "FORWARD_RESEARCH_TRADE",
-          "selectionPolicy": "EV_NEUTRAL_STRATIFIED"
-        },
-        {
-          "mode": "conservative",
-          "horizon": "swing",
-          "selected": 0,
-          "added": 0,
-          "duplicates": 0,
-          "status": "OK"
-        },
-        {
-          "mode": "conservative",
-          "horizon": "swing",
-          "selected": 1,
-          "added": 1,
           "duplicates": 0,
           "status": "OK",
           "sourceType": "FORWARD_RESEARCH_TRADE",
