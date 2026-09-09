@@ -1,6 +1,6 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-09-09T21:54:37.387923+00:00",
+  "generatedAt": "2026-09-09T23:31:33.320584+00:00",
   "policy": {
     "version": "shadow-residual-alpha-v1.1.2",
     "label": "POST_SIGNAL_PRE_EVENT_MARKET_MODEL_CAR_BY_HORIZON",
@@ -57,7 +57,7 @@
     "fingerprint": "7f3642213237690bb880"
   },
   "data": {
-    "rawJournalRows": 2414,
+    "rawJournalRows": 2415,
     "forwardIndependentRows": 526,
     "labeledIndependentDecisions": 501,
     "distinctSignalDates": 25,
@@ -173,7 +173,7 @@
       "candidateKey": "b78bbbbd2dbf76278d4e0876",
       "economicEventKey": "43eb9994b30a84caff60543a",
       "signalDate": "2026-09-09",
-      "generatedAt": "2026-09-09T21:54:28.900569+00:00",
+      "generatedAt": "2026-09-09T23:31:19.513163+00:00",
       "market": "kr",
       "mode": "conservative",
       "horizon": "mid",
@@ -203,8 +203,8 @@
       "trainDates": 23,
       "trainingDataFingerprint": "7fdec0df1ed94ec1e2b608ab01192d6dfb613ba053b664d13646e2fc743e7fd3",
       "modelInstanceFingerprint": "10b3756d346451717c6c0d5b",
-      "predictedResidualAlphaPct": -9.24591819269045,
-      "predictionLower90Pct": -27.586717547823593,
+      "predictedResidualAlphaPct": -9.245918192690446,
+      "predictionLower90Pct": -27.58671754782359,
       "baselinePredictionPct": -3.626818493225629,
       "realizedResidualAlphaPct": -11.535769654400886
     }
