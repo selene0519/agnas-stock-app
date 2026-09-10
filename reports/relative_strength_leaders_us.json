@@ -5,99 +5,99 @@
   "regime": "BEAR",
   "status": "BEAR_DEFENSIVE",
   "lensNote": "Bear: RS dispersion is gone; rotate to low-volatility defensives (halve the drawdown) instead of chasing returns.",
-  "universeCount": 133,
+  "universeCount": 134,
   "leaders": [],
   "laggardsToAvoid": [],
   "defensiveHolds": [
     {
+      "symbol": "SP500",
+      "rs60Pct": 0.46,
+      "relToIndexPp": -0.16,
+      "vol60Pct": 0.72
+    },
+    {
       "symbol": "BRK-B",
       "rs60Pct": 2.48,
-      "relToIndexPp": 1.85,
+      "relToIndexPp": 1.86,
       "vol60Pct": 0.91
     },
     {
       "symbol": "BAC",
       "rs60Pct": 11.97,
-      "relToIndexPp": 11.33,
+      "relToIndexPp": 11.34,
       "vol60Pct": 1.12
     },
     {
       "symbol": "PG",
       "rs60Pct": -5.35,
-      "relToIndexPp": -5.98,
+      "relToIndexPp": -5.97,
       "vol60Pct": 1.21
     },
     {
       "symbol": "JPM",
       "rs60Pct": 10.25,
-      "relToIndexPp": 9.62,
+      "relToIndexPp": 9.63,
       "vol60Pct": 1.25
     },
     {
       "symbol": "COST",
       "rs60Pct": -7.48,
-      "relToIndexPp": -8.11,
+      "relToIndexPp": -8.1,
       "vol60Pct": 1.29
     },
     {
       "symbol": "V",
       "rs60Pct": 13.31,
-      "relToIndexPp": 12.67,
+      "relToIndexPp": 12.69,
       "vol60Pct": 1.3
     },
     {
       "symbol": "MA",
       "rs60Pct": 15.32,
-      "relToIndexPp": 14.68,
+      "relToIndexPp": 14.7,
       "vol60Pct": 1.41
     },
     {
       "symbol": "KO",
       "rs60Pct": 9.71,
-      "relToIndexPp": 9.08,
+      "relToIndexPp": 9.09,
       "vol60Pct": 1.42
     },
     {
       "symbol": "MCD",
       "rs60Pct": -11.52,
-      "relToIndexPp": -12.16,
+      "relToIndexPp": -12.14,
       "vol60Pct": 1.43
     },
     {
       "symbol": "PFE",
       "rs60Pct": 6.12,
-      "relToIndexPp": 5.48,
+      "relToIndexPp": 5.49,
       "vol60Pct": 1.44
     },
     {
       "symbol": "UNH",
       "rs60Pct": -3.55,
-      "relToIndexPp": -4.19,
+      "relToIndexPp": -4.18,
       "vol60Pct": 1.48
     },
     {
       "symbol": "PEP",
       "rs60Pct": -6.36,
-      "relToIndexPp": -6.99,
+      "relToIndexPp": -6.98,
       "vol60Pct": 1.48
     },
     {
       "symbol": "CVX",
       "rs60Pct": 17.88,
-      "relToIndexPp": 17.25,
+      "relToIndexPp": 17.26,
       "vol60Pct": 1.51
     },
     {
       "symbol": "JNJ",
       "rs60Pct": 13.74,
-      "relToIndexPp": 13.11,
+      "relToIndexPp": 13.12,
       "vol60Pct": 1.6
-    },
-    {
-      "symbol": "DIS",
-      "rs60Pct": 2.72,
-      "relToIndexPp": 2.09,
-      "vol60Pct": 1.73
     }
   ],
   "note": "Research/paper only. Capital preservation, not return."
