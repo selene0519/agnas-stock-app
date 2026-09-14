@@ -1,11 +1,11 @@
 {
-  "updatedAt": "2026-09-14 21:52:48",
-  "basedOnR2": 0.0431,
-  "olsSamples": 1976,
-  "rsiCoefficient": 0.2157,
-  "vrCoefficient": 0.0825,
-  "d20Coefficient": -0.1612,
-  "mom5Coefficient": -0.0453,
+  "updatedAt": "2026-09-14 23:05:25",
+  "basedOnR2": 0.0479,
+  "olsSamples": 2005,
+  "rsiCoefficient": 0.2153,
+  "vrCoefficient": 0.0937,
+  "d20Coefficient": -0.1618,
+  "mom5Coefficient": -0.052,
   "adjustments": {
     "rsi_upper_conservative": 78.0,
     "rsi_upper_balanced": 81.0,
@@ -16,7 +16,7 @@
     "d20_max_short": 6.0,
     "d20_max_swing": 8.0,
     "d20_max_mid": 11.0,
-    "momentum5_insight": "모멘텀 영향 미미"
+    "momentum5_insight": "음의 모멘텀이 수익 기여"
   },
   "byMarket": {
     "kr": {
@@ -38,8 +38,8 @@
     },
     "us": {
       "status": "APPLIED",
-      "r2": 0.0683,
-      "n": 1140,
+      "r2": 0.0745,
+      "n": 1169,
       "adjustments": {
         "rsi_upper_conservative": 78.0,
         "rsi_upper_balanced": 81.0,
