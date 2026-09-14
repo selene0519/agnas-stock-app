@@ -1,6 +1,6 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-09-14T00:32:06.004805+00:00",
+  "generatedAt": "2026-09-14T07:16:16.703387+00:00",
   "policy": {
     "version": "shadow-residual-alpha-v1.1.2",
     "label": "POST_SIGNAL_PRE_EVENT_MARKET_MODEL_CAR_BY_HORIZON",
@@ -112,7 +112,7 @@
   },
   "forwardEvidence": {
     "modelFingerprint": "7f3642213237690bb880",
-    "predictionJournalRows": 0,
+    "predictionJournalRows": 17,
     "settlementJournalRows": 0,
     "settledCurrentModelEconomicEvents": 0,
     "journalIntegrity": {
@@ -140,23 +140,23 @@
     "predictionJournal": {
       "path": "data/shadow_residual_alpha_predictions.csv",
       "existingRows": 0,
-      "appendedRows": 0,
+      "appendedRows": 17,
       "duplicateRows": 0,
       "lateCandidatesSkipped": 0,
       "missingGeneratedAtSkipped": 0,
       "futureGeneratedAtSkipped": 0,
       "immutableConflicts": 0,
       "schemaError": null,
-      "recordMarket": "none",
-      "candidateRowsConsidered": 0
+      "recordMarket": "all",
+      "candidateRowsConsidered": 17
     },
     "settlementJournal": {
       "path": "data/shadow_residual_alpha_settlements.csv",
-      "predictionRows": 0,
+      "predictionRows": 17,
       "existingRows": 0,
       "appendedRows": 0,
       "duplicateRows": 0,
-      "unresolvedPredictions": 0,
+      "unresolvedPredictions": 17,
       "immutableConflicts": 0,
       "schemaError": null
     },
@@ -173,7 +173,7 @@
       "candidateKey": "a7df1a164a8557bd08a70508",
       "economicEventKey": "9c435b5088d8f5ec50e92029",
       "signalDate": "2026-09-11",
-      "generatedAt": "2026-09-14T00:31:59.065321+00:00",
+      "generatedAt": "2026-09-14T07:16:07.636123+00:00",
       "market": "us",
       "mode": "aggressive",
       "horizon": "mid",
@@ -189,13 +189,13 @@
       "predictionLower90Pct": -11.630078,
       "baselinePredictionPct": -3.304817,
       "predictionId": "99cbda3e44a2ae889d06f1c17fea",
-      "forwardSealStatus": "UNSEALED"
+      "forwardSealStatus": "SEALED_FORWARD"
     },
     {
       "candidateKey": "5481614ad7f70fa5389ed665",
       "economicEventKey": "16b8e47074a3f9579e395eac",
       "signalDate": "2026-09-11",
-      "generatedAt": "2026-09-14T00:31:59.065321+00:00",
+      "generatedAt": "2026-09-14T07:16:07.636123+00:00",
       "market": "us",
       "mode": "aggressive",
       "horizon": "mid",
@@ -211,13 +211,13 @@
       "predictionLower90Pct": -13.595504,
       "baselinePredictionPct": -3.304817,
       "predictionId": "95c82ba977bddf0c1f0670b9f400",
-      "forwardSealStatus": "UNSEALED"
+      "forwardSealStatus": "SEALED_FORWARD"
     },
     {
       "candidateKey": "3056fd9c6c3d069b3510c9c1",
       "economicEventKey": "16944b5eeeb3e7aec5b3184c",
       "signalDate": "2026-09-11",
-      "generatedAt": "2026-09-14T00:31:59.065321+00:00",
+      "generatedAt": "2026-09-14T07:16:07.636123+00:00",
       "market": "us",
       "mode": "balanced",
       "horizon": "mid",
@@ -233,13 +233,13 @@
       "predictionLower90Pct": -14.809325,
       "baselinePredictionPct": -3.304817,
       "predictionId": "cca538fae7dfdfdb2a3c8d410fd8",
-      "forwardSealStatus": "UNSEALED"
+      "forwardSealStatus": "SEALED_FORWARD"
     },
     {
       "candidateKey": "c0cf00b04ed6da92c34bba90",
       "economicEventKey": "7f512e1d5ab97215510f2d31",
       "signalDate": "2026-09-11",
-      "generatedAt": "2026-09-14T00:31:59.065321+00:00",
+      "generatedAt": "2026-09-14T07:16:07.636123+00:00",
       "market": "us",
       "mode": "balanced",
       "horizon": "mid",
@@ -255,13 +255,13 @@
       "predictionLower90Pct": -4.81412,
       "baselinePredictionPct": -3.304817,
       "predictionId": "f2509d6bd6be98926b767a6337fc",
-      "forwardSealStatus": "UNSEALED"
+      "forwardSealStatus": "SEALED_FORWARD"
     },
     {
       "candidateKey": "6fbbea34b93842492d752461",
       "economicEventKey": "339e46c3884bbf8909d02902",
       "signalDate": "2026-09-11",
-      "generatedAt": "2026-09-14T00:31:59.065321+00:00",
+      "generatedAt": "2026-09-14T07:16:07.636123+00:00",
       "market": "us",
       "mode": "balanced",
       "horizon": "mid",
@@ -277,13 +277,13 @@
       "predictionLower90Pct": -11.639381,
       "baselinePredictionPct": -3.304817,
       "predictionId": "18d75a5733c28772a2aebb9411f4",
-      "forwardSealStatus": "UNSEALED"
+      "forwardSealStatus": "SEALED_FORWARD"
     },
     {
       "candidateKey": "c026bc1405e40284b1980e89",
       "economicEventKey": "c9ac9b4b6bd04ae58b527170",
       "signalDate": "2026-09-11",
-      "generatedAt": "2026-09-14T00:31:59.065321+00:00",
+      "generatedAt": "2026-09-14T07:16:07.636123+00:00",
       "market": "us",
       "mode": "balanced",
       "horizon": "mid",
@@ -299,13 +299,13 @@
       "predictionLower90Pct": -5.463858,
       "baselinePredictionPct": -3.304817,
       "predictionId": "c6aff971203a1cf8fbd981270bb8",
-      "forwardSealStatus": "UNSEALED"
+      "forwardSealStatus": "SEALED_FORWARD"
     },
     {
       "candidateKey": "2eb2bd17f7b5c2e0b9dbd885",
       "economicEventKey": "3eeb65a3dc535be6b79f06c6",
       "signalDate": "2026-09-11",
-      "generatedAt": "2026-09-14T00:31:59.065321+00:00",
+      "generatedAt": "2026-09-14T07:16:07.636123+00:00",
       "market": "us",
       "mode": "balanced",
       "horizon": "short",
@@ -321,13 +321,13 @@
       "predictionLower90Pct": -13.263186,
       "baselinePredictionPct": -3.304817,
       "predictionId": "c2e198d5e09676d631ec7623ff06",
-      "forwardSealStatus": "UNSEALED"
+      "forwardSealStatus": "SEALED_FORWARD"
     },
     {
       "candidateKey": "aea18bf541163dc1e8dfef70",
       "economicEventKey": "d2de4fbb00f29bb93caac622",
       "signalDate": "2026-09-11",
-      "generatedAt": "2026-09-14T00:31:59.065321+00:00",
+      "generatedAt": "2026-09-14T07:16:07.636123+00:00",
       "market": "us",
       "mode": "balanced",
       "horizon": "short",
@@ -343,13 +343,13 @@
       "predictionLower90Pct": -15.651415,
       "baselinePredictionPct": -3.304817,
       "predictionId": "66152386d52b66cf102bcaac5ded",
-      "forwardSealStatus": "UNSEALED"
+      "forwardSealStatus": "SEALED_FORWARD"
     },
     {
       "candidateKey": "a254c29c8e5837a8bef3fc51",
       "economicEventKey": "90eae8886c38926d2e20a41c",
       "signalDate": "2026-09-11",
-      "generatedAt": "2026-09-14T00:31:59.065321+00:00",
+      "generatedAt": "2026-09-14T07:16:07.636123+00:00",
       "market": "us",
       "mode": "conservative",
       "horizon": "mid",
@@ -365,13 +365,13 @@
       "predictionLower90Pct": -10.877012,
       "baselinePredictionPct": -3.304817,
       "predictionId": "b21a3a3b0ff01d147965562ad366",
-      "forwardSealStatus": "UNSEALED"
+      "forwardSealStatus": "SEALED_FORWARD"
     },
     {
       "candidateKey": "9ff1403e4f7f2b477e7a9d21",
       "economicEventKey": "3156639c4b64a3b55c7e7a3a",
       "signalDate": "2026-09-11",
-      "generatedAt": "2026-09-14T00:31:59.065321+00:00",
+      "generatedAt": "2026-09-14T07:16:07.636123+00:00",
       "market": "us",
       "mode": "conservative",
       "horizon": "mid",
@@ -387,13 +387,13 @@
       "predictionLower90Pct": -3.420846,
       "baselinePredictionPct": -3.304817,
       "predictionId": "14dc06d0381fd4b29c95dfd62ef7",
-      "forwardSealStatus": "UNSEALED"
+      "forwardSealStatus": "SEALED_FORWARD"
     },
     {
       "candidateKey": "6141e6f0c299748b2ac6efdd",
       "economicEventKey": "a4cfaa084e8ea6f751045bfe",
       "signalDate": "2026-09-11",
-      "generatedAt": "2026-09-14T00:31:59.065321+00:00",
+      "generatedAt": "2026-09-14T07:16:07.636123+00:00",
       "market": "us",
       "mode": "conservative",
       "horizon": "mid",
@@ -409,13 +409,13 @@
       "predictionLower90Pct": -3.954281,
       "baselinePredictionPct": -3.304817,
       "predictionId": "f29f3ebe7f5944aed0f7ed06f5a8",
-      "forwardSealStatus": "UNSEALED"
+      "forwardSealStatus": "SEALED_FORWARD"
     },
     {
       "candidateKey": "f1ea2782adbfcd9469884ad9",
       "economicEventKey": "772be1e96dfe47e2d860df3d",
       "signalDate": "2026-09-11",
-      "generatedAt": "2026-09-14T00:31:59.065321+00:00",
+      "generatedAt": "2026-09-14T07:16:07.636123+00:00",
       "market": "us",
       "mode": "conservative",
       "horizon": "mid",
@@ -431,13 +431,13 @@
       "predictionLower90Pct": -11.22742,
       "baselinePredictionPct": -3.304817,
       "predictionId": "b3f671e8c77ae047596496467b7c",
-      "forwardSealStatus": "UNSEALED"
+      "forwardSealStatus": "SEALED_FORWARD"
     },
     {
       "candidateKey": "8875eb1046724a7568acf800",
       "economicEventKey": "fba6aa289442280cb7c2d643",
       "signalDate": "2026-09-11",
-      "generatedAt": "2026-09-14T00:31:59.065321+00:00",
+      "generatedAt": "2026-09-14T07:16:07.636123+00:00",
       "market": "us",
       "mode": "conservative",
       "horizon": "mid",
@@ -453,13 +453,13 @@
       "predictionLower90Pct": -22.40595,
       "baselinePredictionPct": -3.304817,
       "predictionId": "3a91cb13a1a10aff314e2101cf4d",
-      "forwardSealStatus": "UNSEALED"
+      "forwardSealStatus": "SEALED_FORWARD"
     },
     {
       "candidateKey": "681f415a89ff60228f49bc14",
       "economicEventKey": "187d943afeac763ef762219f",
       "signalDate": "2026-09-11",
-      "generatedAt": "2026-09-14T00:31:59.065321+00:00",
+      "generatedAt": "2026-09-14T07:16:07.636123+00:00",
       "market": "us",
       "mode": "conservative",
       "horizon": "short",
@@ -475,13 +475,13 @@
       "predictionLower90Pct": -5.735715,
       "baselinePredictionPct": -3.304817,
       "predictionId": "e776a7fed2cd222b852d9a952092",
-      "forwardSealStatus": "UNSEALED"
+      "forwardSealStatus": "SEALED_FORWARD"
     },
     {
       "candidateKey": "5453abac34f16c5c273d2faf",
       "economicEventKey": "2fbfbb7ef09c5d47efb1cac7",
       "signalDate": "2026-09-11",
-      "generatedAt": "2026-09-14T00:31:59.065321+00:00",
+      "generatedAt": "2026-09-14T07:16:07.636123+00:00",
       "market": "us",
       "mode": "conservative",
       "horizon": "short",
@@ -497,13 +497,13 @@
       "predictionLower90Pct": -8.8198,
       "baselinePredictionPct": -3.304817,
       "predictionId": "f266cdc7352bd591573517977bd0",
-      "forwardSealStatus": "UNSEALED"
+      "forwardSealStatus": "SEALED_FORWARD"
     },
     {
       "candidateKey": "416aea6191e0188250995f44",
       "economicEventKey": "b4d14c10635d128b9f576828",
       "signalDate": "2026-09-11",
-      "generatedAt": "2026-09-14T00:31:59.065321+00:00",
+      "generatedAt": "2026-09-14T07:16:07.636123+00:00",
       "market": "us",
       "mode": "conservative",
       "horizon": "short",
@@ -519,13 +519,13 @@
       "predictionLower90Pct": -9.040616,
       "baselinePredictionPct": -3.304817,
       "predictionId": "e42b9e26025e204f4198577dd2d7",
-      "forwardSealStatus": "UNSEALED"
+      "forwardSealStatus": "SEALED_FORWARD"
     },
     {
       "candidateKey": "875c2e0b4577c38fe7ce2198",
       "economicEventKey": "ec390a1cebdf9cf4bfa40298",
       "signalDate": "2026-09-11",
-      "generatedAt": "2026-09-14T00:31:59.065321+00:00",
+      "generatedAt": "2026-09-14T07:16:07.636123+00:00",
       "market": "us",
       "mode": "conservative",
       "horizon": "swing",
@@ -541,7 +541,7 @@
       "predictionLower90Pct": -12.507187,
       "baselinePredictionPct": -3.304817,
       "predictionId": "5d481a7f9fe6261e6cfc227fb2f2",
-      "forwardSealStatus": "UNSEALED"
+      "forwardSealStatus": "SEALED_FORWARD"
     }
   ],
   "forwardOosAudit": [],
@@ -555,8 +555,8 @@
       "trainDates": 23,
       "trainingDataFingerprint": "7fdec0df1ed94ec1e2b608ab01192d6dfb613ba053b664d13646e2fc743e7fd3",
       "modelInstanceFingerprint": "10b3756d346451717c6c0d5b",
-      "predictedResidualAlphaPct": -9.24591819269045,
-      "predictionLower90Pct": -27.586717547823593,
+      "predictedResidualAlphaPct": -9.245918192690446,
+      "predictionLower90Pct": -27.58671754782359,
       "baselinePredictionPct": -3.626818493225629,
       "realizedResidualAlphaPct": -11.535769654400886
     }
