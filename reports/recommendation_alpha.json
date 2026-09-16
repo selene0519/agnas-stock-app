@@ -1,23 +1,135 @@
 {
-  "generatedAt": "2026-09-16T13:15:34.235609+00:00",
+  "generatedAt": "2026-09-16T18:08:00.217142+00:00",
   "since": null,
   "market": "all",
   "strategyFingerprint": "379df630915c2aaab34a84ac",
   "sampleUnit": "UNIQUE_AS_OF_DATE_MARKET_SYMBOL",
   "method": "Pre-event market-model CAR. KR uses KOSPI/KOSDAQ by listing market; US uses SPY. Inference resamples equal-weight market-date blocks instead of recommendation rows.",
   "reference": "virattt/ai-hedge-fund v2/event_study (recommendation date as event)",
-  "events": 0,
+  "events": 1,
   "skipped": {
     "noOhlcv": 0,
     "noBenchmark": 0,
     "shortEstimation": 0,
     "noBenchmarkDate": 0,
-    "shortEventWindow": 1,
-    "replaySource": 1688,
+    "shortEventWindow": 0,
+    "replaySource": 1700,
     "beforeSince": 0,
     "marketMismatch": 0,
     "duplicateDecision": 0
   },
-  "windows": {},
-  "status": "NO_EVENTS"
+  "windows": {
+    "D+1": {
+      "events": 1,
+      "independentMarketDateBlocks": 1,
+      "meanCarPct": -17.0846,
+      "blockMeanCarPct": -17.0846,
+      "meanRawReturnPct": -17.0288,
+      "marketComponentPct": 0.0558,
+      "positiveShare": 0.0,
+      "tStat": 0.0,
+      "pValue": 1.0,
+      "significant": false,
+      "bootstrapCi95": [
+        NaN,
+        NaN
+      ],
+      "naiveRowInference": {
+        "tStat": 0.0,
+        "pValue": 1.0,
+        "bootstrapCi95": [
+          NaN,
+          NaN
+        ],
+        "usableForPromotion": false
+      },
+      "sampleWarning": "Only 1 independent market-date blocks; need 30.",
+      "significanceUsable": false
+    },
+    "D+5": {
+      "events": 1,
+      "independentMarketDateBlocks": 1,
+      "meanCarPct": -19.5759,
+      "blockMeanCarPct": -19.5759,
+      "meanRawReturnPct": -18.0449,
+      "marketComponentPct": 1.531,
+      "positiveShare": 0.0,
+      "tStat": 0.0,
+      "pValue": 1.0,
+      "significant": false,
+      "bootstrapCi95": [
+        NaN,
+        NaN
+      ],
+      "naiveRowInference": {
+        "tStat": 0.0,
+        "pValue": 1.0,
+        "bootstrapCi95": [
+          NaN,
+          NaN
+        ],
+        "usableForPromotion": false
+      },
+      "sampleWarning": "Only 1 independent market-date blocks; need 30.",
+      "significanceUsable": false
+    },
+    "D+20": {
+      "events": 1,
+      "independentMarketDateBlocks": 1,
+      "meanCarPct": -30.1168,
+      "blockMeanCarPct": -30.1168,
+      "meanRawReturnPct": -21.1893,
+      "marketComponentPct": 8.9275,
+      "positiveShare": 0.0,
+      "tStat": 0.0,
+      "pValue": 1.0,
+      "significant": false,
+      "bootstrapCi95": [
+        NaN,
+        NaN
+      ],
+      "naiveRowInference": {
+        "tStat": 0.0,
+        "pValue": 1.0,
+        "bootstrapCi95": [
+          NaN,
+          NaN
+        ],
+        "usableForPromotion": false
+      },
+      "sampleWarning": "Only 1 independent market-date blocks; need 30.",
+      "significanceUsable": false
+    }
+  },
+  "status": "OK",
+  "avgBeta": 2.59,
+  "eventsByMarket": {
+    "us": 1
+  },
+  "benchmarks": [
+    "us:SPY"
+  ],
+  "eventDateRange": {
+    "min": "2026-08-18",
+    "max": "2026-08-18"
+  },
+  "eventsByMonth": {
+    "2026-08": 1
+  },
+  "caveats": [
+    "Long event windows exclude recent signals and bias the sample toward older cohorts.",
+    "Pre-event beta can be stale during abrupt regime changes.",
+    "Positive CAR does not imply positive account PnL; raw return must also be positive.",
+    "US sector benchmarks are not yet applied; US residuals currently use SPY."
+  ],
+  "clustering": {
+    "distinctEventDates": 1,
+    "distinctMarketDateBlocks": 1,
+    "calendarSpanDays": 1,
+    "eventsPerDate": 1.0,
+    "isClustered": false,
+    "inferenceMethod": "EQUAL_MARKET_DATE_BLOCK_BOOTSTRAP",
+    "minBlocksForUse": 30,
+    "note": "Signals from one market-date share a shock. Row-level inference is diagnostic only; promotion uses equal market-date block means and block bootstrap confidence intervals."
+  }
 }
