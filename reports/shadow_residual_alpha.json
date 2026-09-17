@@ -1,6 +1,6 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-09-17T14:02:33.337340+00:00",
+  "generatedAt": "2026-09-17T18:08:20.668554+00:00",
   "policy": {
     "version": "shadow-residual-alpha-v1.1.2",
     "label": "POST_SIGNAL_PRE_EVENT_MARKET_MODEL_CAR_BY_HORIZON",
@@ -57,7 +57,7 @@
     "fingerprint": "7f3642213237690bb880"
   },
   "data": {
-    "rawJournalRows": 2597,
+    "rawJournalRows": 2606,
     "forwardIndependentRows": 526,
     "labeledIndependentDecisions": 501,
     "distinctSignalDates": 25,
@@ -112,7 +112,7 @@
   },
   "forwardEvidence": {
     "modelFingerprint": "7f3642213237690bb880",
-    "predictionJournalRows": 18,
+    "predictionJournalRows": 0,
     "settlementJournalRows": 0,
     "settledCurrentModelEconomicEvents": 0,
     "journalIntegrity": {
@@ -140,23 +140,23 @@
     "predictionJournal": {
       "path": "data/shadow_residual_alpha_predictions.csv",
       "existingRows": 0,
-      "appendedRows": 18,
+      "appendedRows": 0,
       "duplicateRows": 0,
       "lateCandidatesSkipped": 0,
       "missingGeneratedAtSkipped": 0,
       "futureGeneratedAtSkipped": 0,
       "immutableConflicts": 0,
       "schemaError": null,
-      "recordMarket": "all",
-      "candidateRowsConsidered": 18
+      "recordMarket": "none",
+      "candidateRowsConsidered": 0
     },
     "settlementJournal": {
       "path": "data/shadow_residual_alpha_settlements.csv",
-      "predictionRows": 18,
+      "predictionRows": 0,
       "existingRows": 0,
       "appendedRows": 0,
       "duplicateRows": 0,
-      "unresolvedPredictions": 18,
+      "unresolvedPredictions": 0,
       "immutableConflicts": 0,
       "schemaError": null
     },
@@ -189,7 +189,7 @@
       "predictionLower90Pct": -21.201275,
       "baselinePredictionPct": -3.304817,
       "predictionId": "36da258864adb90e5061db5213b3",
-      "forwardSealStatus": "SEALED_FORWARD"
+      "forwardSealStatus": "UNSEALED"
     },
     {
       "candidateKey": "1862979b11e306b1cad77ccb",
@@ -211,7 +211,7 @@
       "predictionLower90Pct": -18.184753,
       "baselinePredictionPct": -3.304817,
       "predictionId": "e55cb62b4d2c423cd4aa11ee3699",
-      "forwardSealStatus": "SEALED_FORWARD"
+      "forwardSealStatus": "UNSEALED"
     },
     {
       "candidateKey": "abf25a56018e1b18f509ee36",
@@ -233,7 +233,7 @@
       "predictionLower90Pct": -16.399352,
       "baselinePredictionPct": -3.304817,
       "predictionId": "1ce327cdcbdb096a79968710a294",
-      "forwardSealStatus": "SEALED_FORWARD"
+      "forwardSealStatus": "UNSEALED"
     },
     {
       "candidateKey": "bfecbf448bf3fb81a9d3e719",
@@ -255,7 +255,7 @@
       "predictionLower90Pct": -18.822202,
       "baselinePredictionPct": -3.304817,
       "predictionId": "3f0139e969468f86216908b5e729",
-      "forwardSealStatus": "SEALED_FORWARD"
+      "forwardSealStatus": "UNSEALED"
     },
     {
       "candidateKey": "88a998b1721f9ff9eb091495",
@@ -277,7 +277,7 @@
       "predictionLower90Pct": -15.362096,
       "baselinePredictionPct": -3.304817,
       "predictionId": "2c63ec712e47a46cab64871b8a89",
-      "forwardSealStatus": "SEALED_FORWARD"
+      "forwardSealStatus": "UNSEALED"
     },
     {
       "candidateKey": "14f54959c3b770bdb00163a2",
@@ -299,7 +299,7 @@
       "predictionLower90Pct": -12.583363,
       "baselinePredictionPct": -3.304817,
       "predictionId": "f862ba2842ee59d53782d61d9a31",
-      "forwardSealStatus": "SEALED_FORWARD"
+      "forwardSealStatus": "UNSEALED"
     },
     {
       "candidateKey": "4b737aae04ccafc4b0023ee9",
@@ -321,7 +321,7 @@
       "predictionLower90Pct": -20.682903,
       "baselinePredictionPct": -3.304817,
       "predictionId": "f826d79de1824fe953b78688416d",
-      "forwardSealStatus": "SEALED_FORWARD"
+      "forwardSealStatus": "UNSEALED"
     },
     {
       "candidateKey": "c50d99cba487b578e7ead7c5",
@@ -343,7 +343,7 @@
       "predictionLower90Pct": -16.644701,
       "baselinePredictionPct": -3.304817,
       "predictionId": "fee4b330ea7ee518105982a809e4",
-      "forwardSealStatus": "SEALED_FORWARD"
+      "forwardSealStatus": "UNSEALED"
     },
     {
       "candidateKey": "41f3230b9c96d4f0ffff35bc",
@@ -365,7 +365,7 @@
       "predictionLower90Pct": -10.759543,
       "baselinePredictionPct": -3.304817,
       "predictionId": "93b2a8f822b98bdc733ea9b1ffd8",
-      "forwardSealStatus": "SEALED_FORWARD"
+      "forwardSealStatus": "UNSEALED"
     },
     {
       "candidateKey": "5cd1b5f7b2e5ca04412b2af8",
@@ -387,7 +387,7 @@
       "predictionLower90Pct": -13.326875,
       "baselinePredictionPct": -3.304817,
       "predictionId": "c78bb75e9d6d25b85f9d516ffbb6",
-      "forwardSealStatus": "SEALED_FORWARD"
+      "forwardSealStatus": "UNSEALED"
     },
     {
       "candidateKey": "92988f66c70b11dd475a5cd3",
@@ -409,7 +409,7 @@
       "predictionLower90Pct": -8.889523,
       "baselinePredictionPct": -3.304817,
       "predictionId": "6205ce6a5d67c005a26e78fa70ce",
-      "forwardSealStatus": "SEALED_FORWARD"
+      "forwardSealStatus": "UNSEALED"
     },
     {
       "candidateKey": "e3e8499e18fe3a43256849f1",
@@ -431,7 +431,7 @@
       "predictionLower90Pct": -6.240022,
       "baselinePredictionPct": -3.304817,
       "predictionId": "a3a173544a8d9cbcbe899219f248",
-      "forwardSealStatus": "SEALED_FORWARD"
+      "forwardSealStatus": "UNSEALED"
     },
     {
       "candidateKey": "917c644a34a8950aedc46d1d",
@@ -453,7 +453,7 @@
       "predictionLower90Pct": -4.917811,
       "baselinePredictionPct": -3.304817,
       "predictionId": "fec8e607533a7d8f15575a0097ac",
-      "forwardSealStatus": "SEALED_FORWARD"
+      "forwardSealStatus": "UNSEALED"
     },
     {
       "candidateKey": "e2e172891f6d3b7c115e118d",
@@ -475,7 +475,7 @@
       "predictionLower90Pct": -10.936258,
       "baselinePredictionPct": -3.304817,
       "predictionId": "341459d529078a4ba3cfff084ed9",
-      "forwardSealStatus": "SEALED_FORWARD"
+      "forwardSealStatus": "UNSEALED"
     },
     {
       "candidateKey": "dbd9805c228787f815b6e16d",
@@ -497,7 +497,7 @@
       "predictionLower90Pct": -4.209564,
       "baselinePredictionPct": -3.304817,
       "predictionId": "374ae60c067dcb056e2dc86b8a2d",
-      "forwardSealStatus": "SEALED_FORWARD"
+      "forwardSealStatus": "UNSEALED"
     },
     {
       "candidateKey": "47e07ddbb0a08f5baa23f02d",
@@ -519,7 +519,7 @@
       "predictionLower90Pct": -7.096003,
       "baselinePredictionPct": -3.304817,
       "predictionId": "012e979b4e260aa34be6f43aada7",
-      "forwardSealStatus": "SEALED_FORWARD"
+      "forwardSealStatus": "UNSEALED"
     },
     {
       "candidateKey": "10a463af58d3ae2cffa454b0",
@@ -541,7 +541,7 @@
       "predictionLower90Pct": -17.908513,
       "baselinePredictionPct": -3.304817,
       "predictionId": "c7e6178c77b6b9faf5a60465728a",
-      "forwardSealStatus": "SEALED_FORWARD"
+      "forwardSealStatus": "UNSEALED"
     },
     {
       "candidateKey": "eb5c0c6b275c2634572209a5",
@@ -563,7 +563,7 @@
       "predictionLower90Pct": -8.750845,
       "baselinePredictionPct": -3.304817,
       "predictionId": "a4390a2b93c11cf1d26dbf6c9737",
-      "forwardSealStatus": "SEALED_FORWARD"
+      "forwardSealStatus": "UNSEALED"
     }
   ],
   "forwardOosAudit": [],
