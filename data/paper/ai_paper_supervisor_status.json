@@ -1,13 +1,13 @@
 {
   "status": "OK",
-  "lastRunAt": "2026-09-16T23:05:46+09:00",
+  "lastRunAt": "2026-09-17T22:05:46+09:00",
   "market": "us",
   "execute": true,
   "repair": {
     "status": "OK",
-    "journalRows": 2569,
-    "beforeRows": 2569,
-    "afterRows": 2569,
+    "journalRows": 2597,
+    "beforeRows": 2597,
+    "afterRows": 2597,
     "changed": false,
     "droppedMissingId": 0,
     "droppedOrphan": 0,
@@ -15,9 +15,9 @@
   },
   "repairAfterEvaluation": {
     "status": "OK",
-    "journalRows": 2569,
-    "beforeRows": 2569,
-    "afterRows": 2569,
+    "journalRows": 2597,
+    "beforeRows": 2597,
+    "afterRows": 2597,
     "changed": false,
     "droppedMissingId": 0,
     "droppedOrphan": 0,
@@ -25,9 +25,9 @@
   },
   "evaluation": {
     "status": "OK",
-    "evaluated": 256,
+    "evaluated": 265,
     "outcomes": {
-      "PENDING": 240,
+      "PENDING": 249,
       "DATA_PENDING": 16
     }
   },
@@ -35,13 +35,13 @@
     "status": "RUNNING",
     "recordingStatus": "OK",
     "evaluationStatus": "OK",
-    "latestCapturedAt": "2026-09-16T22:08:23",
-    "latestEvaluatedAt": "2026-09-16T23:05:45"
+    "latestCapturedAt": "2026-09-17T21:52:09",
+    "latestEvaluatedAt": "2026-09-17T22:05:45"
   },
   "paper": {
     "status": "OK",
     "dryRun": false,
-    "createdAt": "2026-09-16T23:05:45",
+    "createdAt": "2026-09-17T22:05:45",
     "market": "us",
     "markets": {
       "us": {
@@ -60,78 +60,78 @@
           "seed": 5000.0,
           "cash": 4259.61,
           "invested": 727.87,
-          "valuation": 745.44,
-          "portfolioValue": 5005.05,
-          "unrealizedPnl": 17.57,
-          "totalPnl": 5.05,
-          "totalReturnPct": 0.1,
+          "valuation": 749.56,
+          "portfolioValue": 5009.17,
+          "unrealizedPnl": 21.68,
+          "totalPnl": 9.17,
+          "totalReturnPct": 0.18,
           "positionCount": 5,
           "tradeCount": 7
         },
         "liveMetrics": {
           "status": "OK",
           "proofStatus": "RUNNING",
-          "sampleCount": 41,
-          "navPointCount": 42,
-          "totalReturnPct": 0.1,
+          "sampleCount": 42,
+          "navPointCount": 43,
+          "totalReturnPct": 0.18,
           "mddPct": -0.6,
-          "sharpe": 0.33,
-          "winRate": 24.4,
+          "sharpe": 0.58,
+          "winRate": 26.2,
           "avgPeriodReturnPct": 0.0,
-          "cashPct": 85.1,
+          "cashPct": 85.0,
           "peakValue": 5019.61,
-          "currentValue": 5005.05,
-          "lastNavDate": "2026-09-16",
+          "currentValue": 5009.17,
+          "lastNavDate": "2026-09-17",
           "recentReturnsPct": [
-            -0.14,
             0.0,
             -0.22,
             0.0,
             0.28,
             -0.0,
             0.04,
-            -0.0
+            -0.0,
+            0.08
           ],
           "equityCurve": [
             {
               "index": 0,
-              "value": 5001.34,
-              "returnPct": 0.03
-            },
-            {
-              "index": 1,
               "value": 5019.61,
               "returnPct": 0.39
             },
             {
-              "index": 2,
+              "index": 1,
               "value": 5009.31,
               "returnPct": 0.19
             },
             {
-              "index": 3,
+              "index": 2,
               "value": 5002.45,
               "returnPct": 0.05
             },
             {
-              "index": 4,
+              "index": 3,
               "value": 5002.58,
               "returnPct": 0.05
             },
             {
-              "index": 5,
+              "index": 4,
               "value": 5016.69,
               "returnPct": 0.33
             },
             {
-              "index": 6,
+              "index": 5,
               "value": 5006.63,
               "returnPct": 0.13
             },
             {
-              "index": 7,
+              "index": 6,
               "value": 5007.33,
               "returnPct": 0.15
+            },
+            {
+              "index": 7,
+              "value": 5000.21,
+              "returnPct": 0.0
             },
             {
               "index": 8,
@@ -140,8 +140,8 @@
             },
             {
               "index": 9,
-              "value": 5000.21,
-              "returnPct": 0.0
+              "value": 4989.41,
+              "returnPct": -0.21
             },
             {
               "index": 10,
@@ -150,28 +150,28 @@
             },
             {
               "index": 11,
-              "value": 4989.41,
-              "returnPct": -0.21
-            },
-            {
-              "index": 12,
               "value": 5003.6,
               "returnPct": 0.07
             },
             {
-              "index": 13,
+              "index": 12,
               "value": 5003.4,
               "returnPct": 0.07
             },
             {
-              "index": 14,
+              "index": 13,
               "value": 5005.2,
               "returnPct": 0.1
             },
             {
-              "index": 15,
+              "index": 14,
               "value": 5005.05,
               "returnPct": 0.1
+            },
+            {
+              "index": 15,
+              "value": 5009.17,
+              "returnPct": 0.18
             }
           ]
         },
@@ -192,8 +192,8 @@
         "survival": {
           "state": "ALIVE",
           "seed": 5000.0,
-          "portfolioValue": 5005.05,
-          "survivalPct": 100.1
+          "portfolioValue": 5009.17,
+          "survivalPct": 100.18
         },
         "proofBoard": {
           "status": "OK",
@@ -406,7 +406,7 @@
             ]
           },
           "candidateCount": 0,
-          "rawCandidateCount": 3,
+          "rawCandidateCount": 2,
           "paperResearch": {
             "enabled": true,
             "entryAllowed": true,
@@ -474,11 +474,11 @@
             "allowed": false,
             "market": "us",
             "strategy": "conservative_swing",
-            "sampleCount": 59,
+            "sampleCount": 61,
             "minSamples": 20,
-            "winRate": 0.3559,
+            "winRate": 0.377,
             "minWinRate": 0.45,
-            "avgReturnPct": -1.4312,
+            "avgReturnPct": -1.3354,
             "reason": "REALIZED_WIN_RATE_BELOW_GATE"
           },
           "evCalibrationGate": {
@@ -489,7 +489,7 @@
             "researchSelectionPolicy": "EV_NEUTRAL_STRATIFIED",
             "autoInverseApplied": false,
             "cleanWindowStart": "2026-07-10",
-            "rowSamples": 47,
+            "rowSamples": 49,
             "distinctSignalDates": 9,
             "trainDateSamples": 6,
             "holdoutDateSamples": 3,
@@ -500,16 +500,16 @@
               "holdoutDates": 6
             },
             "highMinusLowBootstrapCi95": [
-              -12.6908,
-              11.6667
+              -11.3224,
+              12.6008
             ],
-            "rowCorrelation": -0.1133,
-            "dateCorrelation": -0.1009,
-            "trainDateCorrelation": -0.8564,
-            "holdoutDateCorrelation": 0.3501,
-            "lowEvQuartileAvgPnlPct": -1.3614,
-            "highEvQuartileAvgPnlPct": -4.6201,
-            "highMinusLowPnlPct": -3.2588
+            "rowCorrelation": -0.1029,
+            "dateCorrelation": -0.2371,
+            "trainDateCorrelation": -0.8009,
+            "holdoutDateCorrelation": 0.0774,
+            "lowEvQuartileAvgPnlPct": -1.8152,
+            "highEvQuartileAvgPnlPct": -5.3848,
+            "highMinusLowPnlPct": -3.5696
           },
           "proofBoard": {
             "status": "OK",
@@ -719,11 +719,11 @@
           },
           "priceSession": {
             "market": "us",
-            "priceSession": "us_intraday",
-            "sessionLabel": "미장 장중",
-            "priceBasis": "미장 장중 · KIS 현재가 기준",
-            "nowKst": "2026-09-16T23:05:45.998507+09:00",
-            "nowLocal": "2026-09-16T10:05:45.998507-04:00",
+            "priceSession": "us_premarket",
+            "sessionLabel": "미장 장전",
+            "priceBasis": "미장 장전 · 프리마켓 업데이트 기준",
+            "nowKst": "2026-09-17T22:05:46.098448+09:00",
+            "nowLocal": "2026-09-17T09:05:46.098448-04:00",
             "isHoliday": false,
             "isReviewMode": false,
             "isUsDst": true
@@ -749,8 +749,8 @@
           }
         },
         "nav": {
-          "date": "2026-09-16",
-          "createdAt": "2026-09-16T23:05:46",
+          "date": "2026-09-17",
+          "createdAt": "2026-09-17T22:05:46",
           "market": "us",
           "agentId": "ml_rank_conservative_swing",
           "agentLabel": "ML Rank Conservative Swing",
@@ -758,11 +758,11 @@
           "state": "ALIVE",
           "seed": 5000.0,
           "cash": 4259.61,
-          "valuation": 745.44,
-          "portfolioValue": 5005.05,
-          "totalPnl": 5.05,
-          "totalReturnPct": 0.1,
-          "survivalPct": 100.1,
+          "valuation": 749.56,
+          "portfolioValue": 5009.17,
+          "totalPnl": 9.17,
+          "totalReturnPct": 0.18,
+          "survivalPct": 100.18,
           "positionCount": 5,
           "tradeCount": 7,
           "buyCount": 0,
@@ -1543,14 +1543,14 @@
     },
     "us": {
       "status": "OK",
-      "lastRunAt": "2026-09-16T23:05:46+09:00",
+      "lastRunAt": "2026-09-17T22:05:46+09:00",
       "market": "us",
       "execute": true,
       "repair": {
         "status": "OK",
-        "journalRows": 2569,
-        "beforeRows": 2569,
-        "afterRows": 2569,
+        "journalRows": 2597,
+        "beforeRows": 2597,
+        "afterRows": 2597,
         "changed": false,
         "droppedMissingId": 0,
         "droppedOrphan": 0,
@@ -1558,9 +1558,9 @@
       },
       "repairAfterEvaluation": {
         "status": "OK",
-        "journalRows": 2569,
-        "beforeRows": 2569,
-        "afterRows": 2569,
+        "journalRows": 2597,
+        "beforeRows": 2597,
+        "afterRows": 2597,
         "changed": false,
         "droppedMissingId": 0,
         "droppedOrphan": 0,
@@ -1568,9 +1568,9 @@
       },
       "evaluation": {
         "status": "OK",
-        "evaluated": 256,
+        "evaluated": 265,
         "outcomes": {
-          "PENDING": 240,
+          "PENDING": 249,
           "DATA_PENDING": 16
         }
       },
@@ -1578,13 +1578,13 @@
         "status": "RUNNING",
         "recordingStatus": "OK",
         "evaluationStatus": "OK",
-        "latestCapturedAt": "2026-09-16T22:08:23",
-        "latestEvaluatedAt": "2026-09-16T23:05:45"
+        "latestCapturedAt": "2026-09-17T21:52:09",
+        "latestEvaluatedAt": "2026-09-17T22:05:45"
       },
       "paper": {
         "status": "OK",
         "dryRun": false,
-        "createdAt": "2026-09-16T23:05:45",
+        "createdAt": "2026-09-17T22:05:45",
         "market": "us",
         "markets": {
           "us": {
@@ -1603,78 +1603,78 @@
               "seed": 5000.0,
               "cash": 4259.61,
               "invested": 727.87,
-              "valuation": 745.44,
-              "portfolioValue": 5005.05,
-              "unrealizedPnl": 17.57,
-              "totalPnl": 5.05,
-              "totalReturnPct": 0.1,
+              "valuation": 749.56,
+              "portfolioValue": 5009.17,
+              "unrealizedPnl": 21.68,
+              "totalPnl": 9.17,
+              "totalReturnPct": 0.18,
               "positionCount": 5,
               "tradeCount": 7
             },
             "liveMetrics": {
               "status": "OK",
               "proofStatus": "RUNNING",
-              "sampleCount": 41,
-              "navPointCount": 42,
-              "totalReturnPct": 0.1,
+              "sampleCount": 42,
+              "navPointCount": 43,
+              "totalReturnPct": 0.18,
               "mddPct": -0.6,
-              "sharpe": 0.33,
-              "winRate": 24.4,
+              "sharpe": 0.58,
+              "winRate": 26.2,
               "avgPeriodReturnPct": 0.0,
-              "cashPct": 85.1,
+              "cashPct": 85.0,
               "peakValue": 5019.61,
-              "currentValue": 5005.05,
-              "lastNavDate": "2026-09-16",
+              "currentValue": 5009.17,
+              "lastNavDate": "2026-09-17",
               "recentReturnsPct": [
-                -0.14,
                 0.0,
                 -0.22,
                 0.0,
                 0.28,
                 -0.0,
                 0.04,
-                -0.0
+                -0.0,
+                0.08
               ],
               "equityCurve": [
                 {
                   "index": 0,
-                  "value": 5001.34,
-                  "returnPct": 0.03
-                },
-                {
-                  "index": 1,
                   "value": 5019.61,
                   "returnPct": 0.39
                 },
                 {
-                  "index": 2,
+                  "index": 1,
                   "value": 5009.31,
                   "returnPct": 0.19
                 },
                 {
-                  "index": 3,
+                  "index": 2,
                   "value": 5002.45,
                   "returnPct": 0.05
                 },
                 {
-                  "index": 4,
+                  "index": 3,
                   "value": 5002.58,
                   "returnPct": 0.05
                 },
                 {
-                  "index": 5,
+                  "index": 4,
                   "value": 5016.69,
                   "returnPct": 0.33
                 },
                 {
-                  "index": 6,
+                  "index": 5,
                   "value": 5006.63,
                   "returnPct": 0.13
                 },
                 {
-                  "index": 7,
+                  "index": 6,
                   "value": 5007.33,
                   "returnPct": 0.15
+                },
+                {
+                  "index": 7,
+                  "value": 5000.21,
+                  "returnPct": 0.0
                 },
                 {
                   "index": 8,
@@ -1683,8 +1683,8 @@
                 },
                 {
                   "index": 9,
-                  "value": 5000.21,
-                  "returnPct": 0.0
+                  "value": 4989.41,
+                  "returnPct": -0.21
                 },
                 {
                   "index": 10,
@@ -1693,28 +1693,28 @@
                 },
                 {
                   "index": 11,
-                  "value": 4989.41,
-                  "returnPct": -0.21
-                },
-                {
-                  "index": 12,
                   "value": 5003.6,
                   "returnPct": 0.07
                 },
                 {
-                  "index": 13,
+                  "index": 12,
                   "value": 5003.4,
                   "returnPct": 0.07
                 },
                 {
-                  "index": 14,
+                  "index": 13,
                   "value": 5005.2,
                   "returnPct": 0.1
                 },
                 {
-                  "index": 15,
+                  "index": 14,
                   "value": 5005.05,
                   "returnPct": 0.1
+                },
+                {
+                  "index": 15,
+                  "value": 5009.17,
+                  "returnPct": 0.18
                 }
               ]
             },
@@ -1735,8 +1735,8 @@
             "survival": {
               "state": "ALIVE",
               "seed": 5000.0,
-              "portfolioValue": 5005.05,
-              "survivalPct": 100.1
+              "portfolioValue": 5009.17,
+              "survivalPct": 100.18
             },
             "proofBoard": {
               "status": "OK",
@@ -1949,7 +1949,7 @@
                 ]
               },
               "candidateCount": 0,
-              "rawCandidateCount": 3,
+              "rawCandidateCount": 2,
               "paperResearch": {
                 "enabled": true,
                 "entryAllowed": true,
@@ -2017,11 +2017,11 @@
                 "allowed": false,
                 "market": "us",
                 "strategy": "conservative_swing",
-                "sampleCount": 59,
+                "sampleCount": 61,
                 "minSamples": 20,
-                "winRate": 0.3559,
+                "winRate": 0.377,
                 "minWinRate": 0.45,
-                "avgReturnPct": -1.4312,
+                "avgReturnPct": -1.3354,
                 "reason": "REALIZED_WIN_RATE_BELOW_GATE"
               },
               "evCalibrationGate": {
@@ -2032,7 +2032,7 @@
                 "researchSelectionPolicy": "EV_NEUTRAL_STRATIFIED",
                 "autoInverseApplied": false,
                 "cleanWindowStart": "2026-07-10",
-                "rowSamples": 47,
+                "rowSamples": 49,
                 "distinctSignalDates": 9,
                 "trainDateSamples": 6,
                 "holdoutDateSamples": 3,
@@ -2043,16 +2043,16 @@
                   "holdoutDates": 6
                 },
                 "highMinusLowBootstrapCi95": [
-                  -12.6908,
-                  11.6667
+                  -11.3224,
+                  12.6008
                 ],
-                "rowCorrelation": -0.1133,
-                "dateCorrelation": -0.1009,
-                "trainDateCorrelation": -0.8564,
-                "holdoutDateCorrelation": 0.3501,
-                "lowEvQuartileAvgPnlPct": -1.3614,
-                "highEvQuartileAvgPnlPct": -4.6201,
-                "highMinusLowPnlPct": -3.2588
+                "rowCorrelation": -0.1029,
+                "dateCorrelation": -0.2371,
+                "trainDateCorrelation": -0.8009,
+                "holdoutDateCorrelation": 0.0774,
+                "lowEvQuartileAvgPnlPct": -1.8152,
+                "highEvQuartileAvgPnlPct": -5.3848,
+                "highMinusLowPnlPct": -3.5696
               },
               "proofBoard": {
                 "status": "OK",
@@ -2262,11 +2262,11 @@
               },
               "priceSession": {
                 "market": "us",
-                "priceSession": "us_intraday",
-                "sessionLabel": "미장 장중",
-                "priceBasis": "미장 장중 · KIS 현재가 기준",
-                "nowKst": "2026-09-16T23:05:45.998507+09:00",
-                "nowLocal": "2026-09-16T10:05:45.998507-04:00",
+                "priceSession": "us_premarket",
+                "sessionLabel": "미장 장전",
+                "priceBasis": "미장 장전 · 프리마켓 업데이트 기준",
+                "nowKst": "2026-09-17T22:05:46.098448+09:00",
+                "nowLocal": "2026-09-17T09:05:46.098448-04:00",
                 "isHoliday": false,
                 "isReviewMode": false,
                 "isUsDst": true
@@ -2292,8 +2292,8 @@
               }
             },
             "nav": {
-              "date": "2026-09-16",
-              "createdAt": "2026-09-16T23:05:46",
+              "date": "2026-09-17",
+              "createdAt": "2026-09-17T22:05:46",
               "market": "us",
               "agentId": "ml_rank_conservative_swing",
               "agentLabel": "ML Rank Conservative Swing",
@@ -2301,11 +2301,11 @@
               "state": "ALIVE",
               "seed": 5000.0,
               "cash": 4259.61,
-              "valuation": 745.44,
-              "portfolioValue": 5005.05,
-              "totalPnl": 5.05,
-              "totalReturnPct": 0.1,
-              "survivalPct": 100.1,
+              "valuation": 749.56,
+              "portfolioValue": 5009.17,
+              "totalPnl": 9.17,
+              "totalReturnPct": 0.18,
+              "survivalPct": 100.18,
               "positionCount": 5,
               "tradeCount": 7,
               "buyCount": 0,
