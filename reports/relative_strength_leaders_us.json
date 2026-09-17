@@ -1,7 +1,7 @@
 {
   "version": "relative-strength-v1",
   "market": "us",
-  "asOf": "2026-09-16",
+  "asOf": "2026-09-17",
   "regime": "BEAR",
   "status": "BEAR_DEFENSIVE",
   "lensNote": "Bear: RS dispersion is gone; rotate to low-volatility defensives (halve the drawdown) instead of chasing returns.",
@@ -10,94 +10,94 @@
   "laggardsToAvoid": [],
   "defensiveHolds": [
     {
-      "symbol": "SP500",
-      "rs60Pct": 1.06,
-      "relToIndexPp": -0.24,
-      "vol60Pct": 0.7
-    },
-    {
       "symbol": "BRK-B",
-      "rs60Pct": 6.37,
-      "relToIndexPp": 5.07,
-      "vol60Pct": 0.92
+      "rs60Pct": 4.16,
+      "relToIndexPp": 0.49,
+      "vol60Pct": 0.93
     },
     {
       "symbol": "JPM",
-      "rs60Pct": 5.26,
-      "relToIndexPp": 3.96,
+      "rs60Pct": 4.0,
+      "relToIndexPp": 0.33,
       "vol60Pct": 1.13
     },
     {
       "symbol": "PG",
-      "rs60Pct": -0.45,
-      "relToIndexPp": -1.74,
-      "vol60Pct": 1.18
+      "rs60Pct": -2.61,
+      "relToIndexPp": -6.28,
+      "vol60Pct": 1.15
     },
     {
       "symbol": "V",
-      "rs60Pct": 13.57,
-      "relToIndexPp": 12.28,
+      "rs60Pct": 12.55,
+      "relToIndexPp": 8.88,
       "vol60Pct": 1.26
     },
     {
       "symbol": "COST",
-      "rs60Pct": -6.06,
-      "relToIndexPp": -7.35,
+      "rs60Pct": -7.08,
+      "relToIndexPp": -10.75,
       "vol60Pct": 1.29
     },
     {
       "symbol": "BAC",
-      "rs60Pct": 0.92,
-      "relToIndexPp": -0.37,
+      "rs60Pct": -0.51,
+      "relToIndexPp": -4.18,
       "vol60Pct": 1.31
     },
     {
       "symbol": "MA",
-      "rs60Pct": 17.28,
-      "relToIndexPp": 15.98,
+      "rs60Pct": 15.87,
+      "relToIndexPp": 12.21,
       "vol60Pct": 1.36
     },
     {
       "symbol": "PFE",
-      "rs60Pct": 9.49,
-      "relToIndexPp": 8.19,
-      "vol60Pct": 1.38
+      "rs60Pct": 11.93,
+      "relToIndexPp": 8.27,
+      "vol60Pct": 1.37
     },
     {
       "symbol": "KO",
-      "rs60Pct": 10.49,
-      "relToIndexPp": 9.19,
+      "rs60Pct": 9.54,
+      "relToIndexPp": 5.87,
       "vol60Pct": 1.41
     },
     {
       "symbol": "MCD",
-      "rs60Pct": -7.97,
-      "relToIndexPp": -9.27,
+      "rs60Pct": -8.07,
+      "relToIndexPp": -11.73,
       "vol60Pct": 1.41
     },
     {
       "symbol": "PEP",
-      "rs60Pct": -4.53,
-      "relToIndexPp": -5.82,
+      "rs60Pct": -5.69,
+      "relToIndexPp": -9.36,
       "vol60Pct": 1.43
     },
     {
+      "symbol": "JNJ",
+      "rs60Pct": 12.64,
+      "relToIndexPp": 8.97,
+      "vol60Pct": 1.5
+    },
+    {
       "symbol": "UNH",
-      "rs60Pct": -7.73,
-      "relToIndexPp": -9.02,
+      "rs60Pct": -7.58,
+      "relToIndexPp": -11.24,
       "vol60Pct": 1.5
     },
     {
       "symbol": "CVX",
-      "rs60Pct": 20.84,
-      "relToIndexPp": 19.54,
+      "rs60Pct": 19.87,
+      "relToIndexPp": 16.2,
       "vol60Pct": 1.55
     },
     {
-      "symbol": "JNJ",
-      "rs60Pct": 15.56,
-      "relToIndexPp": 14.26,
-      "vol60Pct": 1.55
+      "symbol": "ABBV",
+      "rs60Pct": 11.65,
+      "relToIndexPp": 7.98,
+      "vol60Pct": 1.63
     }
   ],
   "note": "Research/paper only. Capital preservation, not return."
