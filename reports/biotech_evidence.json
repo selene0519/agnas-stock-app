@@ -1,6 +1,6 @@
 {
-  "status": "OK",
-  "generatedAt": "2026-09-17T21:51:33+00:00",
+  "status": "PARTIAL",
+  "generatedAt": "2026-09-17T23:28:07+00:00",
   "asOfDate": "2026-09-18",
   "count": 21,
   "items": [
@@ -34,52 +34,13 @@
         "sourceUrl": "https://clinicaltrials.gov/api/v2/studies?query.spons=Samsung+Biologics&pageSize=20&countTotal=true&format=json"
       },
       "pubMed": {
-        "status": "OK",
-        "queryCompany": "Samsung Biologics",
-        "publicationCountRecent5y": 7,
-        "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
-        "publications": [
-          {
-            "pmid": "41786693",
-            "title": "WWP1 gain-of-function drives developmental anoikis through TGFβ pathway during neurodevelopment.",
-            "publicationDate": "2026 Mar 6",
-            "journal": "Cell death discovery",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41786693/"
-          },
-          {
-            "pmid": "41691524",
-            "title": "Comprehensive Engineering of Ionizable Lipid Nanoparticles and mRNA Elements for Next-Generation Vaccines.",
-            "publicationDate": "2026 Mar 3",
-            "journal": "ACS nano",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41691524/"
-          },
-          {
-            "pmid": "41054970",
-            "title": "CD200 Promotes Gastric Cancer Progression and Metastasis by Inducing the β-catenin Signaling Pathway.",
-            "publicationDate": "2025 Oct",
-            "journal": "Journal of cellular physiology",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41054970/"
-          },
-          {
-            "pmid": "40776610",
-            "title": "Soluble receptor for advanced glycation end products attenuates sepsis-associated acute kidney injury.",
-            "publicationDate": "2025 Aug 8",
-            "journal": "Kidney research and clinical practice",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/40776610/"
-          },
-          {
-            "pmid": "38937372",
-            "title": "Stability of Protein Pharmaceuticals: Recent Advances.",
-            "publicationDate": "2024 Jul",
-            "journal": "Pharmaceutical research",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/38937372/"
-          }
-        ],
-        "source": "NCBI PubMed E-utilities",
-        "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22Samsung+Biologics%22%5BAffiliation%5D"
+        "status": "ERROR",
+        "error": "HTTPError"
       },
-      "status": "OK",
-      "errors": []
+      "status": "PARTIAL",
+      "errors": [
+        "PUBMED_UNAVAILABLE"
+      ]
     },
     {
       "market": "us",
@@ -211,45 +172,9 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "AbbVie",
-        "publicationCountRecent5y": 3218,
+        "publicationCountRecent5y": 0,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
-        "publications": [
-          {
-            "pmid": "42415230",
-            "title": "Comparison of epcoritamab, lenalidomide, and rituximab versus usual care in relapsed/refractory follicular lymphoma.",
-            "publicationDate": "2026 Dec 31",
-            "journal": "Oncoimmunology",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42415230/"
-          },
-          {
-            "pmid": "42683533",
-            "title": "Development of items to assess noticeability and sun sensitivity among patients with non-segmental vitiligo.",
-            "publicationDate": "2026 Dec",
-            "journal": "The Journal of dermatological treatment",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42683533/"
-          },
-          {
-            "pmid": "42594795",
-            "title": "Activity of Aztreonam-avibactam and Ceftazidime-Avibactam against Enterobacterales and Pseudomonas aeruginosa causing infections in patients hospitalized in hematology, oncology, and transplant units from United States medical centres (2019-2024).",
-            "publicationDate": "2026 Dec",
-            "journal": "Diagnostic microbiology and infectious disease",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42594795/"
-          },
-          {
-            "pmid": "42112622",
-            "title": "Long-term benefits of upadacitinib for Atopic Dermatitis: deep responses in patient-reported outcomes over 140 weeks from the Measure Up 1 and Measure Up 2 clinical trials.",
-            "publicationDate": "2026 Dec",
-            "journal": "The Journal of dermatological treatment",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42112622/"
-          },
-          {
-            "pmid": "42047110",
-            "title": "Subcutaneous foslevodopa/foscarbidopa (LDp/CDp) in advanced Parkinson's disease (aPD): societal cost impact analysis for the UK, France, Germany, Spain, and Canada.",
-            "publicationDate": "2026 Dec",
-            "journal": "Journal of medical economics",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42047110/"
-          }
-        ],
+        "publications": [],
         "source": "NCBI PubMed E-utilities",
         "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22AbbVie%22%5BAffiliation%5D"
       },
@@ -496,45 +421,9 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Amgen",
-        "publicationCountRecent5y": 2259,
+        "publicationCountRecent5y": 0,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
-        "publications": [
-          {
-            "pmid": "42711755",
-            "title": "Frontline therapies for adult patients with newly diagnosed Philadelphia chromosome-negative B-cell acute lymphoblastic leukemia: a systematic literature review.",
-            "publicationDate": "2026 Dec 31",
-            "journal": "Hematology (Amsterdam, Netherlands)",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42711755/"
-          },
-          {
-            "pmid": "42453072",
-            "title": "Setting expectations for current and future directions of native mass spectrometry in the biopharmaceutical industry.",
-            "publicationDate": "2026 Dec",
-            "journal": "mAbs",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42453072/"
-          },
-          {
-            "pmid": "41709689",
-            "title": "Treatment patterns of bone-targeted agents for the prevention of skeletal-related events in multiple myeloma in Bulgaria: a cross-sectional chart review study.",
-            "publicationDate": "2026 Dec",
-            "journal": "Hematology (Amsterdam, Netherlands)",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41709689/"
-          },
-          {
-            "pmid": "41383027",
-            "title": "Fine-tuning affinity and spacer design enhances T cell potency in DLL3 and BCMA CAR T cells.",
-            "publicationDate": "2026 Dec",
-            "journal": "mAbs",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41383027/"
-          },
-          {
-            "pmid": "42476440",
-            "title": "Testicular Toxicity. An International Consortium for Innovation and Quality in Pharmaceutical Development (IQ) DruSafe Industry-Wide Survey.",
-            "publicationDate": "2026 Nov",
-            "journal": "Regulatory toxicology and pharmacology : RTP",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42476440/"
-          }
-        ],
+        "publications": [],
         "source": "NCBI PubMed E-utilities",
         "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22Amgen%22%5BAffiliation%5D"
       },
@@ -727,45 +616,9 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Bristol-Myers Squibb",
-        "publicationCountRecent5y": 3013,
+        "publicationCountRecent5y": 0,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
-        "publications": [
-          {
-            "pmid": "42258343",
-            "title": "A global model for symptomatic obstructive hypertrophic cardiomyopathy to assess the cost-effectiveness of mavacamten: results from a Dutch societal perspective.",
-            "publicationDate": "2026 Dec",
-            "journal": "Journal of medical economics",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42258343/"
-          },
-          {
-            "pmid": "42253269",
-            "title": "Subcutaneous drug delivery of high concentration antibody products - part 2: formulation, device options, and clinical bridging strategies for patient-centric commercial presentations.",
-            "publicationDate": "2026 Dec",
-            "journal": "mAbs",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42253269/"
-          },
-          {
-            "pmid": "42105309",
-            "title": "Cost-effectiveness analysis of xanomeline and trospium chloride for the treatment of adults with schizophrenia in the US.",
-            "publicationDate": "2026 Dec",
-            "journal": "Journal of medical economics",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42105309/"
-          },
-          {
-            "pmid": "42020185",
-            "title": "Value frameworks for digital health technologies: a comparative analysis.",
-            "publicationDate": "2026 Dec",
-            "journal": "Journal of medical economics",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42020185/"
-          },
-          {
-            "pmid": "41725198",
-            "title": "Plain language summary examining clinical event related costs associated with changing medication from apixaban to rivaroxaban in people with non-valvular atrial fibrillation in the USA and Germany.",
-            "publicationDate": "2026 Dec",
-            "journal": "Journal of medical economics",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41725198/"
-          }
-        ],
+        "publications": [],
         "source": "NCBI PubMed E-utilities",
         "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22Bristol-Myers+Squibb%22%5BAffiliation%5D"
       },
@@ -870,45 +723,9 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Gilead Sciences",
-        "publicationCountRecent5y": 1591,
+        "publicationCountRecent5y": 0,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
-        "publications": [
-          {
-            "pmid": "42596901",
-            "title": "Impact on health outcomes of treating all eligible large B-cell lymphoma patients with axicabtagene ciloleucel in Portugal - A modeling approach.",
-            "publicationDate": "2026 Dec",
-            "journal": "Journal of medical economics",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42596901/"
-          },
-          {
-            "pmid": "42476440",
-            "title": "Testicular Toxicity. An International Consortium for Innovation and Quality in Pharmaceutical Development (IQ) DruSafe Industry-Wide Survey.",
-            "publicationDate": "2026 Nov",
-            "journal": "Regulatory toxicology and pharmacology : RTP",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42476440/"
-          },
-          {
-            "pmid": "42482164",
-            "title": "Model-Based Analysis with Mechanistic Insights to CAR-T-Cell Therapy Kinetics: Case Study with Axicabtagene Ciloleucel and Brexucabtagene Autoleucel.",
-            "publicationDate": "2026 Oct",
-            "journal": "Clinical pharmacology and therapeutics",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42482164/"
-          },
-          {
-            "pmid": "42392928",
-            "title": "Reader Comment Regarding Implementation and Outcomes of Routine HIV Screening in the Emergency Department of an Urban, Tertiary Care Hospital.",
-            "publicationDate": "2026 Oct",
-            "journal": "The American journal of emergency medicine",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42392928/"
-          },
-          {
-            "pmid": "42735890",
-            "title": "Remdesivir maintains antiviral potency against clinically relevant SARS-CoV-2 Nsp12 substitutions.",
-            "publicationDate": "2026 Sep 14",
-            "journal": "Antiviral research",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42735890/"
-          }
-        ],
+        "publications": [],
         "source": "NCBI PubMed E-utilities",
         "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22Gilead+Sciences%22%5BAffiliation%5D"
       },
@@ -950,45 +767,9 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Johnson & Johnson",
-        "publicationCountRecent5y": 2401,
+        "publicationCountRecent5y": 0,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
-        "publications": [
-          {
-            "pmid": "42679119",
-            "title": "Clinical features and management of GPRC5D-associated adverse events in novel GPRC5D × CD3 bispecific talquetamab-treated relapsed/refractory multiple myeloma patients: the MonumenTAL-1 China cohort experience.",
-            "publicationDate": "2026 Dec 31",
-            "journal": "Hematology (Amsterdam, Netherlands)",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42679119/"
-          },
-          {
-            "pmid": "42385331",
-            "title": "Application of two-dimensional liquid chromatography as a complementary technique to circular dichroism spectroscopy and high-resolution mass spectrometry for the characterization of GalNAc-siRNA conjugates.",
-            "publicationDate": "2026 Dec 15",
-            "journal": "Journal of pharmaceutical and biomedical analysis",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42385331/"
-          },
-          {
-            "pmid": "42603561",
-            "title": "Impact of psychiatric medication on suicide reattempt risk in patients with depression: A retrospective cohort study using national health insurance data in Korea.",
-            "publicationDate": "2026 Dec 1",
-            "journal": "Journal of affective disorders",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42603561/"
-          },
-          {
-            "pmid": "42485833",
-            "title": "Cold-chain-free CRISPR diagnostics enabled by magnesium-tannic acid nanoencapsulation of the complete detection system.",
-            "publicationDate": "2026 Dec",
-            "journal": "Colloids and surfaces. B, Biointerfaces",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42485833/"
-          },
-          {
-            "pmid": "42474440",
-            "title": "Hospital resource utilization in patients with generalized myasthenia gravis treated with nipocalimab: results from the VIVACITY-MG3 study.",
-            "publicationDate": "2026 Dec",
-            "journal": "Journal of medical economics",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42474440/"
-          }
-        ],
+        "publications": [],
         "source": "NCBI PubMed E-utilities",
         "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22Johnson+%26+Johnson%22%5BAffiliation%5D"
       },
@@ -1224,45 +1005,9 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Eli Lilly and Company",
-        "publicationCountRecent5y": 2828,
+        "publicationCountRecent5y": 0,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
-        "publications": [
-          {
-            "pmid": "42100922",
-            "title": "Machine learning predictions of IgG1 and IgG4 self-association and high-concentration solution properties.",
-            "publicationDate": "2026 Dec 31",
-            "journal": "mAbs",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42100922/"
-          },
-          {
-            "pmid": "41275875",
-            "title": "Orforglipron, an oral small-molecule GLP-1 receptor agonist, for the treatment of obesity in people with type 2 diabetes (ATTAIN-2): a phase 3, double-blind, randomised, multicentre, placebo-controlled trial.",
-            "publicationDate": "2026 Dec 20",
-            "journal": "Lancet (London, England)",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41275875/"
-          },
-          {
-            "pmid": "42021523",
-            "title": "Enhancing economic modelling in obesity: integrating novel type 2 diabetes progression & obstructive sleep apnea remission - a UK case study.",
-            "publicationDate": "2026 Dec",
-            "journal": "Journal of medical economics",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42021523/"
-          },
-          {
-            "pmid": "42012820",
-            "title": "Cost-effectiveness of tirzepatide versus semaglutide for patients with obesity or overweight in the US: evidence from the SURMOUNT-5 head-to-head phase-3 trial.",
-            "publicationDate": "2026 Dec",
-            "journal": "Journal of medical economics",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42012820/"
-          },
-          {
-            "pmid": "41814992",
-            "title": "Lebrikizumab off-therapy remission sustained up to 38 weeks in atopic dermatitis.",
-            "publicationDate": "2026 Dec",
-            "journal": "The Journal of dermatological treatment",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41814992/"
-          }
-        ],
+        "publications": [],
         "source": "NCBI PubMed E-utilities",
         "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22Eli+Lilly+and+Company%22%5BAffiliation%5D"
       },
@@ -1445,45 +1190,9 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Merck Sharp & Dohme",
-        "publicationCountRecent5y": 149,
+        "publicationCountRecent5y": 0,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
-        "publications": [
-          {
-            "pmid": "42322703",
-            "title": "Challenging the myths of subcutaneous delivery: An industry expert perspective.",
-            "publicationDate": "2026 Aug 10",
-            "journal": "Journal of controlled release : official journal of the Controlled Release Society",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42322703/"
-          },
-          {
-            "pmid": "42314461",
-            "title": "Removal notice to 'Challenging the myths of subcutaneous delivery: An industry expert perspective' [Journal of Controlled Release 393 (2026) 114800].",
-            "publicationDate": "2026 Aug 10",
-            "journal": "Journal of controlled release : official journal of the Controlled Release Society",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42314461/"
-          },
-          {
-            "pmid": "42567171",
-            "title": "Safety and immunogenicity of one or two doses of the rVSVΔG-ZEBOV-GP Ebola virus vaccine in adults and adolescents living with HIV: a phase 2, multicentre, double-blind, randomised, placebo-controlled trial.",
-            "publicationDate": "2026 Aug 7",
-            "journal": "The lancet. HIV",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42567171/"
-          },
-          {
-            "pmid": "42376205",
-            "title": "Real-world clinical outcomes in patients with CLL previously treated with covalent BTKi and BCL2i regimens.",
-            "publicationDate": "2026 Aug",
-            "journal": "Blood neoplasia",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42376205/"
-          },
-          {
-            "pmid": "42564088",
-            "title": "Real-world treatment patterns in stage III and IV melanoma patients: insights from a global multi-center chart review study.",
-            "publicationDate": "2026",
-            "journal": "Frontiers in immunology",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42564088/"
-          }
-        ],
+        "publications": [],
         "source": "NCBI PubMed E-utilities",
         "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22Merck+Sharp+%26+Dohme%22%5BAffiliation%5D"
       },
@@ -1675,45 +1384,9 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Novo Nordisk",
-        "publicationCountRecent5y": 6290,
+        "publicationCountRecent5y": 0,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
-        "publications": [
-          {
-            "pmid": "42381379",
-            "title": "Multi-omics analysis of saccharomyces boulardii supplementation reveals coordinated microbiome, metabolic, and immune signaling changes accompanying tumor suppression.",
-            "publicationDate": "2026 Dec 31",
-            "journal": "Gut microbes",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42381379/"
-          },
-          {
-            "pmid": "42287270",
-            "title": "Increasing trends in adult obesity in Greenland: a serial cross-sectional study from 1999 through 2018.",
-            "publicationDate": "2026 Dec 31",
-            "journal": "International journal of circumpolar health",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42287270/"
-          },
-          {
-            "pmid": "42200306",
-            "title": "Prediction of antibody non-specificity using protein language models and biophysical parameters.",
-            "publicationDate": "2026 Dec 31",
-            "journal": "mAbs",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42200306/"
-          },
-          {
-            "pmid": "42383251",
-            "title": "Transcriptional regulatory network differences between six industrial Escherichia coli strains.",
-            "publicationDate": "2026 Dec",
-            "journal": "Metabolic engineering communications",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42383251/"
-          },
-          {
-            "pmid": "42254540",
-            "title": "Profiling heterologous 3' terminator-dependent expression variation in Aspergillus oryzae.",
-            "publicationDate": "2026 Dec",
-            "journal": "Synthetic and systems biotechnology",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42254540/"
-          }
-        ],
+        "publications": [],
         "source": "NCBI PubMed E-utilities",
         "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22Novo+Nordisk%22%5BAffiliation%5D"
       },
@@ -1909,45 +1582,9 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Pfizer",
-        "publicationCountRecent5y": 6962,
+        "publicationCountRecent5y": 0,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
-        "publications": [
-          {
-            "pmid": "42273738",
-            "title": "Discovery and optimization of marstacimab, a human monoclonal antibody targeting tissue factor pathway inhibitor for the treatment of hemophilia A and B.",
-            "publicationDate": "2026 Dec 31",
-            "journal": "mAbs",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42273738/"
-          },
-          {
-            "pmid": "42728842",
-            "title": "Clinical and economic impact of bivalent respiratory syncytial virus prefusion F (RSVpreF) vaccination in older adults: a cost-effectiveness analysis for Chile.",
-            "publicationDate": "2026 Dec",
-            "journal": "Expert review of vaccines",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42728842/"
-          },
-          {
-            "pmid": "42709039",
-            "title": "Cost-effectiveness analysis of elranatamab versus physician's choice of treatment (non-BCMA-directed regimens) in patients with triple class exposed multiple myeloma in Japan.",
-            "publicationDate": "2026 Dec",
-            "journal": "Journal of medical economics",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42709039/"
-          },
-          {
-            "pmid": "42693756",
-            "title": "Real-world healthcare resource utilization and cost burden of COVID-19 in commercially insured adults at high-risk of severe disease in the US: a retrospective database analysis.",
-            "publicationDate": "2026 Dec",
-            "journal": "Journal of medical economics",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42693756/"
-          },
-          {
-            "pmid": "42677503",
-            "title": "Costs and healthcare resource utilization after COVID-19 hospitalization among US Medicare patients: a retrospective claims analysis.",
-            "publicationDate": "2026 Dec",
-            "journal": "Journal of medical economics",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42677503/"
-          }
-        ],
+        "publications": [],
         "source": "NCBI PubMed E-utilities",
         "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22Pfizer%22%5BAffiliation%5D"
       },
@@ -2137,45 +1774,9 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Regeneron Pharmaceuticals",
-        "publicationCountRecent5y": 1491,
+        "publicationCountRecent5y": 0,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
-        "publications": [
-          {
-            "pmid": "42635354",
-            "title": "Dupilumab treatment improves signs, symptoms, and quality of life in children aged 6 months to 11 years with moderate-to-severe atopic dermatitis: a plain language summary.",
-            "publicationDate": "2026 Dec",
-            "journal": "The Journal of dermatological treatment",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42635354/"
-          },
-          {
-            "pmid": "42223292",
-            "title": "Benefit-risk profile comparison between dupilumab and upadacitinib: a structured benefit-risk assessment of the Heads Up trial.",
-            "publicationDate": "2026 Dec",
-            "journal": "The Journal of dermatological treatment",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42223292/"
-          },
-          {
-            "pmid": "41808464",
-            "title": "Dupilumab subgroup responder analysis: a post hoc analysis from LIBERTY PRIME and PRIME2 in prurigo nodularis.",
-            "publicationDate": "2026 Dec",
-            "journal": "The Journal of dermatological treatment",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41808464/"
-          },
-          {
-            "pmid": "41702851",
-            "title": "Prurigo Nodularis paTient Reported burdEn of sicKness in Europe (PN TREK Europe): a cross-sectional survey of patient-reported burden of disease in patients with PN from four countries in Europe.",
-            "publicationDate": "2026 Dec",
-            "journal": "The Journal of dermatological treatment",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41702851/"
-          },
-          {
-            "pmid": "42155371",
-            "title": "Monitoring disulfide scrambling of monoclonal antibody biologics using liquid chromatography-mass spectrometry coupled to online electrochemical reduction.",
-            "publicationDate": "2026 Oct 15",
-            "journal": "Journal of pharmaceutical and biomedical analysis",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42155371/"
-          }
-        ],
+        "publications": [],
         "source": "NCBI PubMed E-utilities",
         "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22Regeneron+Pharmaceuticals%22%5BAffiliation%5D"
       },
@@ -2450,45 +2051,9 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Vertex Pharmaceuticals",
-        "publicationCountRecent5y": 367,
+        "publicationCountRecent5y": 0,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
-        "publications": [
-          {
-            "pmid": "42728802",
-            "title": "Retrospective database analysis of annual direct costs and complications for patients with type 1 diabetes and hypoglycemia in the US.",
-            "publicationDate": "2026 Dec",
-            "journal": "Journal of medical economics",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42728802/"
-          },
-          {
-            "pmid": "42084418",
-            "title": "The incidence of opioid use disorder among people with acute and chronic pain managed with prescription opioids in the United States: economic and societal burden.",
-            "publicationDate": "2026 Dec",
-            "journal": "Journal of medical economics",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42084418/"
-          },
-          {
-            "pmid": "42054156",
-            "title": "Clinical burden and healthcare resource utilization after allogeneic hematopoietic stem cell transplant for sickle cell disease or β-thalassemia.",
-            "publicationDate": "2026 Dec",
-            "journal": "Journal of medical economics",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42054156/"
-          },
-          {
-            "pmid": "41955126",
-            "title": "Cost-effectiveness of exagamglogene autotemcel gene-edited therapy in patients with transfusion-dependent β-thalassemia in the United States.",
-            "publicationDate": "2026 Dec",
-            "journal": "Journal of medical economics",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41955126/"
-          },
-          {
-            "pmid": "41779957",
-            "title": "Reply: clinical and methodological uncertainty in the economic evaluation of suzetrigine.",
-            "publicationDate": "2026 Dec",
-            "journal": "Journal of medical economics",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41779957/"
-          }
-        ],
+        "publications": [],
         "source": "NCBI PubMed E-utilities",
         "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22Vertex+Pharmaceuticals%22%5BAffiliation%5D"
       },
@@ -2734,45 +2299,9 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Yuhan Corporation",
-        "publicationCountRecent5y": 29,
+        "publicationCountRecent5y": 0,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
-        "publications": [
-          {
-            "pmid": "42622433",
-            "title": "Quality of life outcomes with a new sustained‑release pregabalin in a phase 3 trial of peripheral neuropathic pain.",
-            "publicationDate": "2026 Aug 20",
-            "journal": "Current medical research and opinion",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42622433/"
-          },
-          {
-            "pmid": "42594832",
-            "title": "A multiple ascending dose, phase1b study to evaluate safety, tolerability, pharmacokinetics, and pharmacodynamics of lesigercept, a long-acting IgE(Trap)-Fc fusion protein, in participants with atopy or allergic diseases.",
-            "publicationDate": "2026 Aug 13",
-            "journal": "International immunopharmacology",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42594832/"
-          },
-          {
-            "pmid": "42416312",
-            "title": "Comparison of pharmacokinetics and safety of fixed-dose versus loose combination of atorvastatin/fenofibrate 10/145 mg in healthy Korean participants.",
-            "publicationDate": "2026 Jun",
-            "journal": "Translational and clinical pharmacology",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42416312/"
-          },
-          {
-            "pmid": "41804659",
-            "title": "Pharmacokinetic Comparison Between a Fixed-Dose Combination of Atorvastatin/Fenofibrate 20/145 mg and the Corresponding Individual Components.",
-            "publicationDate": "2026 Mar",
-            "journal": "Clinical pharmacology in drug development",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41804659/"
-          },
-          {
-            "pmid": "41540745",
-            "title": "A Mechanism-Based Multi-Level Population PK/PD Model for Potassium-Competitive Acid Blockers.",
-            "publicationDate": "2026 Jan",
-            "journal": "CPT: pharmacometrics & systems pharmacology",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41540745/"
-          }
-        ],
+        "publications": [],
         "source": "NCBI PubMed E-utilities",
         "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22Yuhan+Corporation%22%5BAffiliation%5D"
       },
@@ -3031,45 +2560,9 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Celltrion",
-        "publicationCountRecent5y": 104,
+        "publicationCountRecent5y": 0,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
-        "publications": [
-          {
-            "pmid": "42542998",
-            "title": "Population Pharmacokinetic Comparability of CT-P16 Versus EU-Avastin(®) and US-Avastin(®) in Healthy Subjects and Patients with Non-Squamous Non-Small Cell Lung Cancer.",
-            "publicationDate": "2026 Sep",
-            "journal": "BioDrugs : clinical immunotherapeutics, biopharmaceuticals and gene therapy",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42542998/"
-          },
-          {
-            "pmid": "42611120",
-            "title": "Harmonising Pharmacovigilance and Pharmacoepidemiology: Lessons from Europe for Cohesive Medicines Safety Science.",
-            "publicationDate": "2026 Aug 18",
-            "journal": "Drug safety",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42611120/"
-          },
-          {
-            "pmid": "42488031",
-            "title": "Subcutaneous infliximab in the treatment of patients with perianal fistulizing Crohn's disease: current evidence and emerging roles.",
-            "publicationDate": "2026",
-            "journal": "Therapeutic advances in gastroenterology",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42488031/"
-          },
-          {
-            "pmid": "41849243",
-            "title": "Recovery of response and long-term outcomes following loss of response and dose escalation of subcutaneous infliximab: a post hoc analysis of the LIBERTY-CD & LIBERTY-UC trials.",
-            "publicationDate": "2026 Jul 1",
-            "journal": "Inflammatory bowel diseases",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41849243/"
-          },
-          {
-            "pmid": "42200517",
-            "title": "Shared challenges in the management of difficult-to-treat chronic inflammatory diseases: expert perspectives.",
-            "publicationDate": "2026 Jun",
-            "journal": "Expert opinion on biological therapy",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42200517/"
-          }
-        ],
+        "publications": [],
         "source": "NCBI PubMed E-utilities",
         "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22Celltrion%22%5BAffiliation%5D"
       },
@@ -3110,45 +2603,9 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Medytox",
-        "publicationCountRecent5y": 18,
+        "publicationCountRecent5y": 0,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
-        "publications": [
-          {
-            "pmid": "42401423",
-            "title": "A Randomized, Double-blind, Placebo-controlled, Dose Ranging, Parallel, Multi-Centre, Phase II Study to Evaluate the Efficacy and Safety of MT921 in Subjects with Moderate to Severe Submental Fat.",
-            "publicationDate": "2026 Jul 5",
-            "journal": "Aesthetic surgery journal",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42401423/"
-          },
-          {
-            "pmid": "41304889",
-            "title": "Comparison of Cholic Acid (MT921) and Deoxycholic Acid (DCA) in Fat Reduction Efficacy and Skin Adverse Reactions in Mini Pigs and Rodent Models.",
-            "publicationDate": "2025 Oct 30",
-            "journal": "Pharmaceuticals (Basel, Switzerland)",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41304889/"
-          },
-          {
-            "pmid": "40398669",
-            "title": "Advancements on heparin-based hydrogel/scaffolds in biomedical and tissue engineering applications: Delivery carrier and pre-clinical implications.",
-            "publicationDate": "2025 Jun 30",
-            "journal": "International journal of pharmaceutics",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/40398669/"
-          },
-          {
-            "pmid": "40194579",
-            "title": "Silk fibroin: An innovative protein macromolecule-based hydrogel/ scaffold revolutionizing breast cancer treatment and diagnosis - Mechanisms, advancements, and targeting capabilities.",
-            "publicationDate": "2025 May",
-            "journal": "International journal of biological macromolecules",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/40194579/"
-          },
-          {
-            "pmid": "40218949",
-            "title": "A 12-Week, Randomized, Double-Blind, Placebo-Controlled Study to Evaluate the Efficacy and Safety of Lactobacillus plantarum LMT1-48 on Body Fat Loss.",
-            "publicationDate": "2025 Mar 28",
-            "journal": "Nutrients",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/40218949/"
-          }
-        ],
+        "publications": [],
         "source": "NCBI PubMed E-utilities",
         "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22Medytox%22%5BAffiliation%5D"
       },
@@ -3395,45 +2852,9 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Hanmi Pharmaceutical",
-        "publicationCountRecent5y": 65,
+        "publicationCountRecent5y": 0,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
-        "publications": [
-          {
-            "pmid": "42046999",
-            "title": "Topical corticosteroid use and risk of type 2 diabetes mellitus: a nationwide cohort study.",
-            "publicationDate": "2026 Aug 18",
-            "journal": "The British journal of dermatology",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42046999/"
-          },
-          {
-            "pmid": "42593919",
-            "title": "Discovery of Reversible Lysine-Specific Demethylase 1 Inhibitors with Pyrazole Core for Small Cell Lung Cancer Treatment.",
-            "publicationDate": "2026 Aug 13",
-            "journal": "Journal of medicinal chemistry",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42593919/"
-          },
-          {
-            "pmid": "41944580",
-            "title": "Prevalence and Risk Factors of Deep Spinal Infection after Single-shot Epidural Injections: A Nationwide Cohort Study of 3.8 Million Pain Outpatients.",
-            "publicationDate": "2026 Jul 1",
-            "journal": "Anesthesiology",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41944580/"
-          },
-          {
-            "pmid": "41670573",
-            "title": "Single-Pill Low-Dose Triple Combination Therapy vs Standard-Dose Monotherapy in Patients With Mild-to-Moderate Hypertension.",
-            "publicationDate": "2026 May 12",
-            "journal": "Journal of the American College of Cardiology",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41670573/"
-          },
-          {
-            "pmid": "42024557",
-            "title": "Personalized Smartphone Messaging for Secondary Prevention After Percutaneous Coronary Intervention: Randomized Controlled Trial.",
-            "publicationDate": "2026 Apr 23",
-            "journal": "Journal of medical Internet research",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42024557/"
-          }
-        ],
+        "publications": [],
         "source": "NCBI PubMed E-utilities",
         "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22Hanmi+Pharmaceutical%22%5BAffiliation%5D"
       },
@@ -3525,31 +2946,9 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Alteogen",
-        "publicationCountRecent5y": 3,
+        "publicationCountRecent5y": 0,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
-        "publications": [
-          {
-            "pmid": "42641930",
-            "title": "Effect of berahyaluronidase alfa on subcutaneous absorption and local tolerability of ALT-P7, an antibody-drug conjugate in preclinical studies.",
-            "publicationDate": "2026 Aug 25",
-            "journal": "Journal of controlled release : official journal of the Controlled Release Society",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42641930/"
-          },
-          {
-            "pmid": "40892310",
-            "title": "The Safety, Tolerability, and Pharmacokinetics of ALT-BB4 (A Novel Recombinant Hyaluronidase): A Randomized, Double-Blinded, Placebo-Controlled, Phase 1 Study in Healthy Volunteers.",
-            "publicationDate": "2025 Nov",
-            "journal": "Dermatology and therapy",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/40892310/"
-          },
-          {
-            "pmid": "39722545",
-            "title": "Cryo-EM Structure of Human Hyaluronidase PH-20.",
-            "publicationDate": "2025 May",
-            "journal": "Proteins",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/39722545/"
-          }
-        ],
+        "publications": [],
         "source": "NCBI PubMed E-utilities",
         "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22Alteogen%22%5BAffiliation%5D"
       },
@@ -3773,45 +3172,9 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "LigaChem Biosciences",
-        "publicationCountRecent5y": 7,
+        "publicationCountRecent5y": 0,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
-        "publications": [
-          {
-            "pmid": "42467368",
-            "title": "Non-Cytopathic Mammalian Orthoreovirus Infection Triggers Innate Immune Responses in Human Tonsil-Derived Mesenchymal Stem Cells: Implications for Cell Therapy Quality Control.",
-            "publicationDate": "2026 Aug",
-            "journal": "Tissue engineering and regenerative medicine",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42467368/"
-          },
-          {
-            "pmid": "42031062",
-            "title": "Inhalable nanohybrid of delpazolid enhances antimicrobial host defense against mycobacterial pulmonary infection.",
-            "publicationDate": "2026 Jul 10",
-            "journal": "Journal of controlled release : official journal of the Controlled Release Society",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42031062/"
-          },
-          {
-            "pmid": "42353115",
-            "title": "Suppressed SF3B1 Expression Lowers METTL3 Transcription and m(6)A RNA Expression.",
-            "publicationDate": "2026 Jun 15",
-            "journal": "International journal of molecular sciences",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42353115/"
-          },
-          {
-            "pmid": "41705840",
-            "title": "Preclinical and clinical evaluation of vancomycin plus delpazolid combination therapy for MRSA bacteremia: a multicenter, double-blinded, randomized, parallel design, phase IIa clinical trial.",
-            "publicationDate": "2026 Apr 7",
-            "journal": "Microbiology spectrum",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41705840/"
-          },
-          {
-            "pmid": "40645198",
-            "title": "Delpazolid in combination with bedaquiline, delamanid, and moxifloxacin for pulmonary tuberculosis (PanACEA-DECODE-01): a prospective, randomised, open-label, phase 2b, dose-finding trial.",
-            "publicationDate": "2025 Nov",
-            "journal": "The Lancet. Infectious diseases",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/40645198/"
-          }
-        ],
+        "publications": [],
         "source": "NCBI PubMed E-utilities",
         "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22LigaChem+Biosciences%22%5BAffiliation%5D"
       },
@@ -3930,45 +3293,9 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "ABL Bio",
-        "publicationCountRecent5y": 19,
+        "publicationCountRecent5y": 0,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
-        "publications": [
-          {
-            "pmid": "42731893",
-            "title": "Preclinical development of ABL206, a novel bispecific antibody-drug conjugate targeting B7-H3 and ROR1.",
-            "publicationDate": "2026 Dec",
-            "journal": "mAbs",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42731893/"
-          },
-          {
-            "pmid": "41645963",
-            "title": "Expanding the horizons of cancer therapy with next-generation 4-1BB agonists: a review of molecular and clinical strategies to maximize efficacy and ensure safety.",
-            "publicationDate": "2026 Dec",
-            "journal": "mAbs",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41645963/"
-          },
-          {
-            "pmid": "42007988",
-            "title": "ABL209 (NEOK002) : Designing an EGFRxMUC1 bispecific TOP1i ADC with promising anti-tumor activity and enhanced therapeutic window.",
-            "publicationDate": "2026 Apr 20",
-            "journal": "Molecular cancer therapeutics",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42007988/"
-          },
-          {
-            "pmid": "40586719",
-            "title": "A First-in-Human Study of Givastomig, a CLDN18.2 and 4-1BB Bispecific Antibody, as Monotherapy in Patients with CLDN18.2-Positive Advanced or Metastatic Solid Tumors.",
-            "publicationDate": "2025 Dec 1",
-            "journal": "Clinical cancer research : an official journal of the American Association for Cancer Research",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/40586719/"
-          },
-          {
-            "pmid": "40287131",
-            "title": "Differential polyamine metabolism in CHO cell lines: Insights into cell growth and antibody quality.",
-            "publicationDate": "2025 Sep 25",
-            "journal": "New biotechnology",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/40287131/"
-          }
-        ],
+        "publications": [],
         "source": "NCBI PubMed E-utilities",
         "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22ABL+Bio%22%5BAffiliation%5D"
       },
@@ -4086,45 +3413,9 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Classys",
-        "publicationCountRecent5y": 7,
+        "publicationCountRecent5y": 0,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
-        "publications": [
-          {
-            "pmid": "41438879",
-            "title": "Efficacy of high-intensity focused ultrasound for treating upper and lower eyelid sagging.",
-            "publicationDate": "2026 Mar",
-            "journal": "JPRAS open",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41438879/"
-          },
-          {
-            "pmid": "40355620",
-            "title": "Efficacy and Safety of High-Intensity Focused Ultrasound (HIFU) on Reduction of Unwanted Submental Fat in Asian Patients.",
-            "publicationDate": "2025 Jul",
-            "journal": "Aesthetic plastic surgery",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/40355620/"
-          },
-          {
-            "pmid": "40447894",
-            "title": "Correction: Efficacy and Safety of High-Intensity Focused Ultrasound (HIFU) on Reduction of Unwanted Submental Fat in Asian Patients.",
-            "publicationDate": "2025 Jun",
-            "journal": "Aesthetic plastic surgery",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/40447894/"
-          },
-          {
-            "pmid": "39326871",
-            "title": "Noninvasive high-intensity focused ultrasound for skin brightening efficacy using a topical agent containing glutathione and hyaluronic acid.",
-            "publicationDate": "2024 Dec",
-            "journal": "The Journal of dermatological treatment",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/39326871/"
-          },
-          {
-            "pmid": "36478423",
-            "title": "Efficacy and Safety of Cold-Induced Noninvasive Targeted Fat Reduction in Pseudogynecomastia.",
-            "publicationDate": "2022 Dec",
-            "journal": "Annals of dermatology",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/36478423/"
-          }
-        ],
+        "publications": [],
         "source": "NCBI PubMed E-utilities",
         "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22Classys%22%5BAffiliation%5D"
       },
@@ -4163,45 +3454,9 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "SK Biopharmaceuticals",
-        "publicationCountRecent5y": 9,
+        "publicationCountRecent5y": 0,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
-        "publications": [
-          {
-            "pmid": "42663528",
-            "title": "Long-term efficacy of adjunctive cenobamate: Open-label extension of a randomized, placebo-controlled study in a multinational Asian population.",
-            "publicationDate": "2026 Aug 28",
-            "journal": "Epilepsia",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42663528/"
-          },
-          {
-            "pmid": "41230998",
-            "title": "Early response rates with adjunctive cenobamate in uncontrolled focal seizures: Prospective analysis of a randomized, double-blind, placebo-controlled study in a multinational Asian population.",
-            "publicationDate": "2026 Mar",
-            "journal": "Epilepsia",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41230998/"
-          },
-          {
-            "pmid": "41144696",
-            "title": "A randomized, double-blind, placebo-controlled, multicenter study to evaluate the efficacy and safety of adjunctive cenobamate in Asian patients with focal seizures.",
-            "publicationDate": "2026 Feb",
-            "journal": "Epilepsia",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41144696/"
-          },
-          {
-            "pmid": "41432073",
-            "title": "Discovery of Pyrazoloquinazoline Analogues as Orally Bioavailable KRAS-G12D Inhibitors.",
-            "publicationDate": "2026 Jan 8",
-            "journal": "Journal of medicinal chemistry",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41432073/"
-          },
-          {
-            "pmid": "41101116",
-            "title": "Efficacy of adjunctive cenobamate by focal seizure subtypes: a randomized, double-blind, placebo-controlled, multicenter study in a multinational Asian population.",
-            "publicationDate": "2025 Dec",
-            "journal": "Seizure",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41101116/"
-          }
-        ],
+        "publications": [],
         "source": "NCBI PubMed E-utilities",
         "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22SK+Biopharmaceuticals%22%5BAffiliation%5D"
       },
@@ -4230,12 +3485,12 @@
     "status": "OK",
     "addedSnapshots": 21,
     "addedEvents": 0,
-    "snapshotCount": 776,
+    "snapshotCount": 797,
     "eventCount": 2797
   },
   "validationGate": {
     "status": "RESEARCH_ONLY",
-    "generatedAt": "2026-09-17T21:51:33+00:00",
+    "generatedAt": "2026-09-17T23:28:07+00:00",
     "evaluatedDirectionalEventCount": 0,
     "promotionCount": 0,
     "operationalScoreAdjustmentAllowed": false,
