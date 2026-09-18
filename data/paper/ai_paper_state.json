@@ -18,7 +18,7 @@
   "lastRun": {
     "status": "OK",
     "dryRun": false,
-    "createdAt": "2026-09-18T22:05:46",
+    "createdAt": "2026-09-18T23:05:46",
     "market": "us",
     "markets": {
       "us": {
@@ -48,57 +48,57 @@
         "liveMetrics": {
           "status": "OK",
           "proofStatus": "RUNNING",
-          "sampleCount": 43,
-          "navPointCount": 44,
+          "sampleCount": 44,
+          "navPointCount": 45,
           "totalReturnPct": 0.49,
           "mddPct": -0.6,
-          "sharpe": 1.41,
-          "winRate": 27.9,
+          "sharpe": 1.39,
+          "winRate": 27.3,
           "avgPeriodReturnPct": 0.01,
           "cashPct": 84.8,
           "peakValue": 5024.34,
           "currentValue": 5024.34,
           "lastNavDate": "2026-09-18",
           "recentReturnsPct": [
-            -0.22,
             0.0,
             0.28,
             -0.0,
             0.04,
             -0.0,
             0.08,
-            0.3
+            0.3,
+            0.0
           ],
           "equityCurve": [
             {
               "index": 0,
-              "value": 5009.31,
-              "returnPct": 0.19
-            },
-            {
-              "index": 1,
               "value": 5002.45,
               "returnPct": 0.05
             },
             {
-              "index": 2,
+              "index": 1,
               "value": 5002.58,
               "returnPct": 0.05
             },
             {
-              "index": 3,
+              "index": 2,
               "value": 5016.69,
               "returnPct": 0.33
             },
             {
-              "index": 4,
+              "index": 3,
               "value": 5006.63,
               "returnPct": 0.13
             },
             {
-              "index": 5,
+              "index": 4,
               "value": 5007.33,
               "returnPct": 0.15
+            },
+            {
+              "index": 5,
+              "value": 5000.21,
+              "returnPct": 0.0
             },
             {
               "index": 6,
@@ -107,8 +107,8 @@
             },
             {
               "index": 7,
-              "value": 5000.21,
-              "returnPct": 0.0
+              "value": 4989.41,
+              "returnPct": -0.21
             },
             {
               "index": 8,
@@ -117,33 +117,33 @@
             },
             {
               "index": 9,
-              "value": 4989.41,
-              "returnPct": -0.21
-            },
-            {
-              "index": 10,
               "value": 5003.6,
               "returnPct": 0.07
             },
             {
-              "index": 11,
+              "index": 10,
               "value": 5003.4,
               "returnPct": 0.07
             },
             {
-              "index": 12,
+              "index": 11,
               "value": 5005.2,
               "returnPct": 0.1
             },
             {
-              "index": 13,
+              "index": 12,
               "value": 5005.05,
               "returnPct": 0.1
             },
             {
-              "index": 14,
+              "index": 13,
               "value": 5009.17,
               "returnPct": 0.18
+            },
+            {
+              "index": 14,
+              "value": 5024.34,
+              "returnPct": 0.49
             },
             {
               "index": 15,
@@ -696,11 +696,11 @@
           },
           "priceSession": {
             "market": "us",
-            "priceSession": "us_premarket",
-            "sessionLabel": "미장 장전",
-            "priceBasis": "미장 장전 · 프리마켓 업데이트 기준",
-            "nowKst": "2026-09-18T22:05:46.189292+09:00",
-            "nowLocal": "2026-09-18T09:05:46.189292-04:00",
+            "priceSession": "us_intraday",
+            "sessionLabel": "미장 장중",
+            "priceBasis": "미장 장중 · KIS 현재가 기준",
+            "nowKst": "2026-09-18T23:05:46.179782+09:00",
+            "nowLocal": "2026-09-18T10:05:46.179782-04:00",
             "isHoliday": false,
             "isReviewMode": false,
             "isUsDst": true
@@ -727,7 +727,7 @@
         },
         "nav": {
           "date": "2026-09-18",
-          "createdAt": "2026-09-18T22:05:46",
+          "createdAt": "2026-09-18T23:05:46",
           "market": "us",
           "agentId": "ml_rank_conservative_swing",
           "agentLabel": "ML Rank Conservative Swing",
