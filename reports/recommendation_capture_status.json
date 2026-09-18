@@ -1,109 +1,11 @@
 {
-  "runAt": "2026-09-18T23:04:37.894815",
-  "status": "OK",
-  "precondition": "OK — 최신 봉 2026-09-18 (0일 전)",
-  "forced": false,
+  "runAt": "2026-09-19T06:54:03.167324",
+  "status": "SKIPPED",
+  "skipReason": "WEEKEND (Saturday) — 직전 거래일 가격이 재캡처되어 표본이 중복된다",
   "markets": [
     "kr",
     "us"
   ],
-  "ledgerRowsBefore": 2216,
-  "ledgerRowsAfter": 2226,
-  "rowsAdded": 10,
-  "capturedToday": 36,
-  "capturedTodayBefore": 26,
-  "comboCount": 18,
-  "errorCount": 0,
-  "steps": [
-    {
-      "combo": "kr_conservative_short",
-      "status": "OK",
-      "items": 0
-    },
-    {
-      "combo": "kr_conservative_swing",
-      "status": "OK",
-      "items": 0
-    },
-    {
-      "combo": "kr_conservative_mid",
-      "status": "OK",
-      "items": 0
-    },
-    {
-      "combo": "kr_balanced_short",
-      "status": "OK",
-      "items": 0
-    },
-    {
-      "combo": "kr_balanced_swing",
-      "status": "OK",
-      "items": 0
-    },
-    {
-      "combo": "kr_balanced_mid",
-      "status": "OK",
-      "items": 0
-    },
-    {
-      "combo": "kr_aggressive_short",
-      "status": "OK",
-      "items": 0
-    },
-    {
-      "combo": "kr_aggressive_swing",
-      "status": "OK",
-      "items": 0
-    },
-    {
-      "combo": "kr_aggressive_mid",
-      "status": "OK",
-      "items": 0
-    },
-    {
-      "combo": "us_conservative_short",
-      "status": "OK",
-      "items": 2
-    },
-    {
-      "combo": "us_conservative_swing",
-      "status": "OK",
-      "items": 2
-    },
-    {
-      "combo": "us_conservative_mid",
-      "status": "OK",
-      "items": 7
-    },
-    {
-      "combo": "us_balanced_short",
-      "status": "OK",
-      "items": 0
-    },
-    {
-      "combo": "us_balanced_swing",
-      "status": "OK",
-      "items": 1
-    },
-    {
-      "combo": "us_balanced_mid",
-      "status": "OK",
-      "items": 1
-    },
-    {
-      "combo": "us_aggressive_short",
-      "status": "OK",
-      "items": 0
-    },
-    {
-      "combo": "us_aggressive_swing",
-      "status": "OK",
-      "items": 0
-    },
-    {
-      "combo": "us_aggressive_mid",
-      "status": "OK",
-      "items": 5
-    }
-  ]
+  "rowsAdded": 0,
+  "capturedToday": 0
 }

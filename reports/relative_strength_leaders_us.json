@@ -5,20 +5,26 @@
   "regime": "BEAR",
   "status": "BEAR_DEFENSIVE",
   "lensNote": "Bear: RS dispersion is gone; rotate to low-volatility defensives (halve the drawdown) instead of chasing returns.",
-  "universeCount": 133,
+  "universeCount": 134,
   "leaders": [],
   "laggardsToAvoid": [],
   "defensiveHolds": [
     {
+      "symbol": "SP500",
+      "rs60Pct": 3.56,
+      "relToIndexPp": 0.05,
+      "vol60Pct": 0.69
+    },
+    {
       "symbol": "BRK-B",
       "rs60Pct": 2.44,
-      "relToIndexPp": -1.07,
+      "relToIndexPp": -1.06,
       "vol60Pct": 0.95
     },
     {
       "symbol": "JPM",
       "rs60Pct": 3.85,
-      "relToIndexPp": 0.34,
+      "relToIndexPp": 0.35,
       "vol60Pct": 1.13
     },
     {
@@ -42,13 +48,13 @@
     {
       "symbol": "BAC",
       "rs60Pct": 0.3,
-      "relToIndexPp": -3.21,
+      "relToIndexPp": -3.2,
       "vol60Pct": 1.31
     },
     {
       "symbol": "PFE",
       "rs60Pct": 13.94,
-      "relToIndexPp": 10.42,
+      "relToIndexPp": 10.43,
       "vol60Pct": 1.32
     },
     {
@@ -92,12 +98,6 @@
       "rs60Pct": -12.75,
       "relToIndexPp": -16.26,
       "vol60Pct": 1.5
-    },
-    {
-      "symbol": "JNJ",
-      "rs60Pct": 11.01,
-      "relToIndexPp": 7.5,
-      "vol60Pct": 1.51
     }
   ],
   "note": "Research/paper only. Capital preservation, not return."
