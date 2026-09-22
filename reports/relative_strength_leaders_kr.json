@@ -1,13 +1,195 @@
 {
   "version": "relative-strength-v1",
   "market": "kr",
-  "asOf": "2026-09-21",
+  "asOf": "2026-09-22",
   "regime": "BULL",
   "status": "OK",
   "lensNote": "Long the RS leaders, avoid the laggards. RS edge holds in BULL/SIDE.",
-  "universeCount": 0,
-  "leaders": [],
-  "laggardsToAvoid": [],
+  "universeCount": 100,
+  "leaders": [
+    {
+      "symbol": "078930",
+      "rs60Pct": 75.68,
+      "relToIndexPp": 90.84,
+      "vol60Pct": 4.29
+    },
+    {
+      "symbol": "010950",
+      "rs60Pct": 63.84,
+      "relToIndexPp": 79.0,
+      "vol60Pct": 4.17
+    },
+    {
+      "symbol": "006360",
+      "rs60Pct": 59.23,
+      "relToIndexPp": 74.38,
+      "vol60Pct": 6.76
+    },
+    {
+      "symbol": "096770",
+      "rs60Pct": 57.09,
+      "relToIndexPp": 72.25,
+      "vol60Pct": 5.09
+    },
+    {
+      "symbol": "006340",
+      "rs60Pct": 51.22,
+      "relToIndexPp": 66.37,
+      "vol60Pct": 8.65
+    },
+    {
+      "symbol": "375500",
+      "rs60Pct": 41.64,
+      "relToIndexPp": 56.8,
+      "vol60Pct": 4.02
+    },
+    {
+      "symbol": "128940",
+      "rs60Pct": 36.89,
+      "relToIndexPp": 52.04,
+      "vol60Pct": 6.11
+    },
+    {
+      "symbol": "004020",
+      "rs60Pct": 34.59,
+      "relToIndexPp": 49.75,
+      "vol60Pct": 3.68
+    },
+    {
+      "symbol": "108490",
+      "rs60Pct": 28.88,
+      "relToIndexPp": 44.04,
+      "vol60Pct": 6.98
+    },
+    {
+      "symbol": "293490",
+      "rs60Pct": 27.99,
+      "relToIndexPp": 43.15,
+      "vol60Pct": 3.87
+    },
+    {
+      "symbol": "138040",
+      "rs60Pct": 27.53,
+      "relToIndexPp": 42.69,
+      "vol60Pct": 2.56
+    },
+    {
+      "symbol": "000720",
+      "rs60Pct": 26.33,
+      "relToIndexPp": 41.49,
+      "vol60Pct": 5.53
+    },
+    {
+      "symbol": "028670",
+      "rs60Pct": 26.2,
+      "relToIndexPp": 41.36,
+      "vol60Pct": 4.05
+    },
+    {
+      "symbol": "086790",
+      "rs60Pct": 23.88,
+      "relToIndexPp": 39.04,
+      "vol60Pct": 2.33
+    },
+    {
+      "symbol": "055550",
+      "rs60Pct": 23.58,
+      "relToIndexPp": 38.74,
+      "vol60Pct": 2.38
+    }
+  ],
+  "laggardsToAvoid": [
+    {
+      "symbol": "240810",
+      "rs60Pct": -21.79,
+      "relToIndexPp": -6.64,
+      "vol60Pct": 7.77
+    },
+    {
+      "symbol": "247540",
+      "rs60Pct": -22.36,
+      "relToIndexPp": -7.21,
+      "vol60Pct": 5.55
+    },
+    {
+      "symbol": "454910",
+      "rs60Pct": -23.29,
+      "relToIndexPp": -8.14,
+      "vol60Pct": 4.35
+    },
+    {
+      "symbol": "012330",
+      "rs60Pct": -23.64,
+      "relToIndexPp": -8.48,
+      "vol60Pct": 3.3
+    },
+    {
+      "symbol": "145020",
+      "rs60Pct": -24.51,
+      "relToIndexPp": -9.36,
+      "vol60Pct": 3.66
+    },
+    {
+      "symbol": "005380",
+      "rs60Pct": -24.97,
+      "relToIndexPp": -9.82,
+      "vol60Pct": 3.34
+    },
+    {
+      "symbol": "009150",
+      "rs60Pct": -25.94,
+      "relToIndexPp": -10.78,
+      "vol60Pct": 7.67
+    },
+    {
+      "symbol": "196170",
+      "rs60Pct": -27.51,
+      "relToIndexPp": -12.35,
+      "vol60Pct": 5.67
+    },
+    {
+      "symbol": "034730",
+      "rs60Pct": -28.1,
+      "relToIndexPp": -12.94,
+      "vol60Pct": 5.67
+    },
+    {
+      "symbol": "064350",
+      "rs60Pct": -30.92,
+      "relToIndexPp": -15.76,
+      "vol60Pct": 4.95
+    },
+    {
+      "symbol": "000660",
+      "rs60Pct": -31.31,
+      "relToIndexPp": -16.16,
+      "vol60Pct": 7.21
+    },
+    {
+      "symbol": "214150",
+      "rs60Pct": -32.3,
+      "relToIndexPp": -17.14,
+      "vol60Pct": 3.69
+    },
+    {
+      "symbol": "032830",
+      "rs60Pct": -33.18,
+      "relToIndexPp": -18.02,
+      "vol60Pct": 5.31
+    },
+    {
+      "symbol": "402340",
+      "rs60Pct": -40.71,
+      "relToIndexPp": -25.55,
+      "vol60Pct": 7.85
+    },
+    {
+      "symbol": "011070",
+      "rs60Pct": -42.11,
+      "relToIndexPp": -26.95,
+      "vol60Pct": 6.18
+    }
+  ],
   "defensiveHolds": [],
   "note": "Research/paper only."
 }
