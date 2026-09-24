@@ -4,11 +4,24 @@
   "asOf": "2026-09-23",
   "status": "OK",
   "usBackdropFavorable": true,
-  "scanned": 132,
+  "scanned": 131,
   "validatedEdge": {
     "note": "leader breakout only holds up on SPY>MA50; deep 2014-2026 train+OOS forward-return, not cost/trade-sim"
   },
-  "candidates": [],
+  "candidates": [
+    {
+      "symbol": "OKTA",
+      "asOf": "2026-09-23",
+      "entry": 205.36,
+      "stop": 166.17,
+      "target": 283.74,
+      "rrRatio": 2.0,
+      "ret60Pct": 56.39,
+      "posRange250": 1.0,
+      "volRatio50": 1.57,
+      "setup": "LEADER_BREAKOUT"
+    }
+  ],
   "heldForUnfavorableBackdrop": [],
   "note": "Research/paper only. Feed the paper loop for live proof before promotion."
 }
