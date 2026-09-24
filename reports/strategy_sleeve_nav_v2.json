@@ -1,6 +1,6 @@
 {
   "status": "OK",
-  "generatedAt": "2026-09-24T13:23:29.186466+00:00",
+  "generatedAt": "2026-09-24T18:23:47.964743+00:00",
   "basis": {
     "startNav": 100.0,
     "positionFraction": 0.1,
@@ -16,8 +16,8 @@
   },
   "dataQuality": {
     "excluded": {
-      "notEvaluated": 112,
-      "nonForwardSource": 1908
+      "notEvaluated": 110,
+      "nonForwardSource": 1923
     }
   },
   "ranking": [
@@ -1142,8 +1142,8 @@
     },
     "balanced_mid": {
       "trades": 21,
-      "candidateTrades": 106,
-      "capacityRejectedTrades": 85,
+      "candidateTrades": 107,
+      "capacityRejectedTrades": 86,
       "nav": 93.4369,
       "cash": 93.4369,
       "openPositions": 0,
@@ -2057,16 +2057,16 @@
     },
     "aggressive_mid": {
       "trades": 20,
-      "candidateTrades": 135,
-      "capacityRejectedTrades": 115,
-      "nav": 89.2582,
-      "cash": 89.2582,
+      "candidateTrades": 136,
+      "capacityRejectedTrades": 116,
+      "nav": 90.3705,
+      "cash": 90.3705,
       "openPositions": 0,
-      "totalReturnPct": -10.7418,
-      "winRate": 0.2,
-      "avgNetPnlPct": -4.8026,
-      "payoffRatio": 2.0109,
-      "profitFactor": 0.4192,
+      "totalReturnPct": -9.6295,
+      "winRate": 0.25,
+      "avgNetPnlPct": -4.2163,
+      "payoffRatio": 1.6547,
+      "profitFactor": 0.4653,
       "maxDrawdownPct": 15.3877,
       "maxInvestedPct": 100.0,
       "curve": [
@@ -2224,31 +2224,31 @@
           "netPnlPct": 34.5298
         },
         {
-          "date": "2026-08-14",
-          "nav": 89.1027,
-          "cash": 70.5343,
-          "openPositions": 2,
-          "symbol": "UNH",
-          "market": "us",
-          "netPnlPct": -5.1065
-        },
-        {
           "date": "2026-09-02",
-          "nav": 88.6013,
-          "cash": 78.894,
-          "openPositions": 1,
+          "nav": 89.0856,
+          "cash": 69.8932,
+          "openPositions": 2,
           "symbol": "LMT",
           "market": "us",
           "netPnlPct": -5.6591
         },
         {
           "date": "2026-09-21",
-          "nav": 89.2582,
-          "cash": 89.2582,
-          "openPositions": 0,
+          "nav": 89.7426,
+          "cash": 80.2574,
+          "openPositions": 1,
           "symbol": "ABBV",
           "market": "us",
           "netPnlPct": 6.7678
+        },
+        {
+          "date": "2026-09-24",
+          "nav": 90.3705,
+          "cash": 90.3705,
+          "openPositions": 0,
+          "symbol": "ABBV",
+          "market": "us",
+          "netPnlPct": 6.6193
         }
       ],
       "strategyFingerprint": "LEGACY_UNFINGERPRINTED",
