@@ -1,6 +1,6 @@
 {
-  "status": "OK",
-  "generatedAt": "2026-09-23T23:28:07+00:00",
+  "status": "PARTIAL",
+  "generatedAt": "2026-09-24T00:52:25+00:00",
   "asOfDate": "2026-09-24",
   "count": 21,
   "items": [
@@ -3139,52 +3139,13 @@
         "sourceUrl": "https://clinicaltrials.gov/api/v2/studies?query.spons=Medytox&pageSize=20&countTotal=true&format=json"
       },
       "pubMed": {
-        "status": "OK",
-        "queryCompany": "Medytox",
-        "publicationCountRecent5y": 18,
-        "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
-        "publications": [
-          {
-            "pmid": "42401423",
-            "title": "A Randomized, Double-blind, Placebo-controlled, Dose Ranging, Parallel, Multi-Centre, Phase II Study to Evaluate the Efficacy and Safety of MT921 in Subjects with Moderate to Severe Submental Fat.",
-            "publicationDate": "2026 Jul 5",
-            "journal": "Aesthetic surgery journal",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42401423/"
-          },
-          {
-            "pmid": "41304889",
-            "title": "Comparison of Cholic Acid (MT921) and Deoxycholic Acid (DCA) in Fat Reduction Efficacy and Skin Adverse Reactions in Mini Pigs and Rodent Models.",
-            "publicationDate": "2025 Oct 30",
-            "journal": "Pharmaceuticals (Basel, Switzerland)",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41304889/"
-          },
-          {
-            "pmid": "40398669",
-            "title": "Advancements on heparin-based hydrogel/scaffolds in biomedical and tissue engineering applications: Delivery carrier and pre-clinical implications.",
-            "publicationDate": "2025 Jun 30",
-            "journal": "International journal of pharmaceutics",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/40398669/"
-          },
-          {
-            "pmid": "40194579",
-            "title": "Silk fibroin: An innovative protein macromolecule-based hydrogel/ scaffold revolutionizing breast cancer treatment and diagnosis - Mechanisms, advancements, and targeting capabilities.",
-            "publicationDate": "2025 May",
-            "journal": "International journal of biological macromolecules",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/40194579/"
-          },
-          {
-            "pmid": "40218949",
-            "title": "A 12-Week, Randomized, Double-Blind, Placebo-Controlled Study to Evaluate the Efficacy and Safety of Lactobacillus plantarum LMT1-48 on Body Fat Loss.",
-            "publicationDate": "2025 Mar 28",
-            "journal": "Nutrients",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/40218949/"
-          }
-        ],
-        "source": "NCBI PubMed E-utilities",
-        "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22Medytox%22%5BAffiliation%5D"
+        "status": "ERROR",
+        "error": "JSONDecodeError"
       },
-      "status": "OK",
-      "errors": []
+      "status": "PARTIAL",
+      "errors": [
+        "PUBMED_UNAVAILABLE"
+      ]
     },
     {
       "market": "kr",
@@ -4300,14 +4261,14 @@
   ],
   "pointInTimeLedger": {
     "status": "OK",
-    "addedSnapshots": 0,
+    "addedSnapshots": 1,
     "addedEvents": 0,
-    "snapshotCount": 982,
+    "snapshotCount": 983,
     "eventCount": 3601
   },
   "validationGate": {
     "status": "RESEARCH_ONLY",
-    "generatedAt": "2026-09-23T23:28:08+00:00",
+    "generatedAt": "2026-09-24T00:52:25+00:00",
     "evaluatedDirectionalEventCount": 0,
     "promotionCount": 0,
     "operationalScoreAdjustmentAllowed": false,
