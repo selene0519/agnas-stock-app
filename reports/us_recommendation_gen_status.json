@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-25T00:52:12.490556+00:00",
+  "generatedAt": "2026-09-25T07:16:02.656339+00:00",
   "source": "us_ohlcv_quant_scanner",
   "symbols": 158,
   "liveSymbols": 111,
@@ -10,21 +10,21 @@
     "description": "US SPY 60일 추세 +2.7%, 거래량비 0.98",
     "benchmark": "SPY",
     "trend60": 2.73,
-    "volRatio": 0.983,
+    "volRatio": 0.984,
     "definition": "trend60+거래량(약추세만)",
     "asOf": "2026-09-24",
     "source": "us_SPY_daily.csv"
   },
   "evFiltered": 0,
   "results": {
-    "conservative_short": 0,
+    "conservative_short": 2,
     "conservative_swing": 0,
-    "conservative_mid": 0,
-    "balanced_short": 0,
+    "conservative_mid": 3,
+    "balanced_short": 2,
     "balanced_swing": 0,
-    "balanced_mid": 0,
-    "aggressive_short": 0,
-    "aggressive_swing": 0,
-    "aggressive_mid": 0
+    "balanced_mid": 4,
+    "aggressive_short": 1,
+    "aggressive_swing": 1,
+    "aggressive_mid": 11
   }
 }
