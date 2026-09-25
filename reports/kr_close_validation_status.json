@@ -1,6 +1,79 @@
 {
   "date": "2026-09-25",
-  "created": [],
+  "created": [
+    {
+      "market": "us",
+      "mode": "conservative",
+      "horizon": "short",
+      "file": "mone_v36_final_trade_validation_us_conservative_short_20260925.csv",
+      "rows": 12,
+      "normalRows": 12
+    },
+    {
+      "market": "us",
+      "mode": "conservative",
+      "horizon": "swing",
+      "file": "mone_v36_final_trade_validation_us_conservative_swing_20260925.csv",
+      "rows": 17,
+      "normalRows": 17
+    },
+    {
+      "market": "us",
+      "mode": "conservative",
+      "horizon": "mid",
+      "file": "mone_v36_final_trade_validation_us_conservative_mid_20260925.csv",
+      "rows": 74,
+      "normalRows": 74
+    },
+    {
+      "market": "us",
+      "mode": "balanced",
+      "horizon": "short",
+      "file": "mone_v36_final_trade_validation_us_balanced_short_20260925.csv",
+      "rows": 16,
+      "normalRows": 16
+    },
+    {
+      "market": "us",
+      "mode": "balanced",
+      "horizon": "swing",
+      "file": "mone_v36_final_trade_validation_us_balanced_swing_20260925.csv",
+      "rows": 7,
+      "normalRows": 7
+    },
+    {
+      "market": "us",
+      "mode": "balanced",
+      "horizon": "mid",
+      "file": "mone_v36_final_trade_validation_us_balanced_mid_20260925.csv",
+      "rows": 47,
+      "normalRows": 47
+    },
+    {
+      "market": "us",
+      "mode": "aggressive",
+      "horizon": "short",
+      "file": "mone_v36_final_trade_validation_us_aggressive_short_20260925.csv",
+      "rows": 15,
+      "normalRows": 15
+    },
+    {
+      "market": "us",
+      "mode": "aggressive",
+      "horizon": "swing",
+      "file": "mone_v36_final_trade_validation_us_aggressive_swing_20260925.csv",
+      "rows": 6,
+      "normalRows": 6
+    },
+    {
+      "market": "us",
+      "mode": "aggressive",
+      "horizon": "mid",
+      "file": "mone_v36_final_trade_validation_us_aggressive_mid_20260925.csv",
+      "rows": 70,
+      "normalRows": 70
+    }
+  ],
   "skipped": [
     {
       "market": "kr",
@@ -64,70 +137,7 @@
       "horizon": "mid",
       "rows": 0,
       "reason": "no_today_ohlcv_or_no_recommendations"
-    },
-    {
-      "market": "us",
-      "mode": "conservative",
-      "horizon": "short",
-      "rows": 12,
-      "reason": "no_today_ohlcv_or_no_recommendations"
-    },
-    {
-      "market": "us",
-      "mode": "conservative",
-      "horizon": "swing",
-      "rows": 17,
-      "reason": "no_today_ohlcv_or_no_recommendations"
-    },
-    {
-      "market": "us",
-      "mode": "conservative",
-      "horizon": "mid",
-      "rows": 72,
-      "reason": "no_today_ohlcv_or_no_recommendations"
-    },
-    {
-      "market": "us",
-      "mode": "balanced",
-      "horizon": "short",
-      "rows": 16,
-      "reason": "no_today_ohlcv_or_no_recommendations"
-    },
-    {
-      "market": "us",
-      "mode": "balanced",
-      "horizon": "swing",
-      "rows": 6,
-      "reason": "no_today_ohlcv_or_no_recommendations"
-    },
-    {
-      "market": "us",
-      "mode": "balanced",
-      "horizon": "mid",
-      "rows": 47,
-      "reason": "no_today_ohlcv_or_no_recommendations"
-    },
-    {
-      "market": "us",
-      "mode": "aggressive",
-      "horizon": "short",
-      "rows": 14,
-      "reason": "no_today_ohlcv_or_no_recommendations"
-    },
-    {
-      "market": "us",
-      "mode": "aggressive",
-      "horizon": "swing",
-      "rows": 6,
-      "reason": "no_today_ohlcv_or_no_recommendations"
-    },
-    {
-      "market": "us",
-      "mode": "aggressive",
-      "horizon": "mid",
-      "rows": 70,
-      "reason": "no_today_ohlcv_or_no_recommendations"
     }
   ],
-  "updatedAt": "2026-09-25T22:10:18"
+  "updatedAt": "2026-09-25T23:06:41"
 }
