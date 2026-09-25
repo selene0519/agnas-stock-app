@@ -1,6 +1,6 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-09-25T01:01:42.443697+00:00",
+  "generatedAt": "2026-09-25T13:23:54.207543+00:00",
   "policy": {
     "version": "champion-challenger-v1.4.0",
     "champion": "TOP_3_RAW_CANDIDATES",
@@ -30,21 +30,21 @@
     "fingerprint": "2cc1dea4ccc330c31cb9"
   },
   "recording": {
-    "appended": 0,
-    "conflicts": 0,
+    "appended": 10,
+    "conflicts": 11,
     "skipped": 0,
-    "total": 1341
+    "total": 1351
   },
   "policyCohort": {
     "activeFingerprint": "2cc1dea4ccc330c31cb9",
     "activeMetaPolicyFingerprint": "0bb3379dfc7bec772798",
     "activeRiskPolicyFingerprint": "e35273b1243c0e38f6ce",
-    "activeRows": 1201,
-    "validActiveRows": 1201,
+    "activeRows": 1211,
+    "validActiveRows": 1211,
     "excludedPriorPolicyRows": 140
   },
   "integrity": {
-    "immutableConflicts": 0,
+    "immutableConflicts": 11,
     "timeIntegrityViolations": 0,
     "recordHashViolations": 0,
     "invalidRecordIds": [],
@@ -148,6 +148,7 @@
     "promotionEligible": false,
     "decision": "KEEP_CHALLENGER_SHADOW",
     "blockingReasons": [
+      "IMMUTABLE_DECISION_CONFLICT",
       "LOW_COMPLETE_SIGNAL_DATES",
       "LOW_EVALUATED_CHALLENGER_TRADES",
       "NON_POSITIVE_CHALLENGER_RETURN",
