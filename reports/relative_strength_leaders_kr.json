@@ -1,13 +1,195 @@
 {
   "version": "relative-strength-v1",
   "market": "kr",
-  "asOf": "2026-09-23",
+  "asOf": "2026-09-28",
   "regime": "BULL",
   "status": "OK",
   "lensNote": "Long the RS leaders, avoid the laggards. RS edge holds in BULL/SIDE.",
-  "universeCount": 0,
-  "leaders": [],
-  "laggardsToAvoid": [],
+  "universeCount": 100,
+  "leaders": [
+    {
+      "symbol": "078930",
+      "rs60Pct": 71.79,
+      "relToIndexPp": 89.18,
+      "vol60Pct": 4.2
+    },
+    {
+      "symbol": "096770",
+      "rs60Pct": 66.81,
+      "relToIndexPp": 84.19,
+      "vol60Pct": 5.0
+    },
+    {
+      "symbol": "010950",
+      "rs60Pct": 51.69,
+      "relToIndexPp": 69.08,
+      "vol60Pct": 3.96
+    },
+    {
+      "symbol": "006360",
+      "rs60Pct": 41.43,
+      "relToIndexPp": 58.82,
+      "vol60Pct": 6.77
+    },
+    {
+      "symbol": "006340",
+      "rs60Pct": 27.74,
+      "relToIndexPp": 45.12,
+      "vol60Pct": 8.59
+    },
+    {
+      "symbol": "375500",
+      "rs60Pct": 27.46,
+      "relToIndexPp": 44.84,
+      "vol60Pct": 3.89
+    },
+    {
+      "symbol": "128940",
+      "rs60Pct": 26.29,
+      "relToIndexPp": 43.67,
+      "vol60Pct": 5.68
+    },
+    {
+      "symbol": "138040",
+      "rs60Pct": 25.76,
+      "relToIndexPp": 43.14,
+      "vol60Pct": 2.64
+    },
+    {
+      "symbol": "293490",
+      "rs60Pct": 23.07,
+      "relToIndexPp": 40.45,
+      "vol60Pct": 3.62
+    },
+    {
+      "symbol": "028670",
+      "rs60Pct": 19.96,
+      "relToIndexPp": 37.34,
+      "vol60Pct": 4.01
+    },
+    {
+      "symbol": "086790",
+      "rs60Pct": 17.63,
+      "relToIndexPp": 35.01,
+      "vol60Pct": 2.28
+    },
+    {
+      "symbol": "003550",
+      "rs60Pct": 16.44,
+      "relToIndexPp": 33.83,
+      "vol60Pct": 2.74
+    },
+    {
+      "symbol": "041510",
+      "rs60Pct": 16.24,
+      "relToIndexPp": 33.63,
+      "vol60Pct": 3.46
+    },
+    {
+      "symbol": "055550",
+      "rs60Pct": 15.66,
+      "relToIndexPp": 33.04,
+      "vol60Pct": 2.32
+    },
+    {
+      "symbol": "003490",
+      "rs60Pct": 14.7,
+      "relToIndexPp": 32.09,
+      "vol60Pct": 2.54
+    }
+  ],
+  "laggardsToAvoid": [
+    {
+      "symbol": "035900",
+      "rs60Pct": -25.97,
+      "relToIndexPp": -8.59,
+      "vol60Pct": 2.76
+    },
+    {
+      "symbol": "240810",
+      "rs60Pct": -26.23,
+      "relToIndexPp": -8.85,
+      "vol60Pct": 7.76
+    },
+    {
+      "symbol": "039440",
+      "rs60Pct": -26.58,
+      "relToIndexPp": -9.2,
+      "vol60Pct": 5.84
+    },
+    {
+      "symbol": "032830",
+      "rs60Pct": -26.93,
+      "relToIndexPp": -9.55,
+      "vol60Pct": 5.27
+    },
+    {
+      "symbol": "005380",
+      "rs60Pct": -28.28,
+      "relToIndexPp": -10.9,
+      "vol60Pct": 3.31
+    },
+    {
+      "symbol": "267260",
+      "rs60Pct": -28.91,
+      "relToIndexPp": -11.52,
+      "vol60Pct": 5.26
+    },
+    {
+      "symbol": "145020",
+      "rs60Pct": -29.24,
+      "relToIndexPp": -11.86,
+      "vol60Pct": 3.45
+    },
+    {
+      "symbol": "196170",
+      "rs60Pct": -30.19,
+      "relToIndexPp": -12.81,
+      "vol60Pct": 5.54
+    },
+    {
+      "symbol": "034730",
+      "rs60Pct": -30.82,
+      "relToIndexPp": -13.43,
+      "vol60Pct": 5.64
+    },
+    {
+      "symbol": "009150",
+      "rs60Pct": -31.64,
+      "relToIndexPp": -14.25,
+      "vol60Pct": 7.61
+    },
+    {
+      "symbol": "064350",
+      "rs60Pct": -32.95,
+      "relToIndexPp": -15.56,
+      "vol60Pct": 4.74
+    },
+    {
+      "symbol": "000660",
+      "rs60Pct": -33.17,
+      "relToIndexPp": -15.78,
+      "vol60Pct": 7.23
+    },
+    {
+      "symbol": "402340",
+      "rs60Pct": -33.23,
+      "relToIndexPp": -15.85,
+      "vol60Pct": 7.81
+    },
+    {
+      "symbol": "214150",
+      "rs60Pct": -34.01,
+      "relToIndexPp": -16.63,
+      "vol60Pct": 3.41
+    },
+    {
+      "symbol": "011070",
+      "rs60Pct": -41.39,
+      "relToIndexPp": -24.0,
+      "vol60Pct": 6.18
+    }
+  ],
   "defensiveHolds": [],
   "note": "Research/paper only."
 }

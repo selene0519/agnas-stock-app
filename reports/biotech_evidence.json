@@ -1,6 +1,6 @@
 {
-  "status": "PARTIAL",
-  "generatedAt": "2026-09-28T01:09:13+00:00",
+  "status": "OK",
+  "generatedAt": "2026-09-28T07:13:13+00:00",
   "asOfDate": "2026-09-28",
   "count": 21,
   "items": [
@@ -316,7 +316,7 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "AbbVie",
-        "publicationCountRecent5y": 3224,
+        "publicationCountRecent5y": 3225,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
         "publications": [
           {
@@ -540,7 +540,7 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Amgen",
-        "publicationCountRecent5y": 2261,
+        "publicationCountRecent5y": 2260,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
         "publications": [
           {
@@ -1524,7 +1524,7 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Merck Sharp & Dohme",
-        "publicationCountRecent5y": 151,
+        "publicationCountRecent5y": 150,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
         "publications": [
           {
@@ -1793,7 +1793,7 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Novo Nordisk",
-        "publicationCountRecent5y": 6304,
+        "publicationCountRecent5y": 6303,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
         "publications": [
           {
@@ -2067,7 +2067,7 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Pfizer",
-        "publicationCountRecent5y": 6964,
+        "publicationCountRecent5y": 6963,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
         "publications": [
           {
@@ -2273,7 +2273,7 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Regeneron Pharmaceuticals",
-        "publicationCountRecent5y": 1497,
+        "publicationCountRecent5y": 1496,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
         "publications": [
           {
@@ -4277,13 +4277,52 @@
         "sourceUrl": "https://clinicaltrials.gov/api/v2/studies?query.spons=SK+Biopharmaceuticals&pageSize=20&countTotal=true&format=json"
       },
       "pubMed": {
-        "status": "ERROR",
-        "error": "URLError"
+        "status": "OK",
+        "queryCompany": "SK Biopharmaceuticals",
+        "publicationCountRecent5y": 9,
+        "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
+        "publications": [
+          {
+            "pmid": "42663528",
+            "title": "Long-term efficacy of adjunctive cenobamate: Open-label extension of a randomized, placebo-controlled study in a multinational Asian population.",
+            "publicationDate": "2026 Aug 28",
+            "journal": "Epilepsia",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42663528/"
+          },
+          {
+            "pmid": "41230998",
+            "title": "Early response rates with adjunctive cenobamate in uncontrolled focal seizures: Prospective analysis of a randomized, double-blind, placebo-controlled study in a multinational Asian population.",
+            "publicationDate": "2026 Mar",
+            "journal": "Epilepsia",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41230998/"
+          },
+          {
+            "pmid": "41144696",
+            "title": "A randomized, double-blind, placebo-controlled, multicenter study to evaluate the efficacy and safety of adjunctive cenobamate in Asian patients with focal seizures.",
+            "publicationDate": "2026 Feb",
+            "journal": "Epilepsia",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41144696/"
+          },
+          {
+            "pmid": "41432073",
+            "title": "Discovery of Pyrazoloquinazoline Analogues as Orally Bioavailable KRAS-G12D Inhibitors.",
+            "publicationDate": "2026 Jan 8",
+            "journal": "Journal of medicinal chemistry",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41432073/"
+          },
+          {
+            "pmid": "41101116",
+            "title": "Efficacy of adjunctive cenobamate by focal seizure subtypes: a randomized, double-blind, placebo-controlled, multicenter study in a multinational Asian population.",
+            "publicationDate": "2025 Dec",
+            "journal": "Seizure",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41101116/"
+          }
+        ],
+        "source": "NCBI PubMed E-utilities",
+        "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22SK+Biopharmaceuticals%22%5BAffiliation%5D"
       },
-      "status": "PARTIAL",
-      "errors": [
-        "PUBMED_UNAVAILABLE"
-      ]
+      "status": "OK",
+      "errors": []
     }
   ],
   "policy": {
@@ -4305,14 +4344,14 @@
   ],
   "pointInTimeLedger": {
     "status": "OK",
-    "addedSnapshots": 21,
-    "addedEvents": 1,
-    "snapshotCount": 1082,
-    "eventCount": 3938
+    "addedSnapshots": 7,
+    "addedEvents": 5,
+    "snapshotCount": 1089,
+    "eventCount": 3943
   },
   "validationGate": {
     "status": "RESEARCH_ONLY",
-    "generatedAt": "2026-09-28T01:09:13+00:00",
+    "generatedAt": "2026-09-28T07:13:13+00:00",
     "evaluatedDirectionalEventCount": 0,
     "promotionCount": 0,
     "operationalScoreAdjustmentAllowed": false,
