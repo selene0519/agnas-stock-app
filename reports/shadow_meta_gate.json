@@ -1,6 +1,6 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-09-28T01:17:41.773141+00:00",
+  "generatedAt": "2026-09-28T16:35:02.255904+00:00",
   "policy": {
     "version": "shadow-meta-v1.2.3",
     "maxTake": 3,
@@ -323,13 +323,13 @@
       ]
     },
     "us|aggressive|mid": {
-      "independentDecisions": 109,
+      "independentDecisions": 110,
       "distinctSignalDates": 22,
-      "winRate": 0.1927,
-      "winRateWilsonLower95": 0.1296,
-      "avgNetPnlPct": -4.18,
-      "profitFactor": 0.491,
-      "brierScore": 0.483819,
+      "winRate": 0.2,
+      "winRateWilsonLower95": 0.136,
+      "avgNetPnlPct": -4.1323,
+      "profitFactor": 0.4922,
+      "brierScore": 0.480069,
       "probabilityCalibration": [
         {
           "band": "60-70",
@@ -341,11 +341,11 @@
         },
         {
           "band": "70-80",
-          "samples": 82,
-          "meanPredicted": 0.7501,
-          "actualWinRate": 0.1829,
-          "calibrationGap": 0.5672,
-          "wilsonLower95": 0.1141
+          "samples": 83,
+          "meanPredicted": 0.7499,
+          "actualWinRate": 0.1928,
+          "calibrationGap": 0.5572,
+          "wilsonLower95": 0.1223
         },
         {
           "band": "80-100",
