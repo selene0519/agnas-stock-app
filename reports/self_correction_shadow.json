@@ -1,6 +1,6 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-09-28T15:53:12.612207+00:00",
+  "generatedAt": "2026-09-28T21:56:58.648257+00:00",
   "policy": {
     "version": "self-correction-shadow-v1.5.0",
     "inputContractVersion": "correction-shadow-input-v1",
@@ -101,7 +101,13 @@
     "appended": 0,
     "conflicts": 0,
     "total": 0,
-    "recordMarket": "none"
+    "recordMarket": "all",
+    "skippedInputContract": 0,
+    "skippedForwardSeal": 0,
+    "skippedBeforeSignalClose": 0,
+    "skippedAfterNextSessionOpen": 0,
+    "runAt": "2026-09-28T21:56:58.647993+00:00",
+    "candidateDiagnostics": []
   },
   "lastRecordingRun": {
     "appended": 0,
@@ -112,7 +118,7 @@
     "skippedForwardSeal": 0,
     "skippedBeforeSignalClose": 0,
     "skippedAfterNextSessionOpen": 0,
-    "runAt": "2026-09-28T14:03:52.917054+00:00",
+    "runAt": "2026-09-28T21:56:58.647993+00:00",
     "candidateDiagnostics": [
       {
         "candidateFingerprint": "776f38cd63fa6335313a54bdc8cc7512035aceb368fba7e95ac46873ba0a9f47",
@@ -871,7 +877,7 @@
           "requiresForwardPromotion": true
         },
         {
-          "suggestionId": "b641c92dc54eb2835129",
+          "suggestionId": "cd082e0a5145c69ff4f9",
           "sourceSummaryId": "c260ea46ac9c74fe",
           "market": "us",
           "mode": "balanced",
@@ -879,9 +885,9 @@
           "sourceType": "HISTORICAL_REPLAY",
           "journalSession": "AFTER_CLOSE_TRADE",
           "reason": "STOP_TOO_TIGHT",
-          "sampleCount": 102,
-          "distinctSignalDates": 22,
-          "share": 0.1765,
+          "sampleCount": 106,
+          "distinctSignalDates": 23,
+          "share": 0.1698,
           "approvalStatus": "PENDING_REVIEW",
           "applicationStatus": "NOT_APPLIED",
           "shadowEligible": false,
@@ -891,7 +897,7 @@
           "validation": null,
           "minRawSamples": 999999,
           "minDistinctSignalDates": 10,
-          "remainingRawSamples": 999897,
+          "remainingRawSamples": 999893,
           "remainingDistinctSignalDates": 0,
           "requiresHumanReview": false,
           "autoPromotionAllowed": true,
