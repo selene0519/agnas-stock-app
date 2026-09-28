@@ -1,6 +1,6 @@
 {
   "status": "OK",
-  "generatedAt": "2026-09-28T07:13:13+00:00",
+  "generatedAt": "2026-09-28T14:00:14+00:00",
   "asOfDate": "2026-09-28",
   "count": 21,
   "items": [
@@ -2067,7 +2067,7 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Pfizer",
-        "publicationCountRecent5y": 6963,
+        "publicationCountRecent5y": 6968,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
         "publications": [
           {
@@ -2076,6 +2076,13 @@
             "publicationDate": "2026 Dec 31",
             "journal": "mAbs",
             "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42273738/"
+          },
+          {
+            "pmid": "42802567",
+            "title": "Booster vaccination with an investigational Lyme disease vaccine in children, adolescents, and adults: a plain language summary.",
+            "publicationDate": "2026 Dec",
+            "journal": "Expert review of vaccines",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42802567/"
           },
           {
             "pmid": "42798299",
@@ -2097,13 +2104,6 @@
             "publicationDate": "2026 Dec",
             "journal": "Journal of medical economics",
             "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42709039/"
-          },
-          {
-            "pmid": "42693756",
-            "title": "Real-world healthcare resource utilization and cost burden of COVID-19 in commercially insured adults at high-risk of severe disease in the US: a retrospective database analysis.",
-            "publicationDate": "2026 Dec",
-            "journal": "Journal of medical economics",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42693756/"
           }
         ],
         "source": "NCBI PubMed E-utilities",
@@ -4344,14 +4344,14 @@
   ],
   "pointInTimeLedger": {
     "status": "OK",
-    "addedSnapshots": 7,
-    "addedEvents": 5,
-    "snapshotCount": 1089,
-    "eventCount": 3943
+    "addedSnapshots": 1,
+    "addedEvents": 1,
+    "snapshotCount": 1090,
+    "eventCount": 3944
   },
   "validationGate": {
     "status": "RESEARCH_ONLY",
-    "generatedAt": "2026-09-28T07:13:13+00:00",
+    "generatedAt": "2026-09-28T14:00:14+00:00",
     "evaluatedDirectionalEventCount": 0,
     "promotionCount": 0,
     "operationalScoreAdjustmentAllowed": false,
