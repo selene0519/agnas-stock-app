@@ -1,13 +1,195 @@
 {
   "version": "relative-strength-v1",
   "market": "kr",
-  "asOf": "2026-09-28",
+  "asOf": "2026-09-29",
   "regime": "BULL",
   "status": "OK",
   "lensNote": "Long the RS leaders, avoid the laggards. RS edge holds in BULL/SIDE.",
-  "universeCount": 0,
-  "leaders": [],
-  "laggardsToAvoid": [],
+  "universeCount": 100,
+  "leaders": [
+    {
+      "symbol": "096770",
+      "rs60Pct": 49.39,
+      "relToIndexPp": 66.71,
+      "vol60Pct": 5.13
+    },
+    {
+      "symbol": "078930",
+      "rs60Pct": 48.63,
+      "relToIndexPp": 65.95,
+      "vol60Pct": 4.11
+    },
+    {
+      "symbol": "010950",
+      "rs60Pct": 44.25,
+      "relToIndexPp": 61.57,
+      "vol60Pct": 4.01
+    },
+    {
+      "symbol": "138040",
+      "rs60Pct": 24.13,
+      "relToIndexPp": 41.46,
+      "vol60Pct": 2.63
+    },
+    {
+      "symbol": "095340",
+      "rs60Pct": 22.44,
+      "relToIndexPp": 39.76,
+      "vol60Pct": 5.97
+    },
+    {
+      "symbol": "128940",
+      "rs60Pct": 20.38,
+      "relToIndexPp": 37.7,
+      "vol60Pct": 5.63
+    },
+    {
+      "symbol": "293490",
+      "rs60Pct": 20.03,
+      "relToIndexPp": 37.35,
+      "vol60Pct": 3.59
+    },
+    {
+      "symbol": "028670",
+      "rs60Pct": 19.17,
+      "relToIndexPp": 36.49,
+      "vol60Pct": 4.01
+    },
+    {
+      "symbol": "375500",
+      "rs60Pct": 17.81,
+      "relToIndexPp": 35.13,
+      "vol60Pct": 3.89
+    },
+    {
+      "symbol": "086790",
+      "rs60Pct": 15.81,
+      "relToIndexPp": 33.13,
+      "vol60Pct": 2.27
+    },
+    {
+      "symbol": "003550",
+      "rs60Pct": 14.8,
+      "relToIndexPp": 32.12,
+      "vol60Pct": 2.75
+    },
+    {
+      "symbol": "055550",
+      "rs60Pct": 14.52,
+      "relToIndexPp": 31.84,
+      "vol60Pct": 2.32
+    },
+    {
+      "symbol": "041510",
+      "rs60Pct": 14.17,
+      "relToIndexPp": 31.49,
+      "vol60Pct": 3.44
+    },
+    {
+      "symbol": "039030",
+      "rs60Pct": 13.91,
+      "relToIndexPp": 31.23,
+      "vol60Pct": 5.98
+    },
+    {
+      "symbol": "006360",
+      "rs60Pct": 13.46,
+      "relToIndexPp": 30.78,
+      "vol60Pct": 6.31
+    }
+  ],
+  "laggardsToAvoid": [
+    {
+      "symbol": "032830",
+      "rs60Pct": -24.94,
+      "relToIndexPp": -7.61,
+      "vol60Pct": 5.25
+    },
+    {
+      "symbol": "012330",
+      "rs60Pct": -25.81,
+      "relToIndexPp": -8.49,
+      "vol60Pct": 3.27
+    },
+    {
+      "symbol": "039440",
+      "rs60Pct": -28.01,
+      "relToIndexPp": -10.69,
+      "vol60Pct": 5.79
+    },
+    {
+      "symbol": "005380",
+      "rs60Pct": -28.31,
+      "relToIndexPp": -10.99,
+      "vol60Pct": 3.31
+    },
+    {
+      "symbol": "035900",
+      "rs60Pct": -28.57,
+      "relToIndexPp": -11.25,
+      "vol60Pct": 2.71
+    },
+    {
+      "symbol": "196170",
+      "rs60Pct": -29.05,
+      "relToIndexPp": -11.73,
+      "vol60Pct": 5.55
+    },
+    {
+      "symbol": "329180",
+      "rs60Pct": -30.16,
+      "relToIndexPp": -12.84,
+      "vol60Pct": 3.52
+    },
+    {
+      "symbol": "009150",
+      "rs60Pct": -30.61,
+      "relToIndexPp": -13.29,
+      "vol60Pct": 7.62
+    },
+    {
+      "symbol": "000660",
+      "rs60Pct": -30.7,
+      "relToIndexPp": -13.38,
+      "vol60Pct": 7.22
+    },
+    {
+      "symbol": "267260",
+      "rs60Pct": -32.71,
+      "relToIndexPp": -15.39,
+      "vol60Pct": 5.22
+    },
+    {
+      "symbol": "145020",
+      "rs60Pct": -33.41,
+      "relToIndexPp": -16.09,
+      "vol60Pct": 3.4
+    },
+    {
+      "symbol": "402340",
+      "rs60Pct": -34.3,
+      "relToIndexPp": -16.98,
+      "vol60Pct": 7.81
+    },
+    {
+      "symbol": "011070",
+      "rs60Pct": -35.61,
+      "relToIndexPp": -18.29,
+      "vol60Pct": 6.12
+    },
+    {
+      "symbol": "214150",
+      "rs60Pct": -36.15,
+      "relToIndexPp": -18.83,
+      "vol60Pct": 3.37
+    },
+    {
+      "symbol": "064350",
+      "rs60Pct": -40.89,
+      "relToIndexPp": -23.56,
+      "vol60Pct": 4.56
+    }
+  ],
   "defensiveHolds": [],
   "note": "Research/paper only."
 }

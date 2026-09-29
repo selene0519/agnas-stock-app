@@ -1,6 +1,6 @@
 {
-  "status": "OK",
-  "generatedAt": "2026-09-29T02:20:09+00:00",
+  "status": "PARTIAL",
+  "generatedAt": "2026-09-29T07:11:35+00:00",
   "asOfDate": "2026-09-29",
   "count": 21,
   "items": [
@@ -34,52 +34,13 @@
         "sourceUrl": "https://clinicaltrials.gov/api/v2/studies?query.spons=Samsung+Biologics&pageSize=20&countTotal=true&format=json"
       },
       "pubMed": {
-        "status": "OK",
-        "queryCompany": "Samsung Biologics",
-        "publicationCountRecent5y": 7,
-        "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
-        "publications": [
-          {
-            "pmid": "41786693",
-            "title": "WWP1 gain-of-function drives developmental anoikis through TGFβ pathway during neurodevelopment.",
-            "publicationDate": "2026 Mar 6",
-            "journal": "Cell death discovery",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41786693/"
-          },
-          {
-            "pmid": "41691524",
-            "title": "Comprehensive Engineering of Ionizable Lipid Nanoparticles and mRNA Elements for Next-Generation Vaccines.",
-            "publicationDate": "2026 Mar 3",
-            "journal": "ACS nano",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41691524/"
-          },
-          {
-            "pmid": "41054970",
-            "title": "CD200 Promotes Gastric Cancer Progression and Metastasis by Inducing the β-catenin Signaling Pathway.",
-            "publicationDate": "2025 Oct",
-            "journal": "Journal of cellular physiology",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41054970/"
-          },
-          {
-            "pmid": "40776610",
-            "title": "Soluble receptor for advanced glycation end products attenuates sepsis-associated acute kidney injury.",
-            "publicationDate": "2025 Aug 8",
-            "journal": "Kidney research and clinical practice",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/40776610/"
-          },
-          {
-            "pmid": "38937372",
-            "title": "Stability of Protein Pharmaceuticals: Recent Advances.",
-            "publicationDate": "2024 Jul",
-            "journal": "Pharmaceutical research",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/38937372/"
-          }
-        ],
-        "source": "NCBI PubMed E-utilities",
-        "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22Samsung+Biologics%22%5BAffiliation%5D"
+        "status": "ERROR",
+        "error": "URLError"
       },
-      "status": "OK",
-      "errors": []
+      "status": "PARTIAL",
+      "errors": [
+        "PUBMED_UNAVAILABLE"
+      ]
     },
     {
       "market": "us",
@@ -741,7 +702,7 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Bristol-Myers Squibb",
-        "publicationCountRecent5y": 3019,
+        "publicationCountRecent5y": 3018,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
         "publications": [
           {
@@ -1262,7 +1223,7 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Eli Lilly and Company",
-        "publicationCountRecent5y": 2843,
+        "publicationCountRecent5y": 2844,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
         "publications": [
           {
@@ -1506,52 +1467,13 @@
         "sourceUrl": "https://clinicaltrials.gov/api/v2/studies?query.spons=Merck+Sharp+%26+Dohme&pageSize=20&countTotal=true&format=json"
       },
       "pubMed": {
-        "status": "OK",
-        "queryCompany": "Merck Sharp & Dohme",
-        "publicationCountRecent5y": 150,
-        "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
-        "publications": [
-          {
-            "pmid": "42763362",
-            "title": "Real-World Treatment Patterns, Healthcare Resource Use, and Costs in Patients with Follicular Lymphoma, Waldenström Macroglobulinemia, and Marginal Zone Lymphoma: A Claims-Based Study in the USA.",
-            "publicationDate": "2026 Sep 19",
-            "journal": "Clinical drug investigation",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42763362/"
-          },
-          {
-            "pmid": "42762387",
-            "title": "Characteristics and Treatment Patterns of Early Stage Melanoma: Results from a Multisite Chart Review.",
-            "publicationDate": "2026 Sep 19",
-            "journal": "Drugs - real world outcomes",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42762387/"
-          },
-          {
-            "pmid": "42742451",
-            "title": "Real-world treatment patterns and outcomes in metastatic clear cell renal cell carcinoma following immune checkpoint inhibitor progression (2018-2023).",
-            "publicationDate": "2026 Sep 9",
-            "journal": "The oncologist",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42742451/"
-          },
-          {
-            "pmid": "42322703",
-            "title": "Challenging the myths of subcutaneous delivery: An industry expert perspective.",
-            "publicationDate": "2026 Aug 10",
-            "journal": "Journal of controlled release : official journal of the Controlled Release Society",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42322703/"
-          },
-          {
-            "pmid": "42314461",
-            "title": "Removal notice to 'Challenging the myths of subcutaneous delivery: An industry expert perspective' [Journal of Controlled Release 393 (2026) 114800].",
-            "publicationDate": "2026 Aug 10",
-            "journal": "Journal of controlled release : official journal of the Controlled Release Society",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42314461/"
-          }
-        ],
-        "source": "NCBI PubMed E-utilities",
-        "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22Merck+Sharp+%26+Dohme%22%5BAffiliation%5D"
+        "status": "ERROR",
+        "error": "URLError"
       },
-      "status": "OK",
-      "errors": []
+      "status": "PARTIAL",
+      "errors": [
+        "PUBMED_UNAVAILABLE"
+      ]
     },
     {
       "market": "us",
@@ -1972,7 +1894,7 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Pfizer",
-        "publicationCountRecent5y": 6970,
+        "publicationCountRecent5y": 6972,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
         "publications": [
           {
@@ -4241,14 +4163,14 @@
   ],
   "pointInTimeLedger": {
     "status": "OK",
-    "addedSnapshots": 0,
+    "addedSnapshots": 5,
     "addedEvents": 0,
-    "snapshotCount": 1115,
+    "snapshotCount": 1120,
     "eventCount": 4105
   },
   "validationGate": {
     "status": "RESEARCH_ONLY",
-    "generatedAt": "2026-09-29T02:20:09+00:00",
+    "generatedAt": "2026-09-29T07:11:35+00:00",
     "evaluatedDirectionalEventCount": 0,
     "promotionCount": 0,
     "operationalScoreAdjustmentAllowed": false,
