@@ -1,6 +1,6 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-09-29T02:23:25.005272+00:00",
+  "generatedAt": "2026-09-29T14:43:14.526684+00:00",
   "policy": {
     "version": "champion-challenger-v1.4.0",
     "champion": "TOP_3_RAW_CANDIDATES",
@@ -30,17 +30,17 @@
     "fingerprint": "2cc1dea4ccc330c31cb9"
   },
   "recording": {
-    "appended": 0,
+    "appended": 16,
     "conflicts": 0,
     "skipped": 0,
-    "total": 1369
+    "total": 1385
   },
   "policyCohort": {
     "activeFingerprint": "2cc1dea4ccc330c31cb9",
     "activeMetaPolicyFingerprint": "0bb3379dfc7bec772798",
     "activeRiskPolicyFingerprint": "e35273b1243c0e38f6ce",
-    "activeRows": 1229,
-    "validActiveRows": 1229,
+    "activeRows": 1245,
+    "validActiveRows": 1245,
     "excludedPriorPolicyRows": 140
   },
   "integrity": {
@@ -89,26 +89,26 @@
     "blockingReasons": []
   },
   "comparison": {
-    "completedSignalDates": 1,
+    "completedSignalDates": 2,
     "incompleteSignalDates": 37,
     "champion": {
-      "completeSignalDates": 1,
-      "selectedEvaluatedTrades": 3,
-      "avgDailyReturnPct": -1.0351,
-      "afterCostExpectancyPct": -1.0351,
+      "completeSignalDates": 2,
+      "selectedEvaluatedTrades": 6,
+      "avgDailyReturnPct": -1.509845,
+      "afterCostExpectancyPct": -1.509845,
       "avgWinPct": null,
-      "avgLossPct": 0.345033,
+      "avgLossPct": 0.503282,
       "payoffRatio": null,
-      "totalReturnPct": -1.0351,
+      "totalReturnPct": -2.999148,
       "profitFactor": 0.0,
-      "maxDrawdownPct": 1.0351,
+      "maxDrawdownPct": 2.999148,
       "afterCostExpectancyBootstrapCi95": [
-        -1.0351,
+        -1.98459,
         -1.0351
       ]
     },
     "challenger": {
-      "completeSignalDates": 1,
+      "completeSignalDates": 2,
       "selectedEvaluatedTrades": 0,
       "avgDailyReturnPct": 0.0,
       "afterCostExpectancyPct": 0.0,
@@ -124,10 +124,10 @@
       ]
     },
     "pairedUplift": {
-      "meanPct": 1.0351,
+      "meanPct": 1.509845,
       "bootstrapCi95": [
         1.0351,
-        1.0351
+        1.98459
       ],
       "bootstrapUnit": "SIGNAL_DATE",
       "bootstrapSamples": 10000
@@ -138,6 +138,15 @@
         "championReturnPct": -1.0351,
         "challengerReturnPct": 0,
         "upliftPct": 1.0351,
+        "championTrades": 3,
+        "challengerTrades": 0,
+        "challengerGrossExposurePct": 0.0
+      },
+      {
+        "signalDate": "2026-09-17",
+        "championReturnPct": -1.98459,
+        "challengerReturnPct": 0,
+        "upliftPct": 1.98459,
         "championTrades": 3,
         "challengerTrades": 0,
         "challengerGrossExposurePct": 0.0
