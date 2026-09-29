@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-28T20:33:43.503172+00:00",
+  "generatedAt": "2026-09-29T02:23:25.534085+00:00",
   "overall": "WARN",
   "criticalFailures": 0,
   "hardFailures": 0,
@@ -15,30 +15,30 @@
     {
       "name": "kr_ohlcv",
       "status": "OK",
-      "detail": "0.86d, asOf=2026-09-28",
+      "detail": "1.1d, asOf=2026-09-28",
       "critical": true,
-      "ageDays": 0.86
+      "ageDays": 1.1
     },
     {
       "name": "kr_kospi_ohlcv",
       "status": "OK",
-      "detail": "0.86d, asOf=2026-09-28, kr_KOSPI_daily.csv trailing OHLC is valid",
+      "detail": "1.1d, asOf=2026-09-28, kr_KOSPI_daily.csv trailing OHLC is valid",
       "critical": true,
-      "ageDays": 0.86
+      "ageDays": 1.1
     },
     {
       "name": "kr_kosdaq_ohlcv",
       "status": "OK",
-      "detail": "0.86d, asOf=2026-09-28, kr_KOSDAQ_daily.csv trailing OHLC is valid",
+      "detail": "1.1d, asOf=2026-09-28, kr_KOSDAQ_daily.csv trailing OHLC is valid",
       "critical": true,
-      "ageDays": 0.86
+      "ageDays": 1.1
     },
     {
       "name": "kr_recommendations",
       "status": "OK",
-      "detail": "0.19d, asOf=2026-09-28T15:53:01.375122+00:00",
+      "detail": "0.12d, asOf=2026-09-28T23:29:42.603233+00:00",
       "critical": true,
-      "ageDays": 0.19
+      "ageDays": 0.12
     },
     {
       "name": "collector_steps",
@@ -50,49 +50,49 @@
     {
       "name": "collector_run",
       "status": "OK",
-      "detail": "0.19d, asOf=2026-09-29T00:53:52+09:00, source=cloud:benchmarks, reportedAt=2026-09-29T00:53:52",
+      "detail": "0.12d, asOf=2026-09-29T08:30:42+09:00, source=cloud:benchmarks, reportedAt=2026-09-29T08:30:42",
       "critical": true,
-      "ageDays": 0.19
+      "ageDays": 0.12
     },
     {
       "name": "local_collector_run",
       "status": "STALE",
-      "detail": "optional local collector 62.54d old; cloud source remains authoritative",
+      "detail": "optional local collector 62.78d old; cloud source remains authoritative",
       "critical": false,
-      "ageDays": 62.54
+      "ageDays": 62.78
     },
     {
       "name": "vtj_journal",
       "status": "OK",
-      "detail": "0.19d, asOf=2026-09-29T00:53:56+09:00",
+      "detail": "0.12d, asOf=2026-09-29T08:30:47+09:00",
       "critical": false,
-      "ageDays": 0.19
+      "ageDays": 0.12
     },
     {
       "name": "live_calibration",
       "status": "OK",
-      "detail": "-0.14d, asOf=2026-09-29",
+      "detail": "0.1d, asOf=2026-09-29",
       "critical": false,
-      "ageDays": -0.14
+      "ageDays": 0.1
     },
     {
       "name": "strategy_win_rates",
       "status": "OK",
-      "detail": "-0.37d, asOf=2026-09-29 05:33:40",
+      "detail": "-0.37d, asOf=2026-09-29 11:23:22",
       "critical": false,
       "ageDays": -0.37
     },
     {
       "name": "prediction_capture",
       "status": "OK",
-      "detail": "0.86d, asOf=2026-09-28",
+      "detail": "1.1d, asOf=2026-09-28",
       "critical": true,
-      "ageDays": 0.86
+      "ageDays": 1.1
     },
     {
       "name": "capture_continuity",
       "status": "OK",
-      "detail": "거래일 13일 중 캡처 13일 (기준일 2026-09-07~, 유예 1일)",
+      "detail": "거래일 12일 중 캡처 12일 (기준일 2026-09-08~, 유예 1일)",
       "critical": true,
       "ageDays": null
     },
