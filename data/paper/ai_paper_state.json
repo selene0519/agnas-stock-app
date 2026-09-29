@@ -18,7 +18,7 @@
   "lastRun": {
     "status": "OK",
     "dryRun": false,
-    "createdAt": "2026-09-29T22:05:48",
+    "createdAt": "2026-09-29T23:05:54",
     "market": "us",
     "markets": {
       "us": {
@@ -29,69 +29,7 @@
           "horizon": "swing"
         },
         "generation": 2,
-        "actions": [
-          {
-            "action": "SELL",
-            "reason": "STOP_HIT",
-            "market": "us",
-            "agentId": "ml_rank_conservative_swing",
-            "agentLabel": "ML Rank Conservative Swing",
-            "symbol": "SMR",
-            "name": "NuScale Power",
-            "price": 7.91,
-            "quantity": 9.6899,
-            "result": {
-              "ok": true,
-              "dryRun": false
-            }
-          },
-          {
-            "action": "BUY",
-            "market": "us",
-            "agentId": "ml_rank_conservative_swing",
-            "agentLabel": "ML Rank Conservative Swing",
-            "symbol": "SPCX",
-            "name": "SPCX",
-            "price": 145.47,
-            "quantity": 0.387,
-            "totalValue": 56.3,
-            "costAmount": 0.06,
-            "researchMode": true,
-            "stopPrice": 136.0,
-            "targetPrice": 174.0,
-            "expectedValue": 5.06,
-            "score": 76.8,
-            "decision": "오늘 진입",
-            "paperOnly": false,
-            "paperSetup": "",
-            "paperRegime": "",
-            "paperSizeMultiplier": "",
-            "calibrationGate": "",
-            "executionAuthority": {
-              "allowed": true,
-              "reason": "EXACT_CANDIDATE_AND_RISK_WEIGHT_AUTHORIZED",
-              "decisionId": "aec7bd6a42b39c9df23d",
-              "candidateKey": "066b2f33db3c6ac60487f2c7",
-              "market": "us",
-              "symbol": "SPCX",
-              "mode": "conservative",
-              "horizon": "swing",
-              "entryPrice": 145.47,
-              "stopPrice": 136.0,
-              "weight": 0.03840285,
-              "signalDate": "2026-09-28",
-              "metaPolicyFingerprint": "paper-discovery-only-v1",
-              "riskPolicyVersion": "paper-discovery-risk-v1",
-              "riskPolicyFingerprint": "paper-discovery-risk-v1",
-              "allocationFingerprint": "79e07279a7421a7219c16aacbc92757678b27ef627a626efc6e63bcd06cc1924",
-              "researchOnly": true
-            },
-            "result": {
-              "ok": true,
-              "dryRun": false
-            }
-          }
-        ],
+        "actions": [],
         "summary": {
           "agentId": "ml_rank_conservative_swing",
           "agentLabel": "ML Rank Conservative Swing",
@@ -110,37 +48,37 @@
         "liveMetrics": {
           "status": "OK",
           "proofStatus": "RUNNING",
-          "sampleCount": 56,
-          "navPointCount": 57,
+          "sampleCount": 57,
+          "navPointCount": 58,
           "totalReturnPct": 0.7,
           "mddPct": -0.6,
-          "sharpe": 1.36,
-          "winRate": 30.4,
+          "sharpe": 1.35,
+          "winRate": 29.8,
           "avgPeriodReturnPct": 0.01,
           "cashPct": 85.0,
           "peakValue": 5061.87,
           "currentValue": 5035.0,
           "lastNavDate": "2026-09-29",
           "recentReturnsPct": [
-            0.12,
             0.0,
             0.19,
             0.04,
             -0.02,
             -0.3,
             0.0,
-            -0.22
+            -0.22,
+            0.0
           ],
           "equityCurve": [
             {
               "index": 0,
-              "value": 5005.05,
-              "returnPct": 0.1
+              "value": 5009.17,
+              "returnPct": 0.18
             },
             {
               "index": 1,
-              "value": 5009.17,
-              "returnPct": 0.18
+              "value": 5024.34,
+              "returnPct": 0.49
             },
             {
               "index": 2,
@@ -149,8 +87,8 @@
             },
             {
               "index": 3,
-              "value": 5024.34,
-              "returnPct": 0.49
+              "value": 5016.81,
+              "returnPct": 0.34
             },
             {
               "index": 4,
@@ -159,43 +97,43 @@
             },
             {
               "index": 5,
-              "value": 5016.81,
-              "returnPct": 0.34
-            },
-            {
-              "index": 6,
               "value": 5043.48,
               "returnPct": 0.87
             },
             {
-              "index": 7,
+              "index": 6,
               "value": 5043.43,
               "returnPct": 0.87
             },
             {
-              "index": 8,
+              "index": 7,
               "value": 5049.72,
               "returnPct": 0.99
             },
             {
-              "index": 9,
+              "index": 8,
               "value": 5049.83,
               "returnPct": 1.0
             },
             {
-              "index": 10,
+              "index": 9,
               "value": 5059.67,
               "returnPct": 1.19
             },
             {
-              "index": 11,
+              "index": 10,
               "value": 5061.87,
               "returnPct": 1.24
             },
             {
-              "index": 12,
+              "index": 11,
               "value": 5061.08,
               "returnPct": 1.22
+            },
+            {
+              "index": 12,
+              "value": 5046.07,
+              "returnPct": 0.92
             },
             {
               "index": 13,
@@ -204,8 +142,8 @@
             },
             {
               "index": 14,
-              "value": 5046.07,
-              "returnPct": 0.92
+              "value": 5035.0,
+              "returnPct": 0.7
             },
             {
               "index": 15,
@@ -415,7 +353,7 @@
         },
         "operatingAuthority": {
           "market": "us",
-          "operatingState": "ABSTAIN",
+          "operatingState": "BLOCKED",
           "recommendationActionable": false,
           "entryAllowed": false,
           "paperEntryAllowed": false,
@@ -455,11 +393,13 @@
           },
           "reasonCodes": [
             "REALIZED_WIN_RATE_BELOW_GATE",
+            "QUANT_EVIDENCE_INTEGRITY_NOT_READY",
             "QUANT_SHADOW_NOT_APPROVED",
             "EV_CALIBRATION_NOT_VALIDATED"
           ],
           "reasons": [
             "실현 승률이 운용 기준보다 낮습니다.",
+            "Quant V2 evidence reports are missing, stale, or invalid.",
             "Quant V2 evidence has not approved a new entry.",
             "Expected-value ranking has not passed clean chronological validation."
           ],
@@ -756,11 +696,11 @@
           },
           "priceSession": {
             "market": "us",
-            "priceSession": "us_premarket",
-            "sessionLabel": "미장 장전",
-            "priceBasis": "미장 장전 · 프리마켓 업데이트 기준",
-            "nowKst": "2026-09-29T22:05:48.876480+09:00",
-            "nowLocal": "2026-09-29T09:05:48.876480-04:00",
+            "priceSession": "us_intraday",
+            "sessionLabel": "미장 장중",
+            "priceBasis": "미장 장중 · KIS 현재가 기준",
+            "nowKst": "2026-09-29T23:05:55.034700+09:00",
+            "nowLocal": "2026-09-29T10:05:55.034700-04:00",
             "isHoliday": false,
             "isReviewMode": false,
             "isUsDst": true
@@ -770,6 +710,7 @@
             "mode": "SHADOW_ONLY",
             "decision": "ABSTAIN",
             "decisionReasons": [
+              "STALE_EVIDENCE_REPORTS",
               "ALPHA_NOT_PROVEN",
               "RESIDUAL_ALPHA_MODEL_NOT_PROVEN",
               "NO_APPROVED_RISK_EXPOSURE",
@@ -778,13 +719,15 @@
               "WALKFORWARD_NOT_PROMOTION_GRADE"
             ],
             "missingReports": [],
-            "staleReports": [],
+            "staleReports": [
+              "walkForward"
+            ],
             "liveTradingAllowed": false
           }
         },
         "nav": {
           "date": "2026-09-29",
-          "createdAt": "2026-09-29T22:05:49",
+          "createdAt": "2026-09-29T23:05:55",
           "market": "us",
           "agentId": "ml_rank_conservative_swing",
           "agentLabel": "ML Rank Conservative Swing",
@@ -799,8 +742,8 @@
           "survivalPct": 100.7,
           "positionCount": 5,
           "tradeCount": 9,
-          "buyCount": 1,
-          "sellCount": 1,
+          "buyCount": 0,
+          "sellCount": 0,
           "proofStatus": "RUNNING"
         }
       }
