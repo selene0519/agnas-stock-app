@@ -1,7 +1,7 @@
 {
-  "updatedAt": "2026-09-30 10:40:06",
-  "totalRows": 2765,
-  "olsSampleSize": 2184,
+  "updatedAt": "2026-09-30 16:19:30",
+  "totalRows": 2769,
+  "olsSampleSize": 2188,
   "byStrategy": {
     "conservative_short": {
       "total": 282,
@@ -15,14 +15,14 @@
       "probAccuracy": -0.327
     },
     "conservative_swing": {
-      "total": 288,
+      "total": 289,
       "wins": 83,
-      "losses": 205,
-      "winRate": 0.2882,
+      "losses": 206,
+      "winRate": 0.2872,
       "avgWinPct": 9.223,
-      "avgLossPct": 5.945,
-      "payoffRatio": 1.551,
-      "avgProbability": 62.7,
+      "avgLossPct": 5.95,
+      "payoffRatio": 1.55,
+      "avgProbability": 62.6,
       "probAccuracy": -0.339
     },
     "conservative_mid": {
@@ -48,26 +48,26 @@
       "probAccuracy": -0.289
     },
     "balanced_swing": {
-      "total": 361,
+      "total": 362,
       "wins": 87,
-      "losses": 274,
-      "winRate": 0.241,
+      "losses": 275,
+      "winRate": 0.2403,
       "avgWinPct": 9.473,
-      "avgLossPct": 6.984,
-      "payoffRatio": 1.356,
-      "avgProbability": 67.8,
-      "probAccuracy": -0.437
+      "avgLossPct": 6.99,
+      "payoffRatio": 1.355,
+      "avgProbability": 67.7,
+      "probAccuracy": -0.436
     },
     "balanced_mid": {
-      "total": 312,
+      "total": 313,
       "wins": 78,
-      "losses": 234,
-      "winRate": 0.25,
+      "losses": 235,
+      "winRate": 0.2492,
       "avgWinPct": 12.844,
-      "avgLossPct": 8.614,
-      "payoffRatio": 1.491,
+      "avgLossPct": 8.626,
+      "payoffRatio": 1.489,
       "avgProbability": 63.4,
-      "probAccuracy": -0.384
+      "probAccuracy": -0.385
     },
     "aggressive_short": {
       "total": 241,
@@ -81,15 +81,15 @@
       "probAccuracy": -0.4
     },
     "aggressive_swing": {
-      "total": 295,
-      "wins": 65,
+      "total": 296,
+      "wins": 66,
       "losses": 230,
-      "winRate": 0.2203,
-      "avgWinPct": 9.522,
+      "winRate": 0.223,
+      "avgWinPct": 9.797,
       "avgLossPct": 7.977,
-      "payoffRatio": 1.194,
-      "avgProbability": 62.9,
-      "probAccuracy": -0.409
+      "payoffRatio": 1.228,
+      "avgProbability": 62.8,
+      "probAccuracy": -0.405
     },
     "aggressive_mid": {
       "total": 397,
@@ -112,17 +112,17 @@
       "payoffRatio": 1.345
     },
     "us": {
-      "total": 1628,
+      "total": 1632,
       "winRate": 0.2439,
-      "avgWinPct": 10.697,
-      "avgLossPct": 7.024,
-      "payoffRatio": 1.523
+      "avgWinPct": 10.74,
+      "avgLossPct": 7.029,
+      "payoffRatio": 1.528
     }
   },
   "byProbBand": {
     "low_50-60": {
-      "count": 640,
-      "actualWinRate": 0.1344
+      "count": 644,
+      "actualWinRate": 0.1351
     },
     "mid_60-75": {
       "count": 949,
@@ -135,43 +135,43 @@
   },
   "regressionFactors": {
     "intercept": {
-      "coefficient": -18.1046,
-      "r2": 0.0385
+      "coefficient": -17.731,
+      "r2": 0.0366
     },
     "rsi": {
-      "coefficient": 0.191,
-      "r2": 0.0385,
+      "coefficient": 0.1879,
+      "r2": 0.0366,
       "description": "RSI14 — 높을수록 과매수 (보통 음의 계수)"
     },
     "volumeRatio": {
-      "coefficient": 0.1729,
-      "r2": 0.0385,
+      "coefficient": 0.1827,
+      "r2": 0.0366,
       "description": "거래량비율 — 높을수록 모멘텀 강함 (보통 양의 계수)"
     },
     "distToMa20": {
-      "coefficient": -0.159,
-      "r2": 0.0385,
+      "coefficient": -0.1626,
+      "r2": 0.0366,
       "description": "MA20 이격도% — 너무 높으면 리스크 증가"
     },
     "probability": {
-      "coefficient": 7.6349,
-      "r2": 0.0385,
+      "coefficient": 7.3844,
+      "r2": 0.0366,
       "description": "확률 (0~1) — 모델 신뢰도"
     },
     "momentum5": {
-      "coefficient": -0.0532,
-      "r2": 0.0385,
+      "coefficient": -0.0472,
+      "r2": 0.0366,
       "description": "5일 모멘텀% — 단기 추세"
     },
     "_winRateRegression": {
-      "r2": 0.0445,
-      "sampleSize": 2184,
+      "r2": 0.0437,
+      "sampleSize": 2188,
       "factors": {
-        "rsi": 0.01,
-        "volumeRatio": 0.0161,
-        "distToMa20": -0.0131,
-        "probability": 0.5091,
-        "momentum5": 0.0036
+        "rsi": 0.0099,
+        "volumeRatio": 0.0164,
+        "distToMa20": -0.0132,
+        "probability": 0.501,
+        "momentum5": 0.0038
       }
     }
   },
@@ -189,22 +189,22 @@
     },
     "us": {
       "status": "OK",
-      "n": 1342,
-      "r2": 0.0585,
-      "intercept": -22.3179,
-      "rsi": 0.2119,
-      "volumeRatio": 2.6315,
-      "distToMa20": -0.2174,
-      "probability": 9.4367,
-      "momentum5": -0.0676
+      "n": 1346,
+      "r2": 0.0557,
+      "intercept": -21.869,
+      "rsi": 0.2074,
+      "volumeRatio": 2.674,
+      "distToMa20": -0.2297,
+      "probability": 9.1645,
+      "momentum5": -0.056
     }
   },
   "insight": [
     "호라이즌: short 전략 평균 승률 27.2%로 최고",
     "모드: conservative 전략 평균 payoff 1.59x로 최고",
     "마켓: KR 승률 25.3%로 우위",
-    "회귀분석: intercept 낮을수록 수익률 향상 (β=-18.105)",
-    "전체 팩터 설명력 R²=0.039 (0~1, 높을수록 예측력 강함)",
+    "회귀분석: intercept 낮을수록 수익률 향상 (β=-17.731)",
+    "전체 팩터 설명력 R²=0.038 (0~1, 높을수록 예측력 강함)",
     "Kelly 최대: conservative_short → 포트폴리오 0.0% 권장"
   ]
 }
