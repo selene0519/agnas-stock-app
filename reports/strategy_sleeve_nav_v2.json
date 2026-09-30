@@ -1,6 +1,6 @@
 {
   "status": "OK",
-  "generatedAt": "2026-09-30T01:45:09.451613+00:00",
+  "generatedAt": "2026-09-30T14:44:29.521892+00:00",
   "basis": {
     "startNav": 100.0,
     "positionFraction": 0.1,
@@ -16,8 +16,8 @@
   },
   "dataQuality": {
     "excluded": {
-      "notEvaluated": 108,
-      "nonForwardSource": 2038
+      "notEvaluated": 106,
+      "nonForwardSource": 2064
     }
   },
   "ranking": [
@@ -1142,16 +1142,16 @@
     },
     "balanced_mid": {
       "trades": 21,
-      "candidateTrades": 107,
-      "capacityRejectedTrades": 86,
-      "nav": 93.4369,
-      "cash": 93.4369,
+      "candidateTrades": 108,
+      "capacityRejectedTrades": 87,
+      "nav": 94.4692,
+      "cash": 94.4692,
       "openPositions": 0,
-      "totalReturnPct": -6.5631,
+      "totalReturnPct": -5.5308,
       "winRate": 0.2857,
-      "avgNetPnlPct": -3.7462,
-      "payoffRatio": 1.1856,
-      "profitFactor": 0.5088,
+      "avgNetPnlPct": -3.1682,
+      "payoffRatio": 1.3884,
+      "profitFactor": 0.5861,
       "maxDrawdownPct": 10.4665,
       "maxInvestedPct": 100.0,
       "curve": [
@@ -1309,40 +1309,40 @@
           "netPnlPct": 6.5825
         },
         {
-          "date": "2026-08-19",
-          "nav": 90.7081,
-          "cash": 61.9264,
-          "openPositions": 3,
-          "symbol": "SCHD",
-          "market": "us",
-          "netPnlPct": 7.3035
-        },
-        {
           "date": "2026-09-14",
-          "nav": 90.3338,
-          "cash": 70.7452,
-          "openPositions": 2,
+          "nav": 89.7126,
+          "cash": 61.6191,
+          "openPositions": 3,
           "symbol": "BAC",
           "market": "us",
           "netPnlPct": -4.0718
         },
         {
           "date": "2026-09-15",
-          "nav": 91.5078,
-          "cash": 81.9192,
-          "openPositions": 1,
+          "nav": 90.8867,
+          "cash": 72.7932,
+          "openPositions": 2,
           "symbol": "055550",
           "market": "kr",
           "netPnlPct": 11.7404
         },
         {
           "date": "2026-09-22",
-          "nav": 93.4369,
-          "cash": 93.4369,
-          "openPositions": 0,
+          "nav": 92.8157,
+          "cash": 84.3108,
+          "openPositions": 1,
           "symbol": "DUOL",
           "market": "us",
           "netPnlPct": 20.1179
+        },
+        {
+          "date": "2026-09-30",
+          "nav": 94.4692,
+          "cash": 94.4692,
+          "openPositions": 0,
+          "symbol": "PANW",
+          "market": "us",
+          "netPnlPct": 19.4421
         }
       ],
       "strategyFingerprint": "LEGACY_UNFINGERPRINTED",
@@ -2057,8 +2057,8 @@
     },
     "aggressive_mid": {
       "trades": 20,
-      "candidateTrades": 138,
-      "capacityRejectedTrades": 118,
+      "candidateTrades": 139,
+      "capacityRejectedTrades": 119,
       "nav": 88.1688,
       "cash": 88.1688,
       "openPositions": 0,
