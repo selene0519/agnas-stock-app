@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-09-30 23:06:09",
+  "updatedAt": "2026-09-30 23:21:36",
   "totalRows": 2774,
   "olsSampleSize": 2193,
   "byStrategy": {
@@ -8,9 +8,9 @@
       "wins": 77,
       "losses": 206,
       "winRate": 0.2721,
-      "avgWinPct": 4.923,
+      "avgWinPct": 4.919,
       "avgLossPct": 3.456,
-      "payoffRatio": 1.425,
+      "payoffRatio": 1.423,
       "avgProbability": 59.6,
       "probAccuracy": -0.324
     },
@@ -114,7 +114,7 @@
     "us": {
       "total": 1637,
       "winRate": 0.2437,
-      "avgWinPct": 10.73,
+      "avgWinPct": 10.729,
       "avgLossPct": 7.029,
       "payoffRatio": 1.526
     }
@@ -135,7 +135,7 @@
   },
   "regressionFactors": {
     "intercept": {
-      "coefficient": -17.765,
+      "coefficient": -17.7676,
       "r2": 0.0368
     },
     "rsi": {
@@ -144,7 +144,7 @@
       "description": "RSI14 — 높을수록 과매수 (보통 음의 계수)"
     },
     "volumeRatio": {
-      "coefficient": 0.1923,
+      "coefficient": 0.1922,
       "r2": 0.0368,
       "description": "거래량비율 — 높을수록 모멘텀 강함 (보통 양의 계수)"
     },
@@ -154,7 +154,7 @@
       "description": "MA20 이격도% — 너무 높으면 리스크 증가"
     },
     "probability": {
-      "coefficient": 7.4279,
+      "coefficient": 7.4304,
       "r2": 0.0368,
       "description": "확률 (0~1) — 모델 신뢰도"
     },
@@ -191,19 +191,19 @@
       "status": "OK",
       "n": 1351,
       "r2": 0.0561,
-      "intercept": -21.9175,
+      "intercept": -21.9202,
       "rsi": 0.2076,
-      "volumeRatio": 2.6982,
-      "distToMa20": -0.2339,
-      "probability": 9.2137,
-      "momentum5": -0.0551
+      "volumeRatio": 2.6977,
+      "distToMa20": -0.2338,
+      "probability": 9.2164,
+      "momentum5": -0.0552
     }
   },
   "insight": [
     "호라이즌: short 전략 평균 승률 27.3%로 최고",
     "모드: conservative 전략 평균 payoff 1.60x로 최고",
     "마켓: KR 승률 25.3%로 우위",
-    "회귀분석: intercept 낮을수록 수익률 향상 (β=-17.765)",
+    "회귀분석: intercept 낮을수록 수익률 향상 (β=-17.768)",
     "전체 팩터 설명력 R²=0.038 (0~1, 높을수록 예측력 강함)",
     "Kelly 최대: conservative_short → 포트폴리오 0.0% 권장"
   ]
