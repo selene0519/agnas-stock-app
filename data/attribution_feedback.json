@@ -1,9 +1,9 @@
 {
   "status": "OK",
   "market": "all",
-  "sampleCount": 773,
+  "sampleCount": 776,
   "excludedInconsistentOutcomeCount": 3,
-  "excludedBySourcePolicyCount": 1704,
+  "excludedBySourcePolicyCount": 1723,
   "calibrationBasis": "forward_only(SOURCE_CALIBRATION_WEIGHTS>0)",
   "sourceBreakdown": [
     {
@@ -18,22 +18,22 @@
       "sourceType": "FORWARD_PAPER_TRADE",
       "calibrationWeight": 1.0,
       "admissible": true,
-      "n": 776,
-      "winRate": 0.2758,
-      "avgPnlPct": -3.364
+      "n": 779,
+      "winRate": 0.2773,
+      "avgPnlPct": -3.308
     },
     {
       "sourceType": "FORWARD_RESEARCH_TRADE",
       "calibrationWeight": 0.0,
       "admissible": false,
-      "n": 353,
-      "winRate": 0.2635,
-      "avgPnlPct": -2.898
+      "n": 372,
+      "winRate": 0.2634,
+      "avgPnlPct": -2.979
     }
   ],
-  "baseWinRate": 0.273,
-  "baseAvgPnlPct": -3.381,
-  "generatedAt": "2026-10-01T21:52:14",
+  "baseWinRate": 0.2745,
+  "baseAvgPnlPct": -3.325,
+  "generatedAt": "2026-10-01T23:06:23",
   "autoApplied": false,
   "manualApprovalRequired": true,
   "calibrationSummary": {
@@ -109,14 +109,14 @@
       "manualApprovalRequired": true
     },
     {
-      "feedbackId": "f549f32f9ec93a98edb1",
+      "feedbackId": "b3b0d01988012f1fd5b6",
       "market": "all",
       "mode": "balanced",
       "horizon": "mid",
-      "n": 108,
-      "winRate": 0.2222,
-      "avgPnlPct": -4.29,
-      "multiplier": 0.665,
+      "n": 110,
+      "winRate": 0.2273,
+      "avgPnlPct": -4.048,
+      "multiplier": 0.677,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true
@@ -148,14 +148,14 @@
       "manualApprovalRequired": true
     },
     {
-      "feedbackId": "83961a0fc56a9246f6a4",
+      "feedbackId": "0f0af2d6a94e474e7c76",
       "market": "all",
       "mode": "aggressive",
       "horizon": "mid",
-      "n": 140,
-      "winRate": 0.1714,
-      "avgPnlPct": -5.011,
-      "multiplier": 0.61,
+      "n": 141,
+      "winRate": 0.1773,
+      "avgPnlPct": -4.865,
+      "multiplier": 0.619,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true
