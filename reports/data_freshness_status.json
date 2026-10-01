@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-01T01:40:36.992454+00:00",
+  "generatedAt": "2026-09-30T19:04:38.674287+00:00",
   "overall": "WARN",
   "criticalFailures": 0,
   "hardFailures": 0,
@@ -15,30 +15,30 @@
     {
       "name": "kr_ohlcv",
       "status": "OK",
-      "detail": "1.07d, asOf=2026-09-30",
+      "detail": "0.79d, asOf=2026-09-30",
       "critical": true,
-      "ageDays": 1.07
+      "ageDays": 0.79
     },
     {
       "name": "kr_kospi_ohlcv",
       "status": "OK",
-      "detail": "1.07d, asOf=2026-09-30, kr_KOSPI_daily.csv trailing OHLC is valid",
+      "detail": "0.79d, asOf=2026-09-30, kr_KOSPI_daily.csv trailing OHLC is valid",
       "critical": true,
-      "ageDays": 1.07
+      "ageDays": 0.79
     },
     {
       "name": "kr_kosdaq_ohlcv",
       "status": "OK",
-      "detail": "1.07d, asOf=2026-09-30, kr_KOSDAQ_daily.csv trailing OHLC is valid",
+      "detail": "0.79d, asOf=2026-09-30, kr_KOSDAQ_daily.csv trailing OHLC is valid",
       "critical": true,
-      "ageDays": 1.07
+      "ageDays": 0.79
     },
     {
       "name": "kr_recommendations",
       "status": "OK",
-      "detail": "0.09d, asOf=2026-09-30T23:29:06.207577+00:00",
+      "detail": "0.2d, asOf=2026-09-30T14:19:46.756340+00:00",
       "critical": true,
-      "ageDays": 0.09
+      "ageDays": 0.2
     },
     {
       "name": "collector_steps",
@@ -50,49 +50,49 @@
     {
       "name": "collector_run",
       "status": "OK",
-      "detail": "0.09d, asOf=2026-10-01T08:30:06+09:00, source=cloud:benchmarks, reportedAt=2026-10-01T08:30:06",
+      "detail": "0.2d, asOf=2026-09-30T23:20:56+09:00, source=cloud:benchmarks, reportedAt=2026-09-30T23:20:56",
       "critical": true,
-      "ageDays": 0.09
+      "ageDays": 0.2
     },
     {
       "name": "local_collector_run",
       "status": "STALE",
-      "detail": "optional local collector 64.75d old; cloud source remains authoritative",
+      "detail": "optional local collector 64.47d old; cloud source remains authoritative",
       "critical": false,
-      "ageDays": 64.75
+      "ageDays": 64.47
     },
     {
       "name": "vtj_journal",
       "status": "OK",
-      "detail": "0.09d, asOf=2026-10-01T08:30:11+09:00",
+      "detail": "0.2d, asOf=2026-09-30T23:21:01+09:00",
       "critical": false,
-      "ageDays": 0.09
+      "ageDays": 0.2
     },
     {
       "name": "live_calibration",
       "status": "OK",
-      "detail": "0.07d, asOf=2026-10-01",
+      "detail": "0.79d, asOf=2026-09-30",
       "critical": false,
-      "ageDays": 0.07
+      "ageDays": 0.79
     },
     {
       "name": "strategy_win_rates",
       "status": "OK",
-      "detail": "-0.37d, asOf=2026-10-01 10:40:33",
+      "detail": "-0.37d, asOf=2026-10-01 04:04:35",
       "critical": false,
       "ageDays": -0.37
     },
     {
       "name": "prediction_capture",
       "status": "OK",
-      "detail": "1.07d, asOf=2026-09-30",
+      "detail": "0.79d, asOf=2026-09-30",
       "critical": true,
-      "ageDays": 1.07
+      "ageDays": 0.79
     },
     {
       "name": "capture_continuity",
       "status": "OK",
-      "detail": "거래일 12일 중 캡처 12일 (기준일 2026-09-10~, 유예 1일)",
+      "detail": "거래일 13일 중 캡처 13일 (기준일 2026-09-09~, 유예 1일)",
       "critical": true,
       "ageDays": null
     },
@@ -113,7 +113,7 @@
     {
       "name": "live_gate_promotion",
       "status": "WARN",
-      "detail": "승격 0/14셀 (기준 effN≥30, 최대 8.7, global effN 23.9 승률 27.3%) — 아직 백테스트 소스 사용 중",
+      "detail": "승격 0/14셀 (기준 effN≥30, 최대 8.9, global effN 24.5 승률 27.3%) — 아직 백테스트 소스 사용 중",
       "critical": false,
       "ageDays": null
     }
