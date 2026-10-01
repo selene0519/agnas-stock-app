@@ -5,32 +5,38 @@
   "regime": "BEAR",
   "status": "BEAR_DEFENSIVE",
   "lensNote": "Bear: RS dispersion is gone; rotate to low-volatility defensives (halve the drawdown) instead of chasing returns.",
-  "universeCount": 134,
+  "universeCount": 135,
   "leaders": [],
   "laggardsToAvoid": [],
   "defensiveHolds": [
     {
+      "symbol": "SP500",
+      "rs60Pct": 1.97,
+      "relToIndexPp": -0.01,
+      "vol60Pct": 0.7
+    },
+    {
       "symbol": "BRK-B",
       "rs60Pct": 0.41,
-      "relToIndexPp": -1.57,
+      "relToIndexPp": -1.56,
       "vol60Pct": 0.86
     },
     {
       "symbol": "PG",
       "rs60Pct": -3.09,
-      "relToIndexPp": -5.08,
+      "relToIndexPp": -5.07,
       "vol60Pct": 1.02
     },
     {
       "symbol": "V",
       "rs60Pct": 3.36,
-      "relToIndexPp": 1.37,
+      "relToIndexPp": 1.38,
       "vol60Pct": 1.16
     },
     {
       "symbol": "PFE",
       "rs60Pct": 18.27,
-      "relToIndexPp": 16.29,
+      "relToIndexPp": 16.3,
       "vol60Pct": 1.17
     },
     {
@@ -48,7 +54,7 @@
     {
       "symbol": "MA",
       "rs60Pct": 6.22,
-      "relToIndexPp": 4.23,
+      "relToIndexPp": 4.24,
       "vol60Pct": 1.25
     },
     {
@@ -60,25 +66,25 @@
     {
       "symbol": "COST",
       "rs60Pct": -4.73,
-      "relToIndexPp": -6.72,
+      "relToIndexPp": -6.71,
       "vol60Pct": 1.26
     },
     {
       "symbol": "KO",
       "rs60Pct": 3.53,
-      "relToIndexPp": 1.54,
+      "relToIndexPp": 1.55,
       "vol60Pct": 1.29
     },
     {
       "symbol": "MCD",
       "rs60Pct": -17.07,
-      "relToIndexPp": -19.06,
+      "relToIndexPp": -19.05,
       "vol60Pct": 1.31
     },
     {
       "symbol": "BAC",
       "rs60Pct": -8.9,
-      "relToIndexPp": -10.89,
+      "relToIndexPp": -10.88,
       "vol60Pct": 1.32
     },
     {
@@ -90,14 +96,8 @@
     {
       "symbol": "ABBV",
       "rs60Pct": 3.96,
-      "relToIndexPp": 1.97,
+      "relToIndexPp": 1.98,
       "vol60Pct": 1.35
-    },
-    {
-      "symbol": "CVX",
-      "rs60Pct": 16.89,
-      "relToIndexPp": 14.9,
-      "vol60Pct": 1.46
     }
   ],
   "note": "Research/paper only. Capital preservation, not return."
