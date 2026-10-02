@@ -40,7 +40,7 @@ COHR,us,,2026-09-29,STOP_HIT,STOP_FIRST,high_volatility_entry,,NO_DATA,not_used,
 LYFT,us,,2026-09-09,STOP_HIT,STOP_FIRST,high_volatility_entry,,NO_DATA,not_used,,,,,,0.0,-8.004,True,False,MED,,LYFT STOP_FIRST | 결과=STOP_HIT 수익률=-8.0043% | 원인태그=[high_volatility_entry],2026-09-09T16:18:21
 NBIS,us,,2026-07-29,STOP_HIT,STOP_FIRST,none,,NO_DATA,not_used,,,,,,0.0,-8.135,True,False,HIGH,,NBIS STOP_FIRST | 결과=STOP_HIT 수익률=-8.135%,2026-07-29T06:10:19
 ARM,us,,2026-07-29,STOP_HIT,STOP_FIRST,none,,NO_DATA,not_used,,,,,,0.0,-13.773,True,False,HIGH,,ARM STOP_FIRST | 결과=STOP_HIT 수익률=-13.7727%,2026-07-29T06:10:18
-STX,us,,2026-10-02,STOP_HIT,STOP_FIRST,high_volatility_entry,,NO_DATA,not_used,,,,,,0.0,-11.188,True,False,HIGH,,STX STOP_FIRST | 결과=STOP_HIT 수익률=-11.1882% | 원인태그=[high_volatility_entry],2026-10-02T23:05:43
+STX,us,,2026-10-02,STOP_HIT,STOP_FIRST,high_volatility_entry,,NO_DATA,not_used,,,,,,0.0,-11.188,True,False,HIGH,,STX STOP_FIRST | 결과=STOP_HIT 수익률=-11.1882% | 원인태그=[high_volatility_entry],2026-10-02T23:23:22
 MU,us,,2026-09-14,STOP_HIT,STOP_FIRST,high_volatility_entry,,NO_DATA,not_used,,,,,,0.0,-11.732,True,False,HIGH,,MU STOP_FIRST | 결과=STOP_HIT 수익률=-11.732% | 원인태그=[high_volatility_entry],2026-09-14T23:05:11
 SIMO,us,,2026-09-15,STOP_HIT,STOP_FIRST,high_volatility_entry,,NO_DATA,not_used,,,,,,0.0,-7.94,True,False,HIGH,,SIMO STOP_FIRST | 결과=STOP_HIT 수익률=-7.9399% | 원인태그=[high_volatility_entry],2026-09-15T16:19:43
 TXN,us,,2026-09-21,TIME_EXIT_NEAR_STOP,STOP_FIRST,none,,NO_DATA,not_used,,,,,,0.0,,False,False,MED,,TXN STOP_FIRST | 결과=TIME_EXIT_NEAR_STOP 수익률=0.1008%,2026-09-21T23:05:33
@@ -119,8 +119,8 @@ PATH,us,,2026-09-08,STOP_HIT,STOP_FIRST,"high_volatility_entry,deep_drawdown_ent
 COP,us,,2026-09-22,STOP_HIT,STOP_FIRST,none,,NO_DATA,not_used,,,,,,0.0,-5.448,True,False,MED,,COP STOP_FIRST | 결과=STOP_HIT 수익률=-5.4483%,2026-09-22T23:04:32
 CVX,us,,2026-09-22,STOP_HIT,STOP_FIRST,none,,NO_DATA,not_used,,,,,,0.0,-4.654,True,False,MED,,CVX STOP_FIRST | 결과=STOP_HIT 수익률=-4.6544%,2026-09-22T23:04:32
 NFLX,us,,2026-09-08,STOP_HIT,STOP_FIRST,none,,NO_DATA,not_used,,,,,,0.0,-6.058,True,False,MED,,NFLX STOP_FIRST | 결과=STOP_HIT 수익률=-6.0582%,2026-09-08T23:03:14
-PFE,us,,2026-10-02,STOP_HIT,STOP_FIRST,overbought_entry,,NO_DATA,not_used,,,,,,0.0,-3.035,True,False,MED,,PFE STOP_FIRST | 결과=STOP_HIT 수익률=-3.0355% | 원인태그=[overbought_entry],2026-10-02T23:05:43
-JNJ,us,,2026-10-02,STOP_HIT,STOP_FIRST,none,,NO_DATA,not_used,,,,,,0.0,-4.202,True,False,MED,,JNJ STOP_FIRST | 결과=STOP_HIT 수익률=-4.2022%,2026-10-02T23:05:43
+PFE,us,,2026-10-02,STOP_HIT,STOP_FIRST,overbought_entry,,NO_DATA,not_used,,,,,,0.0,-3.035,True,False,MED,,PFE STOP_FIRST | 결과=STOP_HIT 수익률=-3.0355% | 원인태그=[overbought_entry],2026-10-02T23:23:22
+JNJ,us,,2026-10-02,STOP_HIT,STOP_FIRST,none,,NO_DATA,not_used,,,,,,0.0,-4.202,True,False,MED,,JNJ STOP_FIRST | 결과=STOP_HIT 수익률=-4.2022%,2026-10-02T23:23:22
 MELI,us,,2026-09-16,STOP_HIT,STOP_FIRST,none,,NO_DATA,not_used,,,,,,0.0,-7.657,True,False,HIGH,,MELI STOP_FIRST | 결과=STOP_HIT 수익률=-7.657%,2026-09-16T16:16:03
 F,us,,2026-09-21,STOP_HIT,STOP_FIRST,none,,NO_DATA,not_used,,,,,,0.0,-3.635,True,False,MED,,F STOP_FIRST | 결과=STOP_HIT 수익률=-3.6354%,2026-09-21T08:33:30
 OXY,us,,2026-09-29,STOP_HIT,STOP_FIRST,none,,NO_DATA,not_used,,,,,,0.0,-5.832,True,False,MED,,OXY STOP_FIRST | 결과=STOP_HIT 수익률=-5.8321%,2026-09-29T16:16:23
@@ -130,24 +130,25 @@ SLB,us,,2026-09-17,STOP_HIT,STOP_FIRST,none,,NO_DATA,not_used,,,,,,0.0,-8.354,Tr
 NVDA,us,,2026-09-28,TIME_EXIT_NEAR_STOP,STOP_FIRST,none,,NO_DATA,not_used,,,,,,0.0,,False,False,HIGH,,NVDA STOP_FIRST | 결과=TIME_EXIT_NEAR_STOP 수익률=1.7462%,2026-09-28T23:05:28
 SCHD,us,,2026-09-11,STOP_HIT,STOP_FIRST,none,,NO_DATA,not_used,,,,,,0.0,-2.676,True,False,MED,,SCHD STOP_FIRST | 결과=STOP_HIT 수익률=-2.6756%,2026-09-11T16:18:13
 SMCI,us,,2026-09-18,TIME_EXIT_NEAR_STOP,STOP_FIRST,high_volatility_entry,,NO_DATA,not_used,,,,,,0.0,,False,False,HIGH,,SMCI STOP_FIRST | 결과=TIME_EXIT_NEAR_STOP 수익률=4.1086% | 원인태그=[high_volatility_entry],2026-09-18T23:05:42
-SNDK,us,,2026-10-02,TIME_EXIT_NEAR_STOP,STOP_FIRST,"high_volatility_entry,deep_drawdown_entry",,NO_DATA,not_used,,,,,,0.0,,False,False,HIGH,,"SNDK STOP_FIRST | 결과=TIME_EXIT_NEAR_STOP 수익률=5.8115% | 원인태그=[high_volatility_entry,deep_drawdown_entry]",2026-10-02T23:05:43
+SNDK,us,,2026-10-02,TIME_EXIT_NEAR_STOP,STOP_FIRST,"high_volatility_entry,deep_drawdown_entry",,NO_DATA,not_used,,,,,,0.0,,False,False,HIGH,,"SNDK STOP_FIRST | 결과=TIME_EXIT_NEAR_STOP 수익률=6.7086% | 원인태그=[high_volatility_entry,deep_drawdown_entry]",2026-10-02T23:23:22
 ANET,us,,2026-09-14,STOP_HIT,STOP_FIRST,none,,NO_DATA,not_used,,,,,,0.0,-0.3,True,False,HIGH,,ANET STOP_FIRST | 결과=STOP_HIT 수익률=-0.2997%,2026-09-14T23:05:11
 MS,us,,2026-09-15,STOP_HIT,STOP_FIRST,none,,NO_DATA,not_used,,,,,,0.0,-5.445,True,False,MED,,MS STOP_FIRST | 결과=STOP_HIT 수익률=-5.4446%,2026-09-15T23:05:38
 PEP,us,,2026-09-21,STOP_HIT,STOP_FIRST,none,,NO_DATA,not_used,,,,,,0.0,-5.764,True,False,MED,,PEP STOP_FIRST | 결과=STOP_HIT 수익률=-5.7639%,2026-09-21T23:05:28
 COIN,us,,2026-09-16,STOP_HIT,STOP_FIRST,high_volatility_entry,,NO_DATA,not_used,,,,,,0.0,-7.695,True,False,HIGH,,COIN STOP_FIRST | 결과=STOP_HIT 수익률=-7.695% | 원인태그=[high_volatility_entry],2026-09-16T16:16:03
 CRCL,us,,2026-09-16,STOP_HIT,STOP_FIRST,high_volatility_entry,,NO_DATA,not_used,,,,,,0.0,-11.425,True,False,HIGH,,CRCL STOP_FIRST | 결과=STOP_HIT 수익률=-11.4255% | 원인태그=[high_volatility_entry],2026-09-16T23:06:00
 RIVN,us,,2026-09-17,STOP_HIT,STOP_FIRST,high_volatility_entry,,NO_DATA,not_used,,,,,,0.0,-5.943,True,False,MED,,RIVN STOP_FIRST | 결과=STOP_HIT 수익률=-5.9431% | 원인태그=[high_volatility_entry],2026-09-17T16:17:21
-WDC,us,,2026-10-01,STOP_HIT,STOP_FIRST,none,,NO_DATA,not_used,,,,,,26.16,-2.537,True,False,HIGH,,WDC STOP_FIRST | 결과=STOP_HIT 수익률=-2.5368%,2026-10-01T10:40:31
+WDC,us,,2026-10-02,STOP_HIT,STOP_FIRST,none,,NO_DATA,not_used,,,,,,26.6,-3.815,True,False,HIGH,,WDC STOP_FIRST | 결과=STOP_HIT 수익률=-3.8152%,2026-10-02T23:23:54
 GM,us,,2026-09-25,STOP_HIT,STOP_FIRST,none,,NO_DATA,not_used,,,,,,0.0,-5.547,True,False,MED,,GM STOP_FIRST | 결과=STOP_HIT 수익률=-5.5471%,2026-09-25T16:17:39
-XLE,us,,2026-09-30,TIME_EXIT_NEAR_STOP,STOP_FIRST,none,,NO_DATA,not_used,,,,,,6.68,,False,False,HIGH,,XLE STOP_FIRST | 결과=TIME_EXIT_NEAR_STOP 수익률=1.2445%,2026-09-30T10:39:58
+XLE,us,,2026-10-02,TIME_EXIT_NEAR_STOP,STOP_FIRST,none,,NO_DATA,not_used,,,,,,6.39,,False,False,HIGH,,XLE STOP_FIRST | 결과=TIME_EXIT_NEAR_STOP 수익률=0.3282%,2026-10-02T23:23:54
 CRM,us,,2026-09-28,STOP_HIT,STOP_FIRST,none,,NO_DATA,not_used,,,,,,0.0,-6.869,True,False,HIGH,,CRM STOP_FIRST | 결과=STOP_HIT 수익률=-6.8688%,2026-09-28T23:05:28
 GOOGL,us,,2026-09-24,STOP_HIT,STOP_FIRST,none,,NO_DATA,not_used,,,,,,0.0,-4.785,True,False,HIGH,,GOOGL STOP_FIRST | 결과=STOP_HIT 수익률=-4.7852%,2026-09-24T16:18:27
 VRTX,us,,2026-09-28,TIME_EXIT_NEAR_STOP,STOP_FIRST,none,,NO_DATA,not_used,,,,,,12.58,,False,False,HIGH,,VRTX STOP_FIRST | 결과=TIME_EXIT_NEAR_STOP 수익률=2.4857%,2026-09-28T10:14:32
 NOW,us,,2026-09-28,STOP_HIT,STOP_FIRST,high_volatility_entry,,NO_DATA,not_used,,,,,,0.0,-10.769,True,False,HIGH,,NOW STOP_FIRST | 결과=STOP_HIT 수익률=-10.7686% | 원인태그=[high_volatility_entry],2026-09-28T23:05:28
 AVAV,us,,2026-09-30,STOP_HIT,STOP_FIRST,high_volatility_entry,,NO_DATA,not_used,,,,,,0.0,-11.841,True,False,HIGH,,AVAV STOP_FIRST | 결과=STOP_HIT 수익률=-11.8406% | 원인태그=[high_volatility_entry],2026-09-30T16:19:12
-SPCX,us,,2026-09-28,TIME_EXIT_NEAR_STOP,STOP_FIRST,high_volatility_entry,,NO_DATA,not_used,,,,,,0.0,-2.739,False,False,MED,,SPCX STOP_FIRST | 결과=TIME_EXIT_NEAR_STOP 수익률=-2.7393% | 원인태그=[high_volatility_entry],2026-09-28T23:05:28
+SPCX,us,,2026-10-02,STOP_HIT,STOP_FIRST,none,,NO_DATA,not_used,,,,,,0.0,-5.061,True,False,MED,,SPCX STOP_FIRST | 결과=STOP_HIT 수익률=-5.0609%,2026-10-02T23:23:22
 KO,us,,2026-10-02,STOP_HIT,STOP_FIRST,none,,NO_DATA,not_used,,,,,,0.0,-3.887,True,False,MED,,KO STOP_FIRST | 결과=STOP_HIT 수익률=-3.8872%,2026-10-02T16:19:23
-WMT,us,,2026-09-30,TIME_EXIT_NEAR_STOP,STOP_FIRST,none,,NO_DATA,not_used,,,,,,11.94,-2.27,False,False,HIGH,,WMT STOP_FIRST | 결과=TIME_EXIT_NEAR_STOP 수익률=-2.2704%,2026-09-30T10:39:58
+WMT,us,,2026-10-02,TIME_EXIT_NEAR_STOP,STOP_FIRST,none,,NO_DATA,not_used,,,,,,12.36,,False,False,HIGH,,WMT STOP_FIRST | 결과=TIME_EXIT_NEAR_STOP 수익률=2.0445%,2026-10-02T23:23:54
 IREN,us,,2026-10-01,STOP_HIT,STOP_FIRST,"high_volatility_entry,deep_drawdown_entry",,NO_DATA,not_used,,,,,,0.0,-11.377,True,False,HIGH,,"IREN STOP_FIRST | 결과=STOP_HIT 수익률=-11.3775% | 원인태그=[high_volatility_entry,deep_drawdown_entry]",2026-10-01T23:06:06
 ACHR,us,,2026-10-01,STOP_HIT,STOP_FIRST,high_volatility_entry,,NO_DATA,not_used,,,,,,0.0,-7.685,True,False,HIGH,,ACHR STOP_FIRST | 결과=STOP_HIT 수익률=-7.6849% | 원인태그=[high_volatility_entry],2026-10-01T16:18:44
 LUNR,us,,2026-10-01,STOP_HIT,STOP_FIRST,high_volatility_entry,,NO_DATA,not_used,,,,,,0.0,-8.831,True,False,HIGH,,LUNR STOP_FIRST | 결과=STOP_HIT 수익률=-8.8306% | 원인태그=[high_volatility_entry],2026-10-01T23:06:06
+XOM,us,,2026-10-02,TIME_EXIT_NEAR_STOP,STOP_FIRST,none,,NO_DATA,not_used,,,,,,6.09,,False,False,HIGH,,XOM STOP_FIRST | 결과=TIME_EXIT_NEAR_STOP 수익률=3.5317%,2026-10-02T23:23:54
