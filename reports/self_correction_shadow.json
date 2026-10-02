@@ -1,6 +1,6 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-10-02T02:00:00.919176+00:00",
+  "generatedAt": "2026-10-01T23:28:56.764080+00:00",
   "policy": {
     "version": "self-correction-shadow-v1.5.0",
     "inputContractVersion": "correction-shadow-input-v1",
@@ -101,7 +101,13 @@
     "appended": 0,
     "conflicts": 0,
     "total": 0,
-    "recordMarket": "none"
+    "recordMarket": "all",
+    "skippedInputContract": 0,
+    "skippedForwardSeal": 0,
+    "skippedBeforeSignalClose": 0,
+    "skippedAfterNextSessionOpen": 0,
+    "runAt": "2026-10-01T23:28:56.763889+00:00",
+    "candidateDiagnostics": []
   },
   "lastRecordingRun": {
     "appended": 0,
