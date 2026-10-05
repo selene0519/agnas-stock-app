@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-05T14:06:33.944634+00:00",
+  "generatedAt": "2026-10-05T16:28:49.460018+00:00",
   "asOfDate": "2026-09-16",
   "sources": {
     "live": "reports/lens_live_journal_kr.csv",
@@ -24,51 +24,6 @@
     "BEAR": []
   },
   "calibration": {
-    "LEADER_BREAKOUT|BULL": {
-      "setup": "LEADER_BREAKOUT",
-      "regime": "BULL",
-      "blendedNetAvgPct": -0.399,
-      "blendedWinRate": 5.7,
-      "gate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "liveEffectiveSamples": 8.2,
-      "liveRawSamples": 9,
-      "liveNetAvgPct": -2.356,
-      "priorNetAvgPct": null,
-      "priorRawSamples": 0,
-      "liveFraction": 0.169,
-      "profitFactor": 0.6
-    },
-    "BOTTOM_CATCH|SIDE": {
-      "setup": "BOTTOM_CATCH",
-      "regime": "SIDE",
-      "blendedNetAvgPct": -0.017,
-      "blendedWinRate": 42.7,
-      "gate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "liveEffectiveSamples": 0.0,
-      "liveRawSamples": 0,
-      "liveNetAvgPct": null,
-      "priorNetAvgPct": -0.017,
-      "priorRawSamples": 3127,
-      "liveFraction": 0.0,
-      "profitFactor": 0.99
-    },
-    "BOTTOM_CATCH|BEAR": {
-      "setup": "BOTTOM_CATCH",
-      "regime": "BEAR",
-      "blendedNetAvgPct": -1.206,
-      "blendedWinRate": 29.1,
-      "gate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "liveEffectiveSamples": 56.7,
-      "liveRawSamples": 62,
-      "liveNetAvgPct": -1.69,
-      "priorNetAvgPct": -0.52,
-      "priorRawSamples": 3504,
-      "liveFraction": 0.586,
-      "profitFactor": 0.47
-    },
     "BOTTOM_CATCH|BULL": {
       "setup": "BOTTOM_CATCH",
       "regime": "BULL",
@@ -99,6 +54,51 @@
       "liveFraction": 0.082,
       "profitFactor": 0.0
     },
+    "BREAKOUT|BULL": {
+      "setup": "BREAKOUT",
+      "regime": "BULL",
+      "blendedNetAvgPct": 0.256,
+      "blendedWinRate": 42.4,
+      "gate": "ACTIVE",
+      "sizeMultiplier": 0.41,
+      "liveEffectiveSamples": 0.0,
+      "liveRawSamples": 0,
+      "liveNetAvgPct": null,
+      "priorNetAvgPct": 0.256,
+      "priorRawSamples": 9568,
+      "liveFraction": 0.0,
+      "profitFactor": 1.11
+    },
+    "BOTTOM_CATCH|SIDE": {
+      "setup": "BOTTOM_CATCH",
+      "regime": "SIDE",
+      "blendedNetAvgPct": -0.017,
+      "blendedWinRate": 42.7,
+      "gate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "liveEffectiveSamples": 0.0,
+      "liveRawSamples": 0,
+      "liveNetAvgPct": null,
+      "priorNetAvgPct": -0.017,
+      "priorRawSamples": 3127,
+      "liveFraction": 0.0,
+      "profitFactor": 0.99
+    },
+    "LEADER_BREAKOUT|BULL": {
+      "setup": "LEADER_BREAKOUT",
+      "regime": "BULL",
+      "blendedNetAvgPct": -0.399,
+      "blendedWinRate": 5.7,
+      "gate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "liveEffectiveSamples": 8.2,
+      "liveRawSamples": 9,
+      "liveNetAvgPct": -2.356,
+      "priorNetAvgPct": null,
+      "priorRawSamples": 0,
+      "liveFraction": 0.169,
+      "profitFactor": 0.6
+    },
     "BREAKOUT|BEAR": {
       "setup": "BREAKOUT",
       "regime": "BEAR",
@@ -114,20 +114,20 @@
       "liveFraction": 0.671,
       "profitFactor": 0.39
     },
-    "BREAKOUT|BULL": {
-      "setup": "BREAKOUT",
-      "regime": "BULL",
-      "blendedNetAvgPct": 0.256,
-      "blendedWinRate": 42.4,
-      "gate": "ACTIVE",
-      "sizeMultiplier": 0.41,
-      "liveEffectiveSamples": 0.0,
-      "liveRawSamples": 0,
-      "liveNetAvgPct": null,
-      "priorNetAvgPct": 0.256,
-      "priorRawSamples": 9568,
-      "liveFraction": 0.0,
-      "profitFactor": 1.11
+    "BOTTOM_CATCH|BEAR": {
+      "setup": "BOTTOM_CATCH",
+      "regime": "BEAR",
+      "blendedNetAvgPct": -1.206,
+      "blendedWinRate": 29.1,
+      "gate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "liveEffectiveSamples": 56.7,
+      "liveRawSamples": 62,
+      "liveNetAvgPct": -1.69,
+      "priorNetAvgPct": -0.52,
+      "priorRawSamples": 3504,
+      "liveFraction": 0.586,
+      "profitFactor": 0.47
     }
   }
 }
