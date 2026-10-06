@@ -1,8 +1,8 @@
 {
-  "version": 914,
-  "generatedAt": "2026-10-06T14:07:39.832330+00:00",
+  "version": 916,
+  "generatedAt": "2026-10-06T14:32:10.006347+00:00",
   "market": "us",
-  "totalSamples": 14223,
+  "totalSamples": 14226,
   "markets": {
     "us_aggressive_short": {
       "market": "us",
@@ -33,7 +33,7 @@
         "GOOD_SIGNAL_WEAK_EXIT": 2,
         "DATA_STALE": 711
       },
-      "appliedAt": "2026-10-06T14:07:39.825691+00:00"
+      "appliedAt": "2026-10-06T14:32:10.002170+00:00"
     },
     "us_balanced_swing": {
       "market": "us",
@@ -66,13 +66,13 @@
         "GOOD": 7,
         "DATA_STALE": 599
       },
-      "appliedAt": "2026-10-06T14:07:39.826031+00:00"
+      "appliedAt": "2026-10-06T14:32:10.002413+00:00"
     },
     "us_conservative_mid": {
       "market": "us",
       "mode": "conservative",
       "horizon": "mid",
-      "sampleCount": 2820,
+      "sampleCount": 2821,
       "learnableSampleCount": 170,
       "confidence": 0.9,
       "weightAdjustments": {},
@@ -95,9 +95,9 @@
         "MISS_ENTRY_TOO_LOW": 152,
         "GOOD_SIGNAL_WEAK_EXIT": 6,
         "GOOD": 1,
-        "DATA_STALE": 2650
+        "DATA_STALE": 2651
       },
-      "appliedAt": "2026-10-06T14:07:39.827366+00:00"
+      "appliedAt": "2026-10-06T14:32:10.003264+00:00"
     },
     "us_aggressive_mid": {
       "market": "us",
@@ -127,7 +127,7 @@
         "GOOD_SIGNAL_WEAK_EXIT": 12,
         "DATA_STALE": 3211
       },
-      "appliedAt": "2026-10-06T14:07:39.829279+00:00"
+      "appliedAt": "2026-10-06T14:32:10.004451+00:00"
     },
     "us_aggressive_swing": {
       "market": "us",
@@ -158,13 +158,13 @@
         "GOOD_SIGNAL_WEAK_EXIT": 11,
         "DATA_STALE": 642
       },
-      "appliedAt": "2026-10-06T14:07:39.829634+00:00"
+      "appliedAt": "2026-10-06T14:32:10.004675+00:00"
     },
     "us_conservative_short": {
       "market": "us",
       "mode": "conservative",
       "horizon": "short",
-      "sampleCount": 816,
+      "sampleCount": 817,
       "learnableSampleCount": 140,
       "confidence": 0.9,
       "weightAdjustments": {},
@@ -187,9 +187,9 @@
         "GOOD": 6,
         "GOOD_SIGNAL_WEAK_EXIT": 2,
         "MISS_ENTRY_TOO_LOW": 114,
-        "DATA_STALE": 676
+        "DATA_STALE": 677
       },
-      "appliedAt": "2026-10-06T14:07:39.830011+00:00"
+      "appliedAt": "2026-10-06T14:32:10.004917+00:00"
     },
     "us_conservative_swing": {
       "market": "us",
@@ -220,7 +220,7 @@
         "GOOD_SIGNAL_WEAK_EXIT": 4,
         "DATA_STALE": 816
       },
-      "appliedAt": "2026-10-06T14:07:39.830418+00:00"
+      "appliedAt": "2026-10-06T14:32:10.005165+00:00"
     },
     "us_mid_1566.2100": {
       "market": "us",
@@ -245,13 +245,13 @@
       "reasonCounts": {
         "MISS_ENTRY_TOO_LOW": 1
       },
-      "appliedAt": "2026-10-06T14:07:39.830439+00:00"
+      "appliedAt": "2026-10-06T14:32:10.005175+00:00"
     },
     "us_balanced_mid": {
       "market": "us",
       "mode": "balanced",
       "horizon": "mid",
-      "sampleCount": 2819,
+      "sampleCount": 2820,
       "learnableSampleCount": 222,
       "confidence": 0.9,
       "weightAdjustments": {},
@@ -273,9 +273,9 @@
         "ENTRY_TOO_AGGRESSIVE": 18,
         "GOOD_SIGNAL_WEAK_EXIT": 7,
         "MISS_ENTRY_TOO_LOW": 197,
-        "DATA_STALE": 2597
+        "DATA_STALE": 2598
       },
-      "appliedAt": "2026-10-06T14:07:39.831861+00:00"
+      "appliedAt": "2026-10-06T14:32:10.006040+00:00"
     },
     "us_balanced_short": {
       "market": "us",
@@ -304,12 +304,12 @@
         "MISS_ENTRY_TOO_LOW": 142,
         "DATA_STALE": 794
       },
-      "appliedAt": "2026-10-06T14:07:39.832327+00:00"
+      "appliedAt": "2026-10-06T14:32:10.006344+00:00"
     }
   },
-  "savedAt": "2026-10-06T14:07:39.833756+00:00",
+  "savedAt": "2026-10-06T14:32:10.007396+00:00",
   "paramsIntegrity": {
     "version": "self-correction-params-integrity-v1",
-    "payloadHash": "b0d73c31451eef23150144655e80311835e0e38664bf90e73a01d509f2e80669"
+    "payloadHash": "f8934c544f5fd7e80ec06a1639a18954a24957cca6dbca5fea14abff5c66baaa"
   }
 }
