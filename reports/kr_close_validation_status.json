@@ -1,64 +1,35 @@
 {
-  "date": "2026-10-07",
-  "created": [
+  "date": "2026-10-08",
+  "created": [],
+  "skipped": [
     {
       "market": "kr",
       "mode": "conservative",
       "horizon": "short",
-      "file": "mone_v36_final_trade_validation_kr_conservative_short_20261007.csv",
-      "rows": 1,
-      "normalRows": 1
+      "rows": 2,
+      "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
       "market": "kr",
       "mode": "conservative",
       "horizon": "swing",
-      "file": "mone_v36_final_trade_validation_kr_conservative_swing_20261007.csv",
       "rows": 1,
-      "normalRows": 1
+      "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
       "market": "kr",
       "mode": "conservative",
       "horizon": "mid",
-      "file": "mone_v36_final_trade_validation_kr_conservative_mid_20261007.csv",
       "rows": 1,
-      "normalRows": 1
+      "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
       "market": "kr",
       "mode": "balanced",
       "horizon": "short",
-      "file": "mone_v36_final_trade_validation_kr_balanced_short_20261007.csv",
-      "rows": 2,
-      "normalRows": 2
-    },
-    {
-      "market": "kr",
-      "mode": "balanced",
-      "horizon": "mid",
-      "file": "mone_v36_final_trade_validation_kr_balanced_mid_20261007.csv",
       "rows": 3,
-      "normalRows": 3
+      "reason": "no_today_ohlcv_or_no_recommendations"
     },
-    {
-      "market": "kr",
-      "mode": "aggressive",
-      "horizon": "short",
-      "file": "mone_v36_final_trade_validation_kr_aggressive_short_20261007.csv",
-      "rows": 6,
-      "normalRows": 6
-    },
-    {
-      "market": "kr",
-      "mode": "aggressive",
-      "horizon": "mid",
-      "file": "mone_v36_final_trade_validation_kr_aggressive_mid_20261007.csv",
-      "rows": 13,
-      "normalRows": 13
-    }
-  ],
-  "skipped": [
     {
       "market": "kr",
       "mode": "balanced",
@@ -68,16 +39,37 @@
     },
     {
       "market": "kr",
+      "mode": "balanced",
+      "horizon": "mid",
+      "rows": 5,
+      "reason": "no_today_ohlcv_or_no_recommendations"
+    },
+    {
+      "market": "kr",
+      "mode": "aggressive",
+      "horizon": "short",
+      "rows": 7,
+      "reason": "no_today_ohlcv_or_no_recommendations"
+    },
+    {
+      "market": "kr",
       "mode": "aggressive",
       "horizon": "swing",
-      "rows": 0,
+      "rows": 1,
+      "reason": "no_today_ohlcv_or_no_recommendations"
+    },
+    {
+      "market": "kr",
+      "mode": "aggressive",
+      "horizon": "mid",
+      "rows": 14,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
       "market": "us",
       "mode": "conservative",
       "horizon": "short",
-      "rows": 6,
+      "rows": 7,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
@@ -91,35 +83,35 @@
       "market": "us",
       "mode": "conservative",
       "horizon": "mid",
-      "rows": 64,
+      "rows": 63,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
       "market": "us",
       "mode": "balanced",
       "horizon": "short",
-      "rows": 11,
+      "rows": 12,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
       "market": "us",
       "mode": "balanced",
       "horizon": "swing",
-      "rows": 6,
+      "rows": 5,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
       "market": "us",
       "mode": "balanced",
       "horizon": "mid",
-      "rows": 54,
+      "rows": 55,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
       "market": "us",
       "mode": "aggressive",
       "horizon": "short",
-      "rows": 9,
+      "rows": 10,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
@@ -133,9 +125,9 @@
       "market": "us",
       "mode": "aggressive",
       "horizon": "mid",
-      "rows": 67,
+      "rows": 64,
       "reason": "no_today_ohlcv_or_no_recommendations"
     }
   ],
-  "updatedAt": "2026-10-07T23:52:46"
+  "updatedAt": "2026-10-08T06:59:19"
 }
