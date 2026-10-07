@@ -393,6 +393,23 @@ def run(max_stale_days: float = 3.0) -> dict:
         else:
             add("collector_steps", "OK", "local collector reports contain no error steps", True)
 
+    partial_failures = []
+    for name, report in available_cloud.items():
+        count = int(report.get("failedCount") or 0)
+        if count > 0:
+            items = report.get("failedItems") if isinstance(report.get("failedItems"), list) else []
+            symbols = [
+                str(item.get("symbol"))
+                for item in items
+                if isinstance(item, dict) and item.get("symbol")
+            ]
+            suffix = f" ({', '.join(symbols[:5])})" if symbols else ""
+            partial_failures.append(f"{name} {count}건{suffix}")
+    if partial_failures:
+        add("collector_partial_failures", "WARN", "; ".join(partial_failures), False)
+    elif available_cloud:
+        add("collector_partial_failures", "OK", "cloud collector reports have zero failed items", False)
+
     collector_timestamps: list[tuple[datetime, str, str]] = []
     for source, report in available_cloud.items():
         candidates = [report.get("updatedAt"), report.get("completedAt"), report.get("startedAt")]

@@ -4,6 +4,7 @@ from __future__ import annotations
 import csv
 import importlib.util
 import json
+import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -70,6 +71,105 @@ def test_cloud_collector_error_remains_critical(tmp_path, monkeypatch) -> None:
     checks = {row["name"]: row for row in hc.run(3.0)["checks"]}
     assert checks["collector_steps"]["status"] == "ERROR"
     assert checks["collector_steps"]["critical"] is True
+
+
+def test_cloud_collector_partial_failure_is_visible_warning(tmp_path, monkeypatch) -> None:
+    hc = _load_healthcheck()
+    monkeypatch.setattr(hc, "ROOT", tmp_path)
+    monkeypatch.setattr(hc, "NOW", datetime(2026, 8, 31, 12, 0, tzinfo=timezone.utc))
+    _write_json(
+        tmp_path / "reports" / "us_close_ohlcv_refresh_status.json",
+        {
+            "status": "WARN",
+            "updatedAt": "2026-08-31T20:00:00",
+            "failedCount": 1,
+            "failedItems": [{"symbol": "ELF", "status": "NO_DATA"}],
+        },
+    )
+
+    result = hc.run(3.0)
+    checks = {row["name"]: row for row in result["checks"]}
+    assert checks["collector_steps"]["status"] == "OK"
+    assert checks["collector_partial_failures"]["status"] == "WARN"
+    assert checks["collector_partial_failures"]["critical"] is False
+    assert "ELF" in checks["collector_partial_failures"]["detail"]
+    assert result["overall"] == "ERROR"  # required fixtures are intentionally absent
+
+
+def test_us_close_refresh_normalizes_dates_and_uses_latest_completed_session(tmp_path, monkeypatch) -> None:
+    spec = importlib.util.spec_from_file_location(
+        "us_close_refresh", ROOT / "scripts" / "refresh_us_close_ohlcv.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+
+    assert module._normalize_date("20260603") == "2026-06-03"
+    assert module._normalize_date("not-a-date") == ""
+    sunday = datetime(2026, 8, 30, 18, 0, tzinfo=timezone.utc)
+    assert module._latest_completed_us_session(sunday) == "2026-08-28"
+    good_friday = datetime(2026, 4, 3, 22, 0, tzinfo=timezone.utc)
+    assert module._latest_completed_us_session(good_friday) == "2026-04-02"
+
+    monkeypatch.setattr(module, "OHLCV_DIR", tmp_path)
+    with (tmp_path / "us_DRAM_daily.csv").open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=["date", "close"])
+        writer.writeheader()
+        writer.writerow({"date": "20260603", "close": "10"})
+    assert module._existing_latest_date("DRAM") == "2026-06-03"
+
+    monkeypatch.setattr(module, "REPORTS", tmp_path / "reports")
+    monkeypatch.setattr(module, "TARGET_DATE", "2026-08-28")
+    monkeypatch.setattr(module, "_ensure_pkg", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(module, "_target_symbols", lambda limit: ["AAPL", "ELF"])
+    monkeypatch.setattr(
+        module,
+        "_process_symbol",
+        lambda symbol: {"symbol": symbol, "status": "OK", "latestDate": "2026-08-28"}
+        if symbol == "AAPL"
+        else {"symbol": symbol, "status": "NO_CURRENT_BAR", "latestDate": "2026-08-27"},
+    )
+    module.main()
+    status = json.loads(
+        (tmp_path / "reports" / "us_close_ohlcv_refresh_status.json").read_text(encoding="utf-8")
+    )
+    assert status["status"] == "WARN"
+    assert status["failedCount"] == 1
+    assert status["failedItems"][0]["symbol"] == "ELF"
+
+
+def test_app_session_treats_good_friday_as_us_market_holiday() -> None:
+    backend = ROOT / "mone-web-app" / "backend"
+    if str(backend) not in sys.path:
+        sys.path.insert(0, str(backend))
+    from app.engine import session
+
+    assert session.is_market_holiday(
+        "us", datetime(2026, 4, 3, 12, 0, tzinfo=timezone.utc)
+    ) is True
+
+
+def test_us_close_refresh_uses_chart_fallback_when_yfinance_fails(tmp_path, monkeypatch) -> None:
+    spec = importlib.util.spec_from_file_location(
+        "us_close_refresh_fallback", ROOT / "scripts" / "refresh_us_close_ohlcv.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    monkeypatch.setattr(module, "OHLCV_DIR", tmp_path)
+    monkeypatch.setattr(module, "TARGET_DATE", "2026-08-28")
+    monkeypatch.setattr(module, "HISTORY_START", "")
+    monkeypatch.setattr(module, "_fetch_yfinance", lambda *_args: None)
+    monkeypatch.setattr(
+        module,
+        "_fetch_yahoo_chart",
+        lambda *_args: [{"date": "2026-08-28", "close": 100, "source": "Yahoo Chart ELF"}],
+    )
+
+    result = module._process_symbol("ELF")
+
+    assert result == {"symbol": "ELF", "status": "OK", "latestDate": "2026-08-28"}
+    assert module._existing_latest_date("ELF") == "2026-08-28"
 
 
 def test_regime_benchmark_invalid_trailing_bar_is_critical(tmp_path, monkeypatch) -> None:

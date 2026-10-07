@@ -71,3 +71,7 @@ def test_paper_proof_board_normalizes_legacy_impossible_mdd(monkeypatch) -> None
     assert board["rows"][0]["mddNormalized"] is True
     assert board["legacyMddNormalized"] is True
     assert board["mddMethod"] == "fixed_notional_equity_100"
+    assert board["mddEvidenceReady"] is False
+    assert board["mddEvidenceStatus"] == "NON_INFORMATIVE_OR_MISSING"
+    assert board["rows"][0]["mddEvidenceStatus"] == "NON_INFORMATIVE_FLOOR_HIT"
+    assert board["beatsBestBaseline"] is False

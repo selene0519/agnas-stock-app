@@ -1505,6 +1505,7 @@ def _walkforward_proof_board(market: str, current_agent_id: str) -> dict[str, An
         raw_mdd = min((_num(row.get("mddPct")) for row in recent), default=0.0)
         mdd = max(-100.0, min(0.0, raw_mdd))
         mdd_normalized = abs(raw_mdd - mdd) > 1e-9
+        mdd_floor_hit = mdd <= -99.999
         proof_score = weighted_pnl * 12.0 + win_rate * 0.35 + positive_rate * 0.25 + mdd * 0.12
         return {
             "agentId": profile["id"],
@@ -1518,6 +1519,7 @@ def _walkforward_proof_board(market: str, current_agent_id: str) -> dict[str, An
             "positiveWindowRate": round(positive_rate, 1),
             "mddPct": round(mdd, 2),
             "mddNormalized": mdd_normalized,
+            "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT" if mdd_floor_hit else "USABLE",
             "proofScore": round(proof_score, 2),
             "lastWindow": str(recent[-1].get("window") or "") if recent else "",
         }
@@ -1538,7 +1540,16 @@ def _walkforward_proof_board(market: str, current_agent_id: str) -> dict[str, An
     current_rank = next((idx + 1 for idx, row in enumerate(profile_rows) if row.get("agentId") == current_agent_id), None)
     best_profile = profile_rows[0] if profile_rows else None
     best_baseline = baseline_rows[0] if baseline_rows else None
-    beats_best_baseline = bool(current and best_baseline and current.get("proofScore", -9999) > best_baseline.get("proofScore", 9999))
+    mdd_evidence_ready = bool(
+        current
+        and best_baseline
+        and current.get("mddEvidenceStatus") == "USABLE"
+        and best_baseline.get("mddEvidenceStatus") == "USABLE"
+    )
+    beats_best_baseline = bool(
+        mdd_evidence_ready
+        and current.get("proofScore", -9999) > best_baseline.get("proofScore", 9999)
+    )
     verdict = "UNPROVEN"
     if current and current.get("sampleCount", 0) >= 30:
         if current_rank == 1 and beats_best_baseline and current.get("avgNetPnlPct", 0) > 0:
@@ -1555,6 +1566,8 @@ def _walkforward_proof_board(market: str, current_agent_id: str) -> dict[str, An
         "legacyMddNormalized": any(
             row.get("mddNormalized") for row in [*profile_rows, *baseline_rows]
         ),
+        "mddEvidenceReady": mdd_evidence_ready,
+        "mddEvidenceStatus": "USABLE" if mdd_evidence_ready else "NON_INFORMATIVE_OR_MISSING",
         "verdict": verdict,
         "currentRank": current_rank,
         "profileCount": len(profile_rows),
