@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-07T01:54:53.432038+00:00",
+  "generatedAt": "2026-10-06T19:26:10.282092+00:00",
   "overall": "WARN",
   "criticalFailures": 0,
   "hardFailures": 0,
@@ -15,30 +15,30 @@
     {
       "name": "kr_ohlcv",
       "status": "OK",
-      "detail": "1.08d, asOf=2026-10-06",
+      "detail": "0.81d, asOf=2026-10-06",
       "critical": true,
-      "ageDays": 1.08
+      "ageDays": 0.81
     },
     {
       "name": "kr_kospi_ohlcv",
       "status": "OK",
-      "detail": "1.08d, asOf=2026-10-06, kr_KOSPI_daily.csv trailing OHLC is valid",
+      "detail": "0.81d, asOf=2026-10-06, kr_KOSPI_daily.csv trailing OHLC is valid",
       "critical": true,
-      "ageDays": 1.08
+      "ageDays": 0.81
     },
     {
       "name": "kr_kosdaq_ohlcv",
       "status": "OK",
-      "detail": "1.08d, asOf=2026-10-06, kr_KOSDAQ_daily.csv trailing OHLC is valid",
+      "detail": "0.81d, asOf=2026-10-06, kr_KOSDAQ_daily.csv trailing OHLC is valid",
       "critical": true,
-      "ageDays": 1.08
+      "ageDays": 0.81
     },
     {
       "name": "kr_recommendations",
       "status": "OK",
-      "detail": "0.1d, asOf=2026-10-06T23:31:57.325317+00:00",
+      "detail": "0.21d, asOf=2026-10-06T14:30:22.606560+00:00",
       "critical": true,
-      "ageDays": 0.1
+      "ageDays": 0.21
     },
     {
       "name": "collector_steps",
@@ -50,70 +50,70 @@
     {
       "name": "collector_run",
       "status": "OK",
-      "detail": "0.1d, asOf=2026-10-07T08:33:56+09:00, source=cloud:benchmarks, reportedAt=2026-10-07T08:33:56",
+      "detail": "0.2d, asOf=2026-10-06T23:32:05+09:00, source=cloud:benchmarks, reportedAt=2026-10-06T23:32:05",
       "critical": true,
-      "ageDays": 0.1
+      "ageDays": 0.2
     },
     {
       "name": "local_collector_run",
       "status": "STALE",
-      "detail": "optional local collector 70.76d old; cloud source remains authoritative",
+      "detail": "optional local collector 70.49d old; cloud source remains authoritative",
       "critical": false,
-      "ageDays": 70.76
+      "ageDays": 70.49
     },
     {
       "name": "vtj_journal",
       "status": "OK",
-      "detail": "0.1d, asOf=2026-10-07T08:34:04+09:00",
+      "detail": "0.2d, asOf=2026-10-06T23:32:10+09:00",
       "critical": false,
-      "ageDays": 0.1
+      "ageDays": 0.2
     },
     {
       "name": "live_calibration",
       "status": "OK",
-      "detail": "0.08d, asOf=2026-10-07",
+      "detail": "0.81d, asOf=2026-10-06",
       "critical": false,
-      "ageDays": 0.08
+      "ageDays": 0.81
     },
     {
       "name": "strategy_win_rates",
       "status": "OK",
-      "detail": "-0.37d, asOf=2026-10-07 10:54:48",
+      "detail": "-0.37d, asOf=2026-10-07 04:26:04",
       "critical": false,
       "ageDays": -0.37
     },
     {
       "name": "prediction_capture",
       "status": "OK",
-      "detail": "0.08d, asOf=2026-10-07",
+      "detail": "0.81d, asOf=2026-10-06",
       "critical": true,
-      "ageDays": 0.08
+      "ageDays": 0.81
     },
     {
       "name": "capture_continuity",
       "status": "OK",
-      "detail": "거래일 11일 중 캡처 11일 (기준일 2026-09-16~, 유예 1일)",
+      "detail": "거래일 12일 중 캡처 12일 (기준일 2026-09-15~, 유예 1일)",
       "critical": true,
       "ageDays": null
     },
     {
       "name": "settlement_backlog",
       "status": "OK",
-      "detail": "만기경과 미정산 0건 / 대기중 532건",
+      "detail": "만기경과 미정산 0건 / 대기중 527건",
       "critical": false,
       "ageDays": null
     },
     {
       "name": "clean_window_samples",
       "status": "OK",
-      "detail": "clean window(2026-07-10) 정산표본 1284건 / 전체 정산 1944건 / 원장 2654행",
+      "detail": "clean window(2026-07-10) 정산표본 1284건 / 전체 정산 1944건 / 원장 2649행",
       "critical": false,
       "ageDays": null
     },
     {
       "name": "live_gate_promotion",
       "status": "WARN",
-      "detail": "승격 0/14셀 (기준 effN≥30, 최대 7.6, global effN 21.4 승률 26.7%) — 아직 백테스트 소스 사용 중",
+      "detail": "승격 0/14셀 (기준 effN≥30, 최대 7.8, global effN 21.9 승률 26.7%) — 아직 백테스트 소스 사용 중",
       "critical": false,
       "ageDays": null
     }
