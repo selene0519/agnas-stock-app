@@ -1,39 +1,14 @@
 {
   "version": "leader-breakout-v1",
   "market": "us",
-  "asOf": "2026-10-06",
+  "asOf": "2026-10-07",
   "status": "OK",
   "usBackdropFavorable": true,
-  "scanned": 132,
+  "scanned": 2,
   "validatedEdge": {
     "note": "leader breakout only holds up on SPY>MA50; deep 2014-2026 train+OOS forward-return, not cost/trade-sim"
   },
-  "candidates": [
-    {
-      "symbol": "MRVL",
-      "asOf": "2026-10-06",
-      "entry": 287.01,
-      "stop": 248.14,
-      "target": 364.75,
-      "rrRatio": 2.0,
-      "ret60Pct": 31.94,
-      "posRange250": 0.879,
-      "volRatio50": 2.31,
-      "setup": "LEADER_BREAKOUT"
-    },
-    {
-      "symbol": "ALAB",
-      "asOf": "2026-10-06",
-      "entry": 389.8,
-      "stop": 342.0,
-      "target": 485.4,
-      "rrRatio": 2.0,
-      "ret60Pct": 7.66,
-      "posRange250": 0.756,
-      "volRatio50": 1.56,
-      "setup": "LEADER_BREAKOUT"
-    }
-  ],
+  "candidates": [],
   "heldForUnfavorableBackdrop": [],
   "note": "Research/paper only. Feed the paper loop for live proof before promotion."
 }

@@ -1,193 +1,37 @@
 {
   "version": "relative-strength-v1",
   "market": "us",
-  "asOf": "2026-10-06",
+  "asOf": "2026-10-07",
   "regime": "BULL",
   "status": "OK",
   "lensNote": "Long the RS leaders, avoid the laggards. RS edge holds in BULL/SIDE.",
-  "universeCount": 136,
+  "universeCount": 2,
   "leaders": [
     {
-      "symbol": "BMNR",
-      "rs60Pct": 79.33,
-      "relToIndexPp": 75.34,
-      "vol60Pct": 5.11
+      "symbol": "BTC-USD",
+      "rs60Pct": 29.73,
+      "relToIndexPp": 26.73,
+      "vol60Pct": 2.12
     },
     {
-      "symbol": "MSTR",
-      "rs60Pct": 78.66,
-      "relToIndexPp": 74.67,
-      "vol60Pct": 5.28
-    },
-    {
-      "symbol": "SMCI",
-      "rs60Pct": 57.12,
-      "relToIndexPp": 53.13,
-      "vol60Pct": 5.48
-    },
-    {
-      "symbol": "OKTA",
-      "rs60Pct": 56.72,
-      "relToIndexPp": 52.73,
-      "vol60Pct": 4.95
-    },
-    {
-      "symbol": "ESTC",
-      "rs60Pct": 51.53,
-      "relToIndexPp": 47.54,
-      "vol60Pct": 3.98
-    },
-    {
-      "symbol": "HPE",
-      "rs60Pct": 49.2,
-      "relToIndexPp": 45.2,
-      "vol60Pct": 4.01
-    },
-    {
-      "symbol": "CRWD",
-      "rs60Pct": 48.4,
-      "relToIndexPp": 44.41,
-      "vol60Pct": 4.55
-    },
-    {
-      "symbol": "PLTR",
-      "rs60Pct": 47.7,
-      "relToIndexPp": 43.71,
-      "vol60Pct": 4.79
-    },
-    {
-      "symbol": "LITE",
-      "rs60Pct": 47.55,
-      "relToIndexPp": 43.56,
-      "vol60Pct": 5.94
-    },
-    {
-      "symbol": "RXRX",
-      "rs60Pct": 40.3,
-      "relToIndexPp": 36.31,
-      "vol60Pct": 4.99
-    },
-    {
-      "symbol": "S",
-      "rs60Pct": 39.08,
-      "relToIndexPp": 35.09,
-      "vol60Pct": 3.85
-    },
-    {
-      "symbol": "IBIT",
-      "rs60Pct": 37.68,
-      "relToIndexPp": 33.68,
-      "vol60Pct": 2.35
-    },
-    {
-      "symbol": "ELF",
-      "rs60Pct": 36.87,
-      "relToIndexPp": 32.88,
-      "vol60Pct": 3.32
-    },
-    {
-      "symbol": "MSFT",
-      "rs60Pct": 35.37,
-      "relToIndexPp": 31.38,
-      "vol60Pct": 2.51
-    },
-    {
-      "symbol": "DELL",
-      "rs60Pct": 34.61,
-      "relToIndexPp": 30.62,
-      "vol60Pct": 5.07
+      "symbol": "SP500",
+      "rs60Pct": 3.03,
+      "relToIndexPp": 0.03,
+      "vol60Pct": 0.7
     }
   ],
   "laggardsToAvoid": [
     {
-      "symbol": "GS",
-      "rs60Pct": -14.22,
-      "relToIndexPp": -18.21,
-      "vol60Pct": 2.23
+      "symbol": "BTC-USD",
+      "rs60Pct": 29.73,
+      "relToIndexPp": 26.73,
+      "vol60Pct": 2.12
     },
     {
-      "symbol": "HIMS",
-      "rs60Pct": -14.28,
-      "relToIndexPp": -18.28,
-      "vol60Pct": 4.87
-    },
-    {
-      "symbol": "MCD",
-      "rs60Pct": -14.73,
-      "relToIndexPp": -18.73,
-      "vol60Pct": 1.32
-    },
-    {
-      "symbol": "HD",
-      "rs60Pct": -14.96,
-      "relToIndexPp": -18.95,
-      "vol60Pct": 1.5
-    },
-    {
-      "symbol": "OKLO",
-      "rs60Pct": -15.85,
-      "relToIndexPp": -19.84,
-      "vol60Pct": 5.13
-    },
-    {
-      "symbol": "RIVN",
-      "rs60Pct": -16.18,
-      "relToIndexPp": -20.17,
-      "vol60Pct": 2.7
-    },
-    {
-      "symbol": "BBAI",
-      "rs60Pct": -16.5,
-      "relToIndexPp": -20.5,
-      "vol60Pct": 3.47
-    },
-    {
-      "symbol": "RBLX",
-      "rs60Pct": -17.21,
-      "relToIndexPp": -21.2,
-      "vol60Pct": 4.99
-    },
-    {
-      "symbol": "SQQQ",
-      "rs60Pct": -20.33,
-      "relToIndexPp": -24.32,
-      "vol60Pct": 3.43
-    },
-    {
-      "symbol": "JOBY",
-      "rs60Pct": -22.73,
-      "relToIndexPp": -26.72,
-      "vol60Pct": 3.36
-    },
-    {
-      "symbol": "NVO",
-      "rs60Pct": -23.84,
-      "relToIndexPp": -27.84,
-      "vol60Pct": 2.41
-    },
-    {
-      "symbol": "RDDT",
-      "rs60Pct": -25.87,
-      "relToIndexPp": -29.86,
-      "vol60Pct": 4.85
-    },
-    {
-      "symbol": "CAVA",
-      "rs60Pct": -27.43,
-      "relToIndexPp": -31.43,
-      "vol60Pct": 3.47
-    },
-    {
-      "symbol": "SOXS",
-      "rs60Pct": -36.28,
-      "relToIndexPp": -40.27,
-      "vol60Pct": 8.4
-    },
-    {
-      "symbol": "APP",
-      "rs60Pct": -37.05,
-      "relToIndexPp": -41.04,
-      "vol60Pct": 3.76
+      "symbol": "SP500",
+      "rs60Pct": 3.03,
+      "relToIndexPp": 0.03,
+      "vol60Pct": 0.7
     }
   ],
   "defensiveHolds": [],
