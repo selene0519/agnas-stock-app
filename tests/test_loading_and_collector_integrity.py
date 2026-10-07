@@ -172,6 +172,18 @@ def test_us_close_refresh_uses_chart_fallback_when_yfinance_fails(tmp_path, monk
     assert module._existing_latest_date("ELF") == "2026-08-28"
 
 
+def test_us_close_refresh_maps_internal_sp500_benchmark_to_yahoo_index() -> None:
+    spec = importlib.util.spec_from_file_location(
+        "us_close_refresh_benchmark", ROOT / "scripts" / "refresh_us_close_ohlcv.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+
+    assert module._yahoo_symbol("SP500") == "^GSPC"
+    assert module._yahoo_symbol("AAPL") == "AAPL"
+
+
 def test_regime_benchmark_invalid_trailing_bar_is_critical(tmp_path, monkeypatch) -> None:
     hc = _load_healthcheck()
     monkeypatch.setattr(hc, "ROOT", tmp_path)

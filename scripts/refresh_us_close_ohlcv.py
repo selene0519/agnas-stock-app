@@ -37,6 +37,11 @@ OHLCV_DIR = REPO / "data" / "market" / "ohlcv"
 REPORTS = REPO / "reports"
 DATA_STOCKAPP = REPO / "data" / "stockapp"
 
+# Internal benchmark labels are valid local filenames and journal symbols, but
+# are not Yahoo tickers.  Keep the internal symbol stable while fetching with
+# the vendor code.
+YAHOO_SYMBOL_ALIASES = {"SP500": "^GSPC", "GSPC": "^GSPC"}
+
 def _normalize_date(value: object) -> str:
     """Return an ISO calendar date, including recovery of compact YYYYMMDD rows."""
     text = str(value or "").strip()
@@ -186,6 +191,10 @@ def _valid_us_symbol(value: object) -> str:
     return sym if re.fullmatch(r"[A-Z][A-Z0-9.-]{0,9}", sym) else ""
 
 
+def _yahoo_symbol(symbol: str) -> str:
+    return YAHOO_SYMBOL_ALIASES.get(symbol.upper(), symbol)
+
+
 def _target_symbols(limit: int = 200) -> list[str]:
     """기존 OHLCV 파일 목록 + watchlist/holdings/추천 파일에서 심볼 수집."""
     symbols: set[str] = set()
@@ -241,7 +250,7 @@ def _fetch_yfinance(symbol: str, start: str) -> list[dict] | None:
     except Exception:
         return None
     try:
-        ticker = yf.Ticker(symbol)
+        ticker = yf.Ticker(_yahoo_symbol(symbol))
         df = ticker.history(start=start, interval="1d", auto_adjust=False)
         if df is None or df.empty:
             return None
@@ -282,7 +291,7 @@ def _fetch_yahoo_chart(symbol: str, start: str) -> list[dict] | None:
             "events": "history",
         })
         request = Request(
-            f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?{query}",
+            f"https://query1.finance.yahoo.com/v8/finance/chart/{_yahoo_symbol(symbol)}?{query}",
             headers={"User-Agent": "Mozilla/5.0"},
         )
         with urlopen(request, timeout=15) as response:
