@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-10-08T07:17:23.874781+00:00",
+  "generatedAt": "2026-10-08T12:48:42.649652+00:00",
   "asOfDate": "2026-10-08",
   "market": "kr",
-  "marketRegime": "SIDE",
-  "breadthAboveMa60": 0.412,
-  "activeLens": "BREAKOUT",
+  "marketRegime": "BEAR",
+  "breadthAboveMa60": 0.402,
+  "activeLens": "BOTTOM_CATCH",
   "activeSetupByRegime": {
     "BULL": [
       "BREAKOUT"
@@ -18,25 +18,9 @@
   "liveSamplesTotal": 182,
   "universeSize": 106,
   "candidateCount": 2,
-  "actionableCount": 2,
+  "actionableCount": 0,
   "disclaimer": "생존편향(현상장 glob만)로 백테스트 낙관. actionable(ACTIVE)만 자가보정 통과 — 실사이징은 라이브 VTJ forward 검증 후.",
   "candidates": [
-    {
-      "symbol": "353200",
-      "name": "대덕전자",
-      "setup": "BREAKOUT",
-      "asOfDate": "2026-10-08",
-      "close": 157800.0,
-      "entryRef": 157800.0,
-      "stop": 151488,
-      "target": 170424,
-      "rrRatio": 2.0,
-      "rsi14": 88.8,
-      "distMa20Pct": 32.0,
-      "calibrationGate": "ACTIVE",
-      "sizeMultiplier": 0.62,
-      "actionable": true
-    },
     {
       "symbol": "096770",
       "name": "SK이노베이션",
@@ -49,9 +33,25 @@
       "rrRatio": 2.0,
       "rsi14": 63.3,
       "distMa20Pct": 10.1,
-      "calibrationGate": "ACTIVE",
-      "sizeMultiplier": 0.62,
-      "actionable": true
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
+    },
+    {
+      "symbol": "030200",
+      "name": "KT",
+      "setup": "BOTTOM_CATCH",
+      "asOfDate": "2026-10-08",
+      "close": 51300.0,
+      "entryRef": 51300.0,
+      "stop": 50136,
+      "target": 55404,
+      "rrRatio": 3.53,
+      "rsi14": 30.8,
+      "distMa20Pct": -2.5,
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
     }
   ]
 }
