@@ -18,7 +18,7 @@
   "lastRun": {
     "status": "OK",
     "dryRun": false,
-    "createdAt": "2026-10-08T22:05:45",
+    "createdAt": "2026-10-08T23:05:37",
     "market": "us",
     "markets": {
       "us": {
@@ -65,32 +65,32 @@
         "liveMetrics": {
           "status": "OK",
           "proofStatus": "RUNNING",
-          "sampleCount": 70,
-          "navPointCount": 71,
+          "sampleCount": 71,
+          "navPointCount": 72,
           "totalReturnPct": 1.51,
           "mddPct": -0.6,
-          "sharpe": 2.41,
-          "winRate": 31.4,
+          "sharpe": 2.4,
+          "winRate": 31.0,
           "avgPeriodReturnPct": 0.02,
           "cashPct": 87.6,
           "peakValue": 5075.96,
           "currentValue": 5075.52,
           "lastNavDate": "2026-10-08",
           "recentReturnsPct": [
-            0.0,
             0.23,
             0.0,
             0.36,
             0.0,
             0.01,
             0.0,
-            -0.01
+            -0.01,
+            0.0
           ],
           "equityCurve": [
             {
               "index": 0,
-              "value": 5046.07,
-              "returnPct": 0.92
+              "value": 5035.0,
+              "returnPct": 0.7
             },
             {
               "index": 1,
@@ -99,7 +99,7 @@
             },
             {
               "index": 2,
-              "value": 5035.0,
+              "value": 5034.85,
               "returnPct": 0.7
             },
             {
@@ -109,8 +109,8 @@
             },
             {
               "index": 4,
-              "value": 5034.85,
-              "returnPct": 0.7
+              "value": 5036.33,
+              "returnPct": 0.73
             },
             {
               "index": 5,
@@ -119,8 +119,8 @@
             },
             {
               "index": 6,
-              "value": 5036.33,
-              "returnPct": 0.73
+              "value": 5045.47,
+              "returnPct": 0.91
             },
             {
               "index": 7,
@@ -129,8 +129,8 @@
             },
             {
               "index": 8,
-              "value": 5045.47,
-              "returnPct": 0.91
+              "value": 5057.19,
+              "returnPct": 1.14
             },
             {
               "index": 9,
@@ -139,8 +139,8 @@
             },
             {
               "index": 10,
-              "value": 5057.19,
-              "returnPct": 1.14
+              "value": 5075.54,
+              "returnPct": 1.51
             },
             {
               "index": 11,
@@ -149,8 +149,8 @@
             },
             {
               "index": 12,
-              "value": 5075.54,
-              "returnPct": 1.51
+              "value": 5075.96,
+              "returnPct": 1.52
             },
             {
               "index": 13,
@@ -159,8 +159,8 @@
             },
             {
               "index": 14,
-              "value": 5075.96,
-              "returnPct": 1.52
+              "value": 5075.52,
+              "returnPct": 1.51
             },
             {
               "index": 15,
@@ -742,11 +742,11 @@
           },
           "priceSession": {
             "market": "us",
-            "priceSession": "us_premarket",
-            "sessionLabel": "미장 장전",
-            "priceBasis": "미장 장전 · 프리마켓 업데이트 기준",
-            "nowKst": "2026-10-08T22:05:45.249668+09:00",
-            "nowLocal": "2026-10-08T09:05:45.249668-04:00",
+            "priceSession": "us_intraday",
+            "sessionLabel": "미장 장중",
+            "priceBasis": "미장 장중 · KIS 현재가 기준",
+            "nowKst": "2026-10-08T23:05:37.438640+09:00",
+            "nowLocal": "2026-10-08T10:05:37.438640-04:00",
             "isHoliday": false,
             "isReviewMode": false,
             "isUsDst": true
@@ -773,7 +773,7 @@
         },
         "nav": {
           "date": "2026-10-08",
-          "createdAt": "2026-10-08T22:05:45",
+          "createdAt": "2026-10-08T23:05:37",
           "market": "us",
           "agentId": "ml_rank_conservative_swing",
           "agentLabel": "ML Rank Conservative Swing",
