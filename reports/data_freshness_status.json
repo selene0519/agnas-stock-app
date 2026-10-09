@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-09T02:40:38.468426+00:00",
+  "generatedAt": "2026-10-08T19:48:52.057379+00:00",
   "overall": "WARN",
   "criticalFailures": 0,
   "hardFailures": 0,
@@ -15,30 +15,30 @@
     {
       "name": "kr_ohlcv",
       "status": "OK",
-      "detail": "1.11d, asOf=2026-10-08",
+      "detail": "0.83d, asOf=2026-10-08",
       "critical": true,
-      "ageDays": 1.11
+      "ageDays": 0.83
     },
     {
       "name": "kr_kospi_ohlcv",
       "status": "OK",
-      "detail": "1.11d, asOf=2026-10-08, kr_KOSPI_daily.csv trailing OHLC is valid",
+      "detail": "0.83d, asOf=2026-10-08, kr_KOSPI_daily.csv trailing OHLC is valid",
       "critical": true,
-      "ageDays": 1.11
+      "ageDays": 0.83
     },
     {
       "name": "kr_kosdaq_ohlcv",
       "status": "OK",
-      "detail": "1.11d, asOf=2026-10-08, kr_KOSDAQ_daily.csv trailing OHLC is valid",
+      "detail": "0.83d, asOf=2026-10-08, kr_KOSDAQ_daily.csv trailing OHLC is valid",
       "critical": true,
-      "ageDays": 1.11
+      "ageDays": 0.83
     },
     {
       "name": "kr_recommendations",
       "status": "OK",
-      "detail": "0.13d, asOf=2026-10-08T23:32:11.986546+00:00",
+      "detail": "0.2d, asOf=2026-10-08T14:57:46.678528+00:00",
       "critical": true,
-      "ageDays": 0.13
+      "ageDays": 0.2
     },
     {
       "name": "collector_steps",
@@ -49,71 +49,71 @@
     },
     {
       "name": "collector_partial_failures",
-      "status": "WARN",
-      "detail": "kr_close 100건",
+      "status": "OK",
+      "detail": "cloud collector reports have zero failed items",
       "critical": false,
       "ageDays": null
     },
     {
       "name": "collector_run",
       "status": "OK",
-      "detail": "0.13d, asOf=2026-10-09T08:33:58+09:00, source=cloud:benchmarks, reportedAt=2026-10-09T08:33:58",
+      "detail": "0.2d, asOf=2026-10-08T23:59:09+09:00, source=cloud:benchmarks, reportedAt=2026-10-08T23:59:09",
       "critical": true,
-      "ageDays": 0.13
+      "ageDays": 0.2
     },
     {
       "name": "local_collector_run",
       "status": "STALE",
-      "detail": "optional local collector 72.79d old; cloud source remains authoritative",
+      "detail": "optional local collector 72.51d old; cloud source remains authoritative",
       "critical": false,
-      "ageDays": 72.79
+      "ageDays": 72.51
     },
     {
       "name": "vtj_journal",
       "status": "OK",
-      "detail": "0.13d, asOf=2026-10-09T08:34:06+09:00",
+      "detail": "0.2d, asOf=2026-10-08T23:59:15+09:00",
       "critical": false,
-      "ageDays": 0.13
+      "ageDays": 0.2
     },
     {
       "name": "live_calibration",
       "status": "OK",
-      "detail": "0.11d, asOf=2026-10-09",
+      "detail": "-0.17d, asOf=2026-10-09",
       "critical": false,
-      "ageDays": 0.11
+      "ageDays": -0.17
     },
     {
       "name": "strategy_win_rates",
       "status": "OK",
-      "detail": "-0.37d, asOf=2026-10-09 11:40:32",
+      "detail": "-0.37d, asOf=2026-10-09 04:48:46",
       "critical": false,
       "ageDays": -0.37
     },
     {
       "name": "prediction_capture",
       "status": "OK",
-      "detail": "0.11d, asOf=2026-10-09",
+      "detail": "0.83d, asOf=2026-10-08",
       "critical": true,
-      "ageDays": 0.11
+      "ageDays": 0.83
     },
     {
       "name": "capture_continuity",
       "status": "OK",
-      "detail": "거래일 11일 중 캡처 11일 (기준일 2026-09-18~, 유예 1일)",
+      "detail": "거래일 12일 중 캡처 12일 (기준일 2026-09-17~, 유예 1일)",
       "critical": true,
       "ageDays": null
     },
     {
       "name": "settlement_backlog",
       "status": "OK",
-      "detail": "만기경과 미정산 0건 / 대기중 667건",
+      "detail": "만기경과 미정산 0건 / 대기중 632건",
       "critical": false,
       "ageDays": null
     },
     {
       "name": "clean_window_samples",
       "status": "OK",
-      "detail": "clean window(2026-07-10) 정산표본 1352건 / 전체 정산 2012건 / 원장 2857행",
+      "detail": "clean window(2026-07-10) 정산표본 1352건 / 전체 정산 2012건 / 원장 2822행",
       "critical": false,
       "ageDays": null
     },
