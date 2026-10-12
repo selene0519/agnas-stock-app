@@ -1,17 +1,17 @@
 {
   "table": {
     "0-72|SIDE": {
-      "winRate": 21.9,
+      "winRate": 22.0,
       "rawWinRate": 13.9,
       "avgPnl": -6.859,
-      "effN": 6.8,
+      "effN": 6.6,
       "priorWinRate": 24.6
     },
     "72-76|SIDE": {
-      "winRate": 22.7,
+      "winRate": 22.8,
       "rawWinRate": 13.4,
       "avgPnl": -7.15,
-      "effN": 4.1,
+      "effN": 4.0,
       "priorWinRate": 24.6
     },
     "76-80|SIDE": {
@@ -31,14 +31,14 @@
     "76-80|BULL": {
       "winRate": 24.9,
       "rawWinRate": 31.3,
-      "avgPnl": -1.958,
+      "avgPnl": -1.957,
       "effN": 0.7,
       "priorWinRate": 24.6
     },
     "72-76|BULL": {
       "winRate": 24.8,
-      "rawWinRate": 30.9,
-      "avgPnl": -2.542,
+      "rawWinRate": 30.8,
+      "avgPnl": -2.538,
       "effN": 0.4,
       "priorWinRate": 24.6
     },
@@ -64,7 +64,7 @@
       "priorWinRate": 24.6
     },
     "0-72|BEAR": {
-      "winRate": 26.1,
+      "winRate": 26.0,
       "rawWinRate": 37.7,
       "avgPnl": -0.059,
       "effN": 2.4,
@@ -78,10 +78,10 @@
       "priorWinRate": 24.6
     },
     "72-76|BEAR": {
-      "winRate": 27.5,
+      "winRate": 27.4,
       "rawWinRate": 52.6,
       "avgPnl": 1.069,
-      "effN": 2.3,
+      "effN": 2.2,
       "priorWinRate": 24.6
     },
     "76-80|BEAR": {
@@ -109,7 +109,7 @@
   "global": {
     "winRate": 24.6,
     "avgPnl": -4.056,
-    "effN": 21.6
+    "effN": 21.1
   },
   "bins": [
     "0-72",
@@ -122,7 +122,7 @@
   "params": {
     "halfLifeDays": 30.0,
     "shrinkK": 20.0,
-    "asOf": "2026-10-12"
+    "asOf": "2026-10-13"
   },
   "market": "kr",
   "source": "live_vtj_rolling_pooled",
