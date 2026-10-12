@@ -1,6 +1,6 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-10-12T17:32:20.831149+00:00",
+  "generatedAt": "2026-10-12T22:04:06.933691+00:00",
   "policy": {
     "version": "champion-challenger-v1.4.0",
     "champion": "TOP_3_RAW_CANDIDATES",
@@ -30,21 +30,21 @@
     "fingerprint": "2cc1dea4ccc330c31cb9"
   },
   "recording": {
-    "appended": 15,
-    "conflicts": 26,
+    "appended": 33,
+    "conflicts": 0,
     "skipped": 0,
-    "total": 1669
+    "total": 1702
   },
   "policyCohort": {
     "activeFingerprint": "2cc1dea4ccc330c31cb9",
     "activeMetaPolicyFingerprint": "0bb3379dfc7bec772798",
     "activeRiskPolicyFingerprint": "e35273b1243c0e38f6ce",
-    "activeRows": 1529,
-    "validActiveRows": 1529,
+    "activeRows": 1562,
+    "validActiveRows": 1562,
     "excludedPriorPolicyRows": 140
   },
   "integrity": {
-    "immutableConflicts": 26,
+    "immutableConflicts": 0,
     "timeIntegrityViolations": 0,
     "recordHashViolations": 0,
     "invalidRecordIds": [],
@@ -90,7 +90,7 @@
   },
   "comparison": {
     "completedSignalDates": 2,
-    "incompleteSignalDates": 44,
+    "incompleteSignalDates": 45,
     "champion": {
       "completeSignalDates": 2,
       "selectedEvaluatedTrades": 6,
@@ -157,7 +157,6 @@
     "promotionEligible": false,
     "decision": "KEEP_CHALLENGER_SHADOW",
     "blockingReasons": [
-      "IMMUTABLE_DECISION_CONFLICT",
       "LOW_COMPLETE_SIGNAL_DATES",
       "LOW_EVALUATED_CHALLENGER_TRADES",
       "NON_POSITIVE_CHALLENGER_RETURN",
