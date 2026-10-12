@@ -1,45 +1,45 @@
 {
   "status": "OK",
   "market": "all",
-  "sampleCount": 785,
+  "sampleCount": 789,
   "excludedInconsistentOutcomeCount": 3,
-  "excludedBySourcePolicyCount": 1870,
+  "excludedBySourcePolicyCount": 1878,
   "calibrationBasis": "forward_only(SOURCE_CALIBRATION_WEIGHTS>0)",
   "sourceBreakdown": [
     {
       "sourceType": "HISTORICAL_REPLAY",
       "calibrationWeight": 0.0,
       "admissible": false,
-      "n": 1393,
-      "winRate": 0.402,
-      "avgPnlPct": -0.357
+      "n": 1399,
+      "winRate": 0.401,
+      "avgPnlPct": -0.365
     },
     {
       "sourceType": "FORWARD_PAPER_TRADE",
       "calibrationWeight": 1.0,
       "admissible": true,
-      "n": 788,
-      "winRate": 0.2805,
-      "avgPnlPct": -3.28
+      "n": 792,
+      "winRate": 0.2816,
+      "avgPnlPct": -3.254
     },
     {
       "sourceType": "FORWARD_RESEARCH_TRADE",
       "calibrationWeight": 0.0,
       "admissible": false,
-      "n": 477,
-      "winRate": 0.2788,
-      "avgPnlPct": -2.525
+      "n": 479,
+      "winRate": 0.2777,
+      "avgPnlPct": -2.547
     }
   ],
-  "baseWinRate": 0.2777,
-  "baseAvgPnlPct": -3.297,
-  "generatedAt": "2026-10-12T08:29:42",
+  "baseWinRate": 0.2788,
+  "baseAvgPnlPct": -3.27,
+  "generatedAt": "2026-10-12T10:50:09",
   "autoApplied": false,
   "manualApprovalRequired": true,
   "calibrationSummary": {
-    "suggestedCount": 17,
+    "suggestedCount": 18,
     "approvedCount": 0,
-    "pendingReviewCount": 49,
+    "pendingReviewCount": 52,
     "applyEndpoint": "/api/journal/calibration/apply-approved"
   },
   "adjustments": [
@@ -70,14 +70,14 @@
       "manualApprovalRequired": true
     },
     {
-      "feedbackId": "10705a351363d24732ee",
+      "feedbackId": "11375d40ce611f3e316a",
       "market": "all",
       "mode": "conservative",
       "horizon": "mid",
-      "n": 106,
-      "winRate": 0.2547,
-      "avgPnlPct": -2.739,
-      "multiplier": 0.743,
+      "n": 110,
+      "winRate": 0.2636,
+      "avgPnlPct": -2.572,
+      "multiplier": 0.754,
       "direction": "REDUCE",
       "suggestedOnly": true,
       "manualApprovalRequired": true
