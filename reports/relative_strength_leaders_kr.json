@@ -2,194 +2,103 @@
   "version": "relative-strength-v1",
   "market": "kr",
   "asOf": "2026-10-12",
-  "regime": "SIDE",
-  "status": "OK",
-  "lensNote": "Long the RS leaders, avoid the laggards. RS edge holds in BULL/SIDE.",
+  "regime": "BEAR",
+  "status": "BEAR_DEFENSIVE",
+  "lensNote": "Bear: RS dispersion is gone; rotate to low-volatility defensives (halve the drawdown) instead of chasing returns.",
   "universeCount": 100,
-  "leaders": [
+  "leaders": [],
+  "laggardsToAvoid": [],
+  "defensiveHolds": [
     {
-      "symbol": "403870",
-      "rs60Pct": 53.69,
-      "relToIndexPp": 67.44,
-      "vol60Pct": 5.88
+      "symbol": "030200",
+      "rs60Pct": -8.49,
+      "relToIndexPp": 6.12,
+      "vol60Pct": 1.29
     },
     {
-      "symbol": "096770",
-      "rs60Pct": 48.1,
-      "relToIndexPp": 61.85,
-      "vol60Pct": 5.16
+      "symbol": "068270",
+      "rs60Pct": 2.91,
+      "relToIndexPp": 17.51,
+      "vol60Pct": 1.73
     },
     {
-      "symbol": "039030",
-      "rs60Pct": 33.42,
-      "relToIndexPp": 47.17,
-      "vol60Pct": 5.69
+      "symbol": "032640",
+      "rs60Pct": -3.28,
+      "relToIndexPp": 11.33,
+      "vol60Pct": 1.74
     },
     {
-      "symbol": "036930",
-      "rs60Pct": 31.58,
-      "relToIndexPp": 45.33,
-      "vol60Pct": 7.42
+      "symbol": "086790",
+      "rs60Pct": -3.81,
+      "relToIndexPp": 10.79,
+      "vol60Pct": 2.09
     },
     {
-      "symbol": "121600",
-      "rs60Pct": 28.96,
-      "relToIndexPp": 42.7,
-      "vol60Pct": 4.73
+      "symbol": "055550",
+      "rs60Pct": -8.33,
+      "relToIndexPp": 6.27,
+      "vol60Pct": 2.13
     },
     {
-      "symbol": "006400",
-      "rs60Pct": 28.8,
-      "relToIndexPp": 42.55,
-      "vol60Pct": 4.68
+      "symbol": "105560",
+      "rs60Pct": -12.04,
+      "relToIndexPp": 2.56,
+      "vol60Pct": 2.15
     },
     {
-      "symbol": "222800",
-      "rs60Pct": 27.71,
-      "relToIndexPp": 41.46,
-      "vol60Pct": 7.55
+      "symbol": "011200",
+      "rs60Pct": 10.69,
+      "relToIndexPp": 25.29,
+      "vol60Pct": 2.24
     },
     {
-      "symbol": "095340",
-      "rs60Pct": 26.12,
-      "relToIndexPp": 39.87,
-      "vol60Pct": 5.59
+      "symbol": "035720",
+      "rs60Pct": -9.76,
+      "relToIndexPp": 4.84,
+      "vol60Pct": 2.25
     },
     {
-      "symbol": "078930",
-      "rs60Pct": 25.69,
-      "relToIndexPp": 39.43,
-      "vol60Pct": 3.97
+      "symbol": "000100",
+      "rs60Pct": 4.38,
+      "relToIndexPp": 18.98,
+      "vol60Pct": 2.36
     },
     {
-      "symbol": "089030",
-      "rs60Pct": 25.51,
-      "relToIndexPp": 39.26,
-      "vol60Pct": 6.45
+      "symbol": "003490",
+      "rs60Pct": 15.51,
+      "relToIndexPp": 30.12,
+      "vol60Pct": 2.44
     },
     {
-      "symbol": "131970",
-      "rs60Pct": 23.52,
-      "relToIndexPp": 37.27,
-      "vol60Pct": 7.39
-    },
-    {
-      "symbol": "028670",
-      "rs60Pct": 22.48,
-      "relToIndexPp": 36.22,
-      "vol60Pct": 4.1
-    },
-    {
-      "symbol": "067310",
-      "rs60Pct": 21.51,
-      "relToIndexPp": 35.26,
-      "vol60Pct": 5.97
-    },
-    {
-      "symbol": "373220",
-      "rs60Pct": 21.47,
-      "relToIndexPp": 35.22,
-      "vol60Pct": 3.33
-    },
-    {
-      "symbol": "128940",
-      "rs60Pct": 21.21,
-      "relToIndexPp": 34.96,
-      "vol60Pct": 5.59
-    }
-  ],
-  "laggardsToAvoid": [
-    {
-      "symbol": "298040",
-      "rs60Pct": -23.26,
-      "relToIndexPp": -9.51,
-      "vol60Pct": 6.26
-    },
-    {
-      "symbol": "145020",
-      "rs60Pct": -25.32,
-      "relToIndexPp": -11.57,
-      "vol60Pct": 3.29
-    },
-    {
-      "symbol": "402340",
-      "rs60Pct": -25.7,
-      "relToIndexPp": -11.95,
-      "vol60Pct": 7.51
+      "symbol": "003620",
+      "rs60Pct": -10.21,
+      "relToIndexPp": 4.4,
+      "vol60Pct": 2.45
     },
     {
       "symbol": "035900",
-      "rs60Pct": -25.84,
-      "relToIndexPp": -12.09,
+      "rs60Pct": -25.74,
+      "relToIndexPp": -11.14,
       "vol60Pct": 2.49
     },
     {
-      "symbol": "000660",
-      "rs60Pct": -26.28,
-      "relToIndexPp": -12.54,
-      "vol60Pct": 6.77
+      "symbol": "005490",
+      "rs60Pct": -4.94,
+      "relToIndexPp": 9.66,
+      "vol60Pct": 2.54
     },
     {
-      "symbol": "000270",
-      "rs60Pct": -26.98,
-      "relToIndexPp": -13.24,
-      "vol60Pct": 3.01
+      "symbol": "207940",
+      "rs60Pct": -14.27,
+      "relToIndexPp": 0.34,
+      "vol60Pct": 2.58
     },
     {
-      "symbol": "012330",
-      "rs60Pct": -27.56,
-      "relToIndexPp": -13.81,
-      "vol60Pct": 3.16
-    },
-    {
-      "symbol": "329180",
-      "rs60Pct": -27.98,
-      "relToIndexPp": -14.23,
-      "vol60Pct": 3.48
-    },
-    {
-      "symbol": "352820",
-      "rs60Pct": -29.21,
-      "relToIndexPp": -15.46,
-      "vol60Pct": 3.44
-    },
-    {
-      "symbol": "196170",
-      "rs60Pct": -29.32,
-      "relToIndexPp": -15.57,
-      "vol60Pct": 5.44
-    },
-    {
-      "symbol": "005380",
-      "rs60Pct": -30.27,
-      "relToIndexPp": -16.53,
-      "vol60Pct": 3.21
-    },
-    {
-      "symbol": "267260",
-      "rs60Pct": -32.2,
-      "relToIndexPp": -18.45,
-      "vol60Pct": 5.17
-    },
-    {
-      "symbol": "011070",
-      "rs60Pct": -34.84,
-      "relToIndexPp": -21.09,
-      "vol60Pct": 6.75
-    },
-    {
-      "symbol": "214150",
-      "rs60Pct": -39.28,
-      "relToIndexPp": -25.53,
-      "vol60Pct": 3.24
-    },
-    {
-      "symbol": "064350",
-      "rs60Pct": -44.21,
-      "relToIndexPp": -30.47,
-      "vol60Pct": 4.11
+      "symbol": "326030",
+      "rs60Pct": -14.08,
+      "relToIndexPp": 0.53,
+      "vol60Pct": 2.6
     }
   ],
-  "defensiveHolds": [],
-  "note": "Research/paper only."
+  "note": "Research/paper only. Capital preservation, not return."
 }
