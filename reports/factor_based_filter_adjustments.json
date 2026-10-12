@@ -1,6 +1,56 @@
 {
-  "status": "LOW_R2",
-  "r2": 0.0273,
-  "message": "R²=0.0273 미약 — 조정 없음 (최소 0.03 필요).",
-  "adjustments": {}
+  "updatedAt": "2026-10-13 07:00:21",
+  "basedOnR2": 0.0303,
+  "olsSamples": 2387,
+  "rsiCoefficient": 0.16,
+  "vrCoefficient": 0.2866,
+  "d20Coefficient": -0.1489,
+  "mom5Coefficient": -0.0822,
+  "adjustments": {
+    "rsi_upper_conservative": 74.0,
+    "rsi_upper_balanced": 77.0,
+    "rsi_upper_aggressive": 80.0,
+    "min_vr_conservative": 0.75,
+    "min_vr_balanced": 0.55,
+    "min_vr_aggressive": 0.35,
+    "d20_max_short": 9.0,
+    "d20_max_swing": 11.0,
+    "d20_max_mid": 14.0,
+    "momentum5_insight": "음의 모멘텀이 수익 기여"
+  },
+  "byMarket": {
+    "kr": {
+      "status": "APPLIED",
+      "r2": 0.0505,
+      "n": 849,
+      "adjustments": {
+        "rsi_upper_conservative": 74.0,
+        "min_vr_conservative": 0.65,
+        "rsi_upper_balanced": 77.0,
+        "min_vr_balanced": 0.45,
+        "rsi_upper_aggressive": 80.0,
+        "min_vr_aggressive": 0.25,
+        "d20_max_short": 9.0,
+        "d20_max_swing": 11.0,
+        "d20_max_mid": 14.0
+      }
+    },
+    "us": {
+      "status": "APPLIED",
+      "r2": 0.042,
+      "n": 1538,
+      "adjustments": {
+        "rsi_upper_conservative": 74.0,
+        "min_vr_conservative": 0.75,
+        "rsi_upper_balanced": 77.0,
+        "min_vr_balanced": 0.55,
+        "rsi_upper_aggressive": 80.0,
+        "min_vr_aggressive": 0.35,
+        "d20_max_short": 9.0,
+        "d20_max_swing": 11.0,
+        "d20_max_mid": 14.0
+      }
+    }
+  },
+  "status": "APPLIED"
 }
