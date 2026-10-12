@@ -1,6 +1,6 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-10-12T01:47:16.486642+00:00",
+  "generatedAt": "2026-10-12T07:18:11.059464+00:00",
   "policy": {
     "version": "self-correction-shadow-v1.5.0",
     "inputContractVersion": "correction-shadow-input-v1",
@@ -101,7 +101,13 @@
     "appended": 0,
     "conflicts": 0,
     "total": 0,
-    "recordMarket": "none"
+    "recordMarket": "all",
+    "skippedInputContract": 0,
+    "skippedForwardSeal": 0,
+    "skippedBeforeSignalClose": 0,
+    "skippedAfterNextSessionOpen": 0,
+    "runAt": "2026-10-12T07:18:11.059000+00:00",
+    "candidateDiagnostics": []
   },
   "lastRecordingRun": {
     "appended": 0,
@@ -112,7 +118,7 @@
     "skippedForwardSeal": 0,
     "skippedBeforeSignalClose": 0,
     "skippedAfterNextSessionOpen": 0,
-    "runAt": "2026-10-11T23:28:29.275682+00:00",
+    "runAt": "2026-10-12T07:18:11.059000+00:00",
     "candidateDiagnostics": [
       {
         "candidateFingerprint": "776f38cd63fa6335313a54bdc8cc7512035aceb368fba7e95ac46873ba0a9f47",
@@ -457,7 +463,7 @@
           "requiresForwardPromotion": true
         },
         {
-          "suggestionId": "4274557ff7e6bcd30340",
+          "suggestionId": "2f97363dea3cdeb3d1e6",
           "sourceSummaryId": "8743f21b9e8aeabf",
           "market": "kr",
           "mode": "conservative",
@@ -465,19 +471,19 @@
           "sourceType": "FORWARD_PAPER_TRADE",
           "journalSession": "AFTER_CLOSE_TRADE",
           "reason": "STOP_TOO_TIGHT",
-          "sampleCount": 51,
+          "sampleCount": 55,
           "distinctSignalDates": 12,
-          "share": 0.3333,
+          "share": 0.3091,
           "approvalStatus": "PENDING_REVIEW",
           "applicationStatus": "NOT_APPLIED",
           "shadowEligible": true,
           "shadowGateReason": "SHADOW_INCUBATION_ELIGIBLE",
-          "estimatedAffectedSamples": 16.998,
+          "estimatedAffectedSamples": 17.0,
           "historicalHoldoutPassed": false,
           "validation": {
             "status": "LOW_HOLDOUT",
             "passed": false,
-            "total": 51,
+            "total": 55,
             "holdoutSamples": 0,
             "distinctSignalDates": 12,
             "requiredDistinctSignalDates": 30,
@@ -849,6 +855,33 @@
           "minDistinctSignalDates": 10,
           "remainingRawSamples": 19,
           "remainingDistinctSignalDates": 1,
+          "requiresHumanReview": false,
+          "autoPromotionAllowed": true,
+          "requiresForwardPromotion": true
+        },
+        {
+          "suggestionId": "3da005aa39f9f62859f7",
+          "sourceSummaryId": "c260ea46ac9c74fe",
+          "market": "us",
+          "mode": "balanced",
+          "horizon": "swing",
+          "sourceType": "HISTORICAL_REPLAY",
+          "journalSession": "AFTER_CLOSE_TRADE",
+          "reason": "STOP_TOO_TIGHT",
+          "sampleCount": 146,
+          "distinctSignalDates": 34,
+          "share": 0.1507,
+          "approvalStatus": "PENDING_REVIEW",
+          "applicationStatus": "NOT_APPLIED",
+          "shadowEligible": false,
+          "shadowGateReason": "SHADOW_SOURCE_NOT_FORWARD",
+          "estimatedAffectedSamples": 0.0,
+          "historicalHoldoutPassed": false,
+          "validation": null,
+          "minRawSamples": 999999,
+          "minDistinctSignalDates": 10,
+          "remainingRawSamples": 999853,
+          "remainingDistinctSignalDates": 0,
           "requiresHumanReview": false,
           "autoPromotionAllowed": true,
           "requiresForwardPromotion": true
