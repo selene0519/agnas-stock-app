@@ -1,6 +1,6 @@
 {
   "status": "OK",
-  "generatedAt": "2026-10-13T03:17:17.043574+00:00",
+  "generatedAt": "2026-10-13T15:42:30.826475+00:00",
   "sampleContract": {
     "unit": "UNIQUE_AS_OF_DATE_MARKET_SYMBOL",
     "minIndependentDecisions": 200,
@@ -10,12 +10,12 @@
   },
   "summary": {
     "forwardRows": 881,
-    "evaluatedRows": 856,
-    "independentDecisions": 384,
+    "evaluatedRows": 858,
+    "independentDecisions": 386,
     "duplicateRowsRemoved": 472,
     "mixedFingerprintDecisionUnits": 0,
     "fingerprintedIndependentDecisions": 1,
-    "legacyIndependentDecisions": 383
+    "legacyIndependentDecisions": 385
   },
   "cohorts": [
     {
@@ -38,15 +38,15 @@
     },
     {
       "strategyFingerprint": "LEGACY_UNFINGERPRINTED",
-      "independentDecisions": 383,
+      "independentDecisions": 385,
       "distinctSignalDates": 24,
       "dateRange": {
         "min": "2026-06-18",
         "max": "2026-07-23"
       },
-      "realizedPnlSamples": 360,
-      "avgNetPnlPct": -3.1395,
-      "winRate": 0.2611,
+      "realizedPnlSamples": 362,
+      "avgNetPnlPct": -3.1217,
+      "winRate": 0.2624,
       "promotionEvidenceReady": false,
       "blockingReasons": [
         "LEGACY_IDENTITY",
