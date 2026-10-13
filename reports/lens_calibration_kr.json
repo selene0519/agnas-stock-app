@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-13T21:57:48.691138+00:00",
+  "generatedAt": "2026-10-13T23:30:15.614300+00:00",
   "asOfDate": "2026-09-23",
   "sources": {
     "live": "reports/lens_live_journal_kr.csv",
@@ -24,6 +24,21 @@
     "BEAR": []
   },
   "calibration": {
+    "LEADER_BREAKOUT|BULL": {
+      "setup": "LEADER_BREAKOUT",
+      "regime": "BULL",
+      "blendedNetAvgPct": -0.485,
+      "blendedWinRate": 7.2,
+      "gate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "liveEffectiveSamples": 9.8,
+      "liveRawSamples": 11,
+      "liveNetAvgPct": -2.466,
+      "priorNetAvgPct": null,
+      "priorRawSamples": 0,
+      "liveFraction": 0.197,
+      "profitFactor": 0.54
+    },
     "BOTTOM_CATCH|SIDE": {
       "setup": "BOTTOM_CATCH",
       "regime": "SIDE",
@@ -38,36 +53,6 @@
       "priorRawSamples": 3131,
       "liveFraction": 0.0,
       "profitFactor": 0.88
-    },
-    "BOTTOM_CATCH|BULL": {
-      "setup": "BOTTOM_CATCH",
-      "regime": "BULL",
-      "blendedNetAvgPct": -1.142,
-      "blendedWinRate": 35.5,
-      "gate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "liveEffectiveSamples": 0.0,
-      "liveRawSamples": 0,
-      "liveNetAvgPct": null,
-      "priorNetAvgPct": -1.142,
-      "priorRawSamples": 2174,
-      "liveFraction": 0.0,
-      "profitFactor": 0.66
-    },
-    "BREAKOUT|BEAR": {
-      "setup": "BREAKOUT",
-      "regime": "BEAR",
-      "blendedNetAvgPct": -1.707,
-      "blendedWinRate": 23.5,
-      "gate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "liveEffectiveSamples": 93.4,
-      "liveRawSamples": 101,
-      "liveNetAvgPct": -1.83,
-      "priorNetAvgPct": -1.418,
-      "priorRawSamples": 2310,
-      "liveFraction": 0.7,
-      "profitFactor": 0.46
     },
     "BREAKOUT|SIDE": {
       "setup": "BREAKOUT",
@@ -84,20 +69,35 @@
       "liveFraction": 0.08,
       "profitFactor": 0.0
     },
-    "LEADER_BREAKOUT|BULL": {
-      "setup": "LEADER_BREAKOUT",
-      "regime": "BULL",
-      "blendedNetAvgPct": -0.485,
-      "blendedWinRate": 7.2,
+    "BOTTOM_CATCH|BEAR": {
+      "setup": "BOTTOM_CATCH",
+      "regime": "BEAR",
+      "blendedNetAvgPct": -1.741,
+      "blendedWinRate": 23.8,
       "gate": "SUPPRESSED_LOW_EDGE",
       "sizeMultiplier": 0.0,
-      "liveEffectiveSamples": 9.8,
-      "liveRawSamples": 11,
-      "liveNetAvgPct": -2.466,
-      "priorNetAvgPct": null,
-      "priorRawSamples": 0,
-      "liveFraction": 0.197,
-      "profitFactor": 0.54
+      "liveEffectiveSamples": 74.9,
+      "liveRawSamples": 82,
+      "liveNetAvgPct": -1.916,
+      "priorNetAvgPct": -1.413,
+      "priorRawSamples": 3517,
+      "liveFraction": 0.652,
+      "profitFactor": 0.38
+    },
+    "BOTTOM_CATCH|BULL": {
+      "setup": "BOTTOM_CATCH",
+      "regime": "BULL",
+      "blendedNetAvgPct": -1.142,
+      "blendedWinRate": 35.5,
+      "gate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "liveEffectiveSamples": 0.0,
+      "liveRawSamples": 0,
+      "liveNetAvgPct": null,
+      "priorNetAvgPct": -1.142,
+      "priorRawSamples": 2174,
+      "liveFraction": 0.0,
+      "profitFactor": 0.66
     },
     "BREAKOUT|BULL": {
       "setup": "BREAKOUT",
@@ -114,20 +114,20 @@
       "liveFraction": 0.0,
       "profitFactor": 1.11
     },
-    "BOTTOM_CATCH|BEAR": {
-      "setup": "BOTTOM_CATCH",
+    "BREAKOUT|BEAR": {
+      "setup": "BREAKOUT",
       "regime": "BEAR",
-      "blendedNetAvgPct": -1.741,
-      "blendedWinRate": 23.8,
+      "blendedNetAvgPct": -1.707,
+      "blendedWinRate": 23.5,
       "gate": "SUPPRESSED_LOW_EDGE",
       "sizeMultiplier": 0.0,
-      "liveEffectiveSamples": 74.9,
-      "liveRawSamples": 82,
-      "liveNetAvgPct": -1.916,
-      "priorNetAvgPct": -1.413,
-      "priorRawSamples": 3517,
-      "liveFraction": 0.652,
-      "profitFactor": 0.38
+      "liveEffectiveSamples": 93.4,
+      "liveRawSamples": 101,
+      "liveNetAvgPct": -1.83,
+      "priorNetAvgPct": -1.418,
+      "priorRawSamples": 2310,
+      "liveFraction": 0.7,
+      "profitFactor": 0.46
     }
   }
 }
