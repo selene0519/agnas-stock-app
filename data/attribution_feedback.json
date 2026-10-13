@@ -3,16 +3,16 @@
   "market": "all",
   "sampleCount": 793,
   "excludedInconsistentOutcomeCount": 3,
-  "excludedBySourcePolicyCount": 1928,
+  "excludedBySourcePolicyCount": 1935,
   "calibrationBasis": "forward_only(SOURCE_CALIBRATION_WEIGHTS>0)",
   "sourceBreakdown": [
     {
       "sourceType": "HISTORICAL_REPLAY",
       "calibrationWeight": 0.0,
       "admissible": false,
-      "n": 1405,
-      "winRate": 0.4007,
-      "avgPnlPct": -0.361
+      "n": 1412,
+      "winRate": 0.4008,
+      "avgPnlPct": -0.351
     },
     {
       "sourceType": "FORWARD_PAPER_TRADE",
@@ -33,11 +33,11 @@
   ],
   "baseWinRate": 0.2812,
   "baseAvgPnlPct": -3.23,
-  "generatedAt": "2026-10-13T23:06:06",
+  "generatedAt": "2026-10-14T00:27:53",
   "autoApplied": false,
   "manualApprovalRequired": true,
   "calibrationSummary": {
-    "suggestedCount": 18,
+    "suggestedCount": 19,
     "approvedCount": 0,
     "pendingReviewCount": 53,
     "applyEndpoint": "/api/journal/calibration/apply-approved"
