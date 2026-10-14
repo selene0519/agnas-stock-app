@@ -1,6 +1,6 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-10-14T01:30:03.623251+00:00",
+  "generatedAt": "2026-10-14T07:16:23.752128+00:00",
   "policy": {
     "version": "self-correction-shadow-v1.5.0",
     "inputContractVersion": "correction-shadow-input-v1",
@@ -101,7 +101,13 @@
     "appended": 0,
     "conflicts": 0,
     "total": 0,
-    "recordMarket": "none"
+    "recordMarket": "all",
+    "skippedInputContract": 0,
+    "skippedForwardSeal": 0,
+    "skippedBeforeSignalClose": 0,
+    "skippedAfterNextSessionOpen": 0,
+    "runAt": "2026-10-14T07:16:23.751829+00:00",
+    "candidateDiagnostics": []
   },
   "lastRecordingRun": {
     "appended": 0,
@@ -112,7 +118,7 @@
     "skippedForwardSeal": 0,
     "skippedBeforeSignalClose": 0,
     "skippedAfterNextSessionOpen": 0,
-    "runAt": "2026-10-13T23:30:12.680423+00:00",
+    "runAt": "2026-10-14T07:16:23.751829+00:00",
     "candidateDiagnostics": [
       {
         "candidateFingerprint": "776f38cd63fa6335313a54bdc8cc7512035aceb368fba7e95ac46873ba0a9f47",
@@ -457,7 +463,7 @@
           "requiresForwardPromotion": true
         },
         {
-          "suggestionId": "1e61ba522fd0ec4c75d1",
+          "suggestionId": "951cac0da9a03c015d06",
           "sourceSummaryId": "8743f21b9e8aeabf",
           "market": "kr",
           "mode": "conservative",
@@ -465,19 +471,19 @@
           "sourceType": "FORWARD_PAPER_TRADE",
           "journalSession": "AFTER_CLOSE_TRADE",
           "reason": "STOP_TOO_TIGHT",
-          "sampleCount": 57,
+          "sampleCount": 60,
           "distinctSignalDates": 12,
-          "share": 0.2982,
+          "share": 0.2833,
           "approvalStatus": "PENDING_REVIEW",
           "applicationStatus": "NOT_APPLIED",
           "shadowEligible": true,
           "shadowGateReason": "SHADOW_INCUBATION_ELIGIBLE",
-          "estimatedAffectedSamples": 16.997,
+          "estimatedAffectedSamples": 16.998,
           "historicalHoldoutPassed": false,
           "validation": {
             "status": "LOW_HOLDOUT",
             "passed": false,
-            "total": 57,
+            "total": 60,
             "holdoutSamples": 0,
             "distinctSignalDates": 12,
             "requiredDistinctSignalDates": 30,
