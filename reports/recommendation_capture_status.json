@@ -1,17 +1,17 @@
 {
-  "runAt": "2026-10-15T23:03:34.507827",
+  "runAt": "2026-10-16T06:59:07.304018",
   "status": "OK",
-  "precondition": "OK — 최신 봉 2026-10-15 (0일 전)",
+  "precondition": "OK — 최신 봉 2026-10-15 (1일 전)",
   "forced": false,
   "markets": [
     "kr",
     "us"
   ],
-  "ledgerRowsBefore": 3059,
-  "ledgerRowsAfter": 3063,
-  "rowsAdded": 4,
-  "capturedToday": 36,
-  "capturedTodayBefore": 32,
+  "ledgerRowsBefore": 3063,
+  "ledgerRowsAfter": 3093,
+  "rowsAdded": 30,
+  "capturedToday": 30,
+  "capturedTodayBefore": 0,
   "comboCount": 18,
   "errorCount": 0,
   "steps": [
@@ -63,22 +63,22 @@
     {
       "combo": "us_conservative_short",
       "status": "OK",
-      "items": 5
+      "items": 1
     },
     {
       "combo": "us_conservative_swing",
       "status": "OK",
-      "items": 3
+      "items": 2
     },
     {
       "combo": "us_conservative_mid",
       "status": "OK",
-      "items": 6
+      "items": 8
     },
     {
       "combo": "us_balanced_short",
       "status": "OK",
-      "items": 0
+      "items": 1
     },
     {
       "combo": "us_balanced_swing",
@@ -93,7 +93,7 @@
     {
       "combo": "us_aggressive_short",
       "status": "OK",
-      "items": 3
+      "items": 4
     },
     {
       "combo": "us_aggressive_swing",
@@ -103,7 +103,7 @@
     {
       "combo": "us_aggressive_mid",
       "status": "OK",
-      "items": 11
+      "items": 12
     }
   ]
 }
