@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-10-15T00:58:27.449958+00:00",
+  "generatedAt": "2026-10-15T07:15:01.981550+00:00",
   "asOfDate": "2026-10-15",
   "market": "kr",
   "marketRegime": "BEAR",
-  "breadthAboveMa60": 0.24,
+  "breadthAboveMa60": 0.225,
   "activeLens": "BOTTOM_CATCH",
   "activeSetupByRegime": {
     "BULL": [
@@ -15,24 +15,24 @@
     "BEAR": []
   },
   "selfCalibrated": true,
-  "liveSamplesTotal": 220,
+  "liveSamplesTotal": 221,
   "universeSize": 106,
   "candidateCount": 1,
   "actionableCount": 0,
   "disclaimer": "생존편향(현상장 glob만)로 백테스트 낙관. actionable(ACTIVE)만 자가보정 통과 — 실사이징은 라이브 VTJ forward 검증 후.",
   "candidates": [
     {
-      "symbol": "030200",
-      "name": "KT",
+      "symbol": "207940",
+      "name": "삼성바이오로직스",
       "setup": "BOTTOM_CATCH",
       "asOfDate": "2026-10-15",
-      "close": 50400.0,
-      "entryRef": 50400.0,
-      "stop": 48560,
-      "target": 54432,
-      "rrRatio": 2.19,
-      "rsi14": 23.1,
-      "distMa20Pct": -3.1,
+      "close": 1221000.0,
+      "entryRef": 1221000.0,
+      "stop": 1132750,
+      "target": 1318680,
+      "rrRatio": 1.11,
+      "rsi14": 27.5,
+      "distMa20Pct": -8.8,
       "calibrationGate": "SUPPRESSED_LOW_EDGE",
       "sizeMultiplier": 0.0,
       "actionable": false
