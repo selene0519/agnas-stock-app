@@ -1,13 +1,13 @@
 {
   "status": "OK",
-  "updatedAt": "2026-10-16T23:08:15",
+  "updatedAt": "2026-10-17T07:00:09",
   "criticalFailures": 0,
   "benchmarks": [
     {
       "symbol": "KOSPI",
       "market": "kr",
       "rows": 3737,
-      "fetchedRows": 3682,
+      "fetchedRows": 3681,
       "latestDate": "2026-10-16",
       "source": "yfinance",
       "removedInvalidRows": 0,
@@ -18,7 +18,7 @@
       "symbol": "KOSDAQ",
       "market": "kr",
       "rows": 3728,
-      "fetchedRows": 3682,
+      "fetchedRows": 3681,
       "latestDate": "2026-10-16",
       "source": "yfinance",
       "removedInvalidRows": 0,
@@ -32,7 +32,7 @@
       "fetchedRows": 3771,
       "latestDate": "2026-10-15",
       "source": "yfinance",
-      "removedInvalidRows": 0,
+      "removedInvalidRows": 1,
       "critical": false,
       "ok": true
     },
@@ -61,9 +61,9 @@
     {
       "symbol": "USDKRW",
       "market": "fx",
-      "rows": 3956,
-      "fetchedRows": 3491,
-      "latestDate": "2026-10-16",
+      "rows": 3957,
+      "fetchedRows": 3492,
+      "latestDate": "2026-10-17",
       "source": "yfinance",
       "removedInvalidRows": 0,
       "critical": false,
