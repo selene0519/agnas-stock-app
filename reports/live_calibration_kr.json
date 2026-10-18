@@ -1,24 +1,24 @@
 {
   "table": {
     "0-72|SIDE": {
-      "winRate": 17.3,
+      "winRate": 17.4,
       "rawWinRate": 8.6,
       "avgPnl": -7.704,
-      "effN": 9.7,
+      "effN": 9.3,
       "priorWinRate": 21.5
     },
     "72-76|SIDE": {
-      "winRate": 19.6,
+      "winRate": 19.7,
       "rawWinRate": 11.0,
       "avgPnl": -7.565,
-      "effN": 4.4,
+      "effN": 4.2,
       "priorWinRate": 21.5
     },
     "76-80|SIDE": {
-      "winRate": 19.7,
+      "winRate": 19.8,
       "rawWinRate": 5.6,
       "avgPnl": -9.554,
-      "effN": 2.5,
+      "effN": 2.4,
       "priorWinRate": 21.5
     },
     "80-84|BULL": {
@@ -32,7 +32,7 @@
       "winRate": 21.8,
       "rawWinRate": 31.2,
       "avgPnl": -1.955,
-      "effN": 0.7,
+      "effN": 0.6,
       "priorWinRate": 21.5
     },
     "72-76|BULL": {
@@ -64,10 +64,10 @@
       "priorWinRate": 21.5
     },
     "0-72|BEAR": {
-      "winRate": 24.1,
+      "winRate": 24.0,
       "rawWinRate": 44.2,
       "avgPnl": 1.432,
-      "effN": 2.6,
+      "effN": 2.5,
       "priorWinRate": 21.5
     },
     "84-88|SIDE": {
@@ -78,14 +78,14 @@
       "priorWinRate": 21.5
     },
     "72-76|BEAR": {
-      "winRate": 24.8,
+      "winRate": 24.6,
       "rawWinRate": 55.0,
       "avgPnl": 1.06,
       "effN": 2.1,
       "priorWinRate": 21.5
     },
     "76-80|BEAR": {
-      "winRate": 23.7,
+      "winRate": 23.6,
       "rawWinRate": 84.8,
       "avgPnl": 10.061,
       "effN": 0.7,
@@ -95,21 +95,21 @@
       "winRate": 22.1,
       "rawWinRate": 49.0,
       "avgPnl": 0.767,
-      "effN": 0.5,
+      "effN": 0.4,
       "priorWinRate": 21.5
     },
     "84-88|BEAR": {
       "winRate": 22.3,
       "rawWinRate": 66.4,
       "avgPnl": 2.121,
-      "effN": 0.4,
+      "effN": 0.3,
       "priorWinRate": 21.5
     }
   },
   "global": {
     "winRate": 21.5,
     "avgPnl": -4.827,
-    "effN": 26.3
+    "effN": 25.1
   },
   "bins": [
     "0-72",
@@ -122,7 +122,7 @@
   "params": {
     "halfLifeDays": 30.0,
     "shrinkK": 20.0,
-    "asOf": "2026-10-17"
+    "asOf": "2026-10-19"
   },
   "market": "kr",
   "source": "live_vtj_rolling_pooled",
