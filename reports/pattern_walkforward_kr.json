@@ -2,41 +2,41 @@
   "status": "OK",
   "market": "kr",
   "fromDate": "2014-01-01",
-  "toDate": "2026-10-11",
+  "toDate": "2026-10-18",
   "horizonDays": 20,
-  "evalDates": 667,
+  "evalDates": 668,
   "summary": {
     "relative_strength": {
-      "sampleCount": 17831,
+      "sampleCount": 17866,
       "winRate": 0.505,
-      "avgReturn": 0.0227,
-      "medianReturn": 0.0023,
-      "stopRate": 0.405,
+      "avgReturn": 0.0225,
+      "medianReturn": 0.0022,
+      "stopRate": 0.406,
       "targetHitRate": 0.365
     },
     "trend_up_pullback": {
-      "sampleCount": 5167,
+      "sampleCount": 5179,
       "winRate": 0.502,
-      "avgReturn": 0.0131,
-      "medianReturn": 0.0014,
-      "stopRate": 0.407,
-      "targetHitRate": 0.343
+      "avgReturn": 0.013,
+      "medianReturn": 0.0012,
+      "stopRate": 0.408,
+      "targetHitRate": 0.342
     },
     "structure_breakdown_risk": {
-      "sampleCount": 20724,
-      "winRate": 0.529,
-      "avgReturn": 0.0202,
-      "medianReturn": 0.0074,
-      "stopRate": 0.381,
+      "sampleCount": 20754,
+      "winRate": 0.528,
+      "avgReturn": 0.02,
+      "medianReturn": 0.0073,
+      "stopRate": 0.382,
       "targetHitRate": 0.371
     },
     "horizontal_support_rebound": {
-      "sampleCount": 7802,
-      "winRate": 0.505,
-      "avgReturn": 0.0161,
+      "sampleCount": 7820,
+      "winRate": 0.504,
+      "avgReturn": 0.016,
       "medianReturn": 0.0019,
       "stopRate": 0.399,
-      "targetHitRate": 0.35
+      "targetHitRate": 0.349
     },
     "overheated_pullback_risk": {
       "sampleCount": 2141,
@@ -55,19 +55,19 @@
       "targetHitRate": 0.312
     },
     "resistance_breakout": {
-      "sampleCount": 762,
+      "sampleCount": 763,
       "winRate": 0.461,
       "avgReturn": 0.0233,
-      "medianReturn": -0.0066,
-      "stopRate": 0.448,
+      "medianReturn": -0.0064,
+      "stopRate": 0.447,
       "targetHitRate": 0.322
     },
     "range_bottom_rebound": {
-      "sampleCount": 2747,
+      "sampleCount": 2753,
       "winRate": 0.506,
-      "avgReturn": 0.0206,
-      "medianReturn": 0.0034,
-      "stopRate": 0.424,
+      "avgReturn": 0.0204,
+      "medianReturn": 0.0029,
+      "stopRate": 0.425,
       "targetHitRate": 0.384
     },
     "overheated_chase_risk": {
@@ -128,39 +128,39 @@
       "targetHitRate": 0.275
     },
     "DOUBLE_TOP:AVOID": {
-      "sampleCount": 3534,
+      "sampleCount": 3537,
       "expectedDirection": "BEARISH",
-      "winRate": 0.466,
-      "directionalWinRate": 0.466,
+      "winRate": 0.467,
+      "directionalWinRate": 0.467,
       "longWinRate": 0.525,
-      "avgReturn": -0.0174,
-      "avgForwardReturn": 0.0174,
-      "medianReturn": -0.0061,
-      "medianForwardReturn": 0.0061,
-      "stopRate": 0.435,
-      "targetHitRate": 0.297
+      "avgReturn": -0.0173,
+      "avgForwardReturn": 0.0173,
+      "medianReturn": -0.006,
+      "medianForwardReturn": 0.006,
+      "stopRate": 0.434,
+      "targetHitRate": 0.298
     },
     "DOUBLE_BOTTOM:WATCH": {
-      "sampleCount": 2494,
+      "sampleCount": 2502,
       "expectedDirection": "BULLISH",
-      "winRate": 0.493,
-      "directionalWinRate": 0.493,
-      "longWinRate": 0.493,
-      "avgReturn": 0.015,
-      "avgForwardReturn": 0.015,
+      "winRate": 0.492,
+      "directionalWinRate": 0.492,
+      "longWinRate": 0.492,
+      "avgReturn": 0.0148,
+      "avgForwardReturn": 0.0148,
       "medianReturn": 0.0,
       "medianForwardReturn": 0.0,
       "stopRate": 0.406,
       "targetHitRate": 0.332
     },
     "DOUBLE_BOTTOM:BREAKOUT_CANDIDATE": {
-      "sampleCount": 4722,
+      "sampleCount": 4728,
       "expectedDirection": "BULLISH",
       "winRate": 0.497,
       "directionalWinRate": 0.497,
       "longWinRate": 0.497,
-      "avgReturn": 0.019,
-      "avgForwardReturn": 0.019,
+      "avgReturn": 0.0189,
+      "avgForwardReturn": 0.0189,
       "medianReturn": 0.0,
       "medianForwardReturn": 0.0,
       "stopRate": 0.412,
@@ -180,17 +180,17 @@
       "targetHitRate": 0.474
     },
     "INVERSE_HEAD_AND_SHOULDERS:WATCH": {
-      "sampleCount": 512,
+      "sampleCount": 514,
       "expectedDirection": "BULLISH",
-      "winRate": 0.469,
-      "directionalWinRate": 0.469,
-      "longWinRate": 0.469,
-      "avgReturn": 0.0139,
-      "avgForwardReturn": 0.0139,
-      "medianReturn": -0.0061,
-      "medianForwardReturn": -0.0061,
-      "stopRate": 0.441,
-      "targetHitRate": 0.34
+      "winRate": 0.467,
+      "directionalWinRate": 0.467,
+      "longWinRate": 0.467,
+      "avgReturn": 0.0131,
+      "avgForwardReturn": 0.0131,
+      "medianReturn": -0.0072,
+      "medianForwardReturn": -0.0072,
+      "stopRate": 0.444,
+      "targetHitRate": 0.339
     },
     "FALLING_CHANNEL:RISK_WATCH": {
       "sampleCount": 2355,
@@ -206,12 +206,12 @@
       "targetHitRate": 0.296
     },
     "RANGE_DRIFT:WATCH": {
-      "sampleCount": 1660,
+      "sampleCount": 1662,
       "expectedDirection": "NEUTRAL",
       "winRate": 0.146,
       "directionalWinRate": 0.146,
       "longWinRate": 0.487,
-      "avgReturn": -0.1076,
+      "avgReturn": -0.1075,
       "avgForwardReturn": 0.016,
       "medianReturn": -0.0766,
       "medianForwardReturn": -0.0016,
@@ -232,7 +232,7 @@
       "targetHitRate": 0.325
     },
     "FAILED_BREAKOUT:AVOID": {
-      "sampleCount": 1778,
+      "sampleCount": 1779,
       "expectedDirection": "BEARISH",
       "winRate": 0.503,
       "directionalWinRate": 0.503,
@@ -245,30 +245,30 @@
       "targetHitRate": 0.348
     },
     "ASCENDING_TRIANGLE:BREAKOUT_CANDIDATE": {
-      "sampleCount": 733,
+      "sampleCount": 737,
       "expectedDirection": "BULLISH",
       "winRate": 0.499,
       "directionalWinRate": 0.499,
       "longWinRate": 0.499,
-      "avgReturn": 0.0164,
-      "avgForwardReturn": 0.0164,
+      "avgReturn": 0.0159,
+      "avgForwardReturn": 0.0159,
       "medianReturn": 0.0,
       "medianForwardReturn": 0.0,
-      "stopRate": 0.424,
-      "targetHitRate": 0.345
+      "stopRate": 0.425,
+      "targetHitRate": 0.346
     },
     "RISING_WEDGE_BREAKDOWN:RISK_WATCH": {
-      "sampleCount": 503,
+      "sampleCount": 510,
       "expectedDirection": "BEARISH",
-      "winRate": 0.467,
-      "directionalWinRate": 0.467,
-      "longWinRate": 0.523,
-      "avgReturn": -0.0179,
-      "avgForwardReturn": 0.0179,
-      "medianReturn": -0.0056,
-      "medianForwardReturn": 0.0056,
-      "stopRate": 0.459,
-      "targetHitRate": 0.338
+      "winRate": 0.473,
+      "directionalWinRate": 0.473,
+      "longWinRate": 0.518,
+      "avgReturn": -0.0161,
+      "avgForwardReturn": 0.0161,
+      "medianReturn": -0.005,
+      "medianForwardReturn": 0.005,
+      "stopRate": 0.455,
+      "targetHitRate": 0.343
     },
     "OVEREXTENDED_BREAKOUT:AVOID": {
       "sampleCount": 80,
@@ -297,43 +297,43 @@
       "targetHitRate": 0.316
     },
     "SYMMETRICAL_TRIANGLE:BREAKOUT_CANDIDATE": {
-      "sampleCount": 886,
+      "sampleCount": 894,
       "expectedDirection": "BULLISH",
-      "winRate": 0.502,
-      "directionalWinRate": 0.502,
-      "longWinRate": 0.502,
-      "avgReturn": 0.0323,
-      "avgForwardReturn": 0.0323,
-      "medianReturn": 0.0012,
-      "medianForwardReturn": 0.0012,
-      "stopRate": 0.42,
-      "targetHitRate": 0.38
+      "winRate": 0.501,
+      "directionalWinRate": 0.501,
+      "longWinRate": 0.501,
+      "avgReturn": 0.0316,
+      "avgForwardReturn": 0.0316,
+      "medianReturn": 0.0011,
+      "medianForwardReturn": 0.0011,
+      "stopRate": 0.422,
+      "targetHitRate": 0.378
     },
     "RISING_CHANNEL:BUY_ZONE": {
-      "sampleCount": 2763,
+      "sampleCount": 2772,
       "expectedDirection": "BULLISH",
-      "winRate": 0.508,
-      "directionalWinRate": 0.508,
-      "longWinRate": 0.508,
-      "avgReturn": 0.0209,
-      "avgForwardReturn": 0.0209,
-      "medianReturn": 0.0034,
-      "medianForwardReturn": 0.0034,
-      "stopRate": 0.414,
+      "winRate": 0.507,
+      "directionalWinRate": 0.507,
+      "longWinRate": 0.507,
+      "avgReturn": 0.0206,
+      "avgForwardReturn": 0.0206,
+      "medianReturn": 0.0027,
+      "medianForwardReturn": 0.0027,
+      "stopRate": 0.416,
       "targetHitRate": 0.364
     },
     "RISING_WEDGE_BREAKDOWN:AVOID": {
-      "sampleCount": 1352,
+      "sampleCount": 1357,
       "expectedDirection": "BEARISH",
-      "winRate": 0.493,
-      "directionalWinRate": 0.493,
-      "longWinRate": 0.501,
-      "avgReturn": -0.0184,
-      "avgForwardReturn": 0.0184,
-      "medianReturn": -0.0013,
-      "medianForwardReturn": 0.0013,
-      "stopRate": 0.43,
-      "targetHitRate": 0.324
+      "winRate": 0.494,
+      "directionalWinRate": 0.494,
+      "longWinRate": 0.5,
+      "avgReturn": -0.018,
+      "avgForwardReturn": 0.018,
+      "medianReturn": -0.0011,
+      "medianForwardReturn": 0.0011,
+      "stopRate": 0.429,
+      "targetHitRate": 0.325
     },
     "DISTRIBUTION_WATCH:RISK_WATCH": {
       "sampleCount": 256,
@@ -349,17 +349,17 @@
       "targetHitRate": 0.289
     },
     "RESISTANCE_FLIP_SUPPORT:BUY_ZONE": {
-      "sampleCount": 863,
+      "sampleCount": 866,
       "expectedDirection": "BULLISH",
-      "winRate": 0.498,
-      "directionalWinRate": 0.498,
-      "longWinRate": 0.498,
-      "avgReturn": 0.0166,
-      "avgForwardReturn": 0.0166,
+      "winRate": 0.497,
+      "directionalWinRate": 0.497,
+      "longWinRate": 0.497,
+      "avgReturn": 0.0161,
+      "avgForwardReturn": 0.0161,
       "medianReturn": 0.0,
       "medianForwardReturn": 0.0,
-      "stopRate": 0.403,
-      "targetHitRate": 0.357
+      "stopRate": 0.405,
+      "targetHitRate": 0.356
     },
     "ASCENDING_TRIANGLE:BLOCKED": {
       "sampleCount": 423,
@@ -375,13 +375,13 @@
       "targetHitRate": 0.397
     },
     "DOUBLE_TOP:RISK_WATCH": {
-      "sampleCount": 2487,
+      "sampleCount": 2489,
       "expectedDirection": "BEARISH",
       "winRate": 0.503,
       "directionalWinRate": 0.503,
       "longWinRate": 0.489,
-      "avgReturn": -0.0121,
-      "avgForwardReturn": 0.0121,
+      "avgReturn": -0.0122,
+      "avgForwardReturn": 0.0122,
       "medianReturn": 0.0018,
       "medianForwardReturn": -0.0018,
       "stopRate": 0.407,
@@ -414,30 +414,30 @@
       "targetHitRate": 0.355
     },
     "DESCENDING_TRIANGLE:AVOID": {
-      "sampleCount": 552,
+      "sampleCount": 553,
       "expectedDirection": "BEARISH",
-      "winRate": 0.447,
-      "directionalWinRate": 0.447,
-      "longWinRate": 0.542,
-      "avgReturn": -0.0161,
-      "avgForwardReturn": 0.0161,
-      "medianReturn": -0.0082,
-      "medianForwardReturn": 0.0082,
-      "stopRate": 0.446,
-      "targetHitRate": 0.283
+      "winRate": 0.448,
+      "directionalWinRate": 0.448,
+      "longWinRate": 0.541,
+      "avgReturn": -0.016,
+      "avgForwardReturn": 0.016,
+      "medianReturn": -0.008,
+      "medianForwardReturn": 0.008,
+      "stopRate": 0.445,
+      "targetHitRate": 0.284
     },
     "FALLING_WEDGE_BREAKOUT:WATCH": {
-      "sampleCount": 1317,
+      "sampleCount": 1320,
       "expectedDirection": "BULLISH",
-      "winRate": 0.54,
-      "directionalWinRate": 0.54,
-      "longWinRate": 0.54,
-      "avgReturn": 0.0257,
-      "avgForwardReturn": 0.0257,
-      "medianReturn": 0.0121,
-      "medianForwardReturn": 0.0121,
-      "stopRate": 0.374,
-      "targetHitRate": 0.399
+      "winRate": 0.539,
+      "directionalWinRate": 0.539,
+      "longWinRate": 0.539,
+      "avgReturn": 0.0253,
+      "avgForwardReturn": 0.0253,
+      "medianReturn": 0.0116,
+      "medianForwardReturn": 0.0116,
+      "stopRate": 0.375,
+      "targetHitRate": 0.398
     },
     "DISTRIBUTION_WATCH:AVOID": {
       "sampleCount": 120,
@@ -453,30 +453,30 @@
       "targetHitRate": 0.325
     },
     "SUPPORT_FLIP_RESISTANCE:AVOID": {
-      "sampleCount": 913,
+      "sampleCount": 914,
       "expectedDirection": "BEARISH",
-      "winRate": 0.453,
-      "directionalWinRate": 0.453,
+      "winRate": 0.454,
+      "directionalWinRate": 0.454,
       "longWinRate": 0.543,
-      "avgReturn": -0.0266,
-      "avgForwardReturn": 0.0266,
-      "medianReturn": -0.0088,
-      "medianForwardReturn": 0.0088,
+      "avgReturn": -0.0263,
+      "avgForwardReturn": 0.0263,
+      "medianReturn": -0.0087,
+      "medianForwardReturn": 0.0087,
       "stopRate": 0.462,
       "targetHitRate": 0.294
     },
     "FALLING_WEDGE_BREAKOUT:BREAKOUT_CANDIDATE": {
-      "sampleCount": 2652,
+      "sampleCount": 2656,
       "expectedDirection": "BULLISH",
-      "winRate": 0.528,
-      "directionalWinRate": 0.528,
-      "longWinRate": 0.528,
-      "avgReturn": 0.022,
-      "avgForwardReturn": 0.022,
-      "medianReturn": 0.0072,
-      "medianForwardReturn": 0.0072,
-      "stopRate": 0.39,
-      "targetHitRate": 0.373
+      "winRate": 0.527,
+      "directionalWinRate": 0.527,
+      "longWinRate": 0.527,
+      "avgReturn": 0.0218,
+      "avgForwardReturn": 0.0218,
+      "medianReturn": 0.0071,
+      "medianForwardReturn": 0.0071,
+      "stopRate": 0.391,
+      "targetHitRate": 0.372
     },
     "SUPPORT_FLIP_RESISTANCE:RISK_WATCH": {
       "sampleCount": 226,
@@ -544,78 +544,78 @@
       "targetHitRate": 0.435
     },
     "FAILED_BREAKOUT:BLOCKED": {
-      "sampleCount": 387,
+      "sampleCount": 388,
       "expectedDirection": "BEARISH",
-      "winRate": 0.506,
-      "directionalWinRate": 0.506,
-      "longWinRate": 0.488,
-      "avgReturn": -0.0171,
-      "avgForwardReturn": 0.0171,
-      "medianReturn": 0.0031,
-      "medianForwardReturn": -0.0031,
-      "stopRate": 0.419,
-      "targetHitRate": 0.333
+      "winRate": 0.508,
+      "directionalWinRate": 0.508,
+      "longWinRate": 0.487,
+      "avgReturn": -0.0166,
+      "avgForwardReturn": 0.0166,
+      "medianReturn": 0.0037,
+      "medianForwardReturn": -0.0037,
+      "stopRate": 0.418,
+      "targetHitRate": 0.335
     },
     "BEAR_FLAG:RISK_WATCH": {
-      "sampleCount": 637,
+      "sampleCount": 639,
       "expectedDirection": "BEARISH",
-      "winRate": 0.496,
-      "directionalWinRate": 0.496,
-      "longWinRate": 0.501,
-      "avgReturn": -0.0222,
-      "avgForwardReturn": 0.0222,
-      "medianReturn": -0.0013,
-      "medianForwardReturn": 0.0013,
-      "stopRate": 0.427,
-      "targetHitRate": 0.314
-    },
-    "SYMMETRICAL_TRIANGLE:AVOID": {
-      "sampleCount": 485,
-      "expectedDirection": "BEARISH",
-      "winRate": 0.499,
-      "directionalWinRate": 0.499,
-      "longWinRate": 0.493,
-      "avgReturn": -0.0175,
-      "avgForwardReturn": 0.0175,
+      "winRate": 0.498,
+      "directionalWinRate": 0.498,
+      "longWinRate": 0.499,
+      "avgReturn": -0.0218,
+      "avgForwardReturn": 0.0218,
       "medianReturn": -0.0,
       "medianForwardReturn": 0.0,
-      "stopRate": 0.425,
-      "targetHitRate": 0.338
+      "stopRate": 0.426,
+      "targetHitRate": 0.316
+    },
+    "SYMMETRICAL_TRIANGLE:AVOID": {
+      "sampleCount": 487,
+      "expectedDirection": "BEARISH",
+      "winRate": 0.501,
+      "directionalWinRate": 0.501,
+      "longWinRate": 0.491,
+      "avgReturn": -0.0166,
+      "avgForwardReturn": 0.0166,
+      "medianReturn": 0.0025,
+      "medianForwardReturn": -0.0025,
+      "stopRate": 0.423,
+      "targetHitRate": 0.341
     },
     "RISING_CHANNEL:WATCH": {
-      "sampleCount": 1402,
+      "sampleCount": 1405,
       "expectedDirection": "BULLISH",
-      "winRate": 0.496,
-      "directionalWinRate": 0.496,
-      "longWinRate": 0.496,
-      "avgReturn": 0.0256,
-      "avgForwardReturn": 0.0256,
-      "medianReturn": -0.001,
-      "medianForwardReturn": -0.001,
-      "stopRate": 0.434,
-      "targetHitRate": 0.379
+      "winRate": 0.495,
+      "directionalWinRate": 0.495,
+      "longWinRate": 0.495,
+      "avgReturn": 0.0252,
+      "avgForwardReturn": 0.0252,
+      "medianReturn": -0.0013,
+      "medianForwardReturn": -0.0013,
+      "stopRate": 0.436,
+      "targetHitRate": 0.378
     },
     "RISING_CHANNEL:BLOCKED": {
-      "sampleCount": 1091,
+      "sampleCount": 1092,
       "expectedDirection": "BULLISH",
-      "winRate": 0.506,
-      "directionalWinRate": 0.506,
-      "longWinRate": 0.506,
-      "avgReturn": 0.0225,
-      "avgForwardReturn": 0.0225,
-      "medianReturn": 0.002,
-      "medianForwardReturn": 0.002,
-      "stopRate": 0.412,
+      "winRate": 0.505,
+      "directionalWinRate": 0.505,
+      "longWinRate": 0.505,
+      "avgReturn": 0.0224,
+      "avgForwardReturn": 0.0224,
+      "medianReturn": 0.0019,
+      "medianForwardReturn": 0.0019,
+      "stopRate": 0.411,
       "targetHitRate": 0.372
     },
     "INVERSE_HEAD_AND_SHOULDERS:BREAKOUT_CANDIDATE": {
-      "sampleCount": 1261,
+      "sampleCount": 1262,
       "expectedDirection": "BULLISH",
-      "winRate": 0.497,
-      "directionalWinRate": 0.497,
-      "longWinRate": 0.497,
-      "avgReturn": 0.0259,
-      "avgForwardReturn": 0.0259,
+      "winRate": 0.498,
+      "directionalWinRate": 0.498,
+      "longWinRate": 0.498,
+      "avgReturn": 0.026,
+      "avgForwardReturn": 0.026,
       "medianReturn": 0.0,
       "medianForwardReturn": 0.0,
       "stopRate": 0.414,
@@ -661,17 +661,17 @@
       "targetHitRate": 0.204
     },
     "DESCENDING_TRIANGLE:RISK_WATCH": {
-      "sampleCount": 426,
+      "sampleCount": 429,
       "expectedDirection": "BEARISH",
-      "winRate": 0.486,
-      "directionalWinRate": 0.486,
-      "longWinRate": 0.507,
-      "avgReturn": -0.0187,
-      "avgForwardReturn": 0.0187,
-      "medianReturn": -0.0019,
-      "medianForwardReturn": 0.0019,
-      "stopRate": 0.411,
-      "targetHitRate": 0.303
+      "winRate": 0.487,
+      "directionalWinRate": 0.487,
+      "longWinRate": 0.506,
+      "avgReturn": -0.0193,
+      "avgForwardReturn": 0.0193,
+      "medianReturn": -0.0016,
+      "medianForwardReturn": 0.0016,
+      "stopRate": 0.41,
+      "targetHitRate": 0.305
     },
     "HEAD_AND_SHOULDERS:AVOID": {
       "sampleCount": 577,
@@ -700,30 +700,30 @@
       "targetHitRate": 0.397
     },
     "SYMMETRICAL_TRIANGLE:BLOCKED": {
-      "sampleCount": 675,
+      "sampleCount": 676,
       "expectedDirection": "BEARISH",
-      "winRate": 0.443,
-      "directionalWinRate": 0.443,
-      "longWinRate": 0.547,
-      "avgReturn": -0.0188,
-      "avgForwardReturn": 0.0315,
-      "medianReturn": -0.0136,
-      "medianForwardReturn": 0.0111,
+      "winRate": 0.444,
+      "directionalWinRate": 0.444,
+      "longWinRate": 0.546,
+      "avgReturn": -0.0184,
+      "avgForwardReturn": 0.0311,
+      "medianReturn": -0.0134,
+      "medianForwardReturn": 0.011,
       "stopRate": 0.481,
-      "targetHitRate": 0.298
+      "targetHitRate": 0.299
     },
     "SYMMETRICAL_TRIANGLE:WATCH": {
-      "sampleCount": 324,
+      "sampleCount": 330,
       "expectedDirection": "NEUTRAL",
-      "winRate": 0.142,
-      "directionalWinRate": 0.142,
-      "longWinRate": 0.556,
-      "avgReturn": -0.1038,
-      "avgForwardReturn": 0.0279,
-      "medianReturn": -0.0783,
-      "medianForwardReturn": 0.0138,
-      "stopRate": 0.713,
-      "targetHitRate": 0.142
+      "winRate": 0.139,
+      "directionalWinRate": 0.139,
+      "longWinRate": 0.552,
+      "avgReturn": -0.1059,
+      "avgForwardReturn": 0.0273,
+      "medianReturn": -0.0787,
+      "medianForwardReturn": 0.0133,
+      "stopRate": 0.718,
+      "targetHitRate": 0.139
     },
     "BULL_FLAG:BREAKOUT_CANDIDATE": {
       "sampleCount": 114,
@@ -765,17 +765,17 @@
       "targetHitRate": 0.384
     },
     "INVERSE_HEAD_AND_SHOULDERS:BUY_ZONE": {
-      "sampleCount": 147,
+      "sampleCount": 148,
       "expectedDirection": "BULLISH",
-      "winRate": 0.456,
-      "directionalWinRate": 0.456,
-      "longWinRate": 0.456,
-      "avgReturn": 0.0178,
-      "avgForwardReturn": 0.0178,
+      "winRate": 0.459,
+      "directionalWinRate": 0.459,
+      "longWinRate": 0.459,
+      "avgReturn": 0.018,
+      "avgForwardReturn": 0.018,
       "medianReturn": -0.0038,
       "medianForwardReturn": -0.0038,
-      "stopRate": 0.463,
-      "targetHitRate": 0.333
+      "stopRate": 0.459,
+      "targetHitRate": 0.338
     },
     "BULL_FLAG:BUY_ZONE": {
       "sampleCount": 129,
@@ -791,17 +791,17 @@
       "targetHitRate": 0.364
     },
     "HEAD_AND_SHOULDERS:RISK_WATCH": {
-      "sampleCount": 524,
+      "sampleCount": 525,
       "expectedDirection": "BEARISH",
-      "winRate": 0.485,
-      "directionalWinRate": 0.485,
-      "longWinRate": 0.508,
-      "avgReturn": -0.0104,
-      "avgForwardReturn": 0.0104,
-      "medianReturn": -0.0032,
-      "medianForwardReturn": 0.0032,
-      "stopRate": 0.422,
-      "targetHitRate": 0.336
+      "winRate": 0.486,
+      "directionalWinRate": 0.486,
+      "longWinRate": 0.507,
+      "avgReturn": -0.0103,
+      "avgForwardReturn": 0.0103,
+      "medianReturn": -0.0029,
+      "medianForwardReturn": 0.0029,
+      "stopRate": 0.421,
+      "targetHitRate": 0.337
     },
     "HEAD_AND_SHOULDERS:BLOCKED": {
       "sampleCount": 373,
@@ -856,30 +856,30 @@
       "targetHitRate": 0.378
     },
     "ASCENDING_TRIANGLE:WATCH": {
-      "sampleCount": 291,
+      "sampleCount": 295,
       "expectedDirection": "BULLISH",
       "winRate": 0.478,
       "directionalWinRate": 0.478,
       "longWinRate": 0.478,
-      "avgReturn": 0.0175,
-      "avgForwardReturn": 0.0175,
+      "avgReturn": 0.0172,
+      "avgForwardReturn": 0.0172,
       "medianReturn": -0.0078,
       "medianForwardReturn": -0.0078,
-      "stopRate": 0.457,
-      "targetHitRate": 0.364
+      "stopRate": 0.458,
+      "targetHitRate": 0.363
     },
     "BEAR_FLAG:AVOID": {
-      "sampleCount": 257,
+      "sampleCount": 258,
       "expectedDirection": "BEARISH",
-      "winRate": 0.432,
-      "directionalWinRate": 0.432,
-      "longWinRate": 0.56,
-      "avgReturn": -0.0314,
-      "avgForwardReturn": 0.0314,
-      "medianReturn": -0.0147,
-      "medianForwardReturn": 0.0147,
-      "stopRate": 0.486,
-      "targetHitRate": 0.272
+      "winRate": 0.434,
+      "directionalWinRate": 0.434,
+      "longWinRate": 0.558,
+      "avgReturn": -0.0302,
+      "avgForwardReturn": 0.0302,
+      "medianReturn": -0.0138,
+      "medianForwardReturn": 0.0138,
+      "stopRate": 0.484,
+      "targetHitRate": 0.275
     },
     "BEAR_PENNANT:AVOID": {
       "sampleCount": 63,
@@ -934,30 +934,30 @@
       "targetHitRate": 0.5
     },
     "ASCENDING_TRIANGLE:BUY_ZONE": {
-      "sampleCount": 120,
+      "sampleCount": 121,
       "expectedDirection": "BULLISH",
-      "winRate": 0.492,
-      "directionalWinRate": 0.492,
-      "longWinRate": 0.492,
-      "avgReturn": 0.0092,
-      "avgForwardReturn": 0.0092,
-      "medianReturn": -0.0017,
-      "medianForwardReturn": -0.0017,
-      "stopRate": 0.45,
-      "targetHitRate": 0.383
+      "winRate": 0.488,
+      "directionalWinRate": 0.488,
+      "longWinRate": 0.488,
+      "avgReturn": 0.0079,
+      "avgForwardReturn": 0.0079,
+      "medianReturn": -0.0024,
+      "medianForwardReturn": -0.0024,
+      "stopRate": 0.455,
+      "targetHitRate": 0.38
     },
     "BULL_PENNANT:BLOCKED": {
-      "sampleCount": 83,
+      "sampleCount": 84,
       "expectedDirection": "BULLISH",
-      "winRate": 0.53,
-      "directionalWinRate": 0.53,
-      "longWinRate": 0.53,
-      "avgReturn": 0.0461,
-      "avgForwardReturn": 0.0461,
-      "medianReturn": 0.0098,
-      "medianForwardReturn": 0.0098,
-      "stopRate": 0.301,
-      "targetHitRate": 0.398
+      "winRate": 0.524,
+      "directionalWinRate": 0.524,
+      "longWinRate": 0.524,
+      "avgReturn": 0.0455,
+      "avgForwardReturn": 0.0455,
+      "medianReturn": 0.0084,
+      "medianForwardReturn": 0.0084,
+      "stopRate": 0.298,
+      "targetHitRate": 0.393
     },
     "SYMMETRICAL_TRIANGLE:BUY_ZONE": {
       "sampleCount": 93,
@@ -1066,7 +1066,7 @@
   },
   "regimeCounts": {
     "SIDE": 156,
-    "BEAR": 212,
+    "BEAR": 213,
     "BULL": 287,
     "OVERHEATED": 12
   },
@@ -1237,12 +1237,12 @@
     },
     "BULL": {
       "relative_strength": {
-        "sampleCount": 10278,
-        "winRate": 0.524,
-        "avgReturn": 0.0299,
-        "medianReturn": 0.0071,
-        "stopRate": 0.391,
-        "targetHitRate": 0.38
+        "sampleCount": 10313,
+        "winRate": 0.523,
+        "avgReturn": 0.0295,
+        "medianReturn": 0.007,
+        "stopRate": 0.392,
+        "targetHitRate": 0.379
       },
       "zombie_breakout": {
         "sampleCount": 173,
@@ -1253,20 +1253,20 @@
         "targetHitRate": 0.329
       },
       "trend_up_pullback": {
-        "sampleCount": 2431,
-        "winRate": 0.509,
-        "avgReturn": 0.0199,
-        "medianReturn": 0.0025,
-        "stopRate": 0.401,
-        "targetHitRate": 0.353
+        "sampleCount": 2443,
+        "winRate": 0.508,
+        "avgReturn": 0.0197,
+        "medianReturn": 0.0021,
+        "stopRate": 0.402,
+        "targetHitRate": 0.352
       },
       "structure_breakdown_risk": {
-        "sampleCount": 5872,
-        "winRate": 0.505,
-        "avgReturn": 0.0199,
-        "medianReturn": 0.0025,
-        "stopRate": 0.397,
-        "targetHitRate": 0.35
+        "sampleCount": 5902,
+        "winRate": 0.503,
+        "avgReturn": 0.0193,
+        "medianReturn": 0.002,
+        "stopRate": 0.4,
+        "targetHitRate": 0.349
       },
       "overheated_pullback_risk": {
         "sampleCount": 841,
@@ -1277,20 +1277,20 @@
         "targetHitRate": 0.4
       },
       "horizontal_support_rebound": {
-        "sampleCount": 3494,
+        "sampleCount": 3512,
         "winRate": 0.513,
-        "avgReturn": 0.0215,
-        "medianReturn": 0.0043,
-        "stopRate": 0.389,
-        "targetHitRate": 0.359
+        "avgReturn": 0.0212,
+        "medianReturn": 0.0042,
+        "stopRate": 0.39,
+        "targetHitRate": 0.358
       },
       "resistance_breakout": {
-        "sampleCount": 495,
-        "winRate": 0.475,
-        "avgReturn": 0.03,
-        "medianReturn": -0.0055,
+        "sampleCount": 496,
+        "winRate": 0.476,
+        "avgReturn": 0.0301,
+        "medianReturn": -0.0051,
         "stopRate": 0.438,
-        "targetHitRate": 0.335
+        "targetHitRate": 0.337
       },
       "overheated_chase_risk": {
         "sampleCount": 697,
@@ -1301,12 +1301,12 @@
         "targetHitRate": 0.435
       },
       "range_bottom_rebound": {
-        "sampleCount": 865,
-        "winRate": 0.517,
-        "avgReturn": 0.0372,
-        "medianReturn": 0.006,
-        "stopRate": 0.412,
-        "targetHitRate": 0.403
+        "sampleCount": 871,
+        "winRate": 0.514,
+        "avgReturn": 0.0365,
+        "medianReturn": 0.0055,
+        "stopRate": 0.414,
+        "targetHitRate": 0.402
       },
       "downtrend_bounce_trap": {
         "sampleCount": 32,
@@ -3331,30 +3331,30 @@
         "targetHitRate": 0.338
       },
       "ASCENDING_TRIANGLE:BREAKOUT_CANDIDATE": {
-        "sampleCount": 508,
+        "sampleCount": 512,
         "expectedDirection": "BULLISH",
         "winRate": 0.508,
         "directionalWinRate": 0.508,
         "longWinRate": 0.508,
-        "avgReturn": 0.0226,
-        "avgForwardReturn": 0.0226,
+        "avgReturn": 0.0219,
+        "avgForwardReturn": 0.0219,
         "medianReturn": 0.0034,
         "medianForwardReturn": 0.0034,
         "stopRate": 0.406,
-        "targetHitRate": 0.364
+        "targetHitRate": 0.365
       },
       "RISING_WEDGE_BREAKDOWN:RISK_WATCH": {
-        "sampleCount": 278,
+        "sampleCount": 285,
         "expectedDirection": "BEARISH",
-        "winRate": 0.428,
-        "directionalWinRate": 0.428,
-        "longWinRate": 0.558,
-        "avgReturn": -0.0311,
-        "avgForwardReturn": 0.0311,
-        "medianReturn": -0.0209,
-        "medianForwardReturn": 0.0209,
-        "stopRate": 0.504,
-        "targetHitRate": 0.291
+        "winRate": 0.439,
+        "directionalWinRate": 0.439,
+        "longWinRate": 0.547,
+        "avgReturn": -0.0275,
+        "avgForwardReturn": 0.0275,
+        "medianReturn": -0.0182,
+        "medianForwardReturn": 0.0182,
+        "stopRate": 0.495,
+        "targetHitRate": 0.302
       },
       "OVEREXTENDED_BREAKOUT:AVOID": {
         "sampleCount": 43,
@@ -3396,82 +3396,82 @@
         "targetHitRate": 0.257
       },
       "RESISTANCE_FLIP_SUPPORT:BUY_ZONE": {
-        "sampleCount": 460,
+        "sampleCount": 463,
         "expectedDirection": "BULLISH",
-        "winRate": 0.496,
-        "directionalWinRate": 0.496,
-        "longWinRate": 0.496,
-        "avgReturn": 0.0158,
-        "avgForwardReturn": 0.0158,
+        "winRate": 0.492,
+        "directionalWinRate": 0.492,
+        "longWinRate": 0.492,
+        "avgReturn": 0.0149,
+        "avgForwardReturn": 0.0149,
         "medianReturn": 0.0,
         "medianForwardReturn": 0.0,
-        "stopRate": 0.413,
-        "targetHitRate": 0.339
+        "stopRate": 0.417,
+        "targetHitRate": 0.337
       },
       "FAILED_BREAKOUT:AVOID": {
-        "sampleCount": 918,
+        "sampleCount": 919,
         "expectedDirection": "BEARISH",
-        "winRate": 0.45,
-        "directionalWinRate": 0.45,
-        "longWinRate": 0.538,
+        "winRate": 0.449,
+        "directionalWinRate": 0.449,
+        "longWinRate": 0.539,
         "avgReturn": -0.0355,
         "avgForwardReturn": 0.0355,
-        "medianReturn": -0.0139,
-        "medianForwardReturn": 0.0139,
+        "medianReturn": -0.014,
+        "medianForwardReturn": 0.014,
         "stopRate": 0.474,
         "targetHitRate": 0.293
       },
       "DOUBLE_BOTTOM:BREAKOUT_CANDIDATE": {
-        "sampleCount": 2823,
+        "sampleCount": 2829,
         "expectedDirection": "BULLISH",
         "winRate": 0.514,
         "directionalWinRate": 0.514,
         "longWinRate": 0.514,
-        "avgReturn": 0.0241,
-        "avgForwardReturn": 0.0241,
+        "avgReturn": 0.0239,
+        "avgForwardReturn": 0.0239,
         "medianReturn": 0.0045,
         "medianForwardReturn": 0.0045,
         "stopRate": 0.398,
-        "targetHitRate": 0.356
+        "targetHitRate": 0.355
       },
       "DOUBLE_TOP:AVOID": {
-        "sampleCount": 1164,
+        "sampleCount": 1167,
         "expectedDirection": "BEARISH",
-        "winRate": 0.459,
-        "directionalWinRate": 0.459,
-        "longWinRate": 0.534,
-        "avgReturn": -0.0237,
-        "avgForwardReturn": 0.0237,
+        "winRate": 0.46,
+        "directionalWinRate": 0.46,
+        "longWinRate": 0.532,
+        "avgReturn": -0.0233,
+        "avgForwardReturn": 0.0233,
         "medianReturn": -0.0068,
         "medianForwardReturn": 0.0068,
-        "stopRate": 0.431,
-        "targetHitRate": 0.288
+        "stopRate": 0.43,
+        "targetHitRate": 0.29
       },
       "RANGE_DRIFT:WATCH": {
-        "sampleCount": 636,
+        "sampleCount": 638,
         "expectedDirection": "NEUTRAL",
-        "winRate": 0.153,
-        "directionalWinRate": 0.153,
+        "winRate": 0.152,
+        "directionalWinRate": 0.152,
         "longWinRate": 0.492,
-        "avgReturn": -0.1046,
-        "avgForwardReturn": 0.0251,
-        "medianReturn": -0.0754,
+        "avgReturn": -0.1044,
+        "avgForwardReturn": 0.025,
+        "medianReturn": -0.075,
         "medianForwardReturn": 0.0,
-        "stopRate": 0.703,
-        "targetHitRate": 0.153
+        "stopRate": 0.704,
+        "targetHitRate": 0.152
       },
       "DOUBLE_TOP:RISK_WATCH": {
-        "sampleCount": 1090,
+        "sampleCount": 1092,
         "expectedDirection": "BEARISH",
         "winRate": 0.463,
         "directionalWinRate": 0.463,
-        "longWinRate": 0.528,
-        "avgReturn": -0.0246,
-        "avgForwardReturn": 0.0246,
+        "longWinRate": 0.527,
+        "avgReturn": -0.0247,
+        "avgForwardReturn": 0.0247,
         "medianReturn": -0.0079,
         "medianForwardReturn": 0.0079,
         "stopRate": 0.434,
-        "targetHitRate": 0.295
+        "targetHitRate": 0.296
       },
       "BULL_FLAG:WATCH": {
         "sampleCount": 333,
@@ -3513,30 +3513,30 @@
         "targetHitRate": 0.325
       },
       "DESCENDING_TRIANGLE:AVOID": {
-        "sampleCount": 148,
+        "sampleCount": 149,
         "expectedDirection": "BEARISH",
-        "winRate": 0.48,
-        "directionalWinRate": 0.48,
-        "longWinRate": 0.514,
-        "avgReturn": -0.0161,
-        "avgForwardReturn": 0.0161,
-        "medianReturn": -0.0035,
-        "medianForwardReturn": 0.0035,
-        "stopRate": 0.459,
-        "targetHitRate": 0.297
+        "winRate": 0.483,
+        "directionalWinRate": 0.483,
+        "longWinRate": 0.51,
+        "avgReturn": -0.0155,
+        "avgForwardReturn": 0.0155,
+        "medianReturn": -0.0029,
+        "medianForwardReturn": 0.0029,
+        "stopRate": 0.456,
+        "targetHitRate": 0.302
       },
       "RISING_CHANNEL:BUY_ZONE": {
-        "sampleCount": 1323,
+        "sampleCount": 1332,
         "expectedDirection": "BULLISH",
-        "winRate": 0.508,
-        "directionalWinRate": 0.508,
-        "longWinRate": 0.508,
-        "avgReturn": 0.0262,
-        "avgForwardReturn": 0.0262,
-        "medianReturn": 0.0036,
-        "medianForwardReturn": 0.0036,
-        "stopRate": 0.416,
-        "targetHitRate": 0.367
+        "winRate": 0.506,
+        "directionalWinRate": 0.506,
+        "longWinRate": 0.506,
+        "avgReturn": 0.0254,
+        "avgForwardReturn": 0.0254,
+        "medianReturn": 0.0024,
+        "medianForwardReturn": 0.0024,
+        "stopRate": 0.418,
+        "targetHitRate": 0.365
       },
       "FAILED_BREAKDOWN:BREAKOUT_CANDIDATE": {
         "sampleCount": 615,
@@ -3565,30 +3565,30 @@
         "targetHitRate": 0.31
       },
       "DOUBLE_BOTTOM:WATCH": {
-        "sampleCount": 1092,
+        "sampleCount": 1100,
         "expectedDirection": "BULLISH",
-        "winRate": 0.503,
-        "directionalWinRate": 0.503,
-        "longWinRate": 0.503,
-        "avgReturn": 0.0228,
-        "avgForwardReturn": 0.0228,
-        "medianReturn": 0.0018,
-        "medianForwardReturn": 0.0018,
-        "stopRate": 0.402,
-        "targetHitRate": 0.348
+        "winRate": 0.502,
+        "directionalWinRate": 0.502,
+        "longWinRate": 0.502,
+        "avgReturn": 0.0224,
+        "avgForwardReturn": 0.0224,
+        "medianReturn": 0.0014,
+        "medianForwardReturn": 0.0014,
+        "stopRate": 0.403,
+        "targetHitRate": 0.347
       },
       "FALLING_WEDGE_BREAKOUT:WATCH": {
-        "sampleCount": 479,
+        "sampleCount": 482,
         "expectedDirection": "BULLISH",
-        "winRate": 0.518,
-        "directionalWinRate": 0.518,
-        "longWinRate": 0.518,
-        "avgReturn": 0.0321,
-        "avgForwardReturn": 0.0321,
-        "medianReturn": 0.0073,
-        "medianForwardReturn": 0.0073,
-        "stopRate": 0.388,
-        "targetHitRate": 0.411
+        "winRate": 0.515,
+        "directionalWinRate": 0.515,
+        "longWinRate": 0.515,
+        "avgReturn": 0.0312,
+        "avgForwardReturn": 0.0312,
+        "medianReturn": 0.0069,
+        "medianForwardReturn": 0.0069,
+        "stopRate": 0.392,
+        "targetHitRate": 0.409
       },
       "DISTRIBUTION_WATCH:AVOID": {
         "sampleCount": 65,
@@ -3604,30 +3604,30 @@
         "targetHitRate": 0.323
       },
       "INVERSE_HEAD_AND_SHOULDERS:WATCH": {
-        "sampleCount": 229,
+        "sampleCount": 231,
         "expectedDirection": "BULLISH",
-        "winRate": 0.45,
-        "directionalWinRate": 0.45,
-        "longWinRate": 0.45,
-        "avgReturn": 0.0065,
-        "avgForwardReturn": 0.0065,
-        "medianReturn": -0.0084,
-        "medianForwardReturn": -0.0084,
-        "stopRate": 0.432,
-        "targetHitRate": 0.332
+        "winRate": 0.446,
+        "directionalWinRate": 0.446,
+        "longWinRate": 0.446,
+        "avgReturn": 0.0048,
+        "avgForwardReturn": 0.0048,
+        "medianReturn": -0.0087,
+        "medianForwardReturn": -0.0087,
+        "stopRate": 0.437,
+        "targetHitRate": 0.329
       },
       "SUPPORT_FLIP_RESISTANCE:AVOID": {
-        "sampleCount": 229,
+        "sampleCount": 230,
         "expectedDirection": "BEARISH",
-        "winRate": 0.424,
-        "directionalWinRate": 0.424,
-        "longWinRate": 0.572,
-        "avgReturn": -0.0465,
-        "avgForwardReturn": 0.0465,
-        "medianReturn": -0.0152,
-        "medianForwardReturn": 0.0152,
-        "stopRate": 0.476,
-        "targetHitRate": 0.245
+        "winRate": 0.426,
+        "directionalWinRate": 0.426,
+        "longWinRate": 0.57,
+        "avgReturn": -0.0453,
+        "avgForwardReturn": 0.0453,
+        "medianReturn": -0.0147,
+        "medianForwardReturn": 0.0147,
+        "stopRate": 0.474,
+        "targetHitRate": 0.248
       },
       "DOUBLE_TOP:BLOCKED": {
         "sampleCount": 472,
@@ -3643,17 +3643,17 @@
         "targetHitRate": 0.341
       },
       "FALLING_WEDGE_BREAKOUT:BREAKOUT_CANDIDATE": {
-        "sampleCount": 1242,
+        "sampleCount": 1246,
         "expectedDirection": "BULLISH",
-        "winRate": 0.535,
-        "directionalWinRate": 0.535,
-        "longWinRate": 0.535,
-        "avgReturn": 0.0309,
-        "avgForwardReturn": 0.0309,
-        "medianReturn": 0.0091,
-        "medianForwardReturn": 0.0091,
-        "stopRate": 0.386,
-        "targetHitRate": 0.372
+        "winRate": 0.534,
+        "directionalWinRate": 0.534,
+        "longWinRate": 0.534,
+        "avgReturn": 0.0304,
+        "avgForwardReturn": 0.0304,
+        "medianReturn": 0.0087,
+        "medianForwardReturn": 0.0087,
+        "stopRate": 0.388,
+        "targetHitRate": 0.371
       },
       "SUPPORT_FLIP_RESISTANCE:RISK_WATCH": {
         "sampleCount": 76,
@@ -3682,30 +3682,30 @@
         "targetHitRate": 0.358
       },
       "RISING_WEDGE_BREAKDOWN:AVOID": {
-        "sampleCount": 602,
+        "sampleCount": 607,
         "expectedDirection": "BEARISH",
-        "winRate": 0.492,
-        "directionalWinRate": 0.492,
-        "longWinRate": 0.502,
-        "avgReturn": -0.0219,
-        "avgForwardReturn": 0.0219,
-        "medianReturn": -0.0015,
-        "medianForwardReturn": 0.0015,
-        "stopRate": 0.434,
-        "targetHitRate": 0.319
+        "winRate": 0.494,
+        "directionalWinRate": 0.494,
+        "longWinRate": 0.499,
+        "avgReturn": -0.0211,
+        "avgForwardReturn": 0.0211,
+        "medianReturn": -0.0,
+        "medianForwardReturn": 0.0,
+        "stopRate": 0.432,
+        "targetHitRate": 0.321
       },
       "RISING_CHANNEL:BLOCKED": {
-        "sampleCount": 374,
+        "sampleCount": 375,
         "expectedDirection": "BULLISH",
-        "winRate": 0.519,
-        "directionalWinRate": 0.519,
-        "longWinRate": 0.519,
-        "avgReturn": 0.0362,
-        "avgForwardReturn": 0.0362,
-        "medianReturn": 0.0079,
-        "medianForwardReturn": 0.0079,
-        "stopRate": 0.382,
-        "targetHitRate": 0.417
+        "winRate": 0.517,
+        "directionalWinRate": 0.517,
+        "longWinRate": 0.517,
+        "avgReturn": 0.0361,
+        "avgForwardReturn": 0.0361,
+        "medianReturn": 0.0075,
+        "medianForwardReturn": 0.0075,
+        "stopRate": 0.381,
+        "targetHitRate": 0.416
       },
       "FALLING_CHANNEL:RISK_WATCH": {
         "sampleCount": 722,
@@ -3721,17 +3721,17 @@
         "targetHitRate": 0.324
       },
       "RISING_CHANNEL:WATCH": {
-        "sampleCount": 810,
+        "sampleCount": 813,
         "expectedDirection": "BULLISH",
-        "winRate": 0.522,
-        "directionalWinRate": 0.522,
-        "longWinRate": 0.522,
-        "avgReturn": 0.0333,
-        "avgForwardReturn": 0.0333,
-        "medianReturn": 0.0086,
-        "medianForwardReturn": 0.0086,
-        "stopRate": 0.412,
-        "targetHitRate": 0.395
+        "winRate": 0.52,
+        "directionalWinRate": 0.52,
+        "longWinRate": 0.52,
+        "avgReturn": 0.0325,
+        "avgForwardReturn": 0.0325,
+        "medianReturn": 0.0083,
+        "medianForwardReturn": 0.0083,
+        "stopRate": 0.415,
+        "targetHitRate": 0.394
       },
       "RECTANGLE_RANGE:BUY_ZONE": {
         "sampleCount": 117,
@@ -3747,17 +3747,17 @@
         "targetHitRate": 0.316
       },
       "INVERSE_HEAD_AND_SHOULDERS:BREAKOUT_CANDIDATE": {
-        "sampleCount": 750,
+        "sampleCount": 751,
         "expectedDirection": "BULLISH",
         "winRate": 0.491,
         "directionalWinRate": 0.491,
         "longWinRate": 0.491,
-        "avgReturn": 0.0278,
-        "avgForwardReturn": 0.0278,
-        "medianReturn": -0.0016,
-        "medianForwardReturn": -0.0016,
-        "stopRate": 0.42,
-        "targetHitRate": 0.349
+        "avgReturn": 0.0279,
+        "avgForwardReturn": 0.0279,
+        "medianReturn": -0.0015,
+        "medianForwardReturn": -0.0015,
+        "stopRate": 0.419,
+        "targetHitRate": 0.35
       },
       "ASCENDING_TRIANGLE:BLOCKED": {
         "sampleCount": 195,
@@ -3786,30 +3786,30 @@
         "targetHitRate": 0.338
       },
       "HEAD_AND_SHOULDERS:RISK_WATCH": {
-        "sampleCount": 171,
+        "sampleCount": 172,
         "expectedDirection": "BEARISH",
-        "winRate": 0.485,
-        "directionalWinRate": 0.485,
-        "longWinRate": 0.509,
-        "avgReturn": -0.0169,
-        "avgForwardReturn": 0.0169,
-        "medianReturn": -0.0043,
-        "medianForwardReturn": 0.0043,
-        "stopRate": 0.456,
-        "targetHitRate": 0.322
-      },
-      "DESCENDING_TRIANGLE:RISK_WATCH": {
-        "sampleCount": 146,
-        "expectedDirection": "BEARISH",
-        "winRate": 0.486,
-        "directionalWinRate": 0.486,
-        "longWinRate": 0.514,
-        "avgReturn": -0.0297,
-        "avgForwardReturn": 0.0297,
+        "winRate": 0.488,
+        "directionalWinRate": 0.488,
+        "longWinRate": 0.506,
+        "avgReturn": -0.0165,
+        "avgForwardReturn": 0.0165,
         "medianReturn": -0.0039,
         "medianForwardReturn": 0.0039,
-        "stopRate": 0.438,
-        "targetHitRate": 0.342
+        "stopRate": 0.453,
+        "targetHitRate": 0.326
+      },
+      "DESCENDING_TRIANGLE:RISK_WATCH": {
+        "sampleCount": 149,
+        "expectedDirection": "BEARISH",
+        "winRate": 0.49,
+        "directionalWinRate": 0.49,
+        "longWinRate": 0.51,
+        "avgReturn": -0.0313,
+        "avgForwardReturn": 0.0313,
+        "medianReturn": -0.0039,
+        "medianForwardReturn": 0.0039,
+        "stopRate": 0.436,
+        "targetHitRate": 0.349
       },
       "DOUBLE_BOTTOM:BUY_ZONE": {
         "sampleCount": 379,
@@ -3851,17 +3851,17 @@
         "targetHitRate": 0.377
       },
       "SYMMETRICAL_TRIANGLE:BREAKOUT_CANDIDATE": {
-        "sampleCount": 545,
+        "sampleCount": 553,
         "expectedDirection": "BULLISH",
-        "winRate": 0.55,
-        "directionalWinRate": 0.55,
-        "longWinRate": 0.55,
-        "avgReturn": 0.051,
-        "avgForwardReturn": 0.051,
-        "medianReturn": 0.0179,
-        "medianForwardReturn": 0.0179,
-        "stopRate": 0.367,
-        "targetHitRate": 0.424
+        "winRate": 0.548,
+        "directionalWinRate": 0.548,
+        "longWinRate": 0.548,
+        "avgReturn": 0.0497,
+        "avgForwardReturn": 0.0497,
+        "medianReturn": 0.0168,
+        "medianForwardReturn": 0.0168,
+        "stopRate": 0.371,
+        "targetHitRate": 0.42
       },
       "FALLING_CHANNEL:AVOID": {
         "sampleCount": 38,
@@ -3903,30 +3903,30 @@
         "targetHitRate": 0.0
       },
       "BEAR_FLAG:RISK_WATCH": {
-        "sampleCount": 256,
+        "sampleCount": 258,
         "expectedDirection": "BEARISH",
-        "winRate": 0.5,
-        "directionalWinRate": 0.5,
-        "longWinRate": 0.5,
-        "avgReturn": -0.0281,
-        "avgForwardReturn": 0.0281,
-        "medianReturn": -0.0001,
-        "medianForwardReturn": 0.0001,
-        "stopRate": 0.418,
-        "targetHitRate": 0.316
+        "winRate": 0.504,
+        "directionalWinRate": 0.504,
+        "longWinRate": 0.496,
+        "avgReturn": -0.0269,
+        "avgForwardReturn": 0.0269,
+        "medianReturn": 0.0016,
+        "medianForwardReturn": -0.0016,
+        "stopRate": 0.415,
+        "targetHitRate": 0.322
       },
       "SYMMETRICAL_TRIANGLE:WATCH": {
-        "sampleCount": 140,
+        "sampleCount": 146,
         "expectedDirection": "NEUTRAL",
-        "winRate": 0.157,
-        "directionalWinRate": 0.157,
-        "longWinRate": 0.543,
-        "avgReturn": -0.0983,
-        "avgForwardReturn": 0.0277,
-        "medianReturn": -0.0728,
-        "medianForwardReturn": 0.0085,
-        "stopRate": 0.664,
-        "targetHitRate": 0.157
+        "winRate": 0.151,
+        "directionalWinRate": 0.151,
+        "longWinRate": 0.534,
+        "avgReturn": -0.1032,
+        "avgForwardReturn": 0.0265,
+        "medianReturn": -0.0771,
+        "medianForwardReturn": 0.0081,
+        "stopRate": 0.678,
+        "targetHitRate": 0.151
       },
       "HEAD_AND_SHOULDERS:AVOID": {
         "sampleCount": 130,
@@ -3942,17 +3942,17 @@
         "targetHitRate": 0.323
       },
       "FAILED_BREAKOUT:BLOCKED": {
-        "sampleCount": 124,
+        "sampleCount": 125,
         "expectedDirection": "BEARISH",
-        "winRate": 0.468,
-        "directionalWinRate": 0.468,
-        "longWinRate": 0.524,
-        "avgReturn": -0.0225,
-        "avgForwardReturn": 0.0225,
-        "medianReturn": -0.0084,
-        "medianForwardReturn": 0.0084,
-        "stopRate": 0.452,
-        "targetHitRate": 0.323
+        "winRate": 0.472,
+        "directionalWinRate": 0.472,
+        "longWinRate": 0.52,
+        "avgReturn": -0.0209,
+        "avgForwardReturn": 0.0209,
+        "medianReturn": -0.0083,
+        "medianForwardReturn": 0.0083,
+        "stopRate": 0.448,
+        "targetHitRate": 0.328
       },
       "RECTANGLE_RANGE:AVOID": {
         "sampleCount": 87,
@@ -3968,17 +3968,17 @@
         "targetHitRate": 0.253
       },
       "SYMMETRICAL_TRIANGLE:BLOCKED": {
-        "sampleCount": 216,
+        "sampleCount": 217,
         "expectedDirection": "BEARISH",
-        "winRate": 0.463,
-        "directionalWinRate": 0.463,
-        "longWinRate": 0.546,
-        "avgReturn": -0.0028,
-        "avgForwardReturn": 0.0366,
-        "medianReturn": -0.0082,
-        "medianForwardReturn": 0.0129,
-        "stopRate": 0.458,
-        "targetHitRate": 0.315
+        "winRate": 0.465,
+        "directionalWinRate": 0.465,
+        "longWinRate": 0.544,
+        "avgReturn": -0.0019,
+        "avgForwardReturn": 0.0355,
+        "medianReturn": -0.0075,
+        "medianForwardReturn": 0.0126,
+        "stopRate": 0.456,
+        "targetHitRate": 0.318
       },
       "V_REVERSAL:BREAKOUT_CANDIDATE": {
         "sampleCount": 20,
@@ -4020,30 +4020,30 @@
         "targetHitRate": 0.452
       },
       "ASCENDING_TRIANGLE:WATCH": {
-        "sampleCount": 164,
+        "sampleCount": 168,
         "expectedDirection": "BULLISH",
         "winRate": 0.5,
         "directionalWinRate": 0.5,
         "longWinRate": 0.5,
-        "avgReturn": 0.0347,
-        "avgForwardReturn": 0.0347,
+        "avgReturn": 0.0337,
+        "avgForwardReturn": 0.0337,
         "medianReturn": 0.0003,
         "medianForwardReturn": 0.0003,
-        "stopRate": 0.421,
-        "targetHitRate": 0.415
+        "stopRate": 0.423,
+        "targetHitRate": 0.411
       },
       "SYMMETRICAL_TRIANGLE:AVOID": {
-        "sampleCount": 203,
+        "sampleCount": 205,
         "expectedDirection": "BEARISH",
-        "winRate": 0.493,
-        "directionalWinRate": 0.493,
-        "longWinRate": 0.498,
-        "avgReturn": -0.027,
-        "avgForwardReturn": 0.027,
+        "winRate": 0.498,
+        "directionalWinRate": 0.498,
+        "longWinRate": 0.493,
+        "avgReturn": -0.0247,
+        "avgForwardReturn": 0.0247,
         "medianReturn": -0.0,
         "medianForwardReturn": 0.0,
-        "stopRate": 0.429,
-        "targetHitRate": 0.315
+        "stopRate": 0.424,
+        "targetHitRate": 0.322
       },
       "BULL_FLAG:BREAKOUT_CANDIDATE": {
         "sampleCount": 73,
@@ -4059,17 +4059,17 @@
         "targetHitRate": 0.329
       },
       "BULL_PENNANT:BLOCKED": {
-        "sampleCount": 30,
+        "sampleCount": 31,
         "expectedDirection": "BULLISH",
-        "winRate": 0.533,
-        "directionalWinRate": 0.533,
-        "longWinRate": 0.533,
-        "avgReturn": 0.0731,
-        "avgForwardReturn": 0.0731,
+        "winRate": 0.516,
+        "directionalWinRate": 0.516,
+        "longWinRate": 0.516,
+        "avgReturn": 0.0706,
+        "avgForwardReturn": 0.0706,
         "medianReturn": 0.018,
         "medianForwardReturn": 0.018,
-        "stopRate": 0.3,
-        "targetHitRate": 0.367
+        "stopRate": 0.29,
+        "targetHitRate": 0.355
       },
       "INVERSE_HEAD_AND_SHOULDERS:BLOCKED": {
         "sampleCount": 38,
@@ -4085,17 +4085,17 @@
         "targetHitRate": 0.237
       },
       "BEAR_FLAG:AVOID": {
-        "sampleCount": 78,
+        "sampleCount": 79,
         "expectedDirection": "BEARISH",
-        "winRate": 0.462,
-        "directionalWinRate": 0.462,
-        "longWinRate": 0.526,
-        "avgReturn": -0.0293,
-        "avgForwardReturn": 0.0293,
-        "medianReturn": -0.0034,
-        "medianForwardReturn": 0.0034,
-        "stopRate": 0.474,
-        "targetHitRate": 0.282
+        "winRate": 0.468,
+        "directionalWinRate": 0.468,
+        "longWinRate": 0.519,
+        "avgReturn": -0.0254,
+        "avgForwardReturn": 0.0254,
+        "medianReturn": -0.0031,
+        "medianForwardReturn": 0.0031,
+        "stopRate": 0.468,
+        "targetHitRate": 0.291
       },
       "FALLING_WEDGE_BREAKOUT:BUY_ZONE": {
         "sampleCount": 117,
@@ -4150,17 +4150,17 @@
         "targetHitRate": 0.333
       },
       "INVERSE_HEAD_AND_SHOULDERS:BUY_ZONE": {
-        "sampleCount": 76,
+        "sampleCount": 77,
         "expectedDirection": "BULLISH",
-        "winRate": 0.474,
-        "directionalWinRate": 0.474,
-        "longWinRate": 0.474,
-        "avgReturn": 0.0257,
-        "avgForwardReturn": 0.0257,
-        "medianReturn": -0.0024,
-        "medianForwardReturn": -0.0024,
-        "stopRate": 0.447,
-        "targetHitRate": 0.355
+        "winRate": 0.481,
+        "directionalWinRate": 0.481,
+        "longWinRate": 0.481,
+        "avgReturn": 0.026,
+        "avgForwardReturn": 0.026,
+        "medianReturn": -0.0012,
+        "medianForwardReturn": -0.0012,
+        "stopRate": 0.442,
+        "targetHitRate": 0.364
       },
       "OVEREXTENDED_BREAKOUT:RISK_WATCH": {
         "sampleCount": 53,
@@ -4215,17 +4215,17 @@
         "targetHitRate": 0.333
       },
       "ASCENDING_TRIANGLE:BUY_ZONE": {
-        "sampleCount": 72,
+        "sampleCount": 73,
         "expectedDirection": "BULLISH",
-        "winRate": 0.486,
-        "directionalWinRate": 0.486,
-        "longWinRate": 0.486,
-        "avgReturn": 0.0133,
-        "avgForwardReturn": 0.0133,
-        "medianReturn": -0.0034,
-        "medianForwardReturn": -0.0034,
-        "stopRate": 0.458,
-        "targetHitRate": 0.389
+        "winRate": 0.479,
+        "directionalWinRate": 0.479,
+        "longWinRate": 0.479,
+        "avgReturn": 0.0111,
+        "avgForwardReturn": 0.0111,
+        "medianReturn": -0.0044,
+        "medianForwardReturn": -0.0044,
+        "stopRate": 0.466,
+        "targetHitRate": 0.384
       },
       "CUP_AND_HANDLE:WATCH": {
         "sampleCount": 11,
@@ -5090,9 +5090,9 @@
     }
   },
   "blockedOutcomeStats": {
-    "totalBlocked": 26014,
-    "avgReturnIfAllowed": 0.0212,
-    "wouldHaveGainedCount": 11596,
+    "totalBlocked": 26050,
+    "avgReturnIfAllowed": 0.021,
+    "wouldHaveGainedCount": 11600,
     "interpretation": "차단이 다소 보수적일 수 있음 — 기준 완화 검토"
   },
   "leakageCheck": {
@@ -5168,7 +5168,7 @@
     {
       "pattern": "RISING_CHANNEL:BUY_ZONE",
       "action": "WEAKEN",
-      "reason": "승률 51%, 손절률 41% — 매수권 기준 강화 검토"
+      "reason": "승률 51%, 손절률 42% — 매수권 기준 강화 검토"
     },
     {
       "pattern": "RESISTANCE_FLIP_SUPPORT:BUY_ZONE",
@@ -5183,7 +5183,7 @@
     {
       "pattern": "FALLING_WEDGE_BREAKOUT:WATCH",
       "action": "WEAKEN",
-      "reason": "승률 54%, 손절률 37% — 매수권 기준 강화 검토"
+      "reason": "승률 54%, 손절률 38% — 매수권 기준 강화 검토"
     },
     {
       "pattern": "FALLING_WEDGE_BREAKOUT:BREAKOUT_CANDIDATE",
@@ -5208,7 +5208,7 @@
     {
       "pattern": "RISING_CHANNEL:WATCH",
       "action": "WEAKEN",
-      "reason": "승률 50%, 손절률 43% — 매수권 기준 강화 검토"
+      "reason": "승률 50%, 손절률 44% — 매수권 기준 강화 검토"
     },
     {
       "pattern": "INVERSE_HEAD_AND_SHOULDERS:BREAKOUT_CANDIDATE",
@@ -5233,7 +5233,7 @@
     {
       "pattern": "SYMMETRICAL_TRIANGLE:WATCH",
       "action": "WEAKEN",
-      "reason": "승률 14%, 손절률 71% — 매수권 기준 강화 검토"
+      "reason": "승률 14%, 손절률 72% — 매수권 기준 강화 검토"
     },
     {
       "pattern": "BULL_FLAG:BREAKOUT_CANDIDATE",
@@ -5283,7 +5283,7 @@
     {
       "pattern": "ASCENDING_TRIANGLE:BUY_ZONE",
       "action": "WEAKEN",
-      "reason": "승률 49%, 손절률 45% — 매수권 기준 강화 검토"
+      "reason": "승률 49%, 손절률 46% — 매수권 기준 강화 검토"
     },
     {
       "pattern": "SYMMETRICAL_TRIANGLE:BUY_ZONE",

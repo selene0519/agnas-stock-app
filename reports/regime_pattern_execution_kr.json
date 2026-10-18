@@ -2,7 +2,7 @@
   "status": "OK",
   "market": "kr",
   "fromDate": "2011-01-01",
-  "toDate": "2026-10-11",
+  "toDate": "2026-10-18",
   "splitDate": "2022-01-01",
   "trainFoldDate": "2017-01-01",
   "entryStage": "BUY_ZONE",
@@ -29,14 +29,14 @@
       "ASCENDING_TRIANGLE:BUY_ZONE": {
         "all": {
           "sampleCount": 199,
-          "winRate": 0.4774,
-          "avgNetReturn": 0.011479,
-          "avgGrossReturn": 0.013479,
+          "winRate": 0.4724,
+          "avgNetReturn": 0.010353,
+          "avgGrossReturn": 0.012353,
           "medianNetReturn": -0.005827,
-          "profitFactor": 1.332,
-          "stopRate": 0.397,
+          "profitFactor": 1.292,
+          "stopRate": 0.407,
           "targetRate": 0.2111,
-          "avgHoldDays": 12.45
+          "avgHoldDays": 12.51
         },
         "train": {
           "sampleCount": 116,
@@ -73,14 +73,14 @@
         },
         "outOfSample": {
           "sampleCount": 83,
-          "winRate": 0.5181,
-          "avgNetReturn": 0.02056,
-          "avgGrossReturn": 0.02256,
-          "medianNetReturn": 0.006977,
-          "profitFactor": 1.613,
-          "stopRate": 0.3133,
+          "winRate": 0.506,
+          "avgNetReturn": 0.01786,
+          "avgGrossReturn": 0.01986,
+          "medianNetReturn": 0.001793,
+          "profitFactor": 1.501,
+          "stopRate": 0.3373,
           "targetRate": 0.2048,
-          "avgHoldDays": 13.11
+          "avgHoldDays": 13.24
         },
         "qualified": true,
         "rejectionReasons": []
@@ -89,13 +89,13 @@
         "all": {
           "sampleCount": 274,
           "winRate": 0.4599,
-          "avgNetReturn": 0.006864,
-          "avgGrossReturn": 0.008864,
+          "avgNetReturn": 0.006471,
+          "avgGrossReturn": 0.008471,
           "medianNetReturn": -0.012151,
-          "profitFactor": 1.185,
+          "profitFactor": 1.174,
           "stopRate": 0.3467,
           "targetRate": 0.1971,
-          "avgHoldDays": 14.1
+          "avgHoldDays": 14.12
         },
         "train": {
           "sampleCount": 172,
@@ -133,13 +133,13 @@
         "outOfSample": {
           "sampleCount": 102,
           "winRate": 0.4412,
-          "avgNetReturn": 0.01063,
-          "avgGrossReturn": 0.01263,
+          "avgNetReturn": 0.009574,
+          "avgGrossReturn": 0.011574,
           "medianNetReturn": -0.029073,
-          "profitFactor": 1.281,
+          "profitFactor": 1.253,
           "stopRate": 0.3627,
           "targetRate": 0.2255,
-          "avgHoldDays": 13.62
+          "avgHoldDays": 13.67
         },
         "qualified": false,
         "rejectionReasons": [
@@ -277,12 +277,12 @@
       "FALLING_WEDGE_BREAKOUT:BUY_ZONE": {
         "all": {
           "sampleCount": 312,
-          "winRate": 0.4904,
-          "avgNetReturn": 0.014464,
-          "avgGrossReturn": 0.016464,
-          "medianNetReturn": -0.004925,
-          "profitFactor": 1.415,
-          "stopRate": 0.3494,
+          "winRate": 0.4872,
+          "avgNetReturn": 0.014276,
+          "avgGrossReturn": 0.016276,
+          "medianNetReturn": -0.006494,
+          "profitFactor": 1.407,
+          "stopRate": 0.3526,
           "targetRate": 0.2179,
           "avgHoldDays": 13.69
         },
@@ -321,14 +321,14 @@
         },
         "outOfSample": {
           "sampleCount": 130,
-          "winRate": 0.5462,
-          "avgNetReturn": 0.033192,
-          "avgGrossReturn": 0.035192,
+          "winRate": 0.5385,
+          "avgNetReturn": 0.032742,
+          "avgGrossReturn": 0.034742,
           "medianNetReturn": 0.008872,
-          "profitFactor": 2.323,
-          "stopRate": 0.2769,
+          "profitFactor": 2.283,
+          "stopRate": 0.2846,
           "targetRate": 0.2923,
-          "avgHoldDays": 13.44
+          "avgHoldDays": 13.45
         },
         "qualified": false,
         "rejectionReasons": [
@@ -340,13 +340,13 @@
         "all": {
           "sampleCount": 1452,
           "winRate": 0.3354,
-          "avgNetReturn": -0.000336,
-          "avgGrossReturn": 0.001664,
-          "medianNetReturn": -0.017069,
-          "profitFactor": 0.982,
-          "stopRate": 0.6591,
+          "avgNetReturn": -0.000408,
+          "avgGrossReturn": 0.001592,
+          "medianNetReturn": -0.017079,
+          "profitFactor": 0.978,
+          "stopRate": 0.6605,
           "targetRate": 0.3299,
-          "avgHoldDays": 3.36
+          "avgHoldDays": 3.37
         },
         "train": {
           "sampleCount": 868,
@@ -384,11 +384,11 @@
         "outOfSample": {
           "sampleCount": 584,
           "winRate": 0.3682,
-          "avgNetReturn": 0.002972,
-          "avgGrossReturn": 0.004972,
-          "medianNetReturn": -0.017264,
-          "profitFactor": 1.15,
-          "stopRate": 0.625,
+          "avgNetReturn": 0.002793,
+          "avgGrossReturn": 0.004793,
+          "medianNetReturn": -0.017334,
+          "profitFactor": 1.14,
+          "stopRate": 0.6284,
           "targetRate": 0.363,
           "avgHoldDays": 3.64
         },
@@ -407,13 +407,13 @@
         "all": {
           "sampleCount": 2300,
           "winRate": 0.3383,
-          "avgNetReturn": 0.000503,
-          "avgGrossReturn": 0.002503,
-          "medianNetReturn": -0.020976,
-          "profitFactor": 1.02,
-          "stopRate": 0.6417,
+          "avgNetReturn": 0.000357,
+          "avgGrossReturn": 0.002357,
+          "medianNetReturn": -0.021124,
+          "profitFactor": 1.014,
+          "stopRate": 0.6439,
           "targetRate": 0.3174,
-          "avgHoldDays": 5.09
+          "avgHoldDays": 5.1
         },
         "train": {
           "sampleCount": 1423,
@@ -451,13 +451,329 @@
         "outOfSample": {
           "sampleCount": 877,
           "winRate": 0.3592,
-          "avgNetReturn": 0.003516,
-          "avgGrossReturn": 0.005516,
-          "medianNetReturn": -0.021231,
-          "profitFactor": 1.13,
-          "stopRate": 0.6146,
+          "avgNetReturn": 0.003135,
+          "avgGrossReturn": 0.005135,
+          "medianNetReturn": -0.022411,
+          "profitFactor": 1.114,
+          "stopRate": 0.6203,
           "targetRate": 0.3398,
-          "avgHoldDays": 5.26
+          "avgHoldDays": 5.27
+        },
+        "qualified": false,
+        "rejectionReasons": [
+          "TRAIN_NON_POSITIVE_EXPECTANCY",
+          "TRAIN_PROFIT_FACTOR_NOT_ABOVE_1",
+          "OUT_OF_SAMPLE_WIN_RATE_BELOW_50",
+          "TRAIN_EARLY_NON_POSITIVE_EXPECTANCY",
+          "TRAIN_EARLY_PROFIT_FACTOR_NOT_ABOVE_1",
+          "TRAIN_LATE_NON_POSITIVE_EXPECTANCY",
+          "TRAIN_LATE_PROFIT_FACTOR_NOT_ABOVE_1"
+        ]
+      },
+      "ASCENDING_TRIANGLE:BUY_ZONE:CONFIRMED_CANDLE": {
+        "all": {
+          "sampleCount": 122,
+          "winRate": 0.5082,
+          "avgNetReturn": 0.016423,
+          "avgGrossReturn": 0.018423,
+          "medianNetReturn": 0.003951,
+          "profitFactor": 1.434,
+          "stopRate": 0.4016,
+          "targetRate": 0.2295,
+          "avgHoldDays": 12.73
+        },
+        "train": {
+          "sampleCount": 65,
+          "winRate": 0.4769,
+          "avgNetReturn": 0.011192,
+          "avgGrossReturn": 0.013192,
+          "medianNetReturn": -0.020745,
+          "profitFactor": 1.299,
+          "stopRate": 0.4615,
+          "targetRate": 0.2154,
+          "avgHoldDays": 12.4
+        },
+        "trainEarly": {
+          "sampleCount": 17,
+          "winRate": 0.5294,
+          "avgNetReturn": 0.008117,
+          "avgGrossReturn": 0.010117,
+          "medianNetReturn": 0.032125,
+          "profitFactor": 1.217,
+          "stopRate": 0.4118,
+          "targetRate": 0.1765,
+          "avgHoldDays": 13.82
+        },
+        "trainLate": {
+          "sampleCount": 48,
+          "winRate": 0.4583,
+          "avgNetReturn": 0.012281,
+          "avgGrossReturn": 0.014281,
+          "medianNetReturn": -0.027994,
+          "profitFactor": 1.328,
+          "stopRate": 0.4792,
+          "targetRate": 0.2292,
+          "avgHoldDays": 11.9
+        },
+        "outOfSample": {
+          "sampleCount": 57,
+          "winRate": 0.5439,
+          "avgNetReturn": 0.022389,
+          "avgGrossReturn": 0.024389,
+          "medianNetReturn": 0.030941,
+          "profitFactor": 1.586,
+          "stopRate": 0.3333,
+          "targetRate": 0.2456,
+          "avgHoldDays": 13.11
+        },
+        "qualified": true,
+        "rejectionReasons": []
+      },
+      "FALLING_WEDGE_BREAKOUT:BUY_ZONE:CONFIRMED_CANDLE": {
+        "all": {
+          "sampleCount": 155,
+          "winRate": 0.5032,
+          "avgNetReturn": 0.010541,
+          "avgGrossReturn": 0.012541,
+          "medianNetReturn": 0.001255,
+          "profitFactor": 1.249,
+          "stopRate": 0.3484,
+          "targetRate": 0.2258,
+          "avgHoldDays": 14.1
+        },
+        "train": {
+          "sampleCount": 93,
+          "winRate": 0.4624,
+          "avgNetReturn": -0.013245,
+          "avgGrossReturn": -0.011245,
+          "medianNetReturn": -0.034143,
+          "profitFactor": 0.751,
+          "stopRate": 0.3871,
+          "targetRate": 0.1505,
+          "avgHoldDays": 14.95
+        },
+        "trainEarly": {
+          "sampleCount": 24,
+          "winRate": 0.5,
+          "avgNetReturn": 0.004236,
+          "avgGrossReturn": 0.006236,
+          "medianNetReturn": -0.006339,
+          "profitFactor": 1.108,
+          "stopRate": 0.375,
+          "targetRate": 0.0833,
+          "avgHoldDays": 15.71
+        },
+        "trainLate": {
+          "sampleCount": 69,
+          "winRate": 0.4493,
+          "avgNetReturn": -0.019326,
+          "avgGrossReturn": -0.017326,
+          "medianNetReturn": -0.036117,
+          "profitFactor": 0.668,
+          "stopRate": 0.3913,
+          "targetRate": 0.1739,
+          "avgHoldDays": 14.68
+        },
+        "outOfSample": {
+          "sampleCount": 62,
+          "winRate": 0.5645,
+          "avgNetReturn": 0.04622,
+          "avgGrossReturn": 0.04822,
+          "medianNetReturn": 0.012978,
+          "profitFactor": 2.793,
+          "stopRate": 0.2903,
+          "targetRate": 0.3387,
+          "avgHoldDays": 12.84
+        },
+        "qualified": false,
+        "rejectionReasons": [
+          "TRAIN_NON_POSITIVE_EXPECTANCY",
+          "TRAIN_PROFIT_FACTOR_NOT_ABOVE_1",
+          "TRAIN_LATE_NON_POSITIVE_EXPECTANCY",
+          "TRAIN_LATE_PROFIT_FACTOR_NOT_ABOVE_1"
+        ]
+      },
+      "CUP_AND_HANDLE:BUY_ZONE:CONFIRMED_CANDLE": {
+        "all": {
+          "sampleCount": 4,
+          "winRate": 0.75,
+          "avgNetReturn": 0.078996,
+          "avgGrossReturn": 0.080996,
+          "medianNetReturn": 0.105621,
+          "profitFactor": 11.996,
+          "stopRate": 0.25,
+          "targetRate": 0.75,
+          "avgHoldDays": 7.75
+        },
+        "train": {
+          "sampleCount": 1,
+          "winRate": 1.0,
+          "avgNetReturn": 0.104015,
+          "avgGrossReturn": 0.106015,
+          "medianNetReturn": 0.104015,
+          "profitFactor": 99.0,
+          "stopRate": 0.0,
+          "targetRate": 1.0,
+          "avgHoldDays": 4.0
+        },
+        "trainEarly": {
+          "sampleCount": 0,
+          "winRate": 0.0,
+          "avgNetReturn": 0.0,
+          "medianNetReturn": 0.0,
+          "profitFactor": 0.0,
+          "stopRate": 0.0,
+          "targetRate": 0.0,
+          "avgHoldDays": 0.0
+        },
+        "trainLate": {
+          "sampleCount": 1,
+          "winRate": 1.0,
+          "avgNetReturn": 0.104015,
+          "avgGrossReturn": 0.106015,
+          "medianNetReturn": 0.104015,
+          "profitFactor": 99.0,
+          "stopRate": 0.0,
+          "targetRate": 1.0,
+          "avgHoldDays": 4.0
+        },
+        "outOfSample": {
+          "sampleCount": 3,
+          "winRate": 0.6667,
+          "avgNetReturn": 0.070656,
+          "avgGrossReturn": 0.072656,
+          "medianNetReturn": 0.107228,
+          "profitFactor": 8.376,
+          "stopRate": 0.3333,
+          "targetRate": 0.6667,
+          "avgHoldDays": 9.0
+        },
+        "qualified": false,
+        "rejectionReasons": [
+          "TRAIN_LOW_SAMPLE",
+          "OUT_OF_SAMPLE_LOW_SAMPLE"
+        ]
+      },
+      "BULL_FLAG:BUY_ZONE:CONFIRMED_CANDLE": {
+        "all": {
+          "sampleCount": 237,
+          "winRate": 0.4599,
+          "avgNetReturn": 0.004433,
+          "avgGrossReturn": 0.006433,
+          "medianNetReturn": -0.011417,
+          "profitFactor": 1.117,
+          "stopRate": 0.346,
+          "targetRate": 0.1899,
+          "avgHoldDays": 14.18
+        },
+        "train": {
+          "sampleCount": 144,
+          "winRate": 0.4653,
+          "avgNetReturn": -1.5e-05,
+          "avgGrossReturn": 0.001985,
+          "medianNetReturn": -0.010252,
+          "profitFactor": 1.0,
+          "stopRate": 0.3333,
+          "targetRate": 0.1597,
+          "avgHoldDays": 14.54
+        },
+        "trainEarly": {
+          "sampleCount": 46,
+          "winRate": 0.3478,
+          "avgNetReturn": -0.008017,
+          "avgGrossReturn": -0.006017,
+          "medianNetReturn": -0.03736,
+          "profitFactor": 0.796,
+          "stopRate": 0.3913,
+          "targetRate": 0.1087,
+          "avgHoldDays": 14.61
+        },
+        "trainLate": {
+          "sampleCount": 98,
+          "winRate": 0.5204,
+          "avgNetReturn": 0.003741,
+          "avgGrossReturn": 0.005741,
+          "medianNetReturn": 0.00376,
+          "profitFactor": 1.1,
+          "stopRate": 0.3061,
+          "targetRate": 0.1837,
+          "avgHoldDays": 14.51
+        },
+        "outOfSample": {
+          "sampleCount": 93,
+          "winRate": 0.4516,
+          "avgNetReturn": 0.011319,
+          "avgGrossReturn": 0.013319,
+          "medianNetReturn": -0.02845,
+          "profitFactor": 1.298,
+          "stopRate": 0.3656,
+          "targetRate": 0.2366,
+          "avgHoldDays": 13.61
+        },
+        "qualified": false,
+        "rejectionReasons": [
+          "TRAIN_NON_POSITIVE_EXPECTANCY",
+          "TRAIN_PROFIT_FACTOR_NOT_ABOVE_1",
+          "OUT_OF_SAMPLE_WIN_RATE_BELOW_50",
+          "TRAIN_EARLY_NON_POSITIVE_EXPECTANCY",
+          "TRAIN_EARLY_PROFIT_FACTOR_NOT_ABOVE_1"
+        ]
+      },
+      "RISING_CHANNEL:BUY_ZONE:CONFIRMED_CANDLE": {
+        "all": {
+          "sampleCount": 299,
+          "winRate": 0.3144,
+          "avgNetReturn": -0.001251,
+          "avgGrossReturn": 0.000749,
+          "medianNetReturn": -0.023809,
+          "profitFactor": 0.952,
+          "stopRate": 0.6656,
+          "targetRate": 0.2876,
+          "avgHoldDays": 4.91
+        },
+        "train": {
+          "sampleCount": 192,
+          "winRate": 0.2917,
+          "avgNetReturn": -0.003604,
+          "avgGrossReturn": -0.001604,
+          "medianNetReturn": -0.024464,
+          "profitFactor": 0.863,
+          "stopRate": 0.6875,
+          "targetRate": 0.2552,
+          "avgHoldDays": 5.2
+        },
+        "trainEarly": {
+          "sampleCount": 63,
+          "winRate": 0.3175,
+          "avgNetReturn": -0.003716,
+          "avgGrossReturn": -0.001716,
+          "medianNetReturn": -0.023132,
+          "profitFactor": 0.841,
+          "stopRate": 0.6667,
+          "targetRate": 0.3016,
+          "avgHoldDays": 4.25
+        },
+        "trainLate": {
+          "sampleCount": 129,
+          "winRate": 0.2791,
+          "avgNetReturn": -0.003549,
+          "avgGrossReturn": -0.001549,
+          "medianNetReturn": -0.025621,
+          "profitFactor": 0.872,
+          "stopRate": 0.6977,
+          "targetRate": 0.2326,
+          "avgHoldDays": 5.66
+        },
+        "outOfSample": {
+          "sampleCount": 107,
+          "winRate": 0.3551,
+          "avgNetReturn": 0.002969,
+          "avgGrossReturn": 0.004969,
+          "medianNetReturn": -0.020416,
+          "profitFactor": 1.118,
+          "stopRate": 0.6262,
+          "targetRate": 0.3458,
+          "avgHoldDays": 4.4
         },
         "qualified": false,
         "rejectionReasons": [
@@ -537,199 +853,6 @@
           "OUT_OF_SAMPLE_WIN_RATE_BELOW_50"
         ]
       },
-      "BULL_FLAG:BUY_ZONE:CONFIRMED_CANDLE": {
-        "all": {
-          "sampleCount": 237,
-          "winRate": 0.4599,
-          "avgNetReturn": 0.004887,
-          "avgGrossReturn": 0.006887,
-          "medianNetReturn": -0.011417,
-          "profitFactor": 1.128,
-          "stopRate": 0.346,
-          "targetRate": 0.1899,
-          "avgHoldDays": 14.16
-        },
-        "train": {
-          "sampleCount": 144,
-          "winRate": 0.4653,
-          "avgNetReturn": -1.5e-05,
-          "avgGrossReturn": 0.001985,
-          "medianNetReturn": -0.010252,
-          "profitFactor": 1.0,
-          "stopRate": 0.3333,
-          "targetRate": 0.1597,
-          "avgHoldDays": 14.54
-        },
-        "trainEarly": {
-          "sampleCount": 46,
-          "winRate": 0.3478,
-          "avgNetReturn": -0.008017,
-          "avgGrossReturn": -0.006017,
-          "medianNetReturn": -0.03736,
-          "profitFactor": 0.796,
-          "stopRate": 0.3913,
-          "targetRate": 0.1087,
-          "avgHoldDays": 14.61
-        },
-        "trainLate": {
-          "sampleCount": 98,
-          "winRate": 0.5204,
-          "avgNetReturn": 0.003741,
-          "avgGrossReturn": 0.005741,
-          "medianNetReturn": 0.00376,
-          "profitFactor": 1.1,
-          "stopRate": 0.3061,
-          "targetRate": 0.1837,
-          "avgHoldDays": 14.51
-        },
-        "outOfSample": {
-          "sampleCount": 93,
-          "winRate": 0.4516,
-          "avgNetReturn": 0.012477,
-          "avgGrossReturn": 0.014477,
-          "medianNetReturn": -0.02845,
-          "profitFactor": 1.328,
-          "stopRate": 0.3656,
-          "targetRate": 0.2366,
-          "avgHoldDays": 13.56
-        },
-        "qualified": false,
-        "rejectionReasons": [
-          "TRAIN_NON_POSITIVE_EXPECTANCY",
-          "TRAIN_PROFIT_FACTOR_NOT_ABOVE_1",
-          "OUT_OF_SAMPLE_WIN_RATE_BELOW_50",
-          "TRAIN_EARLY_NON_POSITIVE_EXPECTANCY",
-          "TRAIN_EARLY_PROFIT_FACTOR_NOT_ABOVE_1"
-        ]
-      },
-      "CUP_AND_HANDLE:BUY_ZONE:CONFIRMED_CANDLE": {
-        "all": {
-          "sampleCount": 4,
-          "winRate": 0.75,
-          "avgNetReturn": 0.078996,
-          "avgGrossReturn": 0.080996,
-          "medianNetReturn": 0.105621,
-          "profitFactor": 11.996,
-          "stopRate": 0.25,
-          "targetRate": 0.75,
-          "avgHoldDays": 7.75
-        },
-        "train": {
-          "sampleCount": 1,
-          "winRate": 1.0,
-          "avgNetReturn": 0.104015,
-          "avgGrossReturn": 0.106015,
-          "medianNetReturn": 0.104015,
-          "profitFactor": 99.0,
-          "stopRate": 0.0,
-          "targetRate": 1.0,
-          "avgHoldDays": 4.0
-        },
-        "trainEarly": {
-          "sampleCount": 0,
-          "winRate": 0.0,
-          "avgNetReturn": 0.0,
-          "medianNetReturn": 0.0,
-          "profitFactor": 0.0,
-          "stopRate": 0.0,
-          "targetRate": 0.0,
-          "avgHoldDays": 0.0
-        },
-        "trainLate": {
-          "sampleCount": 1,
-          "winRate": 1.0,
-          "avgNetReturn": 0.104015,
-          "avgGrossReturn": 0.106015,
-          "medianNetReturn": 0.104015,
-          "profitFactor": 99.0,
-          "stopRate": 0.0,
-          "targetRate": 1.0,
-          "avgHoldDays": 4.0
-        },
-        "outOfSample": {
-          "sampleCount": 3,
-          "winRate": 0.6667,
-          "avgNetReturn": 0.070656,
-          "avgGrossReturn": 0.072656,
-          "medianNetReturn": 0.107228,
-          "profitFactor": 8.376,
-          "stopRate": 0.3333,
-          "targetRate": 0.6667,
-          "avgHoldDays": 9.0
-        },
-        "qualified": false,
-        "rejectionReasons": [
-          "TRAIN_LOW_SAMPLE",
-          "OUT_OF_SAMPLE_LOW_SAMPLE"
-        ]
-      },
-      "RISING_CHANNEL:BUY_ZONE:CONFIRMED_CANDLE": {
-        "all": {
-          "sampleCount": 299,
-          "winRate": 0.3144,
-          "avgNetReturn": -0.001251,
-          "avgGrossReturn": 0.000749,
-          "medianNetReturn": -0.023809,
-          "profitFactor": 0.952,
-          "stopRate": 0.6656,
-          "targetRate": 0.2876,
-          "avgHoldDays": 4.91
-        },
-        "train": {
-          "sampleCount": 192,
-          "winRate": 0.2917,
-          "avgNetReturn": -0.003604,
-          "avgGrossReturn": -0.001604,
-          "medianNetReturn": -0.024464,
-          "profitFactor": 0.863,
-          "stopRate": 0.6875,
-          "targetRate": 0.2552,
-          "avgHoldDays": 5.2
-        },
-        "trainEarly": {
-          "sampleCount": 63,
-          "winRate": 0.3175,
-          "avgNetReturn": -0.003716,
-          "avgGrossReturn": -0.001716,
-          "medianNetReturn": -0.023132,
-          "profitFactor": 0.841,
-          "stopRate": 0.6667,
-          "targetRate": 0.3016,
-          "avgHoldDays": 4.25
-        },
-        "trainLate": {
-          "sampleCount": 129,
-          "winRate": 0.2791,
-          "avgNetReturn": -0.003549,
-          "avgGrossReturn": -0.001549,
-          "medianNetReturn": -0.025621,
-          "profitFactor": 0.872,
-          "stopRate": 0.6977,
-          "targetRate": 0.2326,
-          "avgHoldDays": 5.66
-        },
-        "outOfSample": {
-          "sampleCount": 107,
-          "winRate": 0.3551,
-          "avgNetReturn": 0.002969,
-          "avgGrossReturn": 0.004969,
-          "medianNetReturn": -0.020416,
-          "profitFactor": 1.118,
-          "stopRate": 0.6262,
-          "targetRate": 0.3458,
-          "avgHoldDays": 4.4
-        },
-        "qualified": false,
-        "rejectionReasons": [
-          "TRAIN_NON_POSITIVE_EXPECTANCY",
-          "TRAIN_PROFIT_FACTOR_NOT_ABOVE_1",
-          "OUT_OF_SAMPLE_WIN_RATE_BELOW_50",
-          "TRAIN_EARLY_NON_POSITIVE_EXPECTANCY",
-          "TRAIN_EARLY_PROFIT_FACTOR_NOT_ABOVE_1",
-          "TRAIN_LATE_NON_POSITIVE_EXPECTANCY",
-          "TRAIN_LATE_PROFIT_FACTOR_NOT_ABOVE_1"
-        ]
-      },
       "RESISTANCE_FLIP_SUPPORT:BUY_ZONE:CONFIRMED_CANDLE": {
         "all": {
           "sampleCount": 46,
@@ -791,142 +914,19 @@
           "OUT_OF_SAMPLE_LOW_SAMPLE",
           "OUT_OF_SAMPLE_WIN_RATE_BELOW_50"
         ]
-      },
-      "ASCENDING_TRIANGLE:BUY_ZONE:CONFIRMED_CANDLE": {
-        "all": {
-          "sampleCount": 122,
-          "winRate": 0.5164,
-          "avgNetReturn": 0.018648,
-          "avgGrossReturn": 0.020648,
-          "medianNetReturn": 0.009099,
-          "profitFactor": 1.518,
-          "stopRate": 0.3852,
-          "targetRate": 0.2295,
-          "avgHoldDays": 12.68
-        },
-        "train": {
-          "sampleCount": 65,
-          "winRate": 0.4769,
-          "avgNetReturn": 0.011192,
-          "avgGrossReturn": 0.013192,
-          "medianNetReturn": -0.020745,
-          "profitFactor": 1.299,
-          "stopRate": 0.4615,
-          "targetRate": 0.2154,
-          "avgHoldDays": 12.4
-        },
-        "trainEarly": {
-          "sampleCount": 17,
-          "winRate": 0.5294,
-          "avgNetReturn": 0.008117,
-          "avgGrossReturn": 0.010117,
-          "medianNetReturn": 0.032125,
-          "profitFactor": 1.217,
-          "stopRate": 0.4118,
-          "targetRate": 0.1765,
-          "avgHoldDays": 13.82
-        },
-        "trainLate": {
-          "sampleCount": 48,
-          "winRate": 0.4583,
-          "avgNetReturn": 0.012281,
-          "avgGrossReturn": 0.014281,
-          "medianNetReturn": -0.027994,
-          "profitFactor": 1.328,
-          "stopRate": 0.4792,
-          "targetRate": 0.2292,
-          "avgHoldDays": 11.9
-        },
-        "outOfSample": {
-          "sampleCount": 57,
-          "winRate": 0.5614,
-          "avgNetReturn": 0.02715,
-          "avgGrossReturn": 0.02915,
-          "medianNetReturn": 0.042068,
-          "profitFactor": 1.79,
-          "stopRate": 0.2982,
-          "targetRate": 0.2456,
-          "avgHoldDays": 13.0
-        },
-        "qualified": true,
-        "rejectionReasons": []
-      },
-      "FALLING_WEDGE_BREAKOUT:BUY_ZONE:CONFIRMED_CANDLE": {
-        "all": {
-          "sampleCount": 155,
-          "winRate": 0.5032,
-          "avgNetReturn": 0.010541,
-          "avgGrossReturn": 0.012541,
-          "medianNetReturn": 0.001255,
-          "profitFactor": 1.249,
-          "stopRate": 0.3484,
-          "targetRate": 0.2258,
-          "avgHoldDays": 14.1
-        },
-        "train": {
-          "sampleCount": 93,
-          "winRate": 0.4624,
-          "avgNetReturn": -0.013245,
-          "avgGrossReturn": -0.011245,
-          "medianNetReturn": -0.034143,
-          "profitFactor": 0.751,
-          "stopRate": 0.3871,
-          "targetRate": 0.1505,
-          "avgHoldDays": 14.95
-        },
-        "trainEarly": {
-          "sampleCount": 24,
-          "winRate": 0.5,
-          "avgNetReturn": 0.004236,
-          "avgGrossReturn": 0.006236,
-          "medianNetReturn": -0.006339,
-          "profitFactor": 1.108,
-          "stopRate": 0.375,
-          "targetRate": 0.0833,
-          "avgHoldDays": 15.71
-        },
-        "trainLate": {
-          "sampleCount": 69,
-          "winRate": 0.4493,
-          "avgNetReturn": -0.019326,
-          "avgGrossReturn": -0.017326,
-          "medianNetReturn": -0.036117,
-          "profitFactor": 0.668,
-          "stopRate": 0.3913,
-          "targetRate": 0.1739,
-          "avgHoldDays": 14.68
-        },
-        "outOfSample": {
-          "sampleCount": 62,
-          "winRate": 0.5645,
-          "avgNetReturn": 0.04622,
-          "avgGrossReturn": 0.04822,
-          "medianNetReturn": 0.012978,
-          "profitFactor": 2.793,
-          "stopRate": 0.2903,
-          "targetRate": 0.3387,
-          "avgHoldDays": 12.84
-        },
-        "qualified": false,
-        "rejectionReasons": [
-          "TRAIN_NON_POSITIVE_EXPECTANCY",
-          "TRAIN_PROFIT_FACTOR_NOT_ABOVE_1",
-          "TRAIN_LATE_NON_POSITIVE_EXPECTANCY",
-          "TRAIN_LATE_PROFIT_FACTOR_NOT_ABOVE_1"
-        ]
       }
     },
     "BEAR": {
       "DOUBLE_BOTTOM:BUY_ZONE": {
         "all": {
-          "sampleCount": 462,
-          "winRate": 0.4264,
-          "avgNetReturn": 0.001498,
-          "avgGrossReturn": 0.003498,
-          "medianNetReturn": -0.021934,
-          "profitFactor": 1.033,
-          "stopRate": 0.3225,
-          "targetRate": 0.0952,
+          "sampleCount": 463,
+          "winRate": 0.4233,
+          "avgNetReturn": 0.000612,
+          "avgGrossReturn": 0.002612,
+          "medianNetReturn": -0.022147,
+          "profitFactor": 1.013,
+          "stopRate": 0.324,
+          "targetRate": 0.095,
           "avgHoldDays": 15.92
         },
         "train": {
@@ -963,15 +963,15 @@
           "avgHoldDays": 15.73
         },
         "outOfSample": {
-          "sampleCount": 189,
-          "winRate": 0.4709,
-          "avgNetReturn": 0.01771,
-          "avgGrossReturn": 0.01971,
-          "medianNetReturn": -0.007068,
-          "profitFactor": 1.412,
-          "stopRate": 0.2963,
-          "targetRate": 0.127,
-          "avgHoldDays": 15.44
+          "sampleCount": 190,
+          "winRate": 0.4632,
+          "avgNetReturn": 0.015466,
+          "avgGrossReturn": 0.017466,
+          "medianNetReturn": -0.007941,
+          "profitFactor": 1.354,
+          "stopRate": 0.3,
+          "targetRate": 0.1263,
+          "avgHoldDays": 15.45
         },
         "qualified": false,
         "rejectionReasons": [
@@ -986,15 +986,15 @@
       },
       "FALLING_WEDGE_BREAKOUT:BUY_ZONE": {
         "all": {
-          "sampleCount": 273,
-          "winRate": 0.4542,
-          "avgNetReturn": 0.005535,
-          "avgGrossReturn": 0.007535,
-          "medianNetReturn": -0.0177,
-          "profitFactor": 1.133,
-          "stopRate": 0.3626,
-          "targetRate": 0.1392,
-          "avgHoldDays": 14.74
+          "sampleCount": 274,
+          "winRate": 0.4526,
+          "avgNetReturn": 0.005438,
+          "avgGrossReturn": 0.007438,
+          "medianNetReturn": -0.018404,
+          "profitFactor": 1.131,
+          "stopRate": 0.3613,
+          "targetRate": 0.1387,
+          "avgHoldDays": 14.69
         },
         "train": {
           "sampleCount": 165,
@@ -1030,20 +1030,21 @@
           "avgHoldDays": 15.18
         },
         "outOfSample": {
-          "sampleCount": 108,
-          "winRate": 0.5,
-          "avgNetReturn": 0.024406,
-          "avgGrossReturn": 0.026406,
-          "medianNetReturn": -0.000243,
-          "profitFactor": 1.593,
-          "stopRate": 0.3426,
-          "targetRate": 0.1759,
-          "avgHoldDays": 14.42
+          "sampleCount": 109,
+          "winRate": 0.4954,
+          "avgNetReturn": 0.023988,
+          "avgGrossReturn": 0.025988,
+          "medianNetReturn": -0.002,
+          "profitFactor": 1.586,
+          "stopRate": 0.3394,
+          "targetRate": 0.1743,
+          "avgHoldDays": 14.31
         },
         "qualified": false,
         "rejectionReasons": [
           "TRAIN_NON_POSITIVE_EXPECTANCY",
           "TRAIN_PROFIT_FACTOR_NOT_ABOVE_1",
+          "OUT_OF_SAMPLE_WIN_RATE_BELOW_50",
           "TRAIN_EARLY_NON_POSITIVE_EXPECTANCY",
           "TRAIN_EARLY_PROFIT_FACTOR_NOT_ABOVE_1"
         ]
@@ -1111,15 +1112,15 @@
       },
       "RESISTANCE_FLIP_SUPPORT:BUY_ZONE": {
         "all": {
-          "sampleCount": 513,
-          "winRate": 0.3021,
-          "avgNetReturn": -0.003632,
-          "avgGrossReturn": -0.001632,
-          "medianNetReturn": -0.019641,
-          "profitFactor": 0.827,
-          "stopRate": 0.692,
-          "targetRate": 0.2924,
-          "avgHoldDays": 3.34
+          "sampleCount": 514,
+          "winRate": 0.3035,
+          "avgNetReturn": -0.003456,
+          "avgGrossReturn": -0.001456,
+          "medianNetReturn": -0.019632,
+          "profitFactor": 0.835,
+          "stopRate": 0.6907,
+          "targetRate": 0.2938,
+          "avgHoldDays": 3.33
         },
         "train": {
           "sampleCount": 304,
@@ -1155,15 +1156,15 @@
           "avgHoldDays": 3.3
         },
         "outOfSample": {
-          "sampleCount": 209,
-          "winRate": 0.2823,
-          "avgNetReturn": -0.002399,
-          "avgGrossReturn": -0.000399,
-          "medianNetReturn": -0.020551,
-          "profitFactor": 0.894,
-          "stopRate": 0.7129,
-          "targetRate": 0.2679,
-          "avgHoldDays": 3.57
+          "sampleCount": 210,
+          "winRate": 0.2857,
+          "avgNetReturn": -0.001975,
+          "avgGrossReturn": 2.5e-05,
+          "medianNetReturn": -0.020459,
+          "profitFactor": 0.912,
+          "stopRate": 0.7095,
+          "targetRate": 0.2714,
+          "avgHoldDays": 3.56
         },
         "qualified": false,
         "rejectionReasons": [
@@ -1307,6 +1308,71 @@
           "OUT_OF_SAMPLE_WIN_RATE_BELOW_50"
         ]
       },
+      "DOUBLE_BOTTOM:BUY_ZONE:CONFIRMED_CANDLE": {
+        "all": {
+          "sampleCount": 346,
+          "winRate": 0.4422,
+          "avgNetReturn": 0.003866,
+          "avgGrossReturn": 0.005866,
+          "medianNetReturn": -0.016518,
+          "profitFactor": 1.087,
+          "stopRate": 0.315,
+          "targetRate": 0.1012,
+          "avgHoldDays": 15.97
+        },
+        "train": {
+          "sampleCount": 209,
+          "winRate": 0.4211,
+          "avgNetReturn": -0.004613,
+          "avgGrossReturn": -0.002613,
+          "medianNetReturn": -0.021685,
+          "profitFactor": 0.898,
+          "stopRate": 0.3062,
+          "targetRate": 0.0813,
+          "avgHoldDays": 16.41
+        },
+        "trainEarly": {
+          "sampleCount": 86,
+          "winRate": 0.3605,
+          "avgNetReturn": -0.013884,
+          "avgGrossReturn": -0.011884,
+          "medianNetReturn": -0.021916,
+          "profitFactor": 0.671,
+          "stopRate": 0.2791,
+          "targetRate": 0.0349,
+          "avgHoldDays": 17.52
+        },
+        "trainLate": {
+          "sampleCount": 123,
+          "winRate": 0.4634,
+          "avgNetReturn": 0.001869,
+          "avgGrossReturn": 0.003869,
+          "medianNetReturn": -0.015716,
+          "profitFactor": 1.039,
+          "stopRate": 0.3252,
+          "targetRate": 0.1138,
+          "avgHoldDays": 15.63
+        },
+        "outOfSample": {
+          "sampleCount": 137,
+          "winRate": 0.4745,
+          "avgNetReturn": 0.016801,
+          "avgGrossReturn": 0.018801,
+          "medianNetReturn": -0.004475,
+          "profitFactor": 1.387,
+          "stopRate": 0.3285,
+          "targetRate": 0.1314,
+          "avgHoldDays": 15.29
+        },
+        "qualified": false,
+        "rejectionReasons": [
+          "TRAIN_NON_POSITIVE_EXPECTANCY",
+          "TRAIN_PROFIT_FACTOR_NOT_ABOVE_1",
+          "OUT_OF_SAMPLE_WIN_RATE_BELOW_50",
+          "TRAIN_EARLY_NON_POSITIVE_EXPECTANCY",
+          "TRAIN_EARLY_PROFIT_FACTOR_NOT_ABOVE_1"
+        ]
+      },
       "V_REVERSAL:BUY_ZONE:CONFIRMED_CANDLE": {
         "all": {
           "sampleCount": 20,
@@ -1372,84 +1438,17 @@
           "OUT_OF_SAMPLE_WIN_RATE_BELOW_50"
         ]
       },
-      "RESISTANCE_FLIP_SUPPORT:BUY_ZONE:CONFIRMED_CANDLE": {
-        "all": {
-          "sampleCount": 29,
-          "winRate": 0.3103,
-          "avgNetReturn": -0.005364,
-          "avgGrossReturn": -0.003364,
-          "medianNetReturn": -0.021926,
-          "profitFactor": 0.776,
-          "stopRate": 0.6897,
-          "targetRate": 0.3103,
-          "avgHoldDays": 2.9
-        },
-        "train": {
-          "sampleCount": 13,
-          "winRate": 0.3846,
-          "avgNetReturn": -0.007141,
-          "avgGrossReturn": -0.005141,
-          "medianNetReturn": -0.02639,
-          "profitFactor": 0.738,
-          "stopRate": 0.6154,
-          "targetRate": 0.3846,
-          "avgHoldDays": 4.38
-        },
-        "trainEarly": {
-          "sampleCount": 4,
-          "winRate": 0.25,
-          "avgNetReturn": -0.020222,
-          "avgGrossReturn": -0.018222,
-          "medianNetReturn": -0.023562,
-          "profitFactor": 0.111,
-          "stopRate": 0.75,
-          "targetRate": 0.25,
-          "avgHoldDays": 2.0
-        },
-        "trainLate": {
-          "sampleCount": 9,
-          "winRate": 0.4444,
-          "avgNetReturn": -0.001327,
-          "avgGrossReturn": 0.000673,
-          "medianNetReturn": -0.02639,
-          "profitFactor": 0.955,
-          "stopRate": 0.5556,
-          "targetRate": 0.4444,
-          "avgHoldDays": 5.44
-        },
-        "outOfSample": {
-          "sampleCount": 16,
-          "winRate": 0.25,
-          "avgNetReturn": -0.003921,
-          "avgGrossReturn": -0.001921,
-          "medianNetReturn": -0.01974,
-          "profitFactor": 0.816,
-          "stopRate": 0.75,
-          "targetRate": 0.25,
-          "avgHoldDays": 1.69
-        },
-        "qualified": false,
-        "rejectionReasons": [
-          "TRAIN_LOW_SAMPLE",
-          "TRAIN_NON_POSITIVE_EXPECTANCY",
-          "TRAIN_PROFIT_FACTOR_NOT_ABOVE_1",
-          "OUT_OF_SAMPLE_LOW_SAMPLE",
-          "OUT_OF_SAMPLE_NON_POSITIVE_EXPECTANCY",
-          "OUT_OF_SAMPLE_PROFIT_FACTOR_NOT_ABOVE_1",
-          "OUT_OF_SAMPLE_WIN_RATE_BELOW_50"
-        ]
-      },
       "FALLING_WEDGE_BREAKOUT:BUY_ZONE:CONFIRMED_CANDLE": {
         "all": {
-          "sampleCount": 170,
-          "winRate": 0.4235,
-          "avgNetReturn": -0.004801,
-          "avgGrossReturn": -0.002801,
-          "medianNetReturn": -0.020503,
-          "profitFactor": 0.889,
-          "stopRate": 0.3706,
-          "targetRate": 0.1235,
-          "avgHoldDays": 14.82
+          "sampleCount": 171,
+          "winRate": 0.4211,
+          "avgNetReturn": -0.004896,
+          "avgGrossReturn": -0.002896,
+          "medianNetReturn": -0.02058,
+          "profitFactor": 0.886,
+          "stopRate": 0.3684,
+          "targetRate": 0.1228,
+          "avgHoldDays": 14.75
         },
         "train": {
           "sampleCount": 106,
@@ -1485,15 +1484,15 @@
           "avgHoldDays": 15.35
         },
         "outOfSample": {
-          "sampleCount": 64,
-          "winRate": 0.4219,
-          "avgNetReturn": 0.001234,
-          "avgGrossReturn": 0.003234,
-          "medianNetReturn": -0.01654,
-          "profitFactor": 1.027,
-          "stopRate": 0.375,
-          "targetRate": 0.1562,
-          "avgHoldDays": 14.17
+          "sampleCount": 65,
+          "winRate": 0.4154,
+          "avgNetReturn": 0.00089,
+          "avgGrossReturn": 0.00289,
+          "medianNetReturn": -0.017555,
+          "profitFactor": 1.02,
+          "stopRate": 0.3692,
+          "targetRate": 0.1538,
+          "avgHoldDays": 14.0
         },
         "qualified": false,
         "rejectionReasons": [
@@ -1506,84 +1505,84 @@
           "TRAIN_LATE_PROFIT_FACTOR_NOT_ABOVE_1"
         ]
       },
-      "DOUBLE_BOTTOM:BUY_ZONE:CONFIRMED_CANDLE": {
+      "RESISTANCE_FLIP_SUPPORT:BUY_ZONE:CONFIRMED_CANDLE": {
         "all": {
-          "sampleCount": 345,
-          "winRate": 0.4435,
-          "avgNetReturn": 0.004355,
-          "avgGrossReturn": 0.006355,
-          "medianNetReturn": -0.016279,
-          "profitFactor": 1.099,
-          "stopRate": 0.313,
-          "targetRate": 0.1014,
-          "avgHoldDays": 15.99
+          "sampleCount": 30,
+          "winRate": 0.3333,
+          "avgNetReturn": -0.002295,
+          "avgGrossReturn": -0.000295,
+          "medianNetReturn": -0.019895,
+          "profitFactor": 0.901,
+          "stopRate": 0.6667,
+          "targetRate": 0.3333,
+          "avgHoldDays": 2.83
         },
         "train": {
-          "sampleCount": 209,
-          "winRate": 0.4211,
-          "avgNetReturn": -0.004613,
-          "avgGrossReturn": -0.002613,
-          "medianNetReturn": -0.021685,
-          "profitFactor": 0.898,
-          "stopRate": 0.3062,
-          "targetRate": 0.0813,
-          "avgHoldDays": 16.41
+          "sampleCount": 13,
+          "winRate": 0.3846,
+          "avgNetReturn": -0.007141,
+          "avgGrossReturn": -0.005141,
+          "medianNetReturn": -0.02639,
+          "profitFactor": 0.738,
+          "stopRate": 0.6154,
+          "targetRate": 0.3846,
+          "avgHoldDays": 4.38
         },
         "trainEarly": {
-          "sampleCount": 86,
-          "winRate": 0.3605,
-          "avgNetReturn": -0.013884,
-          "avgGrossReturn": -0.011884,
-          "medianNetReturn": -0.021916,
-          "profitFactor": 0.671,
-          "stopRate": 0.2791,
-          "targetRate": 0.0349,
-          "avgHoldDays": 17.52
+          "sampleCount": 4,
+          "winRate": 0.25,
+          "avgNetReturn": -0.020222,
+          "avgGrossReturn": -0.018222,
+          "medianNetReturn": -0.023562,
+          "profitFactor": 0.111,
+          "stopRate": 0.75,
+          "targetRate": 0.25,
+          "avgHoldDays": 2.0
         },
         "trainLate": {
-          "sampleCount": 123,
-          "winRate": 0.4634,
-          "avgNetReturn": 0.001869,
-          "avgGrossReturn": 0.003869,
-          "medianNetReturn": -0.015716,
-          "profitFactor": 1.039,
-          "stopRate": 0.3252,
-          "targetRate": 0.1138,
-          "avgHoldDays": 15.63
+          "sampleCount": 9,
+          "winRate": 0.4444,
+          "avgNetReturn": -0.001327,
+          "avgGrossReturn": 0.000673,
+          "medianNetReturn": -0.02639,
+          "profitFactor": 0.955,
+          "stopRate": 0.5556,
+          "targetRate": 0.4444,
+          "avgHoldDays": 5.44
         },
         "outOfSample": {
-          "sampleCount": 136,
-          "winRate": 0.4779,
-          "avgNetReturn": 0.018136,
-          "avgGrossReturn": 0.020136,
-          "medianNetReturn": -0.003973,
-          "profitFactor": 1.426,
-          "stopRate": 0.3235,
-          "targetRate": 0.1324,
-          "avgHoldDays": 15.35
+          "sampleCount": 17,
+          "winRate": 0.2941,
+          "avgNetReturn": 0.001411,
+          "avgGrossReturn": 0.003411,
+          "medianNetReturn": -0.017554,
+          "profitFactor": 1.07,
+          "stopRate": 0.7059,
+          "targetRate": 0.2941,
+          "avgHoldDays": 1.65
         },
         "qualified": false,
         "rejectionReasons": [
+          "TRAIN_LOW_SAMPLE",
           "TRAIN_NON_POSITIVE_EXPECTANCY",
           "TRAIN_PROFIT_FACTOR_NOT_ABOVE_1",
-          "OUT_OF_SAMPLE_WIN_RATE_BELOW_50",
-          "TRAIN_EARLY_NON_POSITIVE_EXPECTANCY",
-          "TRAIN_EARLY_PROFIT_FACTOR_NOT_ABOVE_1"
+          "OUT_OF_SAMPLE_LOW_SAMPLE",
+          "OUT_OF_SAMPLE_WIN_RATE_BELOW_50"
         ]
       }
     },
     "SIDE": {
       "DOUBLE_BOTTOM:BUY_ZONE": {
         "all": {
-          "sampleCount": 423,
-          "winRate": 0.4184,
-          "avgNetReturn": 0.001207,
-          "avgGrossReturn": 0.003207,
-          "medianNetReturn": -0.018949,
-          "profitFactor": 1.028,
-          "stopRate": 0.2979,
-          "targetRate": 0.1017,
-          "avgHoldDays": 16.27
+          "sampleCount": 424,
+          "winRate": 0.4175,
+          "avgNetReturn": 0.000336,
+          "avgGrossReturn": 0.002336,
+          "medianNetReturn": -0.019565,
+          "profitFactor": 1.008,
+          "stopRate": 0.2995,
+          "targetRate": 0.1014,
+          "avgHoldDays": 16.28
         },
         "train": {
           "sampleCount": 226,
@@ -1619,15 +1618,15 @@
           "avgHoldDays": 16.54
         },
         "outOfSample": {
-          "sampleCount": 197,
-          "winRate": 0.3756,
-          "avgNetReturn": -0.011294,
-          "avgGrossReturn": -0.009294,
-          "medianNetReturn": -0.034357,
-          "profitFactor": 0.777,
-          "stopRate": 0.3503,
-          "targetRate": 0.0914,
-          "avgHoldDays": 15.87
+          "sampleCount": 198,
+          "winRate": 0.3737,
+          "avgNetReturn": -0.013096,
+          "avgGrossReturn": -0.011096,
+          "medianNetReturn": -0.035792,
+          "profitFactor": 0.748,
+          "stopRate": 0.3535,
+          "targetRate": 0.0909,
+          "avgHoldDays": 15.88
         },
         "qualified": false,
         "rejectionReasons": [
@@ -1638,15 +1637,15 @@
       },
       "FAILED_BREAKDOWN:BUY_ZONE": {
         "all": {
-          "sampleCount": 158,
-          "winRate": 0.3418,
-          "avgNetReturn": -0.003639,
-          "avgGrossReturn": -0.001639,
+          "sampleCount": 160,
+          "winRate": 0.3438,
+          "avgNetReturn": -0.003521,
+          "avgGrossReturn": -0.001521,
           "medianNetReturn": -0.021712,
-          "profitFactor": 0.849,
-          "stopRate": 0.6456,
-          "targetRate": 0.3038,
-          "avgHoldDays": 4.75
+          "profitFactor": 0.854,
+          "stopRate": 0.6438,
+          "targetRate": 0.3063,
+          "avgHoldDays": 4.71
         },
         "train": {
           "sampleCount": 88,
@@ -1682,15 +1681,15 @@
           "avgHoldDays": 4.96
         },
         "outOfSample": {
-          "sampleCount": 70,
-          "winRate": 0.3571,
-          "avgNetReturn": -0.002679,
-          "avgGrossReturn": -0.000679,
+          "sampleCount": 72,
+          "winRate": 0.3611,
+          "avgNetReturn": -0.002444,
+          "avgGrossReturn": -0.000444,
           "medianNetReturn": -0.023979,
-          "profitFactor": 0.904,
-          "stopRate": 0.6143,
-          "targetRate": 0.3143,
-          "avgHoldDays": 5.19
+          "profitFactor": 0.911,
+          "stopRate": 0.6111,
+          "targetRate": 0.3194,
+          "avgHoldDays": 5.07
         },
         "qualified": false,
         "rejectionReasons": [
@@ -1707,15 +1706,15 @@
       },
       "FALLING_WEDGE_BREAKOUT:BUY_ZONE": {
         "all": {
-          "sampleCount": 205,
-          "winRate": 0.4146,
-          "avgNetReturn": -0.008736,
-          "avgGrossReturn": -0.006736,
-          "medianNetReturn": -0.027991,
-          "profitFactor": 0.798,
-          "stopRate": 0.3854,
-          "targetRate": 0.1415,
-          "avgHoldDays": 14.01
+          "sampleCount": 206,
+          "winRate": 0.4175,
+          "avgNetReturn": -0.008194,
+          "avgGrossReturn": -0.006194,
+          "medianNetReturn": -0.027501,
+          "profitFactor": 0.81,
+          "stopRate": 0.3835,
+          "targetRate": 0.1456,
+          "avgHoldDays": 13.95
         },
         "train": {
           "sampleCount": 118,
@@ -1751,15 +1750,15 @@
           "avgHoldDays": 13.57
         },
         "outOfSample": {
-          "sampleCount": 87,
-          "winRate": 0.4023,
-          "avgNetReturn": -0.009278,
-          "avgGrossReturn": -0.007278,
-          "medianNetReturn": -0.025697,
-          "profitFactor": 0.786,
-          "stopRate": 0.3678,
-          "targetRate": 0.1034,
-          "avgHoldDays": 14.62
+          "sampleCount": 88,
+          "winRate": 0.4091,
+          "avgNetReturn": -0.008004,
+          "avgGrossReturn": -0.006004,
+          "medianNetReturn": -0.025411,
+          "profitFactor": 0.813,
+          "stopRate": 0.3636,
+          "targetRate": 0.1136,
+          "avgHoldDays": 14.48
         },
         "qualified": false,
         "rejectionReasons": [
@@ -1776,14 +1775,14 @@
       },
       "RESISTANCE_FLIP_SUPPORT:BUY_ZONE": {
         "all": {
-          "sampleCount": 618,
-          "winRate": 0.3188,
-          "avgNetReturn": -0.002106,
-          "avgGrossReturn": -0.000106,
-          "medianNetReturn": -0.01687,
-          "profitFactor": 0.894,
-          "stopRate": 0.6731,
-          "targetRate": 0.3091,
+          "sampleCount": 619,
+          "winRate": 0.3183,
+          "avgNetReturn": -0.002173,
+          "avgGrossReturn": -0.000173,
+          "medianNetReturn": -0.016876,
+          "profitFactor": 0.891,
+          "stopRate": 0.6737,
+          "targetRate": 0.3086,
           "avgHoldDays": 3.52
         },
         "train": {
@@ -1820,15 +1819,15 @@
           "avgHoldDays": 4.19
         },
         "outOfSample": {
-          "sampleCount": 284,
-          "winRate": 0.3275,
-          "avgNetReturn": -0.00391,
-          "avgGrossReturn": -0.00191,
-          "medianNetReturn": -0.017226,
-          "profitFactor": 0.817,
-          "stopRate": 0.669,
-          "targetRate": 0.3204,
-          "avgHoldDays": 3.18
+          "sampleCount": 285,
+          "winRate": 0.3263,
+          "avgNetReturn": -0.004049,
+          "avgGrossReturn": -0.002049,
+          "medianNetReturn": -0.017465,
+          "profitFactor": 0.811,
+          "stopRate": 0.6702,
+          "targetRate": 0.3193,
+          "avgHoldDays": 3.17
         },
         "qualified": false,
         "rejectionReasons": [
@@ -1874,6 +1873,135 @@
           "stopRate": 0.3333,
           "targetRate": 0.0,
           "avgHoldDays": 18.0
+        },
+        "trainLate": {
+          "sampleCount": 7,
+          "winRate": 0.4286,
+          "avgNetReturn": -0.012296,
+          "avgGrossReturn": -0.010296,
+          "medianNetReturn": -0.0563,
+          "profitFactor": 0.702,
+          "stopRate": 0.2857,
+          "targetRate": 0.1429,
+          "avgHoldDays": 16.14
+        },
+        "outOfSample": {
+          "sampleCount": 0,
+          "winRate": 0.0,
+          "avgNetReturn": 0.0,
+          "medianNetReturn": 0.0,
+          "profitFactor": 0.0,
+          "stopRate": 0.0,
+          "targetRate": 0.0,
+          "avgHoldDays": 0.0
+        },
+        "qualified": false,
+        "rejectionReasons": [
+          "TRAIN_LOW_SAMPLE",
+          "TRAIN_NON_POSITIVE_EXPECTANCY",
+          "TRAIN_PROFIT_FACTOR_NOT_ABOVE_1",
+          "OUT_OF_SAMPLE_LOW_SAMPLE",
+          "OUT_OF_SAMPLE_NON_POSITIVE_EXPECTANCY",
+          "OUT_OF_SAMPLE_PROFIT_FACTOR_NOT_ABOVE_1",
+          "OUT_OF_SAMPLE_WIN_RATE_BELOW_50"
+        ]
+      },
+      "DOUBLE_BOTTOM:BUY_ZONE:CONFIRMED_CANDLE": {
+        "all": {
+          "sampleCount": 261,
+          "winRate": 0.4291,
+          "avgNetReturn": -0.000783,
+          "avgGrossReturn": 0.001217,
+          "medianNetReturn": -0.018026,
+          "profitFactor": 0.983,
+          "stopRate": 0.2835,
+          "targetRate": 0.1034,
+          "avgHoldDays": 16.49
+        },
+        "train": {
+          "sampleCount": 143,
+          "winRate": 0.4965,
+          "avgNetReturn": 0.011961,
+          "avgGrossReturn": 0.013961,
+          "medianNetReturn": -0.002,
+          "profitFactor": 1.319,
+          "stopRate": 0.2587,
+          "targetRate": 0.1119,
+          "avgHoldDays": 16.48
+        },
+        "trainEarly": {
+          "sampleCount": 44,
+          "winRate": 0.4773,
+          "avgNetReturn": 0.010579,
+          "avgGrossReturn": 0.012579,
+          "medianNetReturn": -0.00701,
+          "profitFactor": 1.272,
+          "stopRate": 0.2955,
+          "targetRate": 0.0682,
+          "avgHoldDays": 16.98
+        },
+        "trainLate": {
+          "sampleCount": 99,
+          "winRate": 0.5051,
+          "avgNetReturn": 0.012575,
+          "avgGrossReturn": 0.014575,
+          "medianNetReturn": 0.001571,
+          "profitFactor": 1.341,
+          "stopRate": 0.2424,
+          "targetRate": 0.1313,
+          "avgHoldDays": 16.26
+        },
+        "outOfSample": {
+          "sampleCount": 118,
+          "winRate": 0.3475,
+          "avgNetReturn": -0.016227,
+          "avgGrossReturn": -0.014227,
+          "medianNetReturn": -0.040129,
+          "profitFactor": 0.705,
+          "stopRate": 0.3136,
+          "targetRate": 0.0932,
+          "avgHoldDays": 16.5
+        },
+        "qualified": false,
+        "rejectionReasons": [
+          "OUT_OF_SAMPLE_NON_POSITIVE_EXPECTANCY",
+          "OUT_OF_SAMPLE_PROFIT_FACTOR_NOT_ABOVE_1",
+          "OUT_OF_SAMPLE_WIN_RATE_BELOW_50"
+        ]
+      },
+      "V_REVERSAL:BUY_ZONE:CONFIRMED_CANDLE": {
+        "all": {
+          "sampleCount": 14,
+          "winRate": 0.5,
+          "avgNetReturn": -0.019317,
+          "avgGrossReturn": -0.017317,
+          "medianNetReturn": -0.022481,
+          "profitFactor": 0.663,
+          "stopRate": 0.2857,
+          "targetRate": 0.0714,
+          "avgHoldDays": 17.36
+        },
+        "train": {
+          "sampleCount": 14,
+          "winRate": 0.5,
+          "avgNetReturn": -0.019317,
+          "avgGrossReturn": -0.017317,
+          "medianNetReturn": -0.022481,
+          "profitFactor": 0.663,
+          "stopRate": 0.2857,
+          "targetRate": 0.0714,
+          "avgHoldDays": 17.36
+        },
+        "trainEarly": {
+          "sampleCount": 7,
+          "winRate": 0.5714,
+          "avgNetReturn": -0.026337,
+          "avgGrossReturn": -0.024337,
+          "medianNetReturn": 0.038005,
+          "profitFactor": 0.641,
+          "stopRate": 0.2857,
+          "targetRate": 0.0,
+          "avgHoldDays": 18.57
         },
         "trainLate": {
           "sampleCount": 7,
@@ -1976,70 +2104,71 @@
           "TRAIN_LATE_PROFIT_FACTOR_NOT_ABOVE_1"
         ]
       },
-      "V_REVERSAL:BUY_ZONE:CONFIRMED_CANDLE": {
+      "FALLING_WEDGE_BREAKOUT:BUY_ZONE:CONFIRMED_CANDLE": {
         "all": {
-          "sampleCount": 14,
-          "winRate": 0.5,
-          "avgNetReturn": -0.019317,
-          "avgGrossReturn": -0.017317,
-          "medianNetReturn": -0.022481,
-          "profitFactor": 0.663,
-          "stopRate": 0.2857,
-          "targetRate": 0.0714,
-          "avgHoldDays": 17.36
+          "sampleCount": 110,
+          "winRate": 0.3818,
+          "avgNetReturn": -0.00505,
+          "avgGrossReturn": -0.00305,
+          "medianNetReturn": -0.031266,
+          "profitFactor": 0.872,
+          "stopRate": 0.3545,
+          "targetRate": 0.1364,
+          "avgHoldDays": 14.54
         },
         "train": {
-          "sampleCount": 14,
-          "winRate": 0.5,
-          "avgNetReturn": -0.019317,
-          "avgGrossReturn": -0.017317,
-          "medianNetReturn": -0.022481,
-          "profitFactor": 0.663,
-          "stopRate": 0.2857,
-          "targetRate": 0.0714,
-          "avgHoldDays": 17.36
+          "sampleCount": 68,
+          "winRate": 0.3971,
+          "avgNetReturn": -0.001962,
+          "avgGrossReturn": 3.8e-05,
+          "medianNetReturn": -0.033355,
+          "profitFactor": 0.949,
+          "stopRate": 0.3529,
+          "targetRate": 0.1471,
+          "avgHoldDays": 14.51
         },
         "trainEarly": {
-          "sampleCount": 7,
-          "winRate": 0.5714,
-          "avgNetReturn": -0.026337,
-          "avgGrossReturn": -0.024337,
-          "medianNetReturn": 0.038005,
-          "profitFactor": 0.641,
-          "stopRate": 0.2857,
-          "targetRate": 0.0,
-          "avgHoldDays": 18.57
+          "sampleCount": 20,
+          "winRate": 0.3,
+          "avgNetReturn": -0.016818,
+          "avgGrossReturn": -0.014818,
+          "medianNetReturn": -0.039814,
+          "profitFactor": 0.577,
+          "stopRate": 0.25,
+          "targetRate": 0.2,
+          "avgHoldDays": 14.6
         },
         "trainLate": {
-          "sampleCount": 7,
-          "winRate": 0.4286,
-          "avgNetReturn": -0.012296,
-          "avgGrossReturn": -0.010296,
-          "medianNetReturn": -0.0563,
-          "profitFactor": 0.702,
-          "stopRate": 0.2857,
-          "targetRate": 0.1429,
-          "avgHoldDays": 16.14
+          "sampleCount": 48,
+          "winRate": 0.4375,
+          "avgNetReturn": 0.004228,
+          "avgGrossReturn": 0.006228,
+          "medianNetReturn": -0.029958,
+          "profitFactor": 1.111,
+          "stopRate": 0.3958,
+          "targetRate": 0.125,
+          "avgHoldDays": 14.48
         },
         "outOfSample": {
-          "sampleCount": 0,
-          "winRate": 0.0,
-          "avgNetReturn": 0.0,
-          "medianNetReturn": 0.0,
-          "profitFactor": 0.0,
-          "stopRate": 0.0,
-          "targetRate": 0.0,
-          "avgHoldDays": 0.0
+          "sampleCount": 42,
+          "winRate": 0.3571,
+          "avgNetReturn": -0.010049,
+          "avgGrossReturn": -0.008049,
+          "medianNetReturn": -0.025411,
+          "profitFactor": 0.756,
+          "stopRate": 0.3571,
+          "targetRate": 0.119,
+          "avgHoldDays": 14.57
         },
         "qualified": false,
         "rejectionReasons": [
-          "TRAIN_LOW_SAMPLE",
           "TRAIN_NON_POSITIVE_EXPECTANCY",
           "TRAIN_PROFIT_FACTOR_NOT_ABOVE_1",
-          "OUT_OF_SAMPLE_LOW_SAMPLE",
           "OUT_OF_SAMPLE_NON_POSITIVE_EXPECTANCY",
           "OUT_OF_SAMPLE_PROFIT_FACTOR_NOT_ABOVE_1",
-          "OUT_OF_SAMPLE_WIN_RATE_BELOW_50"
+          "OUT_OF_SAMPLE_WIN_RATE_BELOW_50",
+          "TRAIN_EARLY_NON_POSITIVE_EXPECTANCY",
+          "TRAIN_EARLY_PROFIT_FACTOR_NOT_ABOVE_1"
         ]
       },
       "RESISTANCE_FLIP_SUPPORT:BUY_ZONE:CONFIRMED_CANDLE": {
@@ -2108,142 +2237,12 @@
           "OUT_OF_SAMPLE_PROFIT_FACTOR_NOT_ABOVE_1",
           "OUT_OF_SAMPLE_WIN_RATE_BELOW_50"
         ]
-      },
-      "FALLING_WEDGE_BREAKOUT:BUY_ZONE:CONFIRMED_CANDLE": {
-        "all": {
-          "sampleCount": 109,
-          "winRate": 0.3761,
-          "avgNetReturn": -0.00604,
-          "avgGrossReturn": -0.00404,
-          "medianNetReturn": -0.031925,
-          "profitFactor": 0.849,
-          "stopRate": 0.3578,
-          "targetRate": 0.1284,
-          "avgHoldDays": 14.65
-        },
-        "train": {
-          "sampleCount": 68,
-          "winRate": 0.3971,
-          "avgNetReturn": -0.001962,
-          "avgGrossReturn": 3.8e-05,
-          "medianNetReturn": -0.033355,
-          "profitFactor": 0.949,
-          "stopRate": 0.3529,
-          "targetRate": 0.1471,
-          "avgHoldDays": 14.51
-        },
-        "trainEarly": {
-          "sampleCount": 20,
-          "winRate": 0.3,
-          "avgNetReturn": -0.016818,
-          "avgGrossReturn": -0.014818,
-          "medianNetReturn": -0.039814,
-          "profitFactor": 0.577,
-          "stopRate": 0.25,
-          "targetRate": 0.2,
-          "avgHoldDays": 14.6
-        },
-        "trainLate": {
-          "sampleCount": 48,
-          "winRate": 0.4375,
-          "avgNetReturn": 0.004228,
-          "avgGrossReturn": 0.006228,
-          "medianNetReturn": -0.029958,
-          "profitFactor": 1.111,
-          "stopRate": 0.3958,
-          "targetRate": 0.125,
-          "avgHoldDays": 14.48
-        },
-        "outOfSample": {
-          "sampleCount": 41,
-          "winRate": 0.3415,
-          "avgNetReturn": -0.012803,
-          "avgGrossReturn": -0.010803,
-          "medianNetReturn": -0.025697,
-          "profitFactor": 0.696,
-          "stopRate": 0.3659,
-          "targetRate": 0.0976,
-          "avgHoldDays": 14.88
-        },
-        "qualified": false,
-        "rejectionReasons": [
-          "TRAIN_NON_POSITIVE_EXPECTANCY",
-          "TRAIN_PROFIT_FACTOR_NOT_ABOVE_1",
-          "OUT_OF_SAMPLE_NON_POSITIVE_EXPECTANCY",
-          "OUT_OF_SAMPLE_PROFIT_FACTOR_NOT_ABOVE_1",
-          "OUT_OF_SAMPLE_WIN_RATE_BELOW_50",
-          "TRAIN_EARLY_NON_POSITIVE_EXPECTANCY",
-          "TRAIN_EARLY_PROFIT_FACTOR_NOT_ABOVE_1"
-        ]
-      },
-      "DOUBLE_BOTTOM:BUY_ZONE:CONFIRMED_CANDLE": {
-        "all": {
-          "sampleCount": 261,
-          "winRate": 0.4291,
-          "avgNetReturn": 0.000344,
-          "avgGrossReturn": 0.002344,
-          "medianNetReturn": -0.017267,
-          "profitFactor": 1.008,
-          "stopRate": 0.2797,
-          "targetRate": 0.1034,
-          "avgHoldDays": 16.44
-        },
-        "train": {
-          "sampleCount": 143,
-          "winRate": 0.4965,
-          "avgNetReturn": 0.011961,
-          "avgGrossReturn": 0.013961,
-          "medianNetReturn": -0.002,
-          "profitFactor": 1.319,
-          "stopRate": 0.2587,
-          "targetRate": 0.1119,
-          "avgHoldDays": 16.48
-        },
-        "trainEarly": {
-          "sampleCount": 44,
-          "winRate": 0.4773,
-          "avgNetReturn": 0.010579,
-          "avgGrossReturn": 0.012579,
-          "medianNetReturn": -0.00701,
-          "profitFactor": 1.272,
-          "stopRate": 0.2955,
-          "targetRate": 0.0682,
-          "avgHoldDays": 16.98
-        },
-        "trainLate": {
-          "sampleCount": 99,
-          "winRate": 0.5051,
-          "avgNetReturn": 0.012575,
-          "avgGrossReturn": 0.014575,
-          "medianNetReturn": 0.001571,
-          "profitFactor": 1.341,
-          "stopRate": 0.2424,
-          "targetRate": 0.1313,
-          "avgHoldDays": 16.26
-        },
-        "outOfSample": {
-          "sampleCount": 118,
-          "winRate": 0.3475,
-          "avgNetReturn": -0.013736,
-          "avgGrossReturn": -0.011736,
-          "medianNetReturn": -0.036446,
-          "profitFactor": 0.742,
-          "stopRate": 0.3051,
-          "targetRate": 0.0932,
-          "avgHoldDays": 16.38
-        },
-        "qualified": false,
-        "rejectionReasons": [
-          "OUT_OF_SAMPLE_NON_POSITIVE_EXPECTANCY",
-          "OUT_OF_SAMPLE_PROFIT_FACTOR_NOT_ABOVE_1",
-          "OUT_OF_SAMPLE_WIN_RATE_BELOW_50"
-        ]
       }
     }
   },
   "skippedSignals": {
-    "INVALID_OR_GAPPED_THROUGH_STOP": 360,
-    "CHASE_GAP": 686
+    "INVALID_OR_GAPPED_THROUGH_STOP": 361,
+    "CHASE_GAP": 687
   },
   "leakageCheck": {
     "status": "PASS"
