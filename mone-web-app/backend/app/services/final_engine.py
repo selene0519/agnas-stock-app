@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 import csv as _csv_std
 from datetime import date, datetime
+from zoneinfo import ZoneInfo
 from functools import lru_cache
 import os
 import re
@@ -1561,6 +1562,23 @@ _PRECOMP_CACHE: dict[tuple, dict[str, Any]] = {}
 _PRECOMP_CACHE_MTIME: dict[tuple, float] = {}
 
 
+def recommendation_cache_freshness(payload: dict[str, Any], now: datetime | None = None) -> dict[str, Any]:
+    """Report cache age without assuming a missing timestamp means fresh data."""
+    stamp = str(payload.get("precomputedAt") or "").strip()
+    try:
+        generated = datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+        if generated.tzinfo is None:
+            generated = generated.replace(tzinfo=ZoneInfo("Asia/Seoul"))
+        current = now or datetime.now(ZoneInfo("Asia/Seoul"))
+        if current.tzinfo is None:
+            current = current.replace(tzinfo=ZoneInfo("Asia/Seoul"))
+        age_hours = (current - generated).total_seconds() / 3600
+    except (ValueError, TypeError, OverflowError):
+        return {"status": "UNKNOWN", "precomputedAt": stamp or None, "maxAgeHours": 96}
+    status = "FRESH" if -0.25 <= age_hours <= 96 else ("FUTURE" if age_hours < 0 else "STALE")
+    return {"status": status, "precomputedAt": stamp, "ageHours": round(age_hours, 2), "maxAgeHours": 96}
+
+
 def _precompute_path(market: str, mode: str, horizon: str):
     return data.REPO_ROOT / "reports" / "reco_cache" / f"{market}_{mode}_{horizon}.json"
 
@@ -1608,6 +1626,7 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
         _result["items"].sort(key=lambda row: (bool(row.get("recommended")), (_num(row.get("finalRankScore")) or 0.0)), reverse=True)
         _result["count"] = len(_result["items"])
         _result["servedFrom"] = "precompute"
+        _result["cacheFreshness"] = recommendation_cache_freshness(_result)
         _RECO_CACHE[_cache_key] = _result
         _RECO_CACHE_TS[_cache_key] = _now_ts
         return _result

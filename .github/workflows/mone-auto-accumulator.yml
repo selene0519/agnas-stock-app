@@ -21,8 +21,9 @@ defaults:
     shell: bash
 
 concurrency:
-  group: mone-auto-accumulator-${{ github.ref }}
+  group: mone-ledger-writer-${{ github.ref }}
   cancel-in-progress: false
+  queue: max
 
 jobs:
   update:
@@ -65,6 +66,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.ref_name }}
           persist-credentials: true
           token: ${{ secrets.GH_PAT }}
 
@@ -755,32 +757,16 @@ jobs:
           echo "auto-correction: exit $?"
           set -e
 
-      - name: VTJ 자동 캡처 (가상 체결 기록, git 저장용)
-        working-directory: mone-web-app/backend
-        env:
-          PYTHONPATH: .
-        run: |
-          set +e
-          python - <<'PY'
-          import sys, json
-          from pathlib import Path
-          sys.path.insert(0, str(Path.cwd()))
-          from app.services import virtual_trade_journal as vtj
-          result = vtj.run_auto_capture(market="all", evaluate_after=True, source="github-actions")
-          runs = result.get("runs", [])
-          total_added = sum(r.get("added", 0) for r in runs)
-          print(json.dumps(result, ensure_ascii=False, indent=2))
-          print(f"[vtj-capture] 총 {total_added}건 추가됨")
-          PY
-          echo "vtj-capture: exit $?"
-          set -e
+      # Session-specific capture belongs to mone-vtj-capture. Capturing both
+      # markets here would label KR premarket runs as AFTER_CLOSE_TRADE and
+      # could mark the date complete before the actual close.
 
       - name: VTJ 체결 평가 (PENDING → WIN/LOSS, OHLCV 기반)
         working-directory: mone-web-app/backend
         env:
           PYTHONPATH: .
         run: |
-          set +e
+          set -e
           python - <<'PY'
           import sys, json
           from pathlib import Path
@@ -788,9 +774,10 @@ jobs:
           from app.services import virtual_trade_journal as vtj
           result = vtj.evaluate(market="all", limit=500)
           print(json.dumps(result, ensure_ascii=False, indent=2))
+          if result.get("status") in {"ERROR", "FAILED"}:
+              raise SystemExit("VTJ evaluation failed; inspect the preceding diagnostics")
           PY
-          echo "vtj-evaluate: exit $?"
-          set -e
+          echo "vtj-evaluate: completed"
 
       - name: VTJ 주간 과거 리플레이 백필 (walk-forward)
         if: github.event_name == 'schedule'
@@ -838,7 +825,7 @@ jobs:
         env:
           PYTHONPATH: .
         run: |
-          set +e
+          set -e
           python - <<'PY'
           import sys, json
           from pathlib import Path
@@ -854,9 +841,10 @@ jobs:
           result = vtj.auto_self_calibrate(market="all", applied_by="github-actions-vtj-self-learning", apply=True, max_applications=1)
           print("[vtj-self-learning/promotion-gated-auto]")
           print(json.dumps(result, ensure_ascii=False, indent=2))
+          if result.get("status") == "ERROR" or (result.get("applyResult") or {}).get("status") == "ERROR":
+              raise SystemExit("Self-learning failed; inspect the preceding diagnostics")
           PY
-          echo "vtj-self-learning: exit $?"
-          set -e
+          echo "vtj-self-learning: completed"
 
       - name: VTJ 기술지표 소급 채우기 (과거 RSI/거래량 역산)
         run: |
@@ -921,12 +909,11 @@ jobs:
 
       - name: Precompute recommendations (무거운 스코어링을 Actions에서 미리 계산)
         run: |
-          set +e
+          set -e
           # 무료 Render(512MB)에서 실시간 추천이 90초 타임아웃·OOM을 내므로, 전 조합을
           # 여기서 미리 계산해 reports/reco_cache/*.json 으로 커밋한다(런타임은 읽기만).
           python scripts/precompute_recommendations.py --market all --limit 120
-          echo "precompute recommendations: exit $?"
-          set -e
+          echo "precompute recommendations: completed"
 
       - name: Remove local token/cache files before commit
         run: |
@@ -955,20 +942,21 @@ jobs:
         run: |
           BASE="${MONE_BACKEND_URL%/}"
           echo "Render 백엔드 git pull 요청: ${BASE}/api/admin/sync-now"
-          set +e
-          # 데이터가 GitHub에 push된 후 Render 백엔드에 즉시 pull 요청
+          set -e
+          test -n "$MONE_ADMIN_SECRET" || { echo '::error::MONE_ADMIN_SECRET is missing; backend data refresh was not verified'; exit 1; }
+          # A successful HTTP response can still contain a failed git sync.
           curl -sf -X POST "${BASE}/api/admin/sync-now" \
             -H "Content-Type: application/json" \
             -H "x-admin-secret: ${MONE_ADMIN_SECRET}" \
             --max-time 60 \
-            -o /tmp/sync_result.json && cat /tmp/sync_result.json || echo "sync-now 호출 실패 (무시)"
-          set -e
-          echo "Render sync 요청 완료"
+            -o /tmp/sync_result.json
+          python -c 'import json, sys; r=json.load(open("/tmp/sync_result.json", encoding="utf-8")); status=r.get("status"); print("Backend sync status:", status); sys.exit(0 if status == "OK" else 1)'
+          echo "Render git 동기화 확인 완료"
 
       - name: VTJ 커밋 확인 (데이터 git 저장 완료)
         run: |
           echo "VTJ 체결 기록은 Actions runner에서 직접 실행 후 git에 커밋됨."
-          echo "Render 백엔드는 위 sync-now 단계에서 git pull로 최신 데이터를 반영함."
+          echo "Render 백엔드 동기화 결과는 위 sync-now 단계에서 확인됨."
           test -f data/virtual_trade_journal.csv && echo "data/virtual_trade_journal.csv 존재" || echo "data/virtual_trade_journal.csv 없음 (첫 실행 또는 캡처 없음)"
           test -f data/virtual_trade_evaluations.csv && echo "data/virtual_trade_evaluations.csv 존재" || echo "data/virtual_trade_evaluations.csv 없음"
 

@@ -1687,11 +1687,24 @@ function JournalModal({ onClose }: { onClose: () => void }) {
   const [saving, setSaving]     = useState(false);
   const [editId, setEditId]     = useState<string | null>(null);
   const [reviewText, setReviewText] = useState("");
+  const [journalError, setJournalError] = useState("");
 
   useEffect(() => {
     mone.journalGet({ market: "all" })
-      .then((r) => setEntries(Array.isArray(r.items) ? r.items : []))
-      .catch(() => setEntries([]))
+      .then((r) => {
+        if (String(r.status).toUpperCase() === "AUTH_REQUIRED" || r.authRequired) {
+          setJournalError("매매일지는 로그인 후 사용자별로 안전하게 저장됩니다.");
+          setEntries([]);
+          return;
+        }
+        if (String(r.status).toUpperCase() === "ERROR") {
+          setJournalError(r.error || "매매일지를 불러오지 못했습니다.");
+          setEntries([]);
+          return;
+        }
+        setEntries(Array.isArray(r.items) ? r.items : []);
+      })
+      .catch(() => { setJournalError("매매일지를 불러오지 못했습니다."); setEntries([]); })
       .finally(() => setLoading(false));
   }, []);
 
@@ -1705,7 +1718,12 @@ function JournalModal({ onClose }: { onClose: () => void }) {
         memo: form.memo, result: form.result,
         returnPct: Number(form.returnPct) || undefined,
       });
+      if (String(r.status).toUpperCase() !== "OK") {
+        setJournalError(r.error || "로그인 후 매매일지를 저장할 수 있습니다.");
+        return;
+      }
       if (r.entry) setEntries((prev) => [r.entry, ...prev]);
+      setJournalError("");
       setForm({ symbol: "", name: "", action: "BUY", price: "", qty: "", memo: "", review: "", result: "", returnPct: "" });
     } finally {
       setSaving(false);
@@ -1713,13 +1731,21 @@ function JournalModal({ onClose }: { onClose: () => void }) {
   }
 
   async function saveReview(id: string) {
-    await mone.journalUpdate(id, { review: reviewText, result: entries.find((e) => e.id === id)?.result });
+    const result = await mone.journalUpdate(id, { review: reviewText, result: entries.find((e) => e.id === id)?.result });
+    if (String(result?.status).toUpperCase() !== "OK") {
+      setJournalError(result?.error || "복기를 저장하지 못했습니다.");
+      return;
+    }
     setEntries((prev) => prev.map((e) => e.id === id ? { ...e, review: reviewText } : e));
     setEditId(null);
   }
 
   async function deleteEntry(id: string) {
-    await mone.journalDelete(id);
+    const result = await mone.journalDelete(id);
+    if (String(result?.status).toUpperCase() !== "OK") {
+      setJournalError(result?.error || "기록을 삭제하지 못했습니다.");
+      return;
+    }
     setEntries((prev) => prev.filter((e) => e.id !== id));
   }
 
@@ -1733,6 +1759,7 @@ function JournalModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          {journalError && <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">{journalError}</div>}
           {/* 새 기록 입력 */}
           <div className="rounded-xl border border-slate-700 bg-slate-900/50 p-4 space-y-3">
             <div className="text-xs font-semibold text-slate-400">새 기록 추가</div>

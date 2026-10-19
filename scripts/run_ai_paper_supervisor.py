@@ -15,6 +15,7 @@ BACKEND = ROOT / "mone-web-app" / "backend"
 sys.path.insert(0, str(BACKEND))
 
 from app.services import ai_paper_trader, virtual_trade_journal as vtj  # noqa: E402
+from app.services.atomic_io import atomic_write_csv, atomic_write_json, serialized_file_mutation  # noqa: E402
 
 
 EVALUATION_PATH = ROOT / "data" / "virtual_trade_evaluations.csv"
@@ -67,6 +68,7 @@ def _latest_evaluations(rows: list[dict[str, str]], journal_ids: set[str]) -> tu
     }
 
 
+@serialized_file_mutation(vtj.JOURNAL_MUTATION_LOCK)
 def repair_evaluation_ledger() -> dict[str, Any]:
     journal_rows, _ = _read_csv(JOURNAL_PATH)
     evaluation_rows, fields = _read_csv(EVALUATION_PATH)
@@ -76,10 +78,7 @@ def repair_evaluation_ledger() -> dict[str, Any]:
     canonical.sort(key=lambda row: str(row.get("journal_id") or ""))
     changed = len(canonical) != len(evaluation_rows)
     if changed:
-        with EVALUATION_PATH.open("w", encoding="utf-8", newline="") as handle:
-            writer = csv.DictWriter(handle, fieldnames=fields, extrasaction="ignore")
-            writer.writeheader()
-            writer.writerows(canonical)
+        atomic_write_csv(EVALUATION_PATH, canonical, fields)
     return {
         "status": "REPAIRED" if changed else "OK",
         "journalRows": len(journal_rows),
@@ -90,6 +89,7 @@ def repair_evaluation_ledger() -> dict[str, Any]:
     }
 
 
+@serialized_file_mutation(vtj.JOURNAL_MUTATION_LOCK)
 def run_supervisor(market: str = "all", execute: bool = False) -> dict[str, Any]:
     repair = repair_evaluation_ledger()
     evaluation = vtj.evaluate(market=market, limit=500)
@@ -142,8 +142,7 @@ def run_supervisor(market: str = "all", execute: bool = False) -> dict[str, Any]
         market_payload.pop("byMarket", None)
         by_market[normalized_market] = market_payload
     payload["byMarket"] = by_market
-    SUPERVISOR_STATUS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    SUPERVISOR_STATUS_PATH.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    atomic_write_json(SUPERVISOR_STATUS_PATH, payload)
     return payload
 
 

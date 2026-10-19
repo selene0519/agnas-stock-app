@@ -11,6 +11,7 @@ import threading
 import time
 from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -20,6 +21,7 @@ import pandas as pd
 from app.services import data_loader as data
 from app.services import final_engine
 from app.services import runtime_limits
+from app.services.atomic_io import atomic_write_csv, atomic_write_json, serialized_file_mutation
 
 DATA_DIR = data.REPO_ROOT / "data"
 REPORTS_DIR = data.REPO_ROOT / "reports"
@@ -34,6 +36,7 @@ HISTORY_EVALUATION_CSV = DATA_DIR / "history" / "virtual_operation_evaluation.cs
 VIRTUAL_VALIDATION_RESULTS_CSV = REPORTS_DIR / "virtual_validation_results.csv"
 HISTORICAL_CALIBRATION_REPORT_JSON = REPORTS_DIR / "historical_strategy_calibration.json"
 CALIBRATION_PROMOTION_JSON = REPORTS_DIR / "self_correction_promotion.json"
+JOURNAL_MUTATION_LOCK = DATA_DIR / ".virtual-trade-journal.lock"
 
 MARKETS = {"kr", "us"}
 MODES = {"conservative", "balanced", "aggressive"}
@@ -493,11 +496,7 @@ def _write_path(path: Path) -> Path:
 
 def _write_rows(path: Path, rows: list[dict[str, Any]], columns: list[str]) -> None:
     path = _write_path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=columns, extrasaction="ignore")
-        writer.writeheader()
-        writer.writerows(rows)
+    atomic_write_csv(path, rows, columns)
 
 
 def _safe_float(value: Any) -> float | None:
@@ -1040,6 +1039,7 @@ def _relative(path: Path) -> str:
         return path.as_posix()
 
 
+@serialized_file_mutation(JOURNAL_MUTATION_LOCK)
 def _append_new_snapshots(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], int]:
     existing = _read_journal_rows()
     seen = {str(row.get("journal_id")) for row in existing}
@@ -1064,6 +1064,7 @@ def _append_new_snapshots(rows: list[dict[str, Any]]) -> tuple[list[dict[str, An
     return added, duplicates
 
 
+@serialized_file_mutation(JOURNAL_MUTATION_LOCK)
 def capture(
     market: str = "kr",
     mode: str = "balanced",
@@ -1894,6 +1895,7 @@ def _merge_evaluations(journal_rows: list[dict[str, Any]]) -> list[dict[str, Any
     return merged
 
 
+@serialized_file_mutation(JOURNAL_MUTATION_LOCK)
 def evaluate(
     market: str = "all",
     mode: str = "all",
@@ -2789,6 +2791,7 @@ def _attach_approval_state(suggestions: list[dict[str, Any]]) -> list[dict[str, 
     return out
 
 
+@serialized_file_mutation(JOURNAL_MUTATION_LOCK)
 def review_calibration_suggestion(
     suggestion_id: str,
     decision: str = "APPROVED",
@@ -3408,6 +3411,7 @@ def _calibration_promotion_verdict(
     }
 
 
+@serialized_file_mutation(JOURNAL_MUTATION_LOCK)
 def apply_approved_calibrations(
     applied_by: str = "local_admin",
     approval_ids: list[str] | None = None,
@@ -3951,11 +3955,38 @@ def _write_self_learning_report(run: dict[str, Any]) -> None:
             "latest": run,
             "runs": runs[:50],
         }
-        SELF_LEARNING_STATUS_JSON.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        atomic_write_json(SELF_LEARNING_STATUS_JSON, payload)
     except Exception:
         pass
 
 
+def _learning_progress(quality: dict[str, Any], blocked: list[dict[str, Any]], eligible: int, applied: int, enabled: bool) -> dict[str, Any]:
+    """Distinguish a successful scheduler invocation from learning progress."""
+    gate_blockers = [
+        {"name": gate.get("name"), "status": gate.get("status"), "value": gate.get("value"), "target": gate.get("target")}
+        for gate in (quality.get("gates") or []) if gate.get("status") != "PASS"
+    ]
+    reason_counts = Counter(str(row.get("reason") or "UNKNOWN") for row in blocked)
+    if not enabled:
+        state = "DISABLED"
+    elif applied:
+        state = "APPLIED"
+    elif eligible:
+        state = "AWAITING_PROMOTION"
+    else:
+        state = "COLLECTING_EVIDENCE"
+    return {
+        "state": state,
+        "eligibleCount": eligible,
+        "appliedThisRun": applied,
+        "identityWindowSamples": int(quality.get("currentIdentityWindowSamples") or 0),
+        "distinctSignalDates": int(quality.get("distinctSignalDates") or 0),
+        "gateBlockers": gate_blockers,
+        "suggestionBlockers": [{"reason": reason, "count": count} for reason, count in reason_counts.most_common()],
+    }
+
+
+@serialized_file_mutation(JOURNAL_MUTATION_LOCK)
 def auto_self_calibrate(
     market: str = "all",
     applied_by: str = "auto_self_learning",
@@ -4045,6 +4076,7 @@ def auto_self_calibrate(
         "blocked": blocked[:20],
         "evaluated": evaluated[:50],
     }
+    result["learningProgress"] = _learning_progress(quality_before, blocked, len(eligible), result["applied"], auto_apply_enabled)
     _write_self_learning_report(result)
     return result
 
@@ -4071,6 +4103,7 @@ def self_learning_status(market: str = "all") -> dict[str, Any]:
     quality = _self_learning_quality(market)
     report = _read_self_learning_report()
     performance_gate = calibration_performance_gate(market=market, auto_rollback=False)
+    blocked = [item for item in evaluated if _upper(item.get("status")) == "SUGGESTED" and not item.get("eligible")]
     return {
         "status": "OK",
         "generatedAt": _now_iso(),
@@ -4089,8 +4122,9 @@ def self_learning_status(market: str = "all") -> dict[str, Any]:
         "lastApplications": applications[:8],
         "lastSelfLearningRun": report.get("latest"),
         "performanceGate": performance_gate,
+        "learningProgress": _learning_progress(quality, blocked, len(eligible), 0, bool(AUTO_CALIBRATION_POLICY.get("enabled"))),
         "eligible": eligible[:12],
-        "blocked": [item for item in evaluated if _upper(item.get("status")) == "SUGGESTED" and not item.get("eligible")][:12],
+        "blocked": blocked[:12],
     }
 
 
@@ -4119,6 +4153,11 @@ def self_learning_summary(market: str = "all") -> dict[str, Any]:
         "appliedCount": persisted.get("appliedCount"),
         "lastSelfLearningRun": latest or None,
         "performanceGate": persisted.get("performanceGate") or {"status": "DEFERRED"},
+        "learningProgress": latest.get("learningProgress") or _learning_progress(
+            persisted.get("quality") or {}, latest.get("blocked") or [],
+            int(persisted.get("eligibleAutoCount") or 0), int(latest.get("applied") or 0),
+            bool(AUTO_CALIBRATION_POLICY.get("enabled")),
+        ),
         "summaryOnly": True,
     }
 
@@ -4553,7 +4592,7 @@ def _journal_operational_verdict(
     )
     runs = [row for row in (auto_status.get("runs") or []) if isinstance(row, dict)]
     run_statuses = {_upper(row.get("status")) for row in runs}
-    allowed_run_statuses = {"OK", "NO_CANDIDATES", "SKIPPED_MARKET_CLOSED"}
+    allowed_run_statuses = {"OK", "NO_CANDIDATES", "SKIPPED_MARKET_CLOSED", "SKIPPED_DUPLICATE"}
     auto_ok = (
         bool(auto_status.get("enabled", True))
         and _upper(auto_status.get("status") or "UNKNOWN") == "OK"
@@ -4561,7 +4600,24 @@ def _journal_operational_verdict(
         and run_statuses.issubset(allowed_run_statuses)
     )
     added = sum(int(float(row.get("added") or 0)) for row in runs)
-    capture_activity = "CAPTURED" if added else ("NO_ELIGIBLE_CANDIDATES" if "NO_CANDIDATES" in run_statuses else "MARKET_CLOSED")
+    selected = sum(
+        int(float(row.get("selected") or 0)) + int(float(row.get("researchSelected") or 0))
+        for row in runs
+    )
+    duplicate_count = sum(
+        sum(int(float(item.get("duplicates") or 0)) for item in (row.get("items") or []) if isinstance(item, dict))
+        for row in runs
+    )
+    if added:
+        capture_activity = "CAPTURED"
+    elif "SKIPPED_DUPLICATE" in run_statuses or duplicate_count or selected:
+        capture_activity = "ALREADY_RECORDED"
+    elif "NO_CANDIDATES" in run_statuses:
+        capture_activity = "NO_ELIGIBLE_CANDIDATES"
+    elif run_statuses and run_statuses.issubset({"SKIPPED_MARKET_CLOSED"}):
+        capture_activity = "MARKET_CLOSED"
+    else:
+        capture_activity = "NO_NEW_ROWS"
     recording_ok = file_ok and len(raw_journal_rows) > 0 and duplicate_ok and auto_ok
     evaluation_ok = (
         len(evaluation_rows) > 0
@@ -4585,6 +4641,8 @@ def _journal_operational_verdict(
         next_actions.append("Restore required journal/evaluation files before using self-learning decisions.")
     if auto_ok and capture_activity == "NO_ELIGIBLE_CANDIDATES":
         caveats.append("The latest capture run completed but no recommendation passed the existing quality gates.")
+    if auto_ok and capture_activity == "ALREADY_RECORDED":
+        caveats.append("Eligible recommendations were already present; duplicate protection prevented new rows.")
     if not auto_ok:
         next_actions.append("Restore the scheduled journal capture run before relying on recording status.")
     if unexpected_open:
@@ -4612,6 +4670,8 @@ def _journal_operational_verdict(
             "lastRunAt": auto_status.get("lastRunAt"),
             "runStatuses": sorted(run_statuses),
             "added": added,
+            "selected": selected,
+            "duplicates": duplicate_count,
         },
         "summary": (
             "Journal capture and evaluation are operating normally; open rows are expected pending evaluations."
@@ -4722,6 +4782,7 @@ def ops_dashboard(market: str = "all") -> dict[str, Any]:
     }
 
 
+@serialized_file_mutation(JOURNAL_MUTATION_LOCK)
 def rollback_self_learning(version: int | None = None, requested_by: str = "local_admin") -> dict[str, Any]:
     try:
         from app.engine import correction_store
@@ -4793,6 +4854,7 @@ def rollback_self_learning(version: int | None = None, requested_by: str = "loca
     }
 
 
+@serialized_file_mutation(JOURNAL_MUTATION_LOCK)
 def upgrade_to_manual_reviewed(
     journal_id: str,
     reviewed_by: str = "local_admin",
@@ -4985,6 +5047,7 @@ def auto_capture_enabled() -> bool:
     return runtime_limits.env_bool("MONE_VTJ_AUTO_CAPTURE", True)
 
 
+@serialized_file_mutation(JOURNAL_MUTATION_LOCK)
 def run_auto_capture(
     market: str = "all",
     source_type: str = "FORWARD_PAPER_TRADE",
@@ -5240,16 +5303,21 @@ def _auto_trade_date(market: str, now: datetime, journal_session: str = DEFAULT_
     return now.date().isoformat()
 
 
+@lru_cache(maxsize=2048)
 def _is_trading_day(market: str, trade_date: str) -> bool:
     try:
         d = date.fromisoformat(str(trade_date)[:10])
     except Exception:
         return False
-    if d.weekday() >= 5:
+    if market not in MARKETS or d.weekday() >= 5:
         return False
-    if market == "us" and d.isoformat() in US_MARKET_HOLIDAYS_2026:
-        return False
-    return True
+    # A hard-coded one-year holiday list silently treats future holidays and
+    # Korean exchange closures as trading days. Fail closed if the maintained
+    # exchange calendar is unavailable instead of recording a false session.
+    import pandas_market_calendars as market_calendars
+
+    calendar = market_calendars.get_calendar("XKRX" if market == "kr" else "NYSE")
+    return not calendar.schedule(start_date=d.isoformat(), end_date=d.isoformat()).empty
 
 
 def _read_auto_status() -> dict[str, Any]:
@@ -5263,8 +5331,7 @@ def _read_auto_status() -> dict[str, Any]:
 
 def _write_auto_status(status: dict[str, Any]) -> None:
     try:
-        AUTO_CAPTURE_STATUS_JSON.parent.mkdir(parents=True, exist_ok=True)
-        AUTO_CAPTURE_STATUS_JSON.write_text(json.dumps(status, ensure_ascii=False, indent=2), encoding="utf-8")
+        atomic_write_json(AUTO_CAPTURE_STATUS_JSON, status)
     except Exception:
         pass
 
@@ -6259,7 +6326,7 @@ def historical_strategy_calibration(
         ],
     }
     try:
-        HISTORICAL_CALIBRATION_REPORT_JSON.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        atomic_write_json(HISTORICAL_CALIBRATION_REPORT_JSON, payload)
     except Exception:
         pass
     return payload
@@ -6454,7 +6521,7 @@ def attribution_feedback(market: str = "all") -> dict[str, Any]:
     }
     try:
         _FEEDBACK_JSON.parent.mkdir(parents=True, exist_ok=True)
-        _FEEDBACK_JSON.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+        atomic_write_json(_FEEDBACK_JSON, result)
     except Exception:
         pass
     return result

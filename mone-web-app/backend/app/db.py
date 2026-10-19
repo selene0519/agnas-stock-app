@@ -6,10 +6,13 @@ DATABASE_URL 환경변수 있으면 → PostgreSQL (Supabase)
 from __future__ import annotations
 
 import os
+import json
+import math
 import re
 import sqlite3
 import threading
 import time
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +22,9 @@ from typing import Any
 # user_id 단위로 직렬화한다 (payload가 kr/us를 섞어 보낼 수 있어 market은 키에서 제외).
 _HOLDINGS_LOCKS: dict[str, threading.Lock] = {}
 _HOLDINGS_LOCKS_GUARD = threading.Lock()
+_JOURNAL_LOCKS: dict[str, threading.Lock] = {}
+_JOURNAL_LOCKS_GUARD = threading.Lock()
+_SQLITE_JOURNAL_LOCK = threading.RLock()
 
 
 def holdings_lock(user_id: str) -> threading.Lock:
@@ -27,6 +33,15 @@ def holdings_lock(user_id: str) -> threading.Lock:
         if lock is None:
             lock = threading.Lock()
             _HOLDINGS_LOCKS[user_id] = lock
+        return lock
+
+
+def journal_lock(user_id: str) -> threading.Lock:
+    with _JOURNAL_LOCKS_GUARD:
+        lock = _JOURNAL_LOCKS.get(user_id)
+        if lock is None:
+            lock = threading.Lock()
+            _JOURNAL_LOCKS[user_id] = lock
         return lock
 
 
@@ -124,6 +139,16 @@ def _pg_init_schema():
                 updated_at BIGINT NOT NULL,
                 PRIMARY KEY (user_id, market, symbol)
             );
+            CREATE TABLE IF NOT EXISTS user_journal (
+                user_id   TEXT NOT NULL,
+                id        TEXT NOT NULL,
+                market    TEXT NOT NULL CHECK(market IN ('kr','us')),
+                created_at TEXT NOT NULL,
+                payload   JSONB NOT NULL DEFAULT '{}'::jsonb,
+                PRIMARY KEY (user_id, id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_user_journal_recent
+                ON user_journal (user_id, created_at DESC);
             CREATE TABLE IF NOT EXISTS broker_connections (
                 user_id        TEXT NOT NULL,
                 broker         TEXT NOT NULL,
@@ -145,6 +170,7 @@ def _pg_init_schema():
             -- ENABLE ROW LEVEL SECURITY는 멱등이라 매 부팅 반복 실행해도 안전하다.
             ALTER TABLE user_holdings ENABLE ROW LEVEL SECURITY;
             ALTER TABLE user_watchlist ENABLE ROW LEVEL SECURITY;
+            ALTER TABLE user_journal ENABLE ROW LEVEL SECURITY;
             ALTER TABLE broker_connections ENABLE ROW LEVEL SECURITY;
             -- supabase_db.py(REST 동기화)가 쓰는 수동 생성 테이블. 같은 public
             -- 스키마라 여기서 함께 RLS를 건다(없으면 IF EXISTS로 무시). REST 접근은
@@ -271,6 +297,81 @@ def _pg_save_watchlist(uid: str, items: list[dict]) -> int:
     finally:
         _pg_release(conn)
 
+
+def _pg_get_journal(uid: str, market: str, limit: int) -> list[dict]:
+    conn = _pg_conn()
+    try:
+        with conn.cursor() as cur:
+            if market == "all":
+                cur.execute(
+                    "SELECT payload FROM user_journal WHERE user_id=%s ORDER BY created_at DESC LIMIT %s",
+                    (uid, limit),
+                )
+            else:
+                cur.execute(
+                    "SELECT payload FROM user_journal WHERE user_id=%s AND market=%s ORDER BY created_at DESC LIMIT %s",
+                    (uid, market, limit),
+                )
+            return [_decode_journal_payload(row[0]) for row in cur.fetchall()]
+    finally:
+        conn.rollback()
+        _pg_release(conn)
+
+
+def _pg_add_journal(uid: str, item: dict) -> dict:
+    conn = _pg_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO user_journal (user_id,id,market,created_at,payload) VALUES (%s,%s,%s,%s,%s::jsonb)",
+                (uid, item["id"], item["market"], item["createdAt"], json.dumps(item, ensure_ascii=False)),
+            )
+        conn.commit()
+        return item
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        _pg_release(conn)
+
+
+def _pg_update_journal(uid: str, entry_id: str, changes: dict) -> dict | None:
+    conn = _pg_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT payload FROM user_journal WHERE user_id=%s AND id=%s FOR UPDATE", (uid, entry_id))
+            row = cur.fetchone()
+            if row is None:
+                conn.rollback()
+                return None
+            item = _journal_item(changes, _decode_journal_payload(row[0]))
+            cur.execute(
+                "UPDATE user_journal SET market=%s,payload=%s::jsonb WHERE user_id=%s AND id=%s",
+                (item.get("market", "kr"), json.dumps(item, ensure_ascii=False), uid, entry_id),
+            )
+        conn.commit()
+        return item
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        _pg_release(conn)
+
+
+def _pg_delete_journal(uid: str, entry_id: str) -> bool:
+    conn = _pg_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM user_journal WHERE user_id=%s AND id=%s", (uid, entry_id))
+            deleted = cur.rowcount > 0
+        conn.commit()
+        return deleted
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        _pg_release(conn)
+
 def _pg_holding_row(r) -> dict:
     return {
         "market": r[0], "symbol": r[1], "name": r[2],
@@ -326,6 +427,13 @@ def _sqlite_get_conn() -> sqlite3.Connection:
             name TEXT NOT NULL DEFAULT '', memo TEXT DEFAULT '', updated_at INTEGER NOT NULL,
             PRIMARY KEY (user_id, market, symbol)
         );
+        CREATE TABLE IF NOT EXISTS user_journal (
+            user_id TEXT NOT NULL, id TEXT NOT NULL, market TEXT NOT NULL,
+            created_at TEXT NOT NULL, payload_json TEXT NOT NULL,
+            PRIMARY KEY (user_id, id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_user_journal_recent
+            ON user_journal (user_id, created_at DESC);
         CREATE TABLE IF NOT EXISTS broker_connections (
             user_id TEXT NOT NULL, broker TEXT NOT NULL,
             connected INTEGER NOT NULL DEFAULT 1,
@@ -443,9 +551,103 @@ def _sqlite_save_watchlist(uid: str, items: list[dict]) -> int:
     return saved
 
 
+def _sqlite_get_journal(uid: str, market: str, limit: int) -> list[dict]:
+    conn = _sqlite_get_conn()
+    if market == "all":
+        rows = conn.execute(
+            "SELECT payload_json FROM user_journal WHERE user_id=? ORDER BY created_at DESC LIMIT ?",
+            (uid, limit),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT payload_json FROM user_journal WHERE user_id=? AND market=? ORDER BY created_at DESC LIMIT ?",
+            (uid, market, limit),
+        ).fetchall()
+    return [_decode_journal_payload(row["payload_json"]) for row in rows]
+
+
+def _sqlite_add_journal(uid: str, item: dict) -> dict:
+    conn = _sqlite_get_conn()
+    conn.execute(
+        "INSERT INTO user_journal (user_id,id,market,created_at,payload_json) VALUES (?,?,?,?,?)",
+        (uid, item["id"], item["market"], item["createdAt"], json.dumps(item, ensure_ascii=False)),
+    )
+    conn.commit()
+    return item
+
+
+def _sqlite_update_journal(uid: str, entry_id: str, changes: dict) -> dict | None:
+    conn = _sqlite_get_conn()
+    row = conn.execute(
+        "SELECT payload_json FROM user_journal WHERE user_id=? AND id=?", (uid, entry_id)
+    ).fetchone()
+    if row is None:
+        return None
+    item = _journal_item(changes, _decode_journal_payload(row["payload_json"]))
+    conn.execute(
+        "UPDATE user_journal SET market=?,payload_json=? WHERE user_id=? AND id=?",
+        (item.get("market", "kr"), json.dumps(item, ensure_ascii=False), uid, entry_id),
+    )
+    conn.commit()
+    return item
+
+
+def _sqlite_delete_journal(uid: str, entry_id: str) -> bool:
+    conn = _sqlite_get_conn()
+    cur = conn.execute("DELETE FROM user_journal WHERE user_id=? AND id=?", (uid, entry_id))
+    conn.commit()
+    return cur.rowcount > 0
+
+
 # ══════════════════════════════════════════════════════════════════════
 # 공개 API (main.py에서 사용)
 # ══════════════════════════════════════════════════════════════════════
+
+def _decode_journal_payload(raw: Any) -> dict:
+    if isinstance(raw, dict):
+        return dict(raw)
+    try:
+        value = json.loads(str(raw or "{}"))
+        return value if isinstance(value, dict) else {}
+    except Exception:
+        return {}
+
+
+def _journal_item(payload: dict, existing: dict | None = None) -> dict:
+    base = dict(existing or {})
+    now = time.strftime("%Y-%m-%d %H:%M:%S")
+    market = "us" if str(payload.get("market", base.get("market", "kr"))).lower() == "us" else "kr"
+    tags = payload.get("tags", base.get("tags", []))
+    if isinstance(tags, str):
+        try:
+            parsed_tags = json.loads(tags)
+            tags = parsed_tags if isinstance(parsed_tags, list) else []
+        except Exception:
+            tags = []
+    if not isinstance(tags, list):
+        tags = []
+    item = {
+        "id": str(base.get("id") or uuid.uuid4().hex[:16]),
+        "date": str(payload.get("date", base.get("date") or now[:10])).strip()[:10],
+        "market": market,
+        "symbol": str(payload.get("symbol", base.get("symbol", ""))).strip()[:32],
+        "name": str(payload.get("name", base.get("name", ""))).strip()[:120],
+        "action": str(payload.get("action", base.get("action", "NOTE"))).strip().upper()[:16],
+        "price": _journal_number(payload.get("price", base.get("price", 0))),
+        "qty": _journal_number(payload.get("qty", base.get("qty", 0))),
+        "memo": str(payload.get("memo", base.get("memo", ""))).strip()[:2000],
+        "review": str(payload.get("review", base.get("review", ""))).strip()[:4000],
+        "result": str(payload.get("result", base.get("result", "PENDING"))).strip().upper()[:32],
+        "returnPct": _journal_number(payload.get("returnPct", base.get("returnPct", 0))),
+        "tags": tags[:20],
+        "createdAt": str(base.get("createdAt") or now),
+    }
+    return item
+
+
+def _journal_number(value: Any) -> float:
+    number = _to_float(value)
+    return number if math.isfinite(number) else 0.0
 
 def sanitize_uid(raw: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_\-]", "", str(raw or ""))[:64]
@@ -497,6 +699,57 @@ def save_watchlist(user_id: str, items: list[dict]) -> int:
     except Exception as e:
         print(f"[db] save_watchlist error: {e}")
         return 0
+
+
+def get_journal(user_id: str, market: str = "all", limit: int = 200) -> list[dict]:
+    uid = sanitize_uid(user_id)
+    if not uid:
+        return []
+    normalized_market = str(market or "all").lower()
+    if normalized_market not in {"kr", "us", "all"}:
+        normalized_market = "all"
+    bounded_limit = max(1, min(int(limit or 200), 1000))
+    if _use_postgres():
+        return _pg_get_journal(uid, normalized_market, bounded_limit)
+    with _SQLITE_JOURNAL_LOCK:
+        return _sqlite_get_journal(uid, normalized_market, bounded_limit)
+
+
+def add_journal(user_id: str, payload: dict) -> dict:
+    uid = sanitize_uid(user_id)
+    if not uid:
+        raise ValueError("authenticated user id is required")
+    item = _journal_item(payload)
+    with journal_lock(uid):
+        if _use_postgres():
+            return _pg_add_journal(uid, item)
+        with _SQLITE_JOURNAL_LOCK:
+            return _sqlite_add_journal(uid, item)
+
+
+def update_journal(user_id: str, entry_id: str, payload: dict) -> dict | None:
+    uid = sanitize_uid(user_id)
+    entry_id = str(entry_id or "").strip()
+    if not uid or not entry_id:
+        return None
+    allowed = {key: payload[key] for key in ("memo", "review", "result", "returnPct", "tags") if key in payload}
+    with journal_lock(uid):
+        if _use_postgres():
+            return _pg_update_journal(uid, entry_id, allowed)
+        with _SQLITE_JOURNAL_LOCK:
+            return _sqlite_update_journal(uid, entry_id, allowed)
+
+
+def delete_journal(user_id: str, entry_id: str) -> bool:
+    uid = sanitize_uid(user_id)
+    entry_id = str(entry_id or "").strip()
+    if not uid or not entry_id:
+        return False
+    with journal_lock(uid):
+        if _use_postgres():
+            return _pg_delete_journal(uid, entry_id)
+        with _SQLITE_JOURNAL_LOCK:
+            return _sqlite_delete_journal(uid, entry_id)
 
 def migrate_user_data(from_user_id: str, to_user_id: str) -> dict:
     """익명 브라우저 ID로 저장된 보유/관심종목을 로그인 후 실제 사용자 ID로 이전한다.

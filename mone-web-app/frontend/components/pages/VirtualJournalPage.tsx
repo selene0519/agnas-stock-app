@@ -77,6 +77,14 @@ function fmtNum(value: any, suffix = "") {
   return `${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}${suffix}`;
 }
 
+function requireActionOk(result: any, fallback: string) {
+  const status = String(result?.status || "").toUpperCase();
+  if (status === "ERROR" || status === "AUTH_REQUIRED") {
+    throw new Error(result?.error || result?.message || fallback);
+  }
+  return result;
+}
+
 function toneForOutcome(outcome: string) {
   return toneClassName(outcomeTone(outcome));
 }
@@ -652,19 +660,19 @@ export default function VirtualJournalPage() {
         const targetMarket = market === "all" ? "kr" : market;
         const targetMode = mode === "all" ? "balanced" : mode;
         const targetHorizon = horizon === "all" ? "swing" : horizon;
-        await mone.virtualTradeCapture({ market: targetMarket, mode: targetMode, horizon: targetHorizon, journalSession: actionSession, limit: 5 });
+        requireActionOk(await mone.virtualTradeCapture({ market: targetMarket, mode: targetMode, horizon: targetHorizon, journalSession: actionSession, limit: 5 }), "일지 캡처 실패");
       } else if (kind === "evaluate") {
-        await mone.virtualTradeEvaluate({ ...scope, limit: 500 });
+        requireActionOk(await mone.virtualTradeEvaluate({ ...scope, limit: 500 }), "일지 평가 실패");
       } else if (kind === "replay") {
         const targetMarket = market === "all" ? "kr" : market;
         const targetMode = mode === "all" ? "balanced" : mode;
         const targetHorizon = horizon === "all" ? "swing" : horizon;
-        await mone.journalHistoricalReplay({ market: targetMarket, mode: targetMode, horizon: targetHorizon, asOfDate: replayDate, limit: 5, evaluateAfter: true });
+        requireActionOk(await mone.journalHistoricalReplay({ market: targetMarket, mode: targetMode, horizon: targetHorizon, asOfDate: replayDate, limit: 5, evaluateAfter: true }), "과거 리플레이 실패");
       } else if (kind === "backfill") {
         const targetMarket = market === "all" ? "kr" : market;
         const targetMode = mode === "all" ? "balanced" : mode;
         const targetHorizon = horizon === "all" ? "swing" : horizon;
-        await mone.journalHistoricalReplayBackfill({ market: targetMarket, mode: targetMode, horizon: targetHorizon, startDate: replayDate, stepDays: 20, limit: 5, maxRuns: 24, evaluateAfter: true });
+        requireActionOk(await mone.journalHistoricalReplayBackfill({ market: targetMarket, mode: targetMode, horizon: targetHorizon, startDate: replayDate, stepDays: 20, limit: 5, maxRuns: 24, evaluateAfter: true }), "과거 백필 실패");
       } else if (kind === "analog") {
         const targetMarket = market === "all" ? "kr" : market;
         const targetMode = mode === "all" ? "balanced" : mode;
@@ -673,9 +681,9 @@ export default function VirtualJournalPage() {
         if (res.status === "ERROR") throw new Error(res.error || "market analog replay failed");
         setAnalogData(res);
       } else if (kind === "self-calibrate") {
-        await mone.journalSelfLearningAutoCalibrate({ market, appliedBy: "auto_self_learning", apply: true, maxApplications: 4 });
+        requireActionOk(await mone.journalSelfLearningAutoCalibrate({ market, appliedBy: "auto_self_learning", apply: true, maxApplications: 4 }), "자동보정 실패");
       } else {
-        await mone.journalAutoCaptureRun({ market, journalSession: actionSession, limit: 5, evaluateAfter: actionSession === "AFTER_CLOSE_TRADE", force: true });
+        requireActionOk(await mone.journalAutoCaptureRun({ market, journalSession: actionSession, limit: 5, evaluateAfter: actionSession === "AFTER_CLOSE_TRADE", force: true }), "자동수집 실패");
       }
       await load();
     } catch (err) {
@@ -709,7 +717,7 @@ export default function VirtualJournalPage() {
     setBusy(`review:${journalId}`);
     setError("");
     try {
-      await mone.journalTradeReview(journalId, { reviewedBy: "local_admin" });
+      requireActionOk(await mone.journalTradeReview(journalId, { reviewedBy: "local_admin" }), "검토 처리 실패");
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -723,7 +731,7 @@ export default function VirtualJournalPage() {
     setBusy(`${decision}:${item.suggestionId}`);
     setError("");
     try {
-      await mone.journalCalibrationApprove(item.suggestionId, { decision, reviewedBy: "local_admin" });
+      requireActionOk(await mone.journalCalibrationApprove(item.suggestionId, { decision, reviewedBy: "local_admin" }), "보정안 검토 실패");
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -736,7 +744,7 @@ export default function VirtualJournalPage() {
     setBusy("apply-approved");
     setError("");
     try {
-      await mone.journalCalibrationApplyApproved({ appliedBy: "local_admin" });
+      requireActionOk(await mone.journalCalibrationApplyApproved({ appliedBy: "local_admin" }), "승인 보정 적용 실패");
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -749,7 +757,7 @@ export default function VirtualJournalPage() {
     setBusy("self-rollback");
     setError("");
     try {
-      await mone.journalSelfLearningRollback({ requestedBy: "local_admin" });
+      requireActionOk(await mone.journalSelfLearningRollback({ requestedBy: "local_admin" }), "보정 롤백 실패");
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -2896,6 +2904,24 @@ export default function VirtualJournalPage() {
               <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-[11px] text-emerald-200">
                 Self-learning guarded. Eligible auto {selfLearningData?.eligibleAutoCount ?? 0} · low sample {selfLearningData?.lowSampleCount ?? 0} · applied {selfLearningData?.appliedCount ?? 0} · correction v{selfLearningData?.correctionVersion ?? 0}
               </div>
+              {selfLearningData?.learningProgress && (
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-[12px] text-amber-100">
+                  <div className="font-semibold">
+                    {selfLearningData.learningProgress.state === "COLLECTING_EVIDENCE" ? "자가보정 대기: 검증 표본 축적 중" :
+                      selfLearningData.learningProgress.state === "AWAITING_PROMOTION" ? "자가보정 후보 검증 및 승인 대기" :
+                        selfLearningData.learningProgress.state === "APPLIED" ? "이번 실행에서 검증된 보정 적용" : "자가보정 비활성"}
+                  </div>
+                  <div className="mt-1 text-slate-300">
+                    현재 식별 기준 평가 {selfLearningData.learningProgress.identityWindowSamples}건 · 독립 신호일 {selfLearningData.learningProgress.distinctSignalDates}일
+                  </div>
+                  <div className="mt-1 text-slate-400">
+                    미충족: {(selfLearningData.learningProgress.gateBlockers || []).map((gate: any) => `${gate.name} ${gate.value ?? "-"}/${gate.target ?? "-"}`).join(" · ") || "없음"}
+                  </div>
+                  <div className="mt-1 text-slate-400">
+                    제안 차단: {(selfLearningData.learningProgress.suggestionBlockers || []).slice(0, 3).map((reason: any) => `${reason.reason} ${reason.count}건`).join(" · ") || "없음"}
+                  </div>
+                </div>
+              )}
               {(selfLearningData?.performanceGate || opsData?.performanceGate) && (
                 <div className={`rounded-lg border px-3 py-2 text-[11px] ${
                   (selfLearningData?.performanceGate || opsData?.performanceGate)?.status === "ROLLBACK_READY"

@@ -1,6 +1,6 @@
 import json
 import sys
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 
@@ -401,6 +401,7 @@ def test_research_candidates_use_current_pre_gate_cache_without_relaxing_structu
     }
     payload = {
         "generatedAt": f"{date.today().isoformat()} 08:00:00",
+        "precomputedAt": datetime.now().astimezone().isoformat(),
         "items": [
             {**base, "symbol": "GOOD"},
             {**base, "symbol": "RESTRICT", "newEntryDecision": "\uc2e0\uaddc \uc9c4\uc785 \uc81c\ud55c"},
@@ -422,3 +423,65 @@ def test_research_candidates_use_current_pre_gate_cache_without_relaxing_structu
     assert candidates[0]["researchOnly"] is True
     assert candidates[0]["promotionAuthority"] is False
     assert trader._collect_recommendations("us", profile) == []
+
+
+def test_research_candidates_reject_stale_cache_and_stale_or_missing_price_dates(monkeypatch, tmp_path) -> None:
+    profile = trader.AGENT_POOL[0]
+    cache = tmp_path / "reco_cache"
+    cache.mkdir()
+    path = cache / f"us_{profile['mode']}_{profile['horizon']}.json"
+    base = {"symbol": "GOOD", "currentPrice": 100, "entry": 101, "stop": 95,
+            "target": 112, "dataStatus": "NORMAL", "newEntryDecision": "조건부 진입",
+            "dataDate": date.today().isoformat()}
+    monkeypatch.setattr(trader, "REPORTS", tmp_path)
+    payload = {"precomputedAt": "2000-01-01 00:00:00", "items": [base]}
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    assert trader._collect_research_candidates("us", profile) == []
+
+    payload["precomputedAt"] = datetime.now().astimezone().isoformat()
+    payload["items"] = [
+        {**base, "symbol": "OLD", "priceSourceDate": "2000-01-01"},
+        {**base, "symbol": "MISSING", "dataDate": "", "generatedAt": datetime.now().isoformat()},
+        {**base, "symbol": "FUTURE", "priceSourceDate": "2999-01-01"},
+        base,
+    ]
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    assert [row["symbol"] for row in trader._collect_research_candidates("us", profile)] == ["GOOD"]
+
+
+def test_unknown_regime_does_not_receive_sideways_bonus(monkeypatch) -> None:
+    def fail(*args, **kwargs):
+        raise RuntimeError("regime unavailable")
+    monkeypatch.setattr(trader, "load_market_regime", fail)
+    assert trader._market_regime_snapshot("kr")["regime"] == "UNKNOWN"
+    assert trader._regime_agent_preference("UNKNOWN", trader.AGENT_POOL[0]) == 0
+
+
+def test_stale_or_incomplete_benchmark_regime_is_not_sideways(monkeypatch) -> None:
+    monkeypatch.setattr(trader, "load_market_regime", lambda *_: {"regime": "SIDE", "dataStatus": "INSUFFICIENT"})
+    assert trader._market_regime_snapshot("us")["regime"] == "UNKNOWN"
+    monkeypatch.setattr(trader, "load_market_regime", lambda *_: {"regime": "BULL", "dataStatus": "NORMAL", "asOf": "2000-01-01"})
+    assert trader._market_regime_snapshot("us")["regime"] == "UNKNOWN"
+    monkeypatch.setattr(trader, "load_market_regime", lambda *_: {"regime": "BULL", "dataStatus": "NORMAL", "asOf": date.today().isoformat()})
+    assert trader._market_regime_snapshot("us")["regime"] == "BULL"
+
+
+def test_profit_ratios_are_undefined_without_losses(monkeypatch) -> None:
+    trades = [
+        {"createdAt": "2026-01-01", "symbol": "AAPL", "action": "BUY", "price": 100, "quantity": 1, "costAmount": 0},
+        {"createdAt": "2026-01-02", "symbol": "AAPL", "action": "SELL", "price": 110, "quantity": 1, "costAmount": 0},
+    ]
+    monkeypatch.setattr(trader, "_trades_for", lambda *_: trades)
+    metrics = trader._closed_trade_metrics("us", "test")
+    assert metrics["closedTradeCount"] == 1
+    assert metrics["profitFactor"] is None
+    assert metrics["payoffRatio"] is None
+    assert metrics["ratioStatus"] == "NO_LOSING_TRADES"
+
+
+def test_agent_pool_covers_all_modes_and_existing_horizons() -> None:
+    assert {(agent["mode"], agent["horizon"]) for agent in trader.AGENT_POOL} == {
+        (mode, horizon)
+        for mode in ("conservative", "balanced", "aggressive")
+        for horizon in ("short", "swing", "mid")
+    }

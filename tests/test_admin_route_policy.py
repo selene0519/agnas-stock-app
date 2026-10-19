@@ -8,7 +8,7 @@ BACKEND_DIR = Path(__file__).resolve().parents[1] / "mone-web-app" / "backend"
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-from app.services.admin_route_policy import requires_admin_auth
+from app.services.admin_route_policy import allows_automation_secret, requires_admin_auth
 
 
 def test_read_only_quant_shadow_status_remains_readable() -> None:
@@ -32,6 +32,7 @@ def test_capture_evaluation_review_and_replay_require_admin_auth() -> None:
         "/api/journal/virtual-trades/abc/review",
         "/api/journal/historical-replay",
         "/api/journal/historical-replay/backfill",
+        "/api/journal/market-analogs/run",
     )
     assert all(requires_admin_auth("POST", path) for path in protected)
 
@@ -39,6 +40,14 @@ def test_capture_evaluation_review_and_replay_require_admin_auth() -> None:
 def test_read_only_journal_status_is_not_accidentally_blocked() -> None:
     assert requires_admin_auth("GET", "/api/journal/self-learning/status") is False
     assert requires_admin_auth("GET", "/api/journal/virtual-trades") is False
+
+
+def test_auto_capture_mutation_is_protected_and_machine_secret_is_narrowly_scoped() -> None:
+    assert requires_admin_auth("POST", "/api/journal/auto-capture/run") is True
+    assert allows_automation_secret("POST", "/api/journal/auto-capture/run") is True
+    assert allows_automation_secret("POST", "/api/admin/sync-now") is True
+    assert allows_automation_secret("POST", "/api/paper/ai/run") is False
+    assert allows_automation_secret("GET", "/api/admin/sync-now") is False
 
 
 def test_all_paper_ledger_mutations_require_admin_auth() -> None:

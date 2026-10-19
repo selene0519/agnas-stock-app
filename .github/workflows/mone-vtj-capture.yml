@@ -1,12 +1,6 @@
 name: MONE AI Journal Capture
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/mone-vtj-capture.yml"
-      - "mone-web-app/backend/app/main.py"
-      - "mone-web-app/backend/app/services/virtual_trade_journal.py"
   workflow_dispatch:
     inputs:
       market:
@@ -39,42 +33,60 @@ defaults:
   run:
     shell: bash
 
+permissions:
+  contents: write
+
 concurrency:
-  group: mone-ai-journal-capture-${{ github.ref }}
+  group: mone-ledger-writer-${{ github.ref }}
   cancel-in-progress: false
+  queue: max
 
 jobs:
   capture:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 20
     env:
       TZ: Asia/Seoul
-      MONE_BACKEND_URL: ${{ secrets.MONE_BACKEND_URL || 'https://agnas-stock-app.onrender.com' }}
-      MONE_ADMIN_SECRET: ${{ secrets.MONE_ADMIN_SECRET }}
       DISPATCH_MARKET: ${{ github.event.inputs.market || 'all' }}
       DISPATCH_SESSION: ${{ github.event.inputs.journalSession || 'AFTER_CLOSE_TRADE' }}
+      SCHEDULE_EXPRESSION: ${{ github.event.schedule || '' }}
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          ref: ${{ github.ref_name }}
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install journal runtime
+        run: |
+          python -m pip install --disable-pip-version-check \
+            "pandas>=2.2,<3" "numpy>=1.26,<3" "pandas_market_calendars>=5.3,<6" requests python-dotenv
+
       - name: Capture AI journal session
         run: |
-          BASE="${MONE_BACKEND_URL%/}"
           MARKET="${DISPATCH_MARKET:-all}"
           JOURNAL_SESSION="${DISPATCH_SESSION:-AFTER_CLOSE_TRADE}"
 
           if [ "${GITHUB_EVENT_NAME:-}" = "schedule" ]; then
-            UTC_HOUR="$(date -u '+%H')"
-            UTC_MINUTE="$(date -u '+%M')"
-            case "${UTC_HOUR}:${UTC_MINUTE}" in
-              23:20) MARKET="kr"; JOURNAL_SESSION="PREMARKET_PLAN" ;;
-              07:50|08:30) MARKET="kr"; JOURNAL_SESSION="AFTER_CLOSE_TRADE" ;;
-              12:30) MARKET="us"; JOURNAL_SESSION="PREMARKET_PLAN" ;;
-              22:20|23:00) MARKET="us"; JOURNAL_SESSION="AFTER_CLOSE_TRADE" ;;
+            KST_HOUR="$(TZ=Asia/Seoul date '+%H')"
+            case "${SCHEDULE_EXPRESSION}" in
+              "20 23 * * 0-4") MARKET="kr"; JOURNAL_SESSION="PREMARKET_PLAN"; [[ "$KST_HOUR" = "08" ]] || exit 1 ;;
+              "50 7 * * 1-5"|"30 8 * * 1-5") MARKET="kr"; JOURNAL_SESSION="AFTER_CLOSE_TRADE"; [[ "$KST_HOUR" =~ ^(16|17|18|19|20|21|22|23)$ ]] || exit 1 ;;
+              "30 12 * * 1-5") MARKET="us"; JOURNAL_SESSION="PREMARKET_PLAN"; [[ "$KST_HOUR" = "21" ]] || exit 1 ;;
+              "20 22 * * 1-5"|"0 23 * * 1-5") MARKET="us"; JOURNAL_SESSION="AFTER_CLOSE_TRADE"; [[ "$KST_HOUR" =~ ^(07|08|09|10|11|12|13|14|15)$ ]] || exit 1 ;;
+              *) echo "::error::Unknown schedule; refusing an ambiguous capture"; exit 1 ;;
             esac
           fi
 
           echo "AI journal capture request"
-          echo "base=${BASE}"
           echo "market=${MARKET}"
           echo "journal_session=${JOURNAL_SESSION}"
           echo "kst_now=$(date '+%Y-%m-%d %H:%M:%S %Z')"
@@ -84,13 +96,29 @@ jobs:
             EVALUATE_AFTER="false"
           fi
 
-          curl --fail-with-body --show-error --silent --retry 2 --retry-delay 10 \
-            -X POST "${BASE}/api/journal/auto-capture/run" \
-            -H "Content-Type: application/json" \
-            -H "x-admin-secret: ${MONE_ADMIN_SECRET}" \
-            -d "{\"market\":\"${MARKET}\",\"journalSession\":\"${JOURNAL_SESSION}\",\"limit\":5,\"evaluateAfter\":${EVALUATE_AFTER},\"force\":false}" \
-            --max-time 120 \
-            -o /tmp/ai_journal_result.json
+          MARKET="$MARKET" JOURNAL_SESSION="$JOURNAL_SESSION" EVALUATE_AFTER="$EVALUATE_AFTER" python - <<'PY'
+          import json
+          import os
+          import sys
+          from pathlib import Path
+
+          root = Path.cwd()
+          sys.path.insert(0, str(root / "mone-web-app" / "backend"))
+          from app.services import virtual_trade_journal as vtj
+
+          result = vtj.run_auto_capture(
+              market=os.environ["MARKET"],
+              journal_session=os.environ["JOURNAL_SESSION"],
+              limit=5,
+              include_engine=False,
+              evaluate_after=os.environ["EVALUATE_AFTER"].lower() == "true",
+              force=False,
+              source="github-actions",
+          )
+          Path("/tmp/ai_journal_result.json").write_text(
+              json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
+          )
+          PY
 
           cat /tmp/ai_journal_result.json
 
@@ -116,6 +144,11 @@ jobs:
           activity = "CAPTURED"
           if not runs:
               activity = "NO_RUNS"
+          elif added == 0 and (
+              any(str(run.get("status", "")).upper() == "SKIPPED_DUPLICATE" for run in runs)
+              or any(int(item.get("duplicates") or 0) > 0 for run in runs for item in (run.get("items") or []))
+          ):
+              activity = "ALREADY_RECORDED"
           elif added == 0 and any(str(run.get("status", "")).upper() == "NO_CANDIDATES" for run in runs):
               activity = "NO_CANDIDATES"
           elif added == 0:
@@ -131,6 +164,19 @@ jobs:
               print("::error::capture response did not include run diagnostics")
               raise SystemExit(1)
           PY
+
+      - name: Commit durable journal ledger
+        run: |
+          if git diff --quiet -- data/virtual_trade_journal.csv data/virtual_trade_evaluations.csv reports/virtual_trade_journal_status.json; then
+            echo "No journal ledger changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/virtual_trade_journal.csv data/virtual_trade_evaluations.csv reports/virtual_trade_journal_status.json
+          git commit -m "chore(journal): persist scheduled capture [skip ci]"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
 
       - name: 실패 시 텔레그램 알림
         if: failure()
