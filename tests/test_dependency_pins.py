@@ -73,6 +73,12 @@ def test_workflows_do_not_install_breaking_packages_unpinned() -> None:
 
 PR_WORKFLOW = ROOT / ".github" / "workflows" / "pr-checks.yml"
 
+
+def test_pr_workflow_installs_indirect_exchange_calendar_dependency() -> None:
+    # Journal capture imports this at runtime, not directly from tests/.
+    install_block = PR_WORKFLOW.read_text(encoding="utf-8").lower()
+    assert '"pandas_market_calendars>=5.3,<6"' in install_block
+
 # 표준 라이브러리는 **하드코딩하지 않는다** — 손으로 적은 표는 낡는다
 # (실제로 첫 시도에서 `inspect`를 빠뜨렸다. 이 파일이 막으려는 실수와 같은 종류다).
 # sys.stdlib_module_names가 인터프리터의 권위 있는 목록이다.
