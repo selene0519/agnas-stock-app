@@ -1,6 +1,6 @@
 {
   "status": "OK",
-  "generatedAt": "2026-10-19T00:36:28.794839+00:00",
+  "generatedAt": "2026-10-19T15:23:18.357082+00:00",
   "basis": {
     "startNav": 100.0,
     "positionFraction": 0.1,
@@ -16,8 +16,8 @@
   },
   "dataQuality": {
     "excluded": {
-      "notEvaluated": 78,
-      "nonForwardSource": 2800
+      "notEvaluated": 75,
+      "nonForwardSource": 2879
     }
   },
   "ranking": [
@@ -686,17 +686,17 @@
     },
     "conservative_mid": {
       "trades": 23,
-      "candidateTrades": 119,
-      "capacityRejectedTrades": 96,
-      "nav": 90.3665,
-      "cash": 90.3665,
+      "candidateTrades": 122,
+      "capacityRejectedTrades": 99,
+      "nav": 92.1079,
+      "cash": 92.1079,
       "openPositions": 0,
-      "totalReturnPct": -9.6335,
-      "winRate": 0.2174,
-      "avgNetPnlPct": -5.069,
-      "payoffRatio": 1.1939,
-      "profitFactor": 0.34,
-      "maxDrawdownPct": 9.7612,
+      "totalReturnPct": -7.8921,
+      "winRate": 0.2609,
+      "avgNetPnlPct": -4.1317,
+      "payoffRatio": 1.1983,
+      "profitFactor": 0.4284,
+      "maxDrawdownPct": 9.723,
       "maxInvestedPct": 100.0,
       "curve": [
         {
@@ -889,22 +889,22 @@
           "netPnlPct": -10.4078
         },
         {
-          "date": "2026-10-08",
-          "nav": 90.2388,
-          "cash": 88.8947,
-          "openPositions": 1,
-          "symbol": "207940",
-          "market": "kr",
-          "netPnlPct": -9.7661
-        },
-        {
           "date": "2026-10-16",
-          "nav": 90.3665,
-          "cash": 90.3665,
-          "openPositions": 0,
+          "nav": 91.1554,
+          "cash": 83.0779,
+          "openPositions": 1,
           "symbol": "068270",
           "market": "kr",
           "netPnlPct": 9.5036
+        },
+        {
+          "date": "2026-10-19",
+          "nav": 92.1079,
+          "cash": 92.1079,
+          "openPositions": 0,
+          "symbol": "068270",
+          "market": "kr",
+          "netPnlPct": 11.7923
         }
       ],
       "strategyFingerprint": "LEGACY_UNFINGERPRINTED",
