@@ -152,19 +152,17 @@ def test_ai_paper_workflow_installs_pinned_runtime_dependencies():
     assert '"numpy>=1.26,<3"' in workflow
     assert "requests python-dotenv" in workflow
 
-def test_ai_journal_workflow_smoke_runs_after_core_changes():
+def test_ai_journal_does_not_run_mutating_capture_on_code_push():
     workflow = (ROOT / ".github" / "workflows" / "mone-vtj-capture.yml").read_text(encoding="utf-8")
+    checks = (ROOT / ".github" / "workflows" / "pr-checks.yml").read_text(encoding="utf-8")
+    assert "  push:" not in workflow
+    assert "  schedule:" in workflow and "  workflow_dispatch:" in workflow
+    assert "python -m pytest tests" in checks
 
-    assert "  push:" in workflow
-    assert '      - ".github/workflows/mone-vtj-capture.yml"' in workflow
-    assert '      - "mone-web-app/backend/app/services/virtual_trade_journal.py"' in workflow
-    assert '      - "mone-web-app/backend/app/main.py"' in workflow
 
-
-def test_ai_paper_workflow_smoke_runs_after_related_changes():
+def test_ai_paper_does_not_execute_trades_on_code_push():
     workflow = (ROOT / ".github" / "workflows" / "mone-ai-paper-trader.yml").read_text(encoding="utf-8")
-
-    assert "  push:" in workflow
-    assert '      - ".github/workflows/mone-ai-paper-trader.yml"' in workflow
-    assert '      - "scripts/run_ai_paper_supervisor.py"' in workflow
-    assert '      - "mone-web-app/backend/app/services/ai_paper_trader.py"' in workflow
+    checks = (ROOT / ".github" / "workflows" / "pr-checks.yml").read_text(encoding="utf-8")
+    assert "  push:" not in workflow
+    assert "  schedule:" in workflow and "  workflow_dispatch:" in workflow
+    assert "python -m pytest tests" in checks
