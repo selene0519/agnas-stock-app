@@ -464,6 +464,20 @@ def _admin_auth_configured() -> bool:
     return bool(_admin_id() and _admin_password_hash())
 
 
+def _automation_auth_secret() -> str:
+    return (
+        os.environ.get("MONE_AUTOMATION_TOKEN")
+        or os.environ.get("MONE_ADMIN_SECRET")
+        or ""
+    ).strip()
+
+
+def _verify_automation_secret(value: str | None) -> bool:
+    expected = _automation_auth_secret()
+    supplied = str(value or "").strip()
+    return bool(expected and supplied and hmac.compare_digest(supplied, expected))
+
+
 def _check_admin_credentials(admin_id: str, password: str) -> bool:
     expected_id = _admin_id()
     expected = _admin_password_hash()
@@ -493,11 +507,11 @@ def _extract_bearer_token(authorization: str | None) -> str:
 
 def _verify_user_token(token: str) -> dict | None:
     """OAuth 사용자 토큰을 검증하고 payload를 반환한다. 유효하지 않으면 None."""
-    if not token:
+    secret = _admin_auth_secret()
+    if not token or not secret:
         return None
     try:
         body, signature = token.split(".", 1)
-        secret = _admin_auth_secret() or b"mone-user"
         expected_sig = hmac.new(secret, body.encode("ascii"), hashlib.sha256).digest()
         if not hmac.compare_digest(_b64url_encode(expected_sig), signature):
             return None
@@ -506,7 +520,11 @@ def _verify_user_token(token: str) -> dict | None:
         return None
     if payload.get("role") != "user":
         return None
-    if int(payload.get("exp", 0)) <= int(time.time()):
+    try:
+        expired = int(payload.get("exp", 0)) <= int(time.time())
+    except (TypeError, ValueError):
+        return None
+    if expired:
         return None
     return payload
 
@@ -546,16 +564,22 @@ def _public_oauth_callback(request: Request, provider: str) -> str:
 
 
 def _signed_auth_state(provider: str) -> str:
+    secret = _admin_auth_secret()
+    if not secret:
+        raise RuntimeError("MONE_AUTH_SECRET or administrator password is required for OAuth")
     payload = {"provider": provider, "exp": int(time.time() + 10 * 60)}
     body = _b64url_encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
-    signature = hmac.new(_admin_auth_secret() or b"mone-oauth", body.encode("ascii"), hashlib.sha256).digest()
+    signature = hmac.new(secret, body.encode("ascii"), hashlib.sha256).digest()
     return f"{body}.{_b64url_encode(signature)}"
 
 
 def _verify_auth_state(state: str, provider: str) -> bool:
+    secret = _admin_auth_secret()
+    if not secret:
+        return False
     try:
         body, signature = str(state or "").split(".", 1)
-        expected_sig = hmac.new(_admin_auth_secret() or b"mone-oauth", body.encode("ascii"), hashlib.sha256).digest()
+        expected_sig = hmac.new(secret, body.encode("ascii"), hashlib.sha256).digest()
         if not hmac.compare_digest(_b64url_encode(expected_sig), signature):
             return False
         payload = json.loads(_b64url_decode(body).decode("utf-8"))
@@ -565,12 +589,15 @@ def _verify_auth_state(state: str, provider: str) -> bool:
 
 
 def _create_user_token(provider: str, subject: str, email: str = "", name: str = "") -> tuple[str, int, str]:
+    secret = _admin_auth_secret()
+    if not secret:
+        raise RuntimeError("MONE_AUTH_SECRET or administrator password is required for OAuth")
     ttl_seconds = int(os.environ.get("MONE_USER_TOKEN_TTL_SECONDS", str(30 * 24 * 60 * 60)))
     expires_at = int(time.time() + ttl_seconds)
     user_id = f"{provider}:{subject}"
     payload = {"role": "user", "provider": provider, "sub": subject, "userId": user_id, "email": email, "name": name, "exp": expires_at}
     body = _b64url_encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
-    signature = hmac.new(_admin_auth_secret() or b"mone-user", body.encode("ascii"), hashlib.sha256).digest()
+    signature = hmac.new(secret, body.encode("ascii"), hashlib.sha256).digest()
     return f"{body}.{_b64url_encode(signature)}", expires_at, user_id
 
 
@@ -686,12 +713,15 @@ async def admin_auth_middleware(request: Request, call_next):
     path = _raw_path(request)
     if request.method == "GET" and path == "/api/admin/pipeline":
         return await call_next(request)
-    from app.services.admin_route_policy import requires_admin_auth
+    from app.services.admin_route_policy import allows_automation_secret, requires_admin_auth
 
     if requires_admin_auth(request.method, path):
         token = _extract_bearer_token(request.headers.get("authorization"))
-        if not _verify_admin_token(token):
-            status_code = 503 if not _admin_auth_configured() else 401
+        automation_allowed = allows_automation_secret(request.method, path)
+        automation_ok = automation_allowed and _verify_automation_secret(request.headers.get("x-admin-secret"))
+        if not _verify_admin_token(token) and not automation_ok:
+            configured = _admin_auth_configured() or (automation_allowed and bool(_automation_auth_secret()))
+            status_code = 401 if configured else 503
             return JSONResponse(
                 status_code=status_code,
                 content={
@@ -748,6 +778,15 @@ def _recommendation_trade_safety(quality: dict | None) -> dict:
 
 def _apply_recommendation_trade_safety(payload: dict, quality: dict | None) -> dict:
     safety = _recommendation_trade_safety(quality)
+    if payload.get("servedFrom") == "precompute":
+        freshness = final_engine.recommendation_cache_freshness(payload)
+        payload["cacheFreshness"] = freshness
+        if freshness["status"] != "FRESH":
+            safety = {
+                "status": "BLOCKED", "reviewOnly": True, "isTradeBlocked": True,
+                "reason": f"Recommendation cache freshness: {freshness['status']}",
+                "dataStatus": "STALE" if freshness["status"] == "STALE" else "UNKNOWN",
+            }
     payload["dataQuality"] = quality or {}
     payload["tradeSafety"] = safety
     payload["reviewOnly"] = bool(safety.get("reviewOnly"))
@@ -835,6 +874,8 @@ def api_oauth_start(provider: str, request: Request):
     cfg = _oauth_config(provider)
     if provider not in {"google", "kakao"}:
         return JSONResponse(status_code=404, content={"ok": False, "status": "ERROR", "code": "UNKNOWN_PROVIDER"})
+    if not _admin_auth_secret():
+        return JSONResponse(status_code=503, content={"ok": False, "status": "ERROR", "code": "USER_AUTH_NOT_CONFIGURED"})
     if not cfg.get("client_id") or (provider == "google" and not cfg.get("client_secret")):
         return JSONResponse(
             status_code=503,
@@ -8583,6 +8624,28 @@ def api_earnings_calendar(market: str = Query("all"), days: int = Query(14)) -> 
 
 # ── 19. journal (투자장부) ────────────────────────────────────────────
 
+def _authenticated_journal_uid(x_mone_user: str, authorization: str) -> str:
+    payload = _verify_user_token(_extract_bearer_token(authorization))
+    raw_uid = str((payload or {}).get("userId") or "").strip()
+    claimed_uid = str(x_mone_user or "").strip()
+    if not raw_uid or (claimed_uid and not hmac.compare_digest(claimed_uid.encode("utf-8"), raw_uid.encode("utf-8"))):
+        return ""
+    # Hash the complete signed identity instead of truncating or stripping it;
+    # different providers and long subjects must not share a journal.
+    return "j_" + hashlib.sha256(raw_uid.encode("utf-8")).hexdigest()[:60]
+
+
+def _journal_storage_unavailable() -> bool:
+    require_database = str(os.environ.get("MONE_JOURNAL_REQUIRE_DATABASE", "")).strip().lower() in {"1", "true", "yes", "on"}
+    return (require_database or bool(os.environ.get("RENDER"))) and not _db._use_postgres()
+
+
+def _journal_storage_error() -> JSONResponse:
+    return JSONResponse(
+        status_code=503,
+        content={"status": "ERROR", "code": "JOURNAL_DATABASE_REQUIRED", "error": "Persistent journal database is not configured."},
+    )
+
 def _ensure_journal() -> None:
     _JOURNAL_FILE.parent.mkdir(parents=True, exist_ok=True)
     if not _JOURNAL_FILE.exists():
@@ -8591,79 +8654,102 @@ def _ensure_journal() -> None:
 
 
 @app.get("/api/journal")
-def api_journal_get(market: str = Query("all"), limit: int = Query(200)) -> dict:
+def api_journal_get(
+    market: str = Query("all"),
+    limit: int = Query(200, ge=1, le=1000),
+    x_mone_user: str = Header(default="", alias="x-mone-user"),
+    authorization: str = Header(default="", alias="Authorization"),
+) -> dict:
+    uid = _authenticated_journal_uid(x_mone_user, authorization)
+    if not uid:
+        return JSONResponse(
+            status_code=401,
+            content={"status": "AUTH_REQUIRED", "authRequired": True, "count": 0, "items": []},
+        )
+    if _journal_storage_unavailable():
+        return _journal_storage_error()
     try:
-        _ensure_journal()
-        rows = _read_csv_safe(_JOURNAL_FILE)
-        if market != "all":
-            rows = [r for r in rows if r.get("market", "").lower() == market.lower()]
-        rows = sorted(rows, key=lambda r: r.get("createdAt", ""), reverse=True)
-        return {"status": "OK", "count": len(rows[:limit]), "items": rows[:limit]}
+        rows = _db.get_journal(uid, market, limit)
+        return {"status": "OK", "count": len(rows), "items": rows, "storage": "postgres" if _db._use_postgres() else "sqlite-local"}
     except Exception as e:
         return {"status": "ERROR", "error": str(e), "items": []}
 
 
 @app.post("/api/journal/add")
-def api_journal_add(payload: dict = Body(...)) -> dict:
+def api_journal_add(
+    payload: dict = Body(...),
+    x_mone_user: str = Header(default="", alias="x-mone-user"),
+    authorization: str = Header(default="", alias="Authorization"),
+) -> dict:
+    uid = _authenticated_journal_uid(x_mone_user, authorization)
+    if not uid:
+        return JSONResponse(status_code=401, content={"status": "AUTH_REQUIRED", "authRequired": True})
+    if _journal_storage_unavailable():
+        return _journal_storage_error()
     try:
-        _ensure_journal()
-        rows = _read_csv_safe(_JOURNAL_FILE)
-        new_row = {
-            "id": str(_uuid.uuid4())[:8],
-            "date": str(payload.get("date", _dt.now().strftime("%Y-%m-%d"))).strip(),
-            "market": str(payload.get("market", "kr")).strip(),
-            "symbol": str(payload.get("symbol", "")).strip(),
-            "name": str(payload.get("name", "")).strip(),
-            "action": str(payload.get("action", "메모")).strip(),
-            "price": str(_safe_float_v2(payload.get("price", 0))),
-            "qty": str(_safe_float_v2(payload.get("qty", 0))),
-            "memo": str(payload.get("memo", "")).strip(),
-            "review": str(payload.get("review", "")).strip(),
-            "result": str(payload.get("result", "PENDING")).strip(),
-            "returnPct": str(_safe_float_v2(payload.get("returnPct", 0))),
-            "tags": _json.dumps(payload.get("tags", []), ensure_ascii=False),
-            "createdAt": _dt.now().strftime("%Y-%m-%d %H:%M:%S"),
-        }
-        rows.append(new_row)
-        _write_csv_safe_v2(_JOURNAL_FILE, rows, _JOURNAL_COLS)
-        return {"status": "OK", "item": new_row}
+        item = _db.add_journal(uid, payload)
+        return {"status": "OK", "item": item, "entry": item, "storage": "postgres" if _db._use_postgres() else "sqlite-local"}
     except Exception as e:
         return {"status": "ERROR", "error": str(e)}
 
 
 @app.patch("/api/journal/{entry_id}")
-def api_journal_update(entry_id: str, payload: dict = Body(...)) -> dict:
+def api_journal_update(
+    entry_id: str,
+    payload: dict = Body(...),
+    x_mone_user: str = Header(default="", alias="x-mone-user"),
+    authorization: str = Header(default="", alias="Authorization"),
+) -> dict:
+    uid = _authenticated_journal_uid(x_mone_user, authorization)
+    if not uid:
+        return JSONResponse(status_code=401, content={"status": "AUTH_REQUIRED", "authRequired": True})
+    if _journal_storage_unavailable():
+        return _journal_storage_error()
     try:
-        _ensure_journal()
-        rows = _read_csv_safe(_JOURNAL_FILE)
-        updated = False
-        for r in rows:
-            if r.get("id") == entry_id:
-                for k in ("memo", "review", "result", "returnPct", "tags"):
-                    if k in payload:
-                        r[k] = _json.dumps(payload[k], ensure_ascii=False) if k == "tags" else str(payload[k])
-                updated = True
-        if not updated:
+        item = _db.update_journal(uid, entry_id, payload)
+        if item is None:
             return {"status": "NOT_FOUND", "error": f"id={entry_id} not found"}
-        _write_csv_safe_v2(_JOURNAL_FILE, rows, _JOURNAL_COLS)
-        return {"status": "OK", "id": entry_id}
+        return {"status": "OK", "id": entry_id, "item": item}
     except Exception as e:
         return {"status": "ERROR", "error": str(e)}
 
 
 @app.delete("/api/journal/{entry_id}")
-def api_journal_delete(entry_id: str) -> dict:
+def api_journal_delete(
+    entry_id: str,
+    x_mone_user: str = Header(default="", alias="x-mone-user"),
+    authorization: str = Header(default="", alias="Authorization"),
+) -> dict:
+    uid = _authenticated_journal_uid(x_mone_user, authorization)
+    if not uid:
+        return JSONResponse(status_code=401, content={"status": "AUTH_REQUIRED", "authRequired": True})
+    if _journal_storage_unavailable():
+        return _journal_storage_error()
     try:
-        _ensure_journal()
-        rows = _read_csv_safe(_JOURNAL_FILE)
-        before = len(rows)
-        rows = [r for r in rows if r.get("id") != entry_id]
-        if len(rows) == before:
+        if not _db.delete_journal(uid, entry_id):
             return {"status": "NOT_FOUND", "error": f"id={entry_id} not found"}
-        _write_csv_safe_v2(_JOURNAL_FILE, rows, _JOURNAL_COLS)
         return {"status": "OK", "deleted": entry_id}
     except Exception as e:
         return {"status": "ERROR", "error": str(e)}
+
+
+# The legacy stabilizer registers shared CSV routes before this section.
+# FastAPI uses the first matching route, so remove only those older handlers.
+_JOURNAL_USER_ROUTES = {
+    ("/api/journal", "GET"): api_journal_get,
+    ("/api/journal/add", "POST"): api_journal_add,
+    ("/api/journal/{entry_id}", "PATCH"): api_journal_update,
+    ("/api/journal/{entry_id}", "DELETE"): api_journal_delete,
+}
+for _journal_route in list(app.router.routes):
+    for (_journal_path, _journal_method), _journal_endpoint in _JOURNAL_USER_ROUTES.items():
+        if (
+            getattr(_journal_route, "path", "") == _journal_path
+            and _journal_method in (getattr(_journal_route, "methods", None) or set())
+            and getattr(_journal_route, "endpoint", None) is not _journal_endpoint
+        ):
+            app.router.routes.remove(_journal_route)
+            break
 
 
 @app.post("/api/journal/virtual-trades/capture")
@@ -9542,12 +9628,17 @@ def api_journal_historical_strategy_calibration(
     )
 
 
-try:
-    from app.services import virtual_trade_journal as _vtj_auto
+if (
+    str(os.environ.get("MONE_VTJ_BACKGROUND_SCHEDULER", "false")).strip().lower()
+    in {"1", "true", "yes", "on"}
+    and not os.environ.get("PYTEST_CURRENT_TEST")
+):
+    try:
+        from app.services import virtual_trade_journal as _vtj_auto
 
-    _vtj_auto.start_auto_capture_scheduler()
-except Exception as _vtj_auto_capture_error:
-    print("[MONE] virtual trade journal auto-capture failed:", _vtj_auto_capture_error)
+        _vtj_auto.start_auto_capture_scheduler()
+    except Exception as _vtj_auto_capture_error:
+        print("[MONE] virtual trade journal auto-capture failed:", _vtj_auto_capture_error)
 
 
 # ── 20. health/github ─────────────────────────────────────────────────

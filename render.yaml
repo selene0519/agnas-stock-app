@@ -46,5 +46,7 @@ services:
         value: "1"
       - key: SELF_CORRECTION_ENABLED
         value: "true"
+      - key: MONE_JOURNAL_REQUIRE_DATABASE
+        value: "true"
       - key: ENABLE_HEAVY_JOBS
         value: "1"

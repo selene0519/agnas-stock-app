@@ -946,24 +946,30 @@ def load_market_regime(repo_root: Path, market: str = "kr") -> dict[str, Any]:
         "regime": REGIME_SIDE, "label": "횡보장", "kospiLatest": None,
         "kospiMa20": None, "distanceMa20Pct": None, "distanceToMa20Pct": None,
         "momentum5d": None, "scoreAdjust": 0.0,
+        "dataStatus": "INSUFFICIENT",
         "description": "벤치마크 데이터 부족 — 레짐 미적용",
     }
 
     if market == "us":
         # ── 미장: SPY + QQQ + DIA 3지수 다수결 ────────────────────────────
         index_regimes: list[tuple[str, float, float, float, float]] = []
+        index_dates: list[str] = []
         for sym in ("SPY", "QQQ", "DIA"):
             p = repo_root / "data" / "market" / "ohlcv" / f"us_{sym}_daily.csv"
             if not p.exists():
                 continue
             rows_i = _read_csv(p)
             rows_i.sort(key=lambda r: str(r.get("date", "")))
-            c_list = [_num(r.get("close")) for r in rows_i]
-            c_list = [x for x in c_list if x is not None]
+            valid_rows = [r for r in rows_i if _num(r.get("close")) is not None and str(r.get("date") or "").strip()]
+            c_list = [_num(r.get("close")) for r in valid_rows]
+            if len(c_list) < 20:
+                continue
+            latest_date = str(valid_rows[-1].get("date") or "")[:10]
             reg, lbl, adj, dist, mom5, ma20 = _regime_from_closes(c_list, sym)
             index_regimes.append((reg, dist, mom5, ma20, adj))
+            index_dates.append(latest_date)
 
-        if not index_regimes:
+        if len(index_regimes) < 2:
             return default
 
         bull_n = sum(1 for r in index_regimes if r[0] == REGIME_BULL)
@@ -980,13 +986,14 @@ def load_market_regime(repo_root: Path, market: str = "kr") -> dict[str, Any]:
         avg_ma20 = sum(r[3] for r in index_regimes) / len(index_regimes)
         avg_adj  = sum(r[4] for r in index_regimes) / len(index_regimes)
         votes_str = f"SPY/QQQ/DIA={bull_n}강세/{bear_n}약세"
-        desc = f"미장 3지수 다수결({votes_str}) MA20 {avg_dist:+.1f}%, 5일 {avg_mom5:+.1f}%"
+        desc = f"미장 지수 {len(index_regimes)}/3개 다수결({votes_str}) MA20 {avg_dist:+.1f}%, 5일 {avg_mom5:+.1f}%"
         return {
             "regime": regime, "label": label,
             "kospiLatest": None, "kospiMa20": round(avg_ma20, 2),
             "distanceMa20Pct": round(avg_dist, 2), "distanceToMa20Pct": round(avg_dist, 2),
             "momentum5d": round(avg_mom5, 2), "scoreAdjust": round(avg_adj, 1),
-            "description": desc,
+            "description": desc, "dataStatus": "NORMAL", "asOf": min(index_dates),
+            "indexCount": len(index_regimes),
         }
 
     # ── 국장: KOSPI OHLCV 우선 ──────────────────────────────────────
@@ -1008,7 +1015,8 @@ def load_market_regime(repo_root: Path, market: str = "kr") -> dict[str, Any]:
         return default
 
     latest = closes[-1]
-    latest_date = str(filtered[-1].get("date") or filtered[-1].get("Date") or "")
+    last_price_row = next((r for r in reversed(filtered) if _num(r.get("close") or r.get("Close")) is not None), {})
+    latest_date = str(last_price_row.get("date") or last_price_row.get("Date") or "")
     desc = f"KOSPI MA20 {dist:+.1f}%, 5일 {mom5:+.1f}%"
 
     return {
@@ -1017,6 +1025,7 @@ def load_market_regime(repo_root: Path, market: str = "kr") -> dict[str, Any]:
         "distanceMa20Pct": round(dist, 2), "distanceToMa20Pct": round(dist, 2),
         "momentum5d": round(mom5, 2), "scoreAdjust": adjust, "description": desc,
         "benchmark": benchmark_key, "asOf": latest_date[:10], "source": source,
+        "dataStatus": "NORMAL",
     }
 
 

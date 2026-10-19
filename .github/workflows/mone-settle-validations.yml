@@ -18,8 +18,9 @@ defaults:
     shell: bash
 
 concurrency:
-  group: mone-settle-validations-${{ github.ref }}
-  cancel-in-progress: true
+  group: mone-ledger-writer-${{ github.ref }}
+  cancel-in-progress: false
+  queue: max
 
 jobs:
   settle:
@@ -37,6 +38,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.ref_name }}
           persist-credentials: true
           token: ${{ secrets.GH_PAT }}
 
@@ -120,7 +122,12 @@ jobs:
           # Settle only predictions that were sealed in the recommendation
           # workflow. --no-record prevents historical recommendation backfill.
           python scripts/update_self_correction_shadow.py --no-record
-          echo "update_self_correction_shadow(settle): exit $?"
+          code=$?
+          echo "update_self_correction_shadow(settle): exit ${code}"
+          if [ "${code}" != "0" ]; then
+            echo "::error::Self-correction settlement failed"
+            exit "${code}"
+          fi
           set -e
 
       - name: 데이터 신선도 헬스게이트 + 알람 (조용한 실패 탐지)
@@ -168,6 +175,11 @@ jobs:
             git add reports/shadow_meta_gate.json 2>/dev/null || true
             git add reports/shadow_risk_budget.json 2>/dev/null || true
             git add data/shadow_challenger_journal.csv reports/champion_challenger.json 2>/dev/null || true
+            # These forward settlements and promotion certificates must survive
+            # this job or the next run starts over without the evidence.
+            for path in data/self_correction_candidate_registry.csv data/self_correction_shadow_predictions.csv data/self_correction_shadow_settlements.csv reports/self_correction_shadow.json reports/self_correction_promotion.json; do
+              if [ -f "$path" ]; then git add -- "$path"; fi
+            done
 
             if git diff --cached --quiet; then
               echo "변경 없음 — 커밋 건너뜀"

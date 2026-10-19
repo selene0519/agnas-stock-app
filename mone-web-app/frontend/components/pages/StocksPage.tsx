@@ -64,6 +64,27 @@ type HoldingEditRow = {
 // 실데이터(≤20)보다 넉넉하면서 두 상한을 모두 만족하는 50으로 맞춘다.
 const RECOMMENDATION_LIMIT = 50;
 
+function recommendationState(item: RecommendationItem): string {
+  if (item.isTradeBlocked || item.reviewOnly || item.isBlocked) return "진입 차단 · 관찰만";
+  if (item.recommended === true) return "추천 후보 · 조건 확인";
+  if (item.recommended === false) return "관찰 후보 · 진입 보류";
+  return "추천 판단 정보 없음";
+}
+
+function recommendationEv(item: RecommendationItem): string {
+  const value = item.expectedValue;
+  if (value == null || value === "" || !Number.isFinite(Number(value))) return "EV 추정 확인 불가";
+  const numeric = Number(value);
+  return `EV 추정 ${numeric >= 0 ? "+" : ""}${numeric.toFixed(1)}%`;
+}
+
+function recommendationEvidence(item: RecommendationItem): string {
+  const chart = item.chartSignalUsed === true ? "차트 점수 반영" : item.chartSignalUsed === false ? "차트 점수 미반영" : "차트 반영 확인 불가";
+  const news = typeof item.newsCount === "number" ? `${item.newsCount}건` : "확인 불가";
+  const disclosure = typeof item.disclosureCount === "number" ? `${item.disclosureCount}건` : "확인 불가";
+  return `${chart} · 종목 일치 뉴스 ${news} · 공시 ${disclosure}`;
+}
+
 // 렌즈별로 "보통 어느 투자성향에서 잘 잡히는지" 안내 문구(정보용).
 // 렌즈 판정 로직은 성향·기간과 무관하게 동일하지만, 종목 풀이 성향·기간에 따라
 // 달라져 특정 렌즈는 특정 성향에서 더 잘 나온다. 이 문구는 그 관계를 알려줄 뿐
@@ -1238,6 +1259,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
 
   const recommendationCandidates = items.filter((item) => !item?.isSearchOnly);
   const previewCandidates = recommendationCandidates.slice(0, 3);
+  const recommendedCount = recommendationCandidates.filter((item) => item.recommended === true && !item.isTradeBlocked && !item.reviewOnly && !item.isBlocked).length;
   const canOfferKrConservativeFallback = resolvedMarket === "kr" && mode !== "conservative";
 
   if (exploreView === "hub") {
@@ -1267,7 +1289,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
               <div className="flex items-center gap-2"><span className="mone-section-icon" /><h2 className="mone-home-section-title">오늘의 추천 후보</h2></div>
               <div className="mt-1 text-[13px] text-slate-400">{marketLabel(resolvedMarket)} 기준으로 전략을 고르세요.</div>
             </div>
-            <span className="shrink-0 text-xs font-semibold text-teal-300">{loading ? "산출 중" : `${items.length}개`}</span>
+            <span className="shrink-0 text-xs font-semibold text-teal-300">{loading ? "산출 중" : `추천 ${recommendedCount} · 전체 ${recommendationCandidates.length}`}</span>
           </div>
           <div className="space-y-3 border-t border-slate-800 px-3.5 py-3">
             <div>
@@ -1282,7 +1304,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           {loading && <div className="border-t border-slate-800 px-3.5 py-4 text-sm text-slate-400">추천 데이터를 불러오고 있습니다.</div>}
           {!loading && previewCandidates.length === 0 && (
             <div className="border-t border-slate-800 px-3.5 py-4 text-sm leading-6 text-slate-400">
-              {canOfferKrConservativeFallback ? "현재 국장 약세장에서는 균형형 후보를 보류합니다." : "현재 기준을 통과한 후보가 없습니다."}
+              현재 선택 기준의 후보가 없습니다.
               {/* 문장 안에 들어가는 인라인 버튼이라 박스를 키우면 줄 흐름이 깨진다.
                   가상요소로 터치 영역만 44px로 넓힌다(앱 전반에서 쓰는 패턴). */}
               {canOfferKrConservativeFallback && <button type="button" onClick={() => setMode("conservative")} className="relative ml-2 font-semibold text-teal-300 after:absolute after:inset-x-0 after:-inset-y-2.5 after:content-[''] hover:text-teal-200">보수형 후보 보기</button>}
@@ -1291,7 +1313,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           {!loading && previewCandidates.map((item) => (
             <div key={`${item.market}-${item.symbol}`} className="px-3.5 pt-3">
               <button type="button" onClick={() => { setSelected({ market: item.market || resolvedMarket, symbol: item.symbol, name: displayName(item) } as MoneSymbol); setExploreView("direct"); }} className="mone-home-inset w-full rounded-[10px] border px-3 py-3.5 text-left transition-[border-color,background-color] hover:border-teal-400/45 hover:bg-slate-900/80">
-                <span className="flex items-center gap-3"><span className="min-w-0 flex-1"><span className="block truncate text-[15px] font-bold text-slate-100">{displayName(item)}</span><span className="mt-1 block text-[12px] text-slate-400">EV {Number(item.expectedValue ?? 0) >= 0 ? "+" : ""}{Number(item.expectedValue ?? 0).toFixed(1)}%</span></span><ChevronRight size={18} className="shrink-0 text-slate-400" aria-hidden="true" /></span>
+                <span className="flex items-center gap-3"><span className="min-w-0 flex-1"><span className="block truncate text-[15px] font-bold text-slate-100">{displayName(item)}</span><span className="mt-1 block text-[12px] text-slate-400">{recommendationState(item)} · {recommendationEv(item)}</span><span className="mt-1 block text-[11px] text-slate-400">{recommendationEvidence(item)}</span></span><ChevronRight size={18} className="shrink-0 text-slate-400" aria-hidden="true" /></span>
                 <span className="mt-3 grid grid-cols-4 border-t border-slate-800 pt-3">
                   <span className="min-w-0 border-r border-slate-800 pr-2"><span className="block text-[10px] text-slate-400">기준가</span><span className="mt-1 block truncate font-mono text-[12px] font-semibold text-slate-200">{formatMoney(item.currentPrice ?? item.expectedPrice ?? item.entry, item.market || resolvedMarket)}</span></span>
                   <span className="min-w-0 border-r border-slate-800 px-2"><span className="block text-[10px] text-slate-400">진입가</span><span className="mt-1 block truncate font-mono text-[12px] font-semibold text-teal-300">{formatMoney(item.entry ?? item.entryPrice, item.market || resolvedMarket)}</span></span>
@@ -1362,7 +1384,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
             <div className="space-y-3 px-4 py-5 text-sm leading-6 text-slate-400">
               <p>
                 {canOfferKrConservativeFallback
-                  ? "현재 국장 약세장 기준에서는 균형형 후보를 보류합니다. 보수형 기준에서만 통과한 후보가 있습니다."
+                  ? "선택한 조건의 후보가 없습니다. 보수형 기준도 확인할 수 있습니다."
                   : "선택한 시장·성향·기간의 추천 데이터가 없습니다. 다른 기준을 선택하거나 데이터 갱신 후 다시 확인하세요."}
               </p>
               {canOfferKrConservativeFallback && (
@@ -1379,7 +1401,7 @@ export default function StocksPage({ onNavigate, bootData }: { onNavigate?: (pag
           {!loading && recommendationCandidates.map((item) => (
             <button key={`${item.market}-${item.symbol}`} type="button" onClick={() => { setSelected({ market: item.market || resolvedMarket, symbol: item.symbol, name: displayName(item) } as MoneSymbol); setExploreView("direct"); }} className="flex w-full items-center gap-3 border-b border-slate-800 px-4 py-4 text-left last:border-b-0 hover:bg-slate-900/40">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal-500/12 text-teal-300"><Sparkles size={19} aria-hidden="true" /></span>
-              <span className="min-w-0 flex-1"><span className="block text-[15px] font-bold text-slate-100">{displayName(item)}</span><span className="mt-1 block text-xs text-slate-400">진입가 {formatMoney(item.entry ?? item.entryPrice, item.market || resolvedMarket)} · EV {Number(item.expectedValue ?? 0) >= 0 ? "+" : ""}{Number(item.expectedValue ?? 0).toFixed(1)}%</span></span>
+              <span className="min-w-0 flex-1"><span className="block text-[15px] font-bold text-slate-100">{displayName(item)}</span><span className="mt-1 block text-xs text-slate-400">{recommendationState(item)} · 진입가 {formatMoney(item.entry ?? item.entryPrice, item.market || resolvedMarket)} · {recommendationEv(item)}</span><span className="mt-1 block text-[11px] text-slate-400">{recommendationEvidence(item)}</span></span>
               <ChevronRight size={18} className="text-slate-400" aria-hidden="true" />
             </button>
           ))}

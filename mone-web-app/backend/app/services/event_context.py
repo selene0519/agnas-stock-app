@@ -184,6 +184,8 @@ def _build_news_tag(
     if not related:
         if tag == "NEUTRAL":
             return "neutral_news", 0.0, 0.5, ["cache=NEUTRAL, no related news rows"]
+        if not news_rows and not cache_entry:
+            return "unknown", 0.0, 0.0, ["news feed unavailable or empty"]
         return "no_news", 0.0, 0.3, ["no news found"]
 
     combined = " ".join(
@@ -218,6 +220,8 @@ def _build_disclosure_tag(
                 break
 
     if not related:
+        if not disclosure_rows:
+            return "unknown", 0.0, 0.0, ["disclosure feed unavailable or empty"]
         return "no_disclosure", 0.0, 0.3, ["no disclosure found"]
 
     combined = " ".join(
@@ -336,13 +340,11 @@ def _determine_data_source_type(
 ) -> tuple[str, bool]:
     """(eventDataSourceType, eventLearningEligible) 반환."""
     has_cache = bool(cache_entry)
-    has_api_news = bool(news_rows)
-    has_api_disc = bool(disclosure_rows)
-
-    if has_api_news or has_api_disc:
-        return "actual_api", True
-    if has_cache:
-        return "csv", True
+    # data_loader reads stored report files, not a live API response. Neither
+    # the file nor the sentiment cache establishes point-in-time coverage or
+    # freshness, so it may be displayed but must not train or adjust scores.
+    if news_rows or disclosure_rows or has_cache:
+        return "cached", False
     return "unavailable", False
 
 
@@ -361,7 +363,7 @@ def get_event_context(
     ----------
     symbol:      종목 코드
     market:      "kr" | "us"
-    as_of_date:  기준일 (미사용, 향후 확장용)
+    as_of_date:  과거 기준일. 시점별 데이터가 없으므로 현재 캐시를 사용하지 않습니다.
 
     Returns
     -------
@@ -383,6 +385,12 @@ def get_event_context(
         "eventDataSourceType": "unavailable",
         "eventLearningEligible": False,
     }
+
+    # These feeds/cache are current snapshots, not point-in-time archives.
+    # Using them for any historical request would leak future information.
+    if as_of_date is not None:
+        _base["eventSummary"] = "기준일 당시 이벤트 데이터 확인 불가"
+        return _base
 
     try:
         market = "us" if str(market).lower() == "us" else "kr"
@@ -440,7 +448,7 @@ def get_event_context(
         total_risk = news_risk + disc_risk + earn_risk + macro_risk + sector_risk
         event_risk_score = round(min(10.0, max(0.0, total_risk)), 2)
 
-        if data_source_type in {"unavailable", "placeholder", "mock"}:
+        if not learning_eligible:
             event_reliability = 0.0
         else:
             weights = [0.25, 0.25, 0.20, 0.15, 0.15]
@@ -458,7 +466,17 @@ def get_event_context(
             summary_parts.append(f"매크로:{macro_tag}")
         if sector_tag not in {"sector_neutral", "unknown"}:
             summary_parts.append(f"섹터:{sector_tag}")
-        event_summary = " | ".join(summary_parts) if summary_parts else "이벤트 특이사항 없음"
+        if summary_parts:
+            event_summary = " | ".join(summary_parts)
+        elif data_source_type == "unavailable":
+            event_summary = "이벤트 데이터 확인 불가"
+        elif "unknown" in {news_tag, disc_tag}:
+            event_summary = "확인된 이벤트 특이사항 없음 (일부 출처 미확인)"
+        else:
+            event_summary = "확인된 이벤트 특이사항 없음"
+
+        if data_source_type == "cached":
+            event_summary += " (출처 최신성 미검증)"
 
         return {
             "newsEventTag": news_tag,

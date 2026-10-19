@@ -6,6 +6,8 @@ PROTECTED_MUTATION_PATHS = {
     "/api/holdings",
     "/api/holdings/import-csv",
     "/api/kis/holdings/sync",
+    "/api/journal/auto-capture/run",
+    "/api/journal/market-analogs/run",
 }
 
 PROTECTED_MUTATION_PREFIXES = (
@@ -21,6 +23,10 @@ PROTECTED_MUTATION_PREFIXES = (
     "/api/journal/historical-replay",
 )
 MUTATING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+AUTOMATION_SECRET_ROUTES = {
+    ("POST", "/api/journal/auto-capture/run"),
+    ("POST", "/api/admin/sync-now"),
+}
 
 
 def requires_admin_auth(method: str, path: str) -> bool:
@@ -33,3 +39,9 @@ def requires_admin_auth(method: str, path: str) -> bool:
     return normalized_method in MUTATING_METHODS and any(
         normalized_path.startswith(prefix) for prefix in PROTECTED_MUTATION_PREFIXES
     )
+
+
+def allows_automation_secret(method: str, path: str) -> bool:
+    """Limit the machine credential to the two scheduled-operation routes."""
+
+    return (str(method or "").upper(), str(path or "")) in AUTOMATION_SECRET_ROUTES

@@ -12,6 +12,7 @@ from typing import Any
 
 from app.engine.quant_scanner import load_market_regime
 from app.services import paper_trading, quant_execution_plan
+from app.services.atomic_io import atomic_write_csv, atomic_write_json, serialized_file_mutation
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 REPORTS = REPO_ROOT / "reports"
@@ -23,6 +24,7 @@ AI_STOPS_JSON = PAPER_DIR / "ai_paper_stops.json"
 AI_STATE_JSON = PAPER_DIR / "ai_paper_state.json"
 AI_SUPERVISOR_STATUS_JSON = PAPER_DIR / "ai_paper_supervisor_status.json"
 AI_EXECUTION_LEDGER_CSV = PAPER_DIR / "ai_paper_execution_ledger.csv"
+AI_CYCLE_LOCK = PAPER_DIR / ".ai-paper-cycle.lock"
 
 AGENT_POOL: tuple[dict[str, str], ...] = (
     {"id": "ml_rank_balanced_mid", "label": "ML Rank Balanced Mid", "mode": "balanced", "horizon": "mid"},
@@ -30,6 +32,12 @@ AGENT_POOL: tuple[dict[str, str], ...] = (
     {"id": "ml_rank_balanced_swing", "label": "ML Rank Balanced Swing", "mode": "balanced", "horizon": "swing"},
     {"id": "ml_rank_aggressive_mid", "label": "ML Rank Aggressive Mid", "mode": "aggressive", "horizon": "mid"},
     {"id": "ml_rank_conservative_swing", "label": "ML Rank Conservative Swing", "mode": "conservative", "horizon": "swing"},
+    # The remaining profiles can participate in paper discovery, but receive
+    # no invented regime bonus and remain subject to the same evidence gates.
+    {"id": "ml_rank_conservative_short", "label": "ML Rank Conservative Short", "mode": "conservative", "horizon": "short"},
+    {"id": "ml_rank_balanced_short", "label": "ML Rank Balanced Short", "mode": "balanced", "horizon": "short"},
+    {"id": "ml_rank_aggressive_short", "label": "ML Rank Aggressive Short", "mode": "aggressive", "horizon": "short"},
+    {"id": "ml_rank_aggressive_swing", "label": "ML Rank Aggressive Swing", "mode": "aggressive", "horizon": "swing"},
 )
 
 MAX_POSITIONS = int(os.getenv("AI_PAPER_MAX_POSITIONS", "5"))
@@ -90,31 +98,15 @@ def _read_csv(path: Path) -> list[dict[str, Any]]:
 
 def _write_csv(path: Path, rows: list[dict[str, Any]], fields: list[str]) -> None:
     _ensure_dirs()
-    with path.open("w", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fields)
-        writer.writeheader()
-        writer.writerows([{k: row.get(k, "") for k in fields} for row in rows])
+    atomic_write_csv(path, rows, fields)
 
 
 def _append_csv(path: Path, row: dict[str, Any], fields: list[str]) -> None:
     _ensure_dirs()
-    write_header = not path.exists() or path.stat().st_size == 0
-    if not write_header:
-        try:
-            with path.open("r", encoding="utf-8-sig", newline="") as source:
-                existing_fields = list(csv.DictReader(source).fieldnames or [])
-        except Exception:
-            existing_fields = []
-        if existing_fields != fields:
-            # Migrate old ledgers before append. Appending a wider row under an
-            # old header would silently shift cost/memo columns on the next read.
-            existing_rows = _read_csv(path)
-            _write_csv(path, existing_rows, fields)
-    with path.open("a", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fields)
-        if write_header:
-            writer.writeheader()
-        writer.writerow({k: row.get(k, "") for k in fields})
+    # Rewriting through an atomic same-directory replace prevents a killed
+    # worker from leaving a half-written row or mismatched legacy header.
+    existing_rows = _read_csv(path)
+    atomic_write_csv(path, existing_rows + [row], fields)
 
 
 def _read_json(path: Path, default: Any) -> Any:
@@ -128,7 +120,7 @@ def _read_json(path: Path, default: Any) -> Any:
 
 def _write_json(path: Path, payload: Any) -> None:
     _ensure_dirs()
-    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    atomic_write_json(path, payload)
 
 
 def _num(value: Any) -> float:
@@ -386,6 +378,8 @@ def _collect_recommendations(market: str, agent: dict[str, str] | None = None) -
 
 def _collect_research_candidates(market: str, agent: dict[str, str] | None = None) -> list[dict[str, Any]]:
     """Read pre-gate cache only for zero-authority paper discovery."""
+    from app.services.final_engine import recommendation_cache_freshness
+
     agents = [agent] if agent else list(AGENT_POOL)
     seen: dict[str, dict[str, Any]] = {}
     for profile in agents:
@@ -394,6 +388,8 @@ def _collect_research_candidates(market: str, agent: dict[str, str] | None = Non
         mode, horizon = profile["mode"], profile["horizon"]
         path = REPORTS / "reco_cache" / f"{market}_{mode}_{horizon}.json"
         payload = _read_json(path, {})
+        if not isinstance(payload, dict) or recommendation_cache_freshness(payload).get("status") != "FRESH":
+            continue
         rows = payload.get("items") if isinstance(payload, dict) else []
         generated_at = str(payload.get("generatedAt") or payload.get("precomputedAt") or "") if isinstance(payload, dict) else ""
         for row in rows if isinstance(rows, list) else []:
@@ -411,7 +407,14 @@ def _collect_research_candidates(market: str, agent: dict[str, str] | None = Non
             block = str(row.get("tradeBlockStatus") or "").upper()
             decision = str(row.get("decisionBucket") or row.get("newEntryDecision") or "")
             data_status = str(row.get("dataStatus") or "")
-            signal_date = str(row.get("dataDate") or row.get("latestDataDate") or row.get("ohlcvLatestDate") or row.get("generatedAt") or generated_at)[:10]
+            # A newly generated cache is not proof that its underlying price is new.
+            source_dates = [str(row.get(key) or "").strip()[:10] for key in
+                            ("priceSourceDate", "dataDate", "latestDataDate", "ohlcvLatestDate") if row.get(key)]
+            if not source_dates and row.get("priceTime"):
+                source_dates = [str(row["priceTime"]).strip()[:10]]
+            if not source_dates or any(not _candidate_signal_check({"signalDate": day})["allowed"] for day in source_dates):
+                continue
+            signal_date = min(source_dates)
             if _is_bad_data_status(data_status) or block in {"BLOCK", "CAUTION"} or _decision_priority(decision) > 1:
                 continue
             if not (current > 0 and planned_entry > 0 and target > current > stop > 0):
@@ -447,9 +450,14 @@ def _collect_research_candidates(market: str, agent: dict[str, str] | None = Non
 def _market_regime_snapshot(market: str) -> dict[str, Any]:
     try:
         payload = load_market_regime(REPO_ROOT, market)
-        return payload if isinstance(payload, dict) else {"regime": "SIDE"}
+        if not isinstance(payload, dict) or payload.get("dataStatus") != "NORMAL":
+            return {"regime": "UNKNOWN", "description": "market regime unavailable"}
+        freshness = _candidate_signal_check({"signalDate": payload.get("asOf")})
+        if not freshness["allowed"]:
+            return {"regime": "UNKNOWN", "description": "market regime benchmark date unavailable or stale", "freshness": freshness}
+        return payload
     except Exception as exc:
-        return {"regime": "SIDE", "label": "횡보장", "description": "market regime unavailable", "error": repr(exc)}
+        return {"regime": "UNKNOWN", "label": "시장 상태 확인 불가", "description": "market regime unavailable", "error": repr(exc)}
 
 
 def _strategy_realized_stats(market: str, agent: dict[str, str]) -> dict[str, Any]:
@@ -501,12 +509,12 @@ def _regime_agent_preference(regime: str, agent: dict[str, str]) -> float:
             "conservative_swing": 5.0, "aggressive_mid": 1.0,
         },
     }
-    return table.get(str(regime or "SIDE").upper(), table["SIDE"]).get(key, 0.0)
+    return table.get(str(regime or "UNKNOWN").upper(), {}).get(key, 0.0)
 
 
 def _suggest_agent(market: str, selection_policy: str = "EXPECTED_VALUE") -> dict[str, Any]:
     regime_info = _market_regime_snapshot(market)
-    regime = str(regime_info.get("regime") or "SIDE").upper()
+    regime = str(regime_info.get("regime") or "UNKNOWN").upper()
     rows: list[dict[str, Any]] = []
     for profile in AGENT_POOL:
         candidates = (
@@ -713,9 +721,9 @@ def _collect_regime_lens_candidates_kr(agent: dict[str, str] | None = None) -> l
 
     regime = str(report.get("marketRegime") or "SIDE").upper()
     as_of = str(report.get("asOfDate") or "")
-    current_regime = str(_market_regime_snapshot("kr").get("regime") or "SIDE").upper()
+    current_regime = str(_market_regime_snapshot("kr").get("regime") or "UNKNOWN").upper()
     report_signal = _candidate_signal_check({"signalDate": as_of})
-    if not report_signal["allowed"] or current_regime == "BULL" or regime != current_regime:
+    if not report_signal["allowed"] or current_regime not in {"BEAR", "SIDE"} or regime != current_regime:
         return []
     active_agent = agent or AGENT_POOL[0]
     intraday_context = _lens_intraday_context_kr()
@@ -919,8 +927,9 @@ def _closed_trade_metrics(market: str, agent_id: str) -> dict[str, Any]:
         "closedTradeCount": len(returns),
         "winRate": round(len(wins) / len(returns) * 100.0, 1) if returns else None,
         "avgNetPnlPct": round(sum(returns) / len(returns), 3) if returns else None,
-        "profitFactor": round(gross_profit / gross_loss, 3) if gross_loss > 0 else (None if not wins else 999.0),
-        "payoffRatio": round(avg_win / avg_loss, 3) if avg_loss > 0 else (None if not wins else 999.0),
+        "profitFactor": round(gross_profit / gross_loss, 3) if gross_loss > 0 else None,
+        "payoffRatio": round(avg_win / avg_loss, 3) if avg_loss > 0 else None,
+        "ratioStatus": "DEFINED" if gross_loss > 0 else ("NO_LOSING_TRADES" if wins else "INSUFFICIENT_DATA"),
         "grossProfit": round(gross_profit, 2),
         "grossLoss": round(gross_loss, 2),
         "costModel": "buy/sell slippage plus tax-commission",
@@ -1677,6 +1686,7 @@ def status(market: str = "all") -> dict[str, Any]:
     }
 
 
+@serialized_file_mutation(AI_CYCLE_LOCK)
 def run_cycle(market: str = "all", dry_run: bool = True) -> dict[str, Any]:
     result: dict[str, Any] = {
         "status": "OK",

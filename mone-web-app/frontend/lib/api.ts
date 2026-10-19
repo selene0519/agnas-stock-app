@@ -3,6 +3,7 @@ export type Mode = "conservative" | "balanced" | "aggressive" | "all";
 export type Horizon = "short" | "swing" | "mid" | "long" | "all";
 
 import { getAuthenticatedUserId, getUserToken } from "./userId";
+import { adminAuthHeaders } from "./adminAuth";
 
 function getMoneUserHeader(): Record<string, string> {
   if (typeof window === "undefined") return {};
@@ -241,7 +242,8 @@ function isSnapshotCacheablePath(path: string) {
 
 function apiSnapshotScope(path: string) {
   const isUserScoped = path === "/api/holdings" || path.startsWith("/api/holdings-")
-    || path === "/api/watchlist" || path.startsWith("/api/watchlist-") || path.startsWith("/api/watchlist/");
+    || path === "/api/watchlist" || path.startsWith("/api/watchlist-") || path.startsWith("/api/watchlist/")
+    || path === "/api/journal";
   return isUserScoped ? getAuthenticatedUserId() || "anonymous" : "shared";
 }
 
@@ -364,9 +366,12 @@ async function fetchJson<T>(url: string, externalSignal?: AbortSignal, retryCoun
     const text = await response.text().catch(() => "");
 
     if (!response.ok) {
+      let body: any = {};
+      try { body = JSON.parse(text); } catch { /* ignore */ }
+      if (body?.code === "JOURNAL_DATABASE_REQUIRED") {
+        return { status: "ERROR", code: body.code, error: "매매일지의 영구 데이터베이스가 설정되지 않았습니다.", items: [], count: 0 } as T;
+      }
       if (response.status === 503) {
-        let body: any = {};
-        try { body = JSON.parse(text); } catch { /* ignore */ }
         if (body?.error === "BACKEND_COLD_START_TIMEOUT") {
           return {
             status: "ERROR",
@@ -389,7 +394,9 @@ async function fetchJson<T>(url: string, externalSignal?: AbortSignal, retryCoun
       }
       return {
         status: "ERROR",
-        error: `${response.status} ${response.statusText} ${text.slice(0, 300)}`,
+        authRequired: response.status === 401 || response.status === 403,
+        code: body?.code,
+        error: body?.error || body?.message || `${response.status} ${response.statusText} ${text.slice(0, 300)}`,
         items: [], count: 0,
       } as T;
     }
@@ -504,19 +511,39 @@ export function money(value: number | string | null | undefined, market: Market 
 export async function apiPost<T = any>(
   path: string,
   body?: any,
-  params?: Record<string, string | number | boolean | undefined | null>
+  params?: Record<string, string | number | boolean | undefined | null>,
+  auth: "user" | "admin" = "user",
 ): Promise<T> {
   const postJson = async (url: string): Promise<T> => {
     try {
       const response = await fetch(url, {
         method: "POST",
         cache: "no-store",
-        headers: { Accept: "application/json", "Content-Type": "application/json", ...getMoneUserHeader() },
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          ...getMoneUserHeader(),
+          ...(auth === "admin" ? adminAuthHeaders() : {}),
+        },
         body: JSON.stringify(body || {}),
       });
       const text = await response.text().catch(() => "");
       if (!response.ok) {
-        return { status: "ERROR", error: `${response.status} ${response.statusText} ${text.slice(0, 500)}`, items: [], count: 0 } as T;
+        let payload: any = {};
+        try { payload = JSON.parse(text); } catch {}
+        const authMessage = payload?.code === "ADMIN_AUTH_REQUIRED"
+          ? "관리자 로그인이 필요합니다. 관리자 화면에서 로그인한 뒤 다시 실행하세요."
+          : payload?.code === "ADMIN_AUTH_NOT_CONFIGURED"
+            ? "서버의 관리자 인증 설정이 필요합니다."
+            : "";
+        return {
+          status: "ERROR",
+          code: payload?.code,
+          authRequired: response.status === 401 || response.status === 403,
+          error: authMessage || payload?.message || payload?.error || `${response.status} ${response.statusText} ${text.slice(0, 500)}`,
+          items: [],
+          count: 0,
+        } as T;
       }
       try {
         return JSON.parse(text) as T;
@@ -529,23 +556,9 @@ export async function apiPost<T = any>(
   };
 
   const proxyUrl = buildUrl(API_BASE, path, params);
-  const proxyResult: any = await postJson(proxyUrl);
-  if (proxyResult?.status !== "ERROR") return proxyResult as T;
-
-  if (!canUseDirectBackendFallback()) {
-    return {
-      ...proxyResult,
-      directFallbackSkipped: true,
-      directFallbackReason: DIRECT_BACKEND
-        ? "Direct localhost backend fallback is disabled outside local development"
-        : "Direct backend fallback is not configured",
-    } as T;
-  }
-
-  const directUrl = buildUrl(DIRECT_BACKEND, path, params);
-  const directResult: any = await postJson(directUrl);
-  if (directResult?.status === "ERROR") directResult.proxyError = proxyResult.error;
-  return directResult as T;
+  // A timed-out POST may already have committed on the server. Retrying it on
+  // another endpoint can duplicate a trade or journal mutation.
+  return postJson(proxyUrl);
 }
 
 export const mone = {
@@ -597,9 +610,9 @@ export const mone = {
   journalAdd: (body: { market?: string; symbol?: string; name?: string; action?: string; price?: number; qty?: number; memo: string; review?: string; result?: string; returnPct?: number; tags?: string[] }) =>
     apiPost<ApiList>("/api/journal/add", body),
   journalUpdate: (id: string, body: Partial<{ memo: string; review: string; result: string; returnPct: number; tags: string[] }>) =>
-    fetch(buildUrl(API_BASE, `/api/journal/${id}`), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(r => r.json()),
+    fetch(buildUrl(API_BASE, `/api/journal/${id}`), { method: "PATCH", headers: { "Content-Type": "application/json", ...getMoneUserHeader() }, body: JSON.stringify(body) }).then(r => r.json()),
   journalDelete: (id: string) =>
-    fetch(buildUrl(API_BASE, `/api/journal/${id}`), { method: "DELETE" }).then(r => r.json()),
+    fetch(buildUrl(API_BASE, `/api/journal/${id}`), { method: "DELETE", headers: { ...getMoneUserHeader() } }).then(r => r.json()),
   recommendations: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; cash?: number; limit?: number; watchOnly?: boolean }, signal?: AbortSignal) =>
     apiGet<ApiList<RecommendationItem>>("/api/final/recommendations", p, signal),
   recommendationDetail: (p: { market?: Market; symbol: string }, signal?: AbortSignal) =>
@@ -627,39 +640,39 @@ export const mone = {
   virtualTrades: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string; journalSession?: string; status?: string; limit?: number }) =>
     apiGet<ApiList>("/api/journal/virtual-trades", p),
   virtualTradeCapture: (body?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string; journalSession?: string; limit?: number; includeEngine?: boolean }) =>
-    apiPost<ApiList>("/api/journal/virtual-trades/capture", body || {}),
+    apiPost<ApiList>("/api/journal/virtual-trades/capture", body || {}, undefined, "admin"),
   virtualTradeEvaluate: (body?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string; journalSession?: string; limit?: number; force?: boolean }) =>
-    apiPost<ApiList>("/api/journal/virtual-trades/evaluate", body || {}),
+    apiPost<ApiList>("/api/journal/virtual-trades/evaluate", body || {}, undefined, "admin"),
   journalFailurePatterns: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string; journalSession?: string }) =>
     apiGet<ApiList>("/api/journal/failure-patterns", p),
   journalCalibrationSuggestions: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string; journalSession?: string }) =>
     apiGet<ApiList>("/api/journal/calibration-suggestions", p),
   journalCalibrationApprove: (suggestionId: string, body?: { decision?: "APPROVED" | "REJECTED"; reviewedBy?: string; note?: string; beforeParams?: any; afterParams?: any }) =>
-    apiPost<ApiList>(`/api/journal/calibration-suggestions/${encodeURIComponent(suggestionId)}/approve`, body || {}),
+    apiPost<ApiList>(`/api/journal/calibration-suggestions/${encodeURIComponent(suggestionId)}/approve`, body || {}, undefined, "admin"),
   journalCalibrationApplyApproved: (body?: { appliedBy?: string }) =>
-    apiPost<ApiList>("/api/journal/calibration-suggestions/apply-approved", body || {}),
+    apiPost<ApiList>("/api/journal/calibration-suggestions/apply-approved", body || {}, undefined, "admin"),
   journalSelfLearningStatus: (p?: { market?: Market | string; summaryOnly?: boolean }) =>
     apiGet<any>("/api/journal/self-learning/status", p),
   journalOpsDashboard: (p?: { market?: Market | string }) =>
     apiGet<any>("/api/journal/ops-dashboard", p),
   journalSelfLearningAutoCalibrate: (body?: { market?: Market | string; appliedBy?: string; apply?: boolean; maxApplications?: number }) =>
-    apiPost<any>("/api/journal/self-learning/auto-calibrate", body || {}),
+    apiPost<any>("/api/journal/self-learning/auto-calibrate", body || {}, undefined, "admin"),
   journalPerformanceGate: (body?: { market?: Market | string; autoRollback?: boolean }) =>
-    apiPost<any>("/api/journal/self-learning/performance-gate", body || {}),
+    apiPost<any>("/api/journal/self-learning/performance-gate", body || {}, undefined, "admin"),
   journalSelfLearningRollback: (body?: { version?: number; requestedBy?: string }) =>
-    apiPost<any>("/api/journal/self-learning/rollback", body || {}),
+    apiPost<any>("/api/journal/self-learning/rollback", body || {}, undefined, "admin"),
   journalHistoricalReplay: (body: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; asOfDate: string; limit?: number; evaluateAfter?: boolean }) =>
-    apiPost<ApiList>("/api/journal/historical-replay", body),
+    apiPost<ApiList>("/api/journal/historical-replay", body, undefined, "admin"),
   journalHistoricalReplayBackfill: (body: { market?: Market | string; mode?: Mode | string; horizon?: Horizon | string; startDate: string; endDate?: string; stepDays?: number; limit?: number; maxRuns?: number; evaluateAfter?: boolean }) =>
-    apiPost<ApiList>("/api/journal/historical-replay/backfill", body),
+    apiPost<ApiList>("/api/journal/historical-replay/backfill", body, undefined, "admin"),
   journalMarketAnalogsRun: (body?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; asOfDate?: string; analogLimit?: number; replayLimit?: number; runReplay?: boolean }) =>
-    apiPost<ApiList>("/api/journal/market-analogs/run", body || {}),
+    apiPost<ApiList>("/api/journal/market-analogs/run", body || {}, undefined, "admin"),
   journalAutoCaptureStatus: (p?: { summaryOnly?: boolean }) =>
     apiGet<ApiList>("/api/journal/auto-capture/status", p),
   journalAutoCaptureRun: (body?: { market?: Market; sourceType?: string; journalSession?: string; limit?: number; includeEngine?: boolean; evaluateAfter?: boolean; force?: boolean }) =>
-    apiPost<ApiList>("/api/journal/auto-capture/run", body || {}),
+    apiPost<ApiList>("/api/journal/auto-capture/run", body || {}, undefined, "admin"),
   journalTradeReview: (journalId: string, body?: { reviewedBy?: string; reviewerNote?: string }) =>
-    apiPost<ApiList>(`/api/journal/virtual-trades/${encodeURIComponent(journalId)}/review`, body || {}),
+    apiPost<ApiList>(`/api/journal/virtual-trades/${encodeURIComponent(journalId)}/review`, body || {}, undefined, "admin"),
   journalAnalytics: (p?: { market?: Market; mode?: Mode | string; horizon?: Horizon | string; sourceType?: string; journalSession?: string }) =>
     apiGet<ApiList>("/api/journal/analytics", p),
   // 추천의 시장 대비 초과수익(알파). 원시 수익률만 보면 시장 하락을 앱 실패로
@@ -889,13 +902,13 @@ export const mone = {
   paperStopsCheck: (p?: { market?: string }) => apiGet<any>("/api/paper/stops/check", p),
   aiPaperStatus: (p?: { market?: string }) => apiGet<any>("/api/paper/ai/status", p),
   aiPaperRun: (body?: { market?: string; dryRun?: boolean }) =>
-    apiPost<any>("/api/paper/ai/run", body ?? { dryRun: true }),
+    apiPost<any>("/api/paper/ai/run", body ?? { dryRun: true }, undefined, "admin"),
   paperStopUpdate: (market: string, symbol: string, body: { stopPrice?: number; targetPrice?: number; note?: string }) =>
-    fetch(buildUrl(API_BASE, `/api/paper/stops/${market}/${symbol}`), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((r) => r.json()),
+    fetch(buildUrl(API_BASE, `/api/paper/stops/${market}/${symbol}`), { method: "PATCH", headers: { "Content-Type": "application/json", ...adminAuthHeaders() }, body: JSON.stringify(body) }).then((r) => r.json()),
   paperBuy: (body: { symbol: string; market: string; quantity: number; price?: number; name?: string; memo?: string }) =>
-    apiPost<any>("/api/paper/buy", body),
+    apiPost<any>("/api/paper/buy", body, undefined, "admin"),
   paperSell: (body: { symbol: string; market: string; quantity: number; price?: number; memo?: string }) =>
-    apiPost<any>("/api/paper/sell", body),
+    apiPost<any>("/api/paper/sell", body, undefined, "admin"),
   paperReset: (market?: string, opts?: { seedKr?: number; seedUs?: number }) => {
     const params = new URLSearchParams();
     if (market) params.set("market", market);
@@ -904,7 +917,7 @@ export const mone = {
     const qs = params.toString();
     return fetch(`${API_BASE}/api/paper/reset${qs ? `?${qs}` : ""}`, {
       method: "DELETE",
-      headers: { ...getMoneUserHeader() },
+      headers: { ...adminAuthHeaders() },
     }).then((r) => r.json());
   },
 };

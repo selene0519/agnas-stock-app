@@ -35,7 +35,7 @@ ITEM_KEEP = {
     "symbol", "name", "market", "code", "ticker", "companyName", "id",
     # 가격/현재가
     "currentPrice", "currentPriceText", "currentPriceSource", "price", "priceSource",
-    "priceSourceFile", "close", "averagePrice", "avgPrice", "avg_price", "qty", "quantity",
+    "priceSourceFile", "priceSourceDate", "priceTime", "close", "averagePrice", "avgPrice", "avg_price", "qty", "quantity",
     # 진입/손절/목표
     "entry", "entryPrice", "entryText", "stop", "stopPrice", "stopText",
     "target", "targetPrice", "targetText", "targetReason",
@@ -54,18 +54,34 @@ ITEM_KEEP = {
     "strategyTags", "strategyTagCodes", "strategyTagLabels", "displayTags", "styleTags",
     "liquidityTags", "pricePositionTags", "freshnessTags",
     # 분류/표시
-    "sector", "sectorLabel", "group", "groups", "source", "suggestion", "buyTiming",
+    "sector", "sectorLabel", "group", "groups", "source", "suggestion", "decisionBucket", "buyTiming",
     "newEntryDecision", "patternAction", "patternStrategyAction", "cautionReasons",
     # 거래 안전/차단
     "tradeBlockStatus", "tradeBlockReason", "isTradeBlocked", "reviewOnly", "isBlocked",
     "riskStatus", "action", "recommended", "desc", "label", "isSearchOnly",
+    # Keep evidence distinct from the recommendation itself. Zero symbol
+    # matches does not establish that the news/disclosure feed is complete.
+    "chartSignalUsed", "chartScoreAdjustment", "chartSignalSummary", "patternStrategy",
+    "newsCount", "disclosureCount", "newsEventTag", "disclosureEventTag",
+    "eventContextUsed", "eventDataSourceType", "eventScoreAdjustment", "eventSummary",
 }
 
 
 def _slim_item(item: dict) -> dict:
     if not isinstance(item, dict):
         return item
-    return {k: v for k, v in item.items() if k in ITEM_KEEP}
+    result = {k: v for k, v in item.items() if k in ITEM_KEEP}
+    chart = result.get("chartSignalSummary")
+    if isinstance(chart, dict):
+        result["chartSignalSummary"] = {k: chart[k] for k in (
+            "status", "direction", "chartSignalTag", "recommendedIntegration", "usedSignals", "source", "notes"
+        ) if k in chart}
+    pattern = result.get("patternStrategy")
+    if isinstance(pattern, dict):
+        result["patternStrategy"] = {k: pattern[k] for k in (
+            "status", "riskStatus", "isBlocked", "action", "message"
+        ) if k in pattern}
+    return result
 
 
 def main() -> int:
@@ -76,6 +92,7 @@ def main() -> int:
 
     from app.services import final_engine as fe
     from app.services import signal_ledger as sl
+    from app.services.atomic_io import atomic_write_json
 
     out_dir = ROOT / "reports" / "reco_cache"
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -88,6 +105,8 @@ def main() -> int:
                 t = time.time()
                 try:
                     res = fe.final_recommendations(market, mode, horizon, limit=args.limit)
+                    if not isinstance(res, dict) or res.get("status") not in {"OK", "NO_DATA"} or not isinstance(res.get("items"), list):
+                        raise ValueError("invalid recommendation payload or failed calculation")
                     res = dict(res)
                     # Freeze a small, stable set of forecasts before slimming the
                     # cache payload.  Validation later reads this immutable ledger,
@@ -107,7 +126,9 @@ def main() -> int:
                     res["servedFrom"] = "precompute"
                     res["precomputedAt"] = fe._now()
                     path = out_dir / f"{market}_{mode}_{horizon}.json"
-                    path.write_text(json.dumps(res, ensure_ascii=False, default=str), encoding="utf-8")
+                    # Round-trip with the existing default=str behavior before
+                    # atomic replacement; a failed generation keeps the old file.
+                    atomic_write_json(path, json.loads(json.dumps(res, ensure_ascii=False, default=str)))
                     ok += 1
                     print(f"[precompute] {market}_{mode}_{horizon}: {res.get('count')}건 "
                           f"({time.time() - t:.1f}s)", flush=True)
@@ -115,7 +136,7 @@ def main() -> int:
                     print(f"[precompute] {market}_{mode}_{horizon} 오류: "
                           f"{type(exc).__name__}: {exc}", flush=True)
     print(f"[precompute] 완료: {ok}/{len(markets) * len(MODES) * len(HORIZONS)} 조합")
-    return 0
+    return 0 if ok == len(markets) * len(MODES) * len(HORIZONS) else 1
 
 
 if __name__ == "__main__":
