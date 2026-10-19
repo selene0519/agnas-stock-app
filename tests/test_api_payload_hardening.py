@@ -82,6 +82,7 @@ def test_anonymous_risk_budget_does_not_run_shared_portfolio(monkeypatch) -> Non
 
 def test_holdings_user_header_must_match_signed_token(monkeypatch) -> None:
     monkeypatch.delenv("MONE_ANON_HOLDINGS", raising=False)
+    monkeypatch.setenv("MONE_AUTH_SECRET", "test-only-holdings-token-secret")
     token, _, user_id = main._create_user_token("kakao", "subject-1", "owner@example.com", "Owner")
 
     valid = main._authenticated_holdings_uid(user_id, f"Bearer {token}")
