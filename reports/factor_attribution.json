@@ -1,18 +1,18 @@
 {
-  "updatedAt": "2026-10-19 09:35:44",
-  "totalRows": 3236,
+  "updatedAt": "2026-10-19 16:16:45",
+  "totalRows": 3238,
   "olsSampleSize": 2631,
   "byStrategy": {
     "conservative_short": {
-      "total": 294,
-      "wins": 79,
+      "total": 295,
+      "wins": 80,
       "losses": 215,
-      "winRate": 0.2687,
-      "avgWinPct": 5.02,
+      "winRate": 0.2712,
+      "avgWinPct": 5.027,
       "avgLossPct": 3.434,
-      "payoffRatio": 1.462,
-      "avgProbability": 59.0,
-      "probAccuracy": -0.321
+      "payoffRatio": 1.464,
+      "avgProbability": 58.9,
+      "probAccuracy": -0.318
     },
     "conservative_swing": {
       "total": 311,
@@ -37,13 +37,13 @@
       "probAccuracy": -0.328
     },
     "balanced_short": {
-      "total": 268,
+      "total": 269,
       "wins": 72,
-      "losses": 196,
-      "winRate": 0.2687,
+      "losses": 197,
+      "winRate": 0.2677,
       "avgWinPct": 6.081,
-      "avgLossPct": 3.935,
-      "payoffRatio": 1.545,
+      "avgLossPct": 3.926,
+      "payoffRatio": 1.549,
       "avgProbability": 56.3,
       "probAccuracy": -0.295
     },
@@ -112,17 +112,17 @@
       "payoffRatio": 1.371
     },
     "us": {
-      "total": 2064,
-      "winRate": 0.2277,
-      "avgWinPct": 10.974,
-      "avgLossPct": 7.311,
-      "payoffRatio": 1.501
+      "total": 2066,
+      "winRate": 0.228,
+      "avgWinPct": 10.962,
+      "avgLossPct": 7.308,
+      "payoffRatio": 1.5
     }
   },
   "byProbBand": {
     "low_50-60": {
-      "count": 1013,
-      "actualWinRate": 0.1293
+      "count": 1015,
+      "actualWinRate": 0.13
     },
     "mid_60-75": {
       "count": 1033,
@@ -200,7 +200,7 @@
     }
   },
   "insight": [
-    "호라이즌: short 전략 평균 승률 26.3%로 최고",
+    "호라이즌: short 전략 평균 승률 26.4%로 최고",
     "모드: conservative 전략 평균 payoff 1.64x로 최고",
     "마켓: KR 승률 25.1%로 우위",
     "회귀분석: intercept 낮을수록 수익률 향상 (β=-17.656)",
