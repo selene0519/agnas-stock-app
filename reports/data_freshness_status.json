@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-16T17:57:32.387011+00:00",
+  "generatedAt": "2026-10-19T00:36:34.414793+00:00",
   "overall": "WARN",
   "criticalFailures": 0,
   "hardFailures": 0,
@@ -15,30 +15,30 @@
     {
       "name": "kr_ohlcv",
       "status": "OK",
-      "detail": "0.75d, asOf=2026-10-16",
+      "detail": "3.03d, asOf=2026-10-16",
       "critical": true,
-      "ageDays": 0.75
+      "ageDays": 3.03
     },
     {
       "name": "kr_kospi_ohlcv",
       "status": "OK",
-      "detail": "0.75d, asOf=2026-10-16, kr_KOSPI_daily.csv trailing OHLC is valid",
+      "detail": "3.03d, asOf=2026-10-16, kr_KOSPI_daily.csv trailing OHLC is valid",
       "critical": true,
-      "ageDays": 0.75
+      "ageDays": 3.03
     },
     {
       "name": "kr_kosdaq_ohlcv",
       "status": "OK",
-      "detail": "0.75d, asOf=2026-10-16, kr_KOSDAQ_daily.csv trailing OHLC is valid",
+      "detail": "3.03d, asOf=2026-10-16, kr_KOSDAQ_daily.csv trailing OHLC is valid",
       "critical": true,
-      "ageDays": 0.75
+      "ageDays": 3.03
     },
     {
       "name": "kr_recommendations",
       "status": "OK",
-      "detail": "0.16d, asOf=2026-10-16T14:05:25.839266+00:00",
+      "detail": "0.04d, asOf=2026-10-18T23:32:58.837731+00:00",
       "critical": true,
-      "ageDays": 0.16
+      "ageDays": 0.04
     },
     {
       "name": "collector_steps",
@@ -49,78 +49,78 @@
     },
     {
       "name": "collector_partial_failures",
-      "status": "OK",
-      "detail": "cloud collector reports have zero failed items",
+      "status": "WARN",
+      "detail": "kr_close 100건",
       "critical": false,
       "ageDays": null
     },
     {
       "name": "collector_run",
       "status": "OK",
-      "detail": "0.16d, asOf=2026-10-16T23:08:15+09:00, source=cloud:benchmarks, reportedAt=2026-10-16T23:08:15",
+      "detail": "0.04d, asOf=2026-10-19T08:36:04+09:00, source=cloud:benchmarks, reportedAt=2026-10-19T08:36:04",
       "critical": true,
-      "ageDays": 0.16
+      "ageDays": 0.04
     },
     {
       "name": "local_collector_run",
       "status": "STALE",
-      "detail": "optional local collector 80.43d old; cloud source remains authoritative",
+      "detail": "optional local collector 82.71d old; cloud source remains authoritative",
       "critical": false,
-      "ageDays": 80.43
+      "ageDays": 82.71
     },
     {
       "name": "vtj_journal",
       "status": "OK",
-      "detail": "0.16d, asOf=2026-10-16T23:08:23+09:00",
+      "detail": "0.04d, asOf=2026-10-19T08:36:12+09:00",
       "critical": false,
-      "ageDays": 0.16
+      "ageDays": 0.04
     },
     {
       "name": "live_calibration",
       "status": "OK",
-      "detail": "0.75d, asOf=2026-10-16",
+      "detail": "0.03d, asOf=2026-10-19",
       "critical": false,
-      "ageDays": 0.75
+      "ageDays": 0.03
     },
     {
       "name": "strategy_win_rates",
       "status": "OK",
-      "detail": "-0.37d, asOf=2026-10-17 02:57:26",
+      "detail": "-0.37d, asOf=2026-10-19 09:36:28",
       "critical": false,
       "ageDays": -0.37
     },
     {
       "name": "prediction_capture",
       "status": "OK",
-      "detail": "0.75d, asOf=2026-10-16",
+      "detail": "0.03d, asOf=2026-10-19",
       "critical": true,
-      "ageDays": 0.75
+      "ageDays": 0.03
     },
     {
       "name": "capture_continuity",
       "status": "OK",
-      "detail": "거래일 12일 중 캡처 12일 (기준일 2026-09-25~, 유예 1일)",
+      "detail": "거래일 12일 중 캡처 12일 (기준일 2026-09-28~, 유예 1일)",
       "critical": true,
       "ageDays": null
     },
     {
       "name": "settlement_backlog",
       "status": "OK",
-      "detail": "만기경과 미정산 0건 / 대기중 723건",
+      "detail": "만기경과 미정산 0건 / 대기중 710건",
       "critical": false,
       "ageDays": null
     },
     {
       "name": "clean_window_samples",
       "status": "OK",
-      "detail": "clean window(2026-07-10) 정산표본 1536건 / 전체 정산 2196건 / 원장 3099행",
+      "detail": "clean window(2026-07-10) 정산표본 1578건 / 전체 정산 2238건 / 원장 3129행",
       "critical": false,
       "ageDays": null
     },
     {
       "name": "live_gate_promotion",
       "status": "WARN",
-      "detail": "승격 0/15셀 (기준 effN≥30, 최대 9.9, global effN 26.9 승률 21.5%) — 아직 백테스트 소스 사용 중",
+      "detail": "승격 0/15셀 (기준 effN≥30, 최대 9.3, global effN 25.1 승률 21.5%) — 아직 백테스트 소스 사용 중",
       "critical": false,
       "ageDays": null
     }
