@@ -244,6 +244,29 @@ def test_strategy_cohort_survives_deployment_and_unapplied_shadow_versions() -> 
     assert corrected["strategy_fingerprint"] != shadow["strategy_fingerprint"]
 
 
+def test_capture_keeps_new_strategy_observation_but_dedupes_same_strategy_retry(
+    isolated_vtj: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original = _valid_recommendation("STRATEGY-CAPTURE")
+    changed_strategy = {**original, "modelVersion": "ranker-test-v2"}
+    items = [original]
+    monkeypatch.setattr(vtj, "_source_recommendation_items", lambda *args, **kwargs: items)
+
+    first = vtj.capture("kr", "balanced", "swing", as_of_date="2026-06-18")
+    retry = vtj.capture("kr", "balanced", "swing", as_of_date="2026-06-18")
+    items[:] = [changed_strategy]
+    changed = vtj.capture("kr", "balanced", "swing", as_of_date="2026-06-18")
+
+    rows = vtj._read_journal_rows()
+    assert first["added"] == 1
+    assert retry["added"] == 0
+    assert retry["duplicates"] == 1
+    assert changed["added"] == 1
+    assert len(rows) == 2
+    assert len({row["strategy_fingerprint"] for row in rows}) == 2
+
+
 def test_decision_unit_dedup_keeps_highest_score_and_marks_legacy_rows() -> None:
     rows = [
         {"as_of_date": "2026-06-18", "market": "kr", "symbol": "005930", "final_rank_score": 70},
@@ -260,12 +283,13 @@ def test_decision_unit_dedup_keeps_highest_score_and_marks_legacy_rows() -> None
 
 def test_strategy_diagnostics_do_not_drop_the_same_symbol_from_other_sleeves() -> None:
     rows = [
-        {"as_of_date": "2026-06-18", "market": "kr", "symbol": "005930", "mode": "balanced", "horizon": "swing"},
-        {"as_of_date": "2026-06-18", "market": "kr", "symbol": "005930", "mode": "aggressive", "horizon": "swing"},
+        {"as_of_date": "2026-06-18", "market": "kr", "symbol": "005930", "mode": "balanced", "horizon": "swing", "strategy_contract_version": "v1", "strategy_fingerprint": "fp-a"},
+        {"as_of_date": "2026-06-18", "market": "kr", "symbol": "005930", "mode": "aggressive", "horizon": "swing", "strategy_contract_version": "v1", "strategy_fingerprint": "fp-a"},
+        {"as_of_date": "2026-06-18", "market": "kr", "symbol": "005930", "mode": "balanced", "horizon": "swing", "strategy_contract_version": "v2", "strategy_fingerprint": "fp-b"},
     ]
 
     assert len(vtj._dedupe_decision_units(rows)) == 1
-    assert len(vtj._dedupe_decision_units(rows, within_strategy=True)) == 2
+    assert len(vtj._dedupe_decision_units(rows, within_strategy=True)) == 3
 
 
 @pytest.fixture()

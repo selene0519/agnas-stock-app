@@ -180,6 +180,15 @@ CALIBRATION_SHADOW_POLICY = {
 # identity, so materially different decision rules cannot be mixed merely
 # because they share the same calendar clean-window date.
 STRATEGY_CONTRACT_VERSION = "mone-recommendation-v1"
+STRATEGY_SCOPE_FIELDS = (
+    "market",
+    "mode",
+    "horizon",
+    "source_type",
+    "journal_session",
+    "strategy_contract_version",
+    "strategy_fingerprint",
+)
 CORRECTION_LIMITS = {
     "weightAdjustments": {
         "riskScore": (-0.35, 0.25),
@@ -639,6 +648,8 @@ def _journal_id(row: dict[str, Any]) -> str:
             "mode",
             "horizon",
             "symbol",
+            "strategy_contract_version",
+            "strategy_fingerprint",
             "entry_price",
             "stop_price",
             "target_price",
@@ -654,6 +665,32 @@ def _decision_unit_id(row: dict[str, Any]) -> str:
         for key in ("as_of_date", "market", "symbol")
     )
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:20]
+
+
+def _capture_identity_key(row: dict[str, Any]) -> str:
+    """Return the idempotency key for one immutable strategy observation.
+
+    A decision unit (same date/market/symbol) can legitimately be observed by
+    a newly deployed decision contract or by a promoted correction.  Treating
+    that observation as a duplicate prevents the new strategy from ever
+    accumulating its own forward evidence.  Conversely, a retry of the same
+    contract must remain idempotent even if a price feed changed slightly.
+    """
+    normalized = _ensure_row_identity(row)
+    return "|".join(
+        _text(normalized.get(key))
+        for key in (
+            "source_type",
+            "journal_session",
+            "as_of_date",
+            "market",
+            "mode",
+            "horizon",
+            "symbol",
+            "strategy_contract_version",
+            "strategy_fingerprint",
+        )
+    )
 
 
 def _truthy(value: Any) -> bool:
@@ -754,7 +791,14 @@ def _dedupe_decision_units(
         if within_strategy:
             key += "|" + "|".join(
                 _text(row.get(field)).lower()
-                for field in ("mode", "horizon", "source_type", "journal_session")
+                for field in (
+                    "mode",
+                    "horizon",
+                    "source_type",
+                    "journal_session",
+                    "strategy_contract_version",
+                    "strategy_fingerprint",
+                )
             )
         if key not in selected:
             selected[key] = row
@@ -1057,16 +1101,13 @@ def _relative(path: Path) -> str:
 def _append_new_snapshots(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], int]:
     existing = _read_journal_rows()
     seen = {str(row.get("journal_id")) for row in existing}
-    natural_seen = {
-        "|".join(_text(row.get(k)) for k in ("source_type", "journal_session", "as_of_date", "market", "mode", "horizon", "symbol"))
-        for row in existing
-    }
+    natural_seen = {_capture_identity_key(row) for row in existing}
     added: list[dict[str, Any]] = []
     duplicates = 0
     for row in rows:
         row["journal_session"] = _journal_session(row.get("journal_session"))
         row.setdefault("session_note", "")
-        natural = "|".join(_text(row.get(k)) for k in ("source_type", "journal_session", "as_of_date", "market", "mode", "horizon", "symbol"))
+        natural = _capture_identity_key(row)
         if row["journal_id"] in seen or natural in natural_seen:
             duplicates += 1
             continue
@@ -2628,7 +2669,7 @@ def failure_patterns(
     raw_group_counts = Counter(
         "|".join(
             _text(row.get(k))
-            for k in ("market", "mode", "horizon", "source_type", "journal_session")
+            for k in STRATEGY_SCOPE_FIELDS
         )
         for row in raw_evaluated
     )
@@ -2636,12 +2677,20 @@ def failure_patterns(
     for row in evaluated:
         key = "|".join(
             _text(row.get(k))
-            for k in ("market", "mode", "horizon", "source_type", "journal_session")
+            for k in STRATEGY_SCOPE_FIELDS
         )
         groups[key].append(row)
     items: list[dict[str, Any]] = []
     for key, sub in sorted(groups.items()):
-        market_v, mode_v, horizon_v, source_v, session_v = key.split("|")
+        (
+            market_v,
+            mode_v,
+            horizon_v,
+            source_v,
+            session_v,
+            contract_v,
+            fingerprint_v,
+        ) = key.split("|")
         counts = Counter(_text(row.get("failure_reason") or "UNKNOWN") for row in sub)
         outcome_counts = Counter(_text(row.get("outcome") or "UNKNOWN") for row in sub)
         returns = [_safe_float(row.get("net_pnl_pct")) for row in sub]
@@ -2659,6 +2708,8 @@ def failure_patterns(
             "horizon": horizon_v,
             "sourceType": source_v,
             "journalSession": session_v,
+            "strategyContractVersion": contract_v,
+            "strategyFingerprint": fingerprint_v,
             "sampleCount": total,
             "distinctSignalDates": distinct_signal_dates,
             "rawRowCount": raw_group_counts.get(key, total),
@@ -2715,6 +2766,8 @@ def _suggestion_base(item: dict[str, Any]) -> dict[str, Any]:
         "horizon": item.get("horizon"),
         "sourceType": item.get("sourceType"),
         "journalSession": item.get("journalSession"),
+        "strategyContractVersion": item.get("strategyContractVersion"),
+        "strategyFingerprint": item.get("strategyFingerprint"),
         "sampleCount": item.get("sampleCount"),
         "distinctSignalDates": item.get("distinctSignalDates"),
     }
@@ -2723,7 +2776,15 @@ def _suggestion_base(item: dict[str, Any]) -> dict[str, Any]:
 def _source_summary_id(item: dict[str, Any]) -> str:
     raw = "|".join(
         _text(item.get(key))
-        for key in ("market", "mode", "horizon", "sourceType", "journalSession")
+        for key in (
+            "market",
+            "mode",
+            "horizon",
+            "sourceType",
+            "journalSession",
+            "strategyContractVersion",
+            "strategyFingerprint",
+        )
     )
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
 
@@ -2737,6 +2798,8 @@ def _suggestion_id(item: dict[str, Any]) -> str:
             "horizon",
             "sourceType",
             "journalSession",
+            "strategyContractVersion",
+            "strategyFingerprint",
             "status",
             "reason",
             "sampleCount",
@@ -3706,7 +3769,13 @@ def _rows_for_suggestion_scope(item: dict[str, Any]) -> list[dict[str, Any]]:
         if _upper(row.get("status")) in {"EVALUATED", "CANCELLED"}
         and _text(row.get("failure_reason") or "NONE")
     ]
-    out = _dedupe_decision_units(out)
+    contract = _text(item.get("strategyContractVersion"))
+    fingerprint = _text(item.get("strategyFingerprint"))
+    if contract:
+        out = [row for row in out if _text(row.get("strategy_contract_version")) == contract]
+    if fingerprint:
+        out = [row for row in out if _text(row.get("strategy_fingerprint")) == fingerprint]
+    out = _dedupe_decision_units(out, within_strategy=True)
     out.sort(key=_row_event_date)
     return out
 
