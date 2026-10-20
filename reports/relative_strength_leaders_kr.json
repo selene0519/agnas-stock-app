@@ -5,7 +5,7 @@
   "regime": "BEAR",
   "status": "BEAR_DEFENSIVE",
   "lensNote": "Bear: RS dispersion is gone; rotate to low-volatility defensives (halve the drawdown) instead of chasing returns.",
-  "universeCount": 471,
+  "universeCount": 544,
   "leaders": [],
   "laggardsToAvoid": [],
   "defensiveHolds": [
@@ -64,6 +64,12 @@
       "vol60Pct": 1.38
     },
     {
+      "symbol": "058860",
+      "rs60Pct": -0.99,
+      "relToIndexPp": 16.72,
+      "vol60Pct": 1.39
+    },
+    {
       "symbol": "030000",
       "rs60Pct": 6.48,
       "relToIndexPp": 24.19,
@@ -92,12 +98,6 @@
       "rs60Pct": 2.63,
       "relToIndexPp": 20.34,
       "vol60Pct": 1.5
-    },
-    {
-      "symbol": "279570",
-      "rs60Pct": -16.18,
-      "relToIndexPp": 1.53,
-      "vol60Pct": 1.56
     }
   ],
   "note": "Research/paper only. Capital preservation, not return."

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-20T22:01:10.749952+00:00",
+  "generatedAt": "2026-10-20T23:39:51.958080+00:00",
   "source": "us_ohlcv_quant_scanner",
   "symbols": 158,
   "liveSymbols": 111,
@@ -15,10 +15,10 @@
     "regime": "BULL",
     "label": "강세장",
     "scoreAdjust": 5.0,
-    "description": "US SPY 60일 추세 +4.0%, 거래량비 0.94",
+    "description": "US SPY 60일 추세 +4.0%, 거래량비 0.96",
     "benchmark": "SPY",
-    "trend60": 4.0,
-    "volRatio": 0.942,
+    "trend60": 4.05,
+    "volRatio": 0.965,
     "definition": "trend60+거래량(약추세만)",
     "asOf": "2026-10-20",
     "source": "us_SPY_daily.csv"
@@ -31,8 +31,8 @@
     "balanced_short": 1,
     "balanced_swing": 0,
     "balanced_mid": 4,
-    "aggressive_short": 0,
-    "aggressive_swing": 2,
+    "aggressive_short": 1,
+    "aggressive_swing": 1,
     "aggressive_mid": 11
   }
 }
