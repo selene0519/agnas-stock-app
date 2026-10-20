@@ -504,7 +504,12 @@ jobs:
             echo "scripts/refresh_kr_close_ohlcv.py not found; skip KR OHLCV refresh."
           fi
           python scripts/generate_kr_recommendations.py
-          echo "generate_kr_recommendations: exit $?"
+          code=$?
+          echo "generate_kr_recommendations: exit ${code}"
+          if [ "${code}" != "0" ]; then
+            echo "::error::KR recommendation generation failed; do not present a stale recommendation set as current"
+            exit "${code}"
+          fi
           set -e
 
       # KR 예측 알림은 mone-notify.yml (국장 장전 08:30 KST)에서 단독 1회 발송
@@ -525,7 +530,12 @@ jobs:
           set +e
           if [ -f scripts/generate_us_recommendations.py ]; then
             python scripts/generate_us_recommendations.py
-            echo "generate_us_recommendations: exit $?"
+            code=$?
+            echo "generate_us_recommendations: exit ${code}"
+            if [ "${code}" != "0" ]; then
+              echo "::error::US recommendation generation failed; do not present a stale recommendation set as current"
+              exit "${code}"
+            fi
           else
             echo "scripts/generate_us_recommendations.py not found; skip."
           fi

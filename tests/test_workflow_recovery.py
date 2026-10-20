@@ -175,3 +175,10 @@ def test_delayed_scheduled_writers_skip_without_false_failure_alerts():
     assert "no paper trade was executed" in paper
     assert "scheduled_skip=true" in journal
     assert "steps.capture.outputs.scheduled_skip != 'true'" in journal
+
+
+def test_recommendation_generation_cannot_fail_silently():
+    workflow = (ROOT / ".github" / "workflows" / "mone-auto-accumulator.yml").read_text(encoding="utf-8")
+
+    assert "KR recommendation generation failed; do not present a stale recommendation set as current" in workflow
+    assert "US recommendation generation failed; do not present a stale recommendation set as current" in workflow
