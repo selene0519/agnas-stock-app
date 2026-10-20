@@ -71,7 +71,12 @@ jobs:
               exit 0
             fi
             case "$SCHEDULE_EXPRESSION" in
-              "30 23 * * 0-4") [ "$KR_HOUR" = "08" ] || exit 1; MARKET="kr" ;;
+              "30 23 * * 0-4")
+                if [ "$KR_HOUR" != "08" ]; then
+                  echo "::warning::Scheduled KR paper run started outside its safe 08:00 KST window; no paper trade was executed"
+                  exit 0
+                fi
+                MARKET="kr" ;;
               "0 13 * * 1-5"|"0 14 * * 1-5")
                 if [ "$ET_HOUR" != "09" ]; then
                   echo "Outside 09:00 ET due to daylight saving or delay - skip"

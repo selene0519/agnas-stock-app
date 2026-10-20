@@ -936,6 +936,7 @@ jobs:
           bash scripts/ci_commit_app_data.sh "chore: update MONE app data reports [skip ci]" --verify-vtj
 
       - name: Trigger Render backend git pull (데이터 즉시 반영)
+        id: backend-sync
         env:
           MONE_BACKEND_URL: ${{ secrets.MONE_BACKEND_URL || 'https://agnas-stock-app.onrender.com' }}
           MONE_ADMIN_SECRET: ${{ secrets.MONE_ADMIN_SECRET }}
@@ -943,14 +944,21 @@ jobs:
           BASE="${MONE_BACKEND_URL%/}"
           echo "Render 백엔드 git pull 요청: ${BASE}/api/admin/sync-now"
           set -e
-          test -n "$MONE_ADMIN_SECRET" || { echo '::error::MONE_ADMIN_SECRET is missing; backend data refresh was not verified'; exit 1; }
+          if [ -z "$MONE_ADMIN_SECRET" ]; then
+            # Render automatic deploy has already picked up committed data in this
+            # environment. Do not classify a missing optional direct-sync secret
+            # as a failed data collection run (and page Telegram on every cycle).
+            echo "::warning::MONE_ADMIN_SECRET is missing; direct backend sync skipped. Configure it to retain immediate cache invalidation."
+            echo "sync_status=SKIPPED_SECRET_MISSING" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           # A successful HTTP response can still contain a failed git sync.
           curl -sf -X POST "${BASE}/api/admin/sync-now" \
             -H "Content-Type: application/json" \
             -H "x-admin-secret: ${MONE_ADMIN_SECRET}" \
             --max-time 60 \
             -o /tmp/sync_result.json
-          python -c 'import json, sys; r=json.load(open("/tmp/sync_result.json", encoding="utf-8")); status=r.get("status"); print("Backend sync status:", status); sys.exit(0 if status == "OK" else 1)'
+          python -c 'import json, os, sys; r=json.load(open("/tmp/sync_result.json", encoding="utf-8")); status=r.get("status"); print("Backend sync status:", status); open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8").write(f"sync_status={status}\\n"); sys.exit(0 if status == "OK" else 1)'
           echo "Render git 동기화 확인 완료"
 
       - name: VTJ 커밋 확인 (데이터 git 저장 완료)
