@@ -173,10 +173,12 @@ CALIBRATION_SHADOW_POLICY = {
     "humanApprovalRequired": False,
 }
 
-# Bump this value whenever the recommendation decision contract changes.  The
-# fingerprint also includes the correction/model/code versions carried by the
-# recommendation, so results from materially different strategies cannot be
-# mixed merely because they share the same calendar clean-window date.
+# Bump this value whenever the recommendation decision contract changes.  A
+# strategy cohort is deliberately stable across ordinary deployments and
+# *unapplied* shadow-correction runs: those are provenance, not a new trading
+# rule.  Model-version and an actually applied correction remain part of the
+# identity, so materially different decision rules cannot be mixed merely
+# because they share the same calendar clean-window date.
 STRATEGY_CONTRACT_VERSION = "mone-recommendation-v1"
 CORRECTION_LIMITS = {
     "weightAdjustments": {
@@ -654,13 +656,25 @@ def _decision_unit_id(row: dict[str, Any]) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:20]
 
 
+def _truthy(value: Any) -> bool:
+    """Parse persisted recommendation booleans without treating "False" as true."""
+    if isinstance(value, bool):
+        return value
+    return _text(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
 def _strategy_identity(item: dict[str, Any], row: dict[str, Any]) -> dict[str, str]:
     """Build an immutable strategy identity from point-in-time provenance.
 
     Observation values such as score, price, and regime are deliberately not
     included: they vary by signal and are outcomes of a strategy, not its
-    identity.  A caller-supplied fingerprint wins so upstream generators can
+    identity. A caller-supplied fingerprint wins so upstream generators can
     provide a stronger configuration hash without the journal rewriting it.
+
+    Deployment SHA is retained as immutable audit provenance, but must not
+    split a learning cohort: routine fixes/deploys do not alter the economic
+    decision rule. Likewise, the correction-store version is only a new rule
+    when that correction was actually applied to this recommendation.
     """
     explicit = _text(item.get("strategyFingerprint") or item.get("strategy_fingerprint"))
     correction_version = _text(
@@ -694,10 +708,10 @@ def _strategy_identity(item: dict[str, Any], row: dict[str, Any]) -> dict[str, s
         "market": _text(row.get("market")).lower(),
         "mode": _text(row.get("mode")).lower(),
         "horizon": _text(row.get("horizon")).lower(),
-        "correctionVersion": correction_version,
         "modelVersion": model_version,
-        "codeVersion": code_version,
     }
+    if _truthy(item.get("correctionApplied")):
+        payload["appliedCorrectionVersion"] = correction_version
     fingerprint = explicit or hashlib.sha256(
         json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     ).hexdigest()[:24]
