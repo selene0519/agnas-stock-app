@@ -243,6 +243,22 @@ def _load_us_candidate_symbols(limit: int = 160) -> list[str]:
     return symbols[:limit]
 
 
+def _configured_scan_coverage(ohlcv_all: dict[str, list[dict]]) -> dict[str, Any]:
+    """Report the active US universe actually supported by enough OHLCV bars."""
+    configured = set(_load_us_candidate_symbols(limit=10_000))
+    covered = configured.intersection(ohlcv_all)
+    total = len(configured)
+    ratio = len(covered) / total if total else 0.0
+    return {
+        "configuredUniverseSymbols": total,
+        "ohlcvEligibleSymbols": len(covered),
+        "coverageRatio": round(ratio, 4),
+        "status": "OK" if ratio >= 0.9 else "PARTIAL_COVERAGE" if covered else "NO_COVERAGE",
+        "missingSymbols": len(configured - covered),
+        "minimumHistoryRows": MIN_OHLCV_ROWS,
+    }
+
+
 def _download_us_ohlcv(symbols: list[str]) -> dict[str, list[dict]]:
     if not symbols:
         return {}
@@ -793,11 +809,13 @@ def generate_us_recommendations() -> dict[str, Any]:
             tv_path = REPORTS / f"mone_v36_final_trade_validation_us_{mode}_{horizon}.csv"
             _write_csv(tv_path, [{**r, "validationStatus": "PENDING", "validationDate": ""} for r in rows_out], force=_write_force)
 
+    scan_coverage = _configured_scan_coverage(ohlcv_all)
     status = {
         "generatedAt": now,
         "source": "us_ohlcv_quant_scanner",
         "symbols": len(ohlcv_all),
         "liveSymbols": len(prices),
+        "scanCoverage": scan_coverage,
         "marketRegime": regime,
         "evFiltered": ev_filtered,
         "results": results,

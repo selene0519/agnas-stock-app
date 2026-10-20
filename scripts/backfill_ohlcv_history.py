@@ -82,17 +82,19 @@ def _norm_kr_symbol(value: object) -> str:
 
 
 def _target_universe() -> list[dict]:
+    """Return a prioritized history backlog, including newly discovered names."""
     paths = [
-        STOCKAPP / "price_collection_universe_kr.csv",
-        STOCKAPP / "kis_collection_targets_kr.csv",
-        REPO / "holdings_kr.csv",
-        REPO / "data" / "holdings_kr.csv",
-        REPO / "watchlist_kr.csv",
-        REPO / "data" / "watchlist_kr.csv",
+        (REPO / "holdings_kr.csv", 0),
+        (REPO / "data" / "holdings_kr.csv", 0),
+        (REPO / "watchlist_kr.csv", 1),
+        (REPO / "data" / "watchlist_kr.csv", 1),
+        (REPO / "candidate_universe_kr.csv", 2),
+        (STOCKAPP / "price_collection_universe_kr.csv", 2),
+        (STOCKAPP / "kis_collection_targets_kr.csv", 2),
     ]
-    paths.extend(sorted(REPORTS.glob("mone_v36_final_recommendations_kr_*.csv")))
+    paths.extend((path, 3) for path in sorted(REPORTS.glob("mone_v36_final_recommendations_kr_*.csv")))
     keyed: dict[str, dict] = {}
-    for path in paths:
+    for path, base_priority in paths:
         for row in _read_csv(path):
             sym = _norm_kr_symbol(
                 row.get("symbol") or row.get("ticker") or row.get("code") or row.get("종목코드")
@@ -100,10 +102,20 @@ def _target_universe() -> list[dict]:
             if not sym:
                 continue
             name = str(row.get("name") or row.get("companyName") or row.get("종목명") or sym).strip()
-            item = keyed.setdefault(sym, {"symbol": sym, "name": name})
+            row_type = str(row.get("type") or "").strip().lower()
+            priority = base_priority + (2 if row_type == "discovery" else 0)
+            item = keyed.setdefault(sym, {"symbol": sym, "name": name, "priority": priority})
             if name and item.get("name") == sym:
                 item["name"] = name
-    return list(keyed.values())
+            existing_priority = item.get("priority")
+            item["priority"] = min(
+                int(existing_priority) if existing_priority is not None else priority,
+                priority,
+            )
+    return sorted(
+        keyed.values(),
+        key=lambda row: (int(row["priority"]) if row.get("priority") is not None else 99, row["symbol"]),
+    )
 
 
 def _existing_rows(symbol: str) -> list[dict]:
@@ -224,6 +236,7 @@ def main() -> None:
     parser.add_argument("--symbol", default="", help="특정 종목코드만 백필")
     parser.add_argument("--min-rows", type=int, default=DEFAULT_MIN_ROWS, help="이 행 수 미만인 종목만 처리")
     parser.add_argument("--days", type=int, default=DEFAULT_DAYS, help="수집할 일수 (기본 120)")
+    parser.add_argument("--limit", type=int, default=0, help="한 실행에서 처리할 최대 종목 수(0은 전체)")
     parser.add_argument("--all", action="store_true", dest="force_all", help="행 수 무관 전종목 처리")
     args = parser.parse_args()
 
@@ -238,6 +251,8 @@ def main() -> None:
                 t for t in universe
                 if len(_existing_rows(t["symbol"])) < args.min_rows
             ]
+        if args.limit > 0:
+            targets = targets[:args.limit]
 
     print(f"[backfill] 대상 종목: {len(targets)}개 / days={args.days} / min_rows={args.min_rows}")
     if not targets:

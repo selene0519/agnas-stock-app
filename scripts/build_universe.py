@@ -103,6 +103,64 @@ def select_universe(rows: list[dict[str, Any]], market: str) -> list[dict[str, s
     return out[: MAX_TOTAL.get(market, 500)]
 
 
+def _is_auto_universe_row(row: dict[str, str]) -> bool:
+    """Return whether a row was added by this script rather than curated by a user.
+
+    A weekly universe refresh must be able to retire delisted/illiquid automatic
+    discoveries.  Historical code only appended selected rows, so the supposed
+    500-name universe silently grew forever and no longer matched the scan
+    budget.  Curated names keep their own metadata and are never removed here.
+    """
+    return (
+        str(row.get("theme") or "").strip() == "자동선별"
+        and str(row.get("type") or "").strip().lower() in {"core", "discovery"}
+        and str(row.get("group") or "").strip() in {"대형 핵심", "발굴 후보"}
+    )
+
+
+def merge_universe(
+    existing: list[dict[str, str]],
+    selected: list[dict[str, str]],
+    market: str,
+) -> tuple[list[dict[str, str]], int]:
+    """Keep curated rows and replace the prior automatic scan cohort atomically."""
+    curated = [dict(row) for row in existing if not _is_auto_universe_row(row)]
+    curated_symbols = {_norm_symbol(row.get("symbol"), market) for row in curated}
+    curated_symbols.discard("")
+    max_total = MAX_TOTAL.get(market, 500)
+    fields = list(dict.fromkeys(CANDIDATE_COLUMNS + [key for row in curated for key in row]))
+    # Never delete a user-curated name merely because the automatic budget is
+    # full. The cap applies to automatically discovered rows.
+    merged = curated
+    automatic_added = 0
+
+    for meta in selected:
+        symbol = _norm_symbol(meta.get("symbol"), market)
+        if not symbol or symbol in curated_symbols or automatic_added >= max_total:
+            continue
+        row = {column: "" for column in fields}
+        row.update({
+            "symbol": symbol,
+            "name": str(meta.get("name") or symbol).strip(),
+            "type": meta["type"],
+            "risk_level": "중",
+            "theme": "자동선별",
+            "group": "발굴 후보" if meta["type"] == "discovery" else "대형 핵심",
+        })
+        merged.append(row)
+        automatic_added += 1
+    old_auto_symbols = {
+        _norm_symbol(row.get("symbol"), market)
+        for row in existing if _is_auto_universe_row(row)
+    }
+    new_auto_symbols = {
+        _norm_symbol(row.get("symbol"), market)
+        for row in merged if _is_auto_universe_row(row)
+    }
+    retired = len((old_auto_symbols - new_auto_symbols) - {""})
+    return merged, retired
+
+
 def _read_existing(path: Path) -> list[dict[str, str]]:
     if not path.exists():
         return []
@@ -162,34 +220,22 @@ def build_market(market: str, dry_run: bool = False) -> dict[str, Any]:
                 "kept_existing": len(existing)}
 
     selected = select_universe(raw, market)
-    selected_map = {s["symbol"]: s for s in selected}
-
-    # 기존 큐레이션 행은 그대로 보존, 선별된 신규 종목만 추가
-    merged = list(existing)
-    added = 0
-    for sym, meta in selected_map.items():
-        if sym in existing_syms:
-            continue
-        row = {col: "" for col in CANDIDATE_COLUMNS}
-        row["symbol"] = sym
-        row["name"] = meta["name"]
-        row["type"] = meta["type"]
-        row["risk_level"] = "중"
-        row["theme"] = "자동선별"
-        row["group"] = "발굴 후보" if meta["type"] == "discovery" else "대형 핵심"
-        merged.append(row)
-        added += 1
+    merged, retired = merge_universe(existing, selected, market)
+    existing_auto_symbols = {
+        _norm_symbol(row.get("symbol"), market)
+        for row in existing if _is_auto_universe_row(row)
+    }
+    added = sum(
+        1 for row in merged
+        if _is_auto_universe_row(row)
+        and _norm_symbol(row.get("symbol"), market) not in existing_auto_symbols
+    )
 
     result = {"market": market, "status": "OK", "fetched": len(raw),
               "selected": len(selected), "existing": len(existing),
-              "added": added, "total": len(merged)}
+              "added": added, "retiredAutomaticRows": retired, "total": len(merged)}
     if dry_run:
         result["status"] = "DRY_RUN"
-        return result
-
-    # 안전장치: 병합 결과가 기존보다 적으면 쓰지 않음
-    if len(merged) < len(existing):
-        result["status"] = "SKIP_SHRINK"
         return result
 
     fields = list(dict.fromkeys(CANDIDATE_COLUMNS + [k for r in merged for k in r.keys()]))

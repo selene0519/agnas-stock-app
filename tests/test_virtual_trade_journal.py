@@ -221,6 +221,29 @@ def test_snapshot_records_immutable_strategy_and_decision_identity() -> None:
     assert first["data_cutoff_at_signal"] == "2026-06-18"
 
 
+def test_strategy_cohort_survives_deployment_and_unapplied_shadow_versions() -> None:
+    base = {
+        **_valid_recommendation("COHORT"),
+        "correctionApplied": False,
+        "appliedCorrectionVersion": 10,
+        "codeVersion": "deploy-a",
+    }
+    later_shadow = {
+        **base,
+        "appliedCorrectionVersion": 999,
+        "codeVersion": "deploy-b",
+    }
+    applied = {**later_shadow, "correctionApplied": True}
+
+    baseline = vtj._snapshot_from_item(base, "FORWARD_PAPER_TRADE", "2026-06-18")
+    shadow = vtj._snapshot_from_item(later_shadow, "FORWARD_PAPER_TRADE", "2026-06-19")
+    corrected = vtj._snapshot_from_item(applied, "FORWARD_PAPER_TRADE", "2026-06-20")
+
+    assert baseline["strategy_fingerprint"] == shadow["strategy_fingerprint"]
+    assert baseline["code_version_at_signal"] != shadow["code_version_at_signal"]
+    assert corrected["strategy_fingerprint"] != shadow["strategy_fingerprint"]
+
+
 def test_decision_unit_dedup_keeps_highest_score_and_marks_legacy_rows() -> None:
     rows = [
         {"as_of_date": "2026-06-18", "market": "kr", "symbol": "005930", "final_rank_score": 70},

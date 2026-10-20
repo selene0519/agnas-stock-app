@@ -74,37 +74,53 @@ def _num(value: object) -> float | None:
 
 
 def _target_universe(limit: int = 200) -> list[dict]:
+    """Return the prioritized recommendation universe for close-price refresh.
+
+    The prior collector only refreshed holdings, watchlists and yesterday's
+    recommendations.  Newly discovered liquid/core names therefore never got
+    enough OHLCV history to enter the scanner.  Candidate-universe rows are now
+    first-class targets; holdings retain the highest priority.
+    """
     paths = [
-        STOCKAPP / "price_collection_universe_kr.csv",
-        STOCKAPP / "kis_collection_targets_kr.csv",
-        REPO / "holdings_kr.csv",
-        REPO / "data" / "holdings_kr.csv",
+        (REPO / "holdings_kr.csv", 0),
+        (REPO / "data" / "holdings_kr.csv", 0),
         # 브로커 자동수집 원장(KIS/토스)도 포함해야 보유 ETF처럼 추천 유니버스 밖
         # 종목의 종가가 매일 갱신된다. 예전엔 빠져 있어 보유 ETF OHLCV가 특정
         # 날짜(예: 6/30)에 얼어붙어 앱 보유·NAV가 옛 가격으로 고정됐다.
-        REPO / "data" / "kis_2_holdings_kr.csv",
-        REPO / "data" / "kis_holdings_kr.csv",
-        REPO / "data" / "toss_holdings_kr.csv",
-        REPO / "watchlist_kr.csv",
-        REPO / "data" / "watchlist_kr.csv",
+        (REPO / "data" / "kis_2_holdings_kr.csv", 0),
+        (REPO / "data" / "kis_holdings_kr.csv", 0),
+        (REPO / "data" / "toss_holdings_kr.csv", 0),
+        (REPO / "watchlist_kr.csv", 1),
+        (REPO / "data" / "watchlist_kr.csv", 1),
+        (REPO / "candidate_universe_kr.csv", 2),
     ]
-    paths.extend(sorted(REPORTS.glob("mone_v36_final_recommendations_kr_*.csv")))
+    paths.extend((path, 3) for path in sorted(REPORTS.glob("mone_v36_final_recommendations_kr_*.csv")))
     keyed: dict[str, dict] = {}
-    for path in paths:
+    for path, base_priority in paths:
         for row in _read_csv(path):
             sym = _norm_kr_symbol(row.get("symbol") or row.get("ticker") or row.get("code") or row.get("종목코드"))
             if not sym:
                 continue
             name = str(row.get("name") or row.get("companyName") or row.get("종목명") or sym).strip()
-            item = keyed.setdefault(sym, {"market": "kr", "symbol": sym, "name": name, "sources": set()})
+            row_type = str(row.get("type") or "").strip().lower()
+            priority = base_priority + (2 if row_type == "discovery" else 0)
+            item = keyed.setdefault(sym, {"market": "kr", "symbol": sym, "name": name, "sources": set(), "priority": priority})
             if name and item.get("name") == sym:
                 item["name"] = name
+            existing_priority = item.get("priority")
+            item["priority"] = min(
+                int(existing_priority) if existing_priority is not None else priority,
+                priority,
+            )
             item["sources"].add(path.name)
     out = []
     for item in keyed.values():
         item["sources"] = "|".join(sorted(item["sources"]))
         out.append(item)
-    return sorted(out, key=lambda r: r["symbol"])[:limit]
+    return sorted(
+        out,
+        key=lambda row: (int(row["priority"]) if row.get("priority") is not None else 99, row["symbol"]),
+    )[:limit]
 
 
 def _existing_rows(symbol: str) -> list[dict]:
@@ -230,7 +246,7 @@ def main() -> None:
         return
     REPORTS.mkdir(parents=True, exist_ok=True)
     OHLCV_DIR.mkdir(parents=True, exist_ok=True)
-    limit = int(os.environ.get("MONE_KR_CLOSE_OHLCV_LIMIT", "120"))
+    limit = int(os.environ.get("MONE_KR_CLOSE_OHLCV_LIMIT", "250"))
     workers = max(1, min(int(os.environ.get("MONE_KR_CLOSE_OHLCV_WORKERS", "6")), 12))
     targets = _target_universe(limit=limit)
     rows = []
