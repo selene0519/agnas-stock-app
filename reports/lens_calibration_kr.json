@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-19T23:33:34.244152+00:00",
-  "asOfDate": "2026-10-01",
+  "generatedAt": "2026-10-20T01:23:00.431989+00:00",
+  "asOfDate": "2026-10-02",
   "sources": {
     "live": "reports/lens_live_journal_kr.csv",
     "prior": "reports/lens_journal_kr.csv"
@@ -12,7 +12,7 @@
     "refEdgePct": 0.62,
     "priorStrengthK": 40.0
   },
-  "liveSamplesTotal": 260,
+  "liveSamplesTotal": 272,
   "note": "라이브 forward 실측 우선 + 백테스트 prior shrinkage. 라이브(lens_live_journal)가 쌓일수록 생존편향 제거되고 liveFraction↑. 현재 liveSamplesTotal이 0이면 사실상 백테스트 prior.",
   "activeSetupByRegime": {
     "BULL": [
@@ -24,55 +24,10 @@
     "BEAR": []
   },
   "calibration": {
-    "BOTTOM_CATCH|BEAR": {
-      "setup": "BOTTOM_CATCH",
-      "regime": "BEAR",
-      "blendedNetAvgPct": -1.581,
-      "blendedWinRate": 25.6,
-      "gate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "liveEffectiveSamples": 105.4,
-      "liveRawSamples": 115,
-      "liveNetAvgPct": -2.266,
-      "priorNetAvgPct": 0.225,
-      "priorRawSamples": 3583,
-      "liveFraction": 0.725,
-      "profitFactor": 0.31
-    },
-    "BOTTOM_CATCH|BULL": {
-      "setup": "BOTTOM_CATCH",
-      "regime": "BULL",
-      "blendedNetAvgPct": -1.142,
-      "blendedWinRate": 35.5,
-      "gate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "liveEffectiveSamples": 0.0,
-      "liveRawSamples": 0,
-      "liveNetAvgPct": null,
-      "priorNetAvgPct": -1.142,
-      "priorRawSamples": 2174,
-      "liveFraction": 0.0,
-      "profitFactor": 0.66
-    },
-    "BREAKOUT|SIDE": {
-      "setup": "BREAKOUT",
-      "regime": "SIDE",
-      "blendedNetAvgPct": 0.368,
-      "blendedWinRate": 44.3,
-      "gate": "ACTIVE",
-      "sizeMultiplier": 0.59,
-      "liveEffectiveSamples": 3.4,
-      "liveRawSamples": 4,
-      "liveNetAvgPct": -4.502,
-      "priorNetAvgPct": 0.779,
-      "priorRawSamples": 6996,
-      "liveFraction": 0.078,
-      "profitFactor": 0.0
-    },
     "LEADER_BREAKOUT|BULL": {
       "setup": "LEADER_BREAKOUT",
       "regime": "BULL",
-      "blendedNetAvgPct": -0.259,
+      "blendedNetAvgPct": -0.258,
       "blendedWinRate": 8.7,
       "gate": "SUPPRESSED_LOW_EDGE",
       "sizeMultiplier": 0.0,
@@ -81,8 +36,23 @@
       "liveNetAvgPct": -1.251,
       "priorNetAvgPct": null,
       "priorRawSamples": 0,
-      "liveFraction": 0.207,
+      "liveFraction": 0.206,
       "profitFactor": 0.74
+    },
+    "BREAKOUT|BEAR": {
+      "setup": "BREAKOUT",
+      "regime": "BEAR",
+      "blendedNetAvgPct": -0.823,
+      "blendedWinRate": 30.7,
+      "gate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "liveEffectiveSamples": 124.0,
+      "liveRawSamples": 135,
+      "liveNetAvgPct": -0.636,
+      "priorNetAvgPct": -1.404,
+      "priorRawSamples": 2319,
+      "liveFraction": 0.756,
+      "profitFactor": 0.79
     },
     "BREAKOUT|BULL": {
       "setup": "BREAKOUT",
@@ -99,6 +69,51 @@
       "liveFraction": 0.0,
       "profitFactor": 1.11
     },
+    "BREAKOUT|SIDE": {
+      "setup": "BREAKOUT",
+      "regime": "SIDE",
+      "blendedNetAvgPct": 0.369,
+      "blendedWinRate": 44.3,
+      "gate": "ACTIVE",
+      "sizeMultiplier": 0.6,
+      "liveEffectiveSamples": 3.4,
+      "liveRawSamples": 4,
+      "liveNetAvgPct": -4.502,
+      "priorNetAvgPct": 0.779,
+      "priorRawSamples": 6996,
+      "liveFraction": 0.078,
+      "profitFactor": 0.0
+    },
+    "BOTTOM_CATCH|BEAR": {
+      "setup": "BOTTOM_CATCH",
+      "regime": "BEAR",
+      "blendedNetAvgPct": -1.907,
+      "blendedWinRate": 21.3,
+      "gate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "liveEffectiveSamples": 111.0,
+      "liveRawSamples": 121,
+      "liveNetAvgPct": -2.244,
+      "priorNetAvgPct": -0.971,
+      "priorRawSamples": 3606,
+      "liveFraction": 0.735,
+      "profitFactor": 0.32
+    },
+    "BOTTOM_CATCH|BULL": {
+      "setup": "BOTTOM_CATCH",
+      "regime": "BULL",
+      "blendedNetAvgPct": -1.142,
+      "blendedWinRate": 35.5,
+      "gate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "liveEffectiveSamples": 0.0,
+      "liveRawSamples": 0,
+      "liveNetAvgPct": null,
+      "priorNetAvgPct": -1.142,
+      "priorRawSamples": 2174,
+      "liveFraction": 0.0,
+      "profitFactor": 0.66
+    },
     "BOTTOM_CATCH|SIDE": {
       "setup": "BOTTOM_CATCH",
       "regime": "SIDE",
@@ -113,21 +128,6 @@
       "priorRawSamples": 3131,
       "liveFraction": 0.0,
       "profitFactor": 0.88
-    },
-    "BREAKOUT|BEAR": {
-      "setup": "BREAKOUT",
-      "regime": "BEAR",
-      "blendedNetAvgPct": -0.904,
-      "blendedWinRate": 30.1,
-      "gate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "liveEffectiveSamples": 118.5,
-      "liveRawSamples": 129,
-      "liveNetAvgPct": -0.744,
-      "priorNetAvgPct": -1.376,
-      "priorRawSamples": 2316,
-      "liveFraction": 0.748,
-      "profitFactor": 0.75
     }
   }
 }
