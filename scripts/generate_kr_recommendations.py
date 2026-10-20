@@ -1586,6 +1586,39 @@ def _load_ohlcv_all_quiet() -> dict[str, list[dict]]:
     return result
 
 
+def _configured_scan_coverage(ohlcv_all: dict[str, list[dict]]) -> dict[str, Any]:
+    """Expose whether the advertised candidate universe was actually scanned.
+
+    Recommendation generation must never silently present a partial OHLCV cache
+    as a whole-market scan. This metric is operational evidence only; it does
+    not relax any trading filter or fabricate a recommendation.
+    """
+    # The root file is the weekly job's canonical, current universe.  The
+    # data/ copy is a legacy snapshot and can be much older/larger, so use it
+    # only as a fallback rather than making a healthy scan look incomplete.
+    configured_rows = _read_csv(ROOT / "candidate_universe_kr.csv")
+    if not configured_rows:
+        configured_rows = _read_csv(ROOT / "data" / "candidate_universe_kr.csv")
+
+    configured: set[str] = set()
+    for row in configured_rows:
+        symbol = re.sub(r"\D", "", str(row.get("symbol") or row.get("ticker") or row.get("code") or "")).zfill(6)
+        if symbol.isdigit() and len(symbol) == 6:
+            configured.add(symbol)
+    covered = configured.intersection(ohlcv_all)
+    missing = configured - covered
+    total = len(configured)
+    ratio = len(covered) / total if total else 0.0
+    return {
+        "configuredUniverseSymbols": total,
+        "ohlcvEligibleSymbols": len(covered),
+        "coverageRatio": round(ratio, 4),
+        "status": "OK" if ratio >= 0.9 else "PARTIAL_COVERAGE" if covered else "NO_COVERAGE",
+        "missingSymbols": len(missing),
+        "minimumHistoryRows": MIN_OHLCV_ROWS,
+    }
+
+
 def generate_recommendations() -> dict[str, Any]:
     now = datetime.now(timezone.utc).isoformat()
     print(f"[{now}] KR 추천 파일 생성 시작")
@@ -2067,6 +2100,7 @@ def generate_recommendations() -> dict[str, Any]:
             _write_csv(tv_path, tv_rows, force=_write_force)
 
     # 상태 파일 업데이트
+    scan_coverage = _configured_scan_coverage(ohlcv_all)
     status = {
         "generatedAt": now,
         "source": "ohlcv_quant_scanner",
@@ -2075,6 +2109,7 @@ def generate_recommendations() -> dict[str, Any]:
         "newsSentimentSymbols": len(news_sentiment),
         "financialSymbols": len(fin_data) // 2,
         "supplySymbols": len(supply_data) // 2,
+        "scanCoverage": scan_coverage,
         "marketRegime": regime,
         "evFiltered": ev_filtered,
         "regimeFiltered": regime_filtered,

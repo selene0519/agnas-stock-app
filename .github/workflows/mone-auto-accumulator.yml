@@ -435,7 +435,10 @@ jobs:
         run: |
           set +e
           if [ -f scripts/backfill_ohlcv_history.py ]; then
-            python scripts/backfill_ohlcv_history.py --min-rows 30 --days 120
+            # New weekly discovery names need enough history before they can
+            # enter the daily scanner. Process a bounded, priority-ordered
+            # backlog each run so this repair cannot consume the whole job.
+            python scripts/backfill_ohlcv_history.py --min-rows 30 --days 120 --limit 80
             echo "backfill_ohlcv_history: exit $?"
           else
             echo "scripts/backfill_ohlcv_history.py not found; skip backfill."
