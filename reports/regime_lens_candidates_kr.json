@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-10-20T12:52:38.101742+00:00",
+  "generatedAt": "2026-10-20T13:13:02.212186+00:00",
   "asOfDate": "2026-10-20",
   "market": "kr",
   "marketRegime": "BEAR",
-  "breadthAboveMa60": 0.22,
+  "breadthAboveMa60": 0.245,
   "activeLens": "BOTTOM_CATCH",
   "activeSetupByRegime": {
     "BULL": [
@@ -16,8 +16,8 @@
   },
   "selfCalibrated": true,
   "liveSamplesTotal": 273,
-  "universeSize": 259,
-  "candidateCount": 7,
+  "universeSize": 332,
+  "candidateCount": 9,
   "actionableCount": 0,
   "disclaimer": "생존편향(현상장 glob만)로 백테스트 낙관. actionable(ACTIVE)만 자가보정 통과 — 실사이징은 라이브 VTJ forward 검증 후.",
   "candidates": [
@@ -38,6 +38,22 @@
       "actionable": false
     },
     {
+      "symbol": "008350",
+      "name": "남선알미늄",
+      "setup": "BREAKOUT",
+      "asOfDate": "2026-10-20",
+      "close": 1145.0,
+      "entryRef": 1145.0,
+      "stop": 1099,
+      "target": 1237,
+      "rrRatio": 2.0,
+      "rsi14": 71.2,
+      "distMa20Pct": 5.8,
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
+    },
+    {
       "symbol": "033780",
       "name": "KT&G",
       "setup": "BREAKOUT",
@@ -49,6 +65,22 @@
       "rrRatio": 2.0,
       "rsi14": 84.8,
       "distMa20Pct": 8.5,
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
+    },
+    {
+      "symbol": "006280",
+      "name": "녹십자",
+      "setup": "BREAKOUT",
+      "asOfDate": "2026-10-20",
+      "close": 132300.0,
+      "entryRef": 132300.0,
+      "stop": 127008,
+      "target": 142884,
+      "rrRatio": 2.0,
+      "rsi14": 65.1,
+      "distMa20Pct": 4.8,
       "calibrationGate": "SUPPRESSED_LOW_EDGE",
       "sizeMultiplier": 0.0,
       "actionable": false
