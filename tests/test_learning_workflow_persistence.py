@@ -39,7 +39,7 @@ def test_accumulator_does_not_create_after_close_journals_before_close() -> None
 
 def test_accumulator_checks_backend_sync_result() -> None:
     workflow = (ROOT / ".github/workflows/mone-auto-accumulator.yml").read_text(encoding="utf-8")
-    assert 'status == "OK"' in workflow
+    assert 'acceptable={"OK", "DEPLOYMENT_NO_GIT", "NO_GIT_REMOTE"}' in workflow
     assert 'MONE_ADMIN_SECRET is missing' in workflow
     assert 'sync_status=SKIPPED_SECRET_MISSING' in workflow
     assert 'sync-now 호출 실패 (무시)' not in workflow

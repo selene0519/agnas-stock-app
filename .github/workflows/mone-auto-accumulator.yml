@@ -966,12 +966,17 @@ jobs:
             exit 0
           fi
           # A successful HTTP response can still contain a failed git sync.
+          # Render's managed build image may intentionally have no .git/origin
+          # checkout. In that deployment mode the platform redeploy has already
+          # applied the committed data; the endpoint still clears its in-process
+          # caches and returns DEPLOYMENT_NO_GIT/NO_GIT_REMOTE. Those are not
+          # data-pipeline failures and must not page Telegram every cycle.
           curl -sf -X POST "${BASE}/api/admin/sync-now" \
             -H "Content-Type: application/json" \
             -H "x-admin-secret: ${MONE_ADMIN_SECRET}" \
             --max-time 60 \
             -o /tmp/sync_result.json
-          python -c 'import json, os, sys; r=json.load(open("/tmp/sync_result.json", encoding="utf-8")); status=r.get("status"); print("Backend sync status:", status); open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8").write(f"sync_status={status}\\n"); sys.exit(0 if status == "OK" else 1)'
+          python -c 'import json, os, sys; r=json.load(open("/tmp/sync_result.json", encoding="utf-8")); status=str(r.get("status") or "MISSING_STATUS"); acceptable={"OK", "DEPLOYMENT_NO_GIT", "NO_GIT_REMOTE"}; print("Backend sync status:", status); open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8").write(f"sync_status={status}\\n"); print(f"::warning::Backend direct git pull unavailable ({status}); Render redeploy/caches are the delivery path.") if status != "OK" and status in acceptable else None; sys.exit(0 if status in acceptable else 1)'
           echo "Render git 동기화 확인 완료"
 
       - name: VTJ 커밋 확인 (데이터 git 저장 완료)
