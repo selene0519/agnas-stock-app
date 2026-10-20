@@ -166,3 +166,12 @@ def test_ai_paper_does_not_execute_trades_on_code_push():
     assert "  push:" not in workflow
     assert "  schedule:" in workflow and "  workflow_dispatch:" in workflow
     assert "python -m pytest tests" in checks
+
+
+def test_delayed_scheduled_writers_skip_without_false_failure_alerts():
+    paper = (ROOT / ".github" / "workflows" / "mone-ai-paper-trader.yml").read_text(encoding="utf-8")
+    journal = (ROOT / ".github" / "workflows" / "mone-vtj-capture.yml").read_text(encoding="utf-8")
+
+    assert "no paper trade was executed" in paper
+    assert "scheduled_skip=true" in journal
+    assert "steps.capture.outputs.scheduled_skip != 'true'" in journal
