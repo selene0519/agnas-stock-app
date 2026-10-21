@@ -3,9 +3,8 @@ MONE 일일 요약 텔레그램 알림.
 
 추천 데이터 생성 후 자동 호출:
   - 국장/미장 오늘 진입 후보 TOP 3
-  - 이번 주 국장 실적발표 일정 (Alpha Vantage)
-  - 이번 주 미장 실적발표 일정 (Finnhub)
-  - 주요 경제 지표 일정 (Finnhub)
+  - 추천/보유종목 실적발표 일정과 EPS·매출 컨센서스
+  - 주요 경제 지표의 발표 시각·예상치·이전치·발표 후 실제치
   - DART 주요 공시
 
 환경변수:
@@ -28,10 +27,12 @@ import urllib.parse
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 ROOT     = Path(__file__).resolve().parents[1]
 REPORTS  = ROOT / "reports"
 DATA_DIR = ROOT / "data"
+CALENDAR_DIR = DATA_DIR / "calendar"
 MODES    = ("conservative", "balanced", "aggressive")
 HORIZONS = ("short", "swing", "mid")
 
@@ -170,6 +171,38 @@ def _num(v: Any) -> float:
         return 0.0
 
 
+def _text(v: Any) -> str:
+    """알림에서 빈 값/NaN을 일관되게 숨긴다."""
+    if v is None:
+        return ""
+    value = str(v).strip()
+    return "" if value.lower() in {"", "nan", "none", "null", "n/a", "-"} else value
+
+
+def _event_metric(label: str, value: Any, unit: Any = "") -> str:
+    value_text = _text(value)
+    if not value_text:
+        return ""
+    unit_text = _text(unit)
+    # 공급사가 값 안에 단위를 포함하는 경우 중복 표기를 피한다.
+    suffix = unit_text if unit_text and unit_text not in value_text else ""
+    return f"{label} {value_text}{suffix}"
+
+
+def _event_time(raw: Any) -> str:
+    """공급사가 준 시각을 보존한다. 시간대가 없으면 임의로 KST/ET라고 단정하지 않는다."""
+    text = _text(raw)
+    if not text:
+        return ""
+    # Finnhub ISO timestamp와 단순 날짜 모두 사람이 읽기 쉽게 표시한다.
+    text = text.replace("T", " ").replace("Z", " UTC")
+    return text[:22]
+
+
+def _calendar_rows(filename: str) -> list[dict]:
+    return _read_csv(CALENDAR_DIR / filename)
+
+
 # ── 추천 종목 요약 ────────────────────────────────────────────────────────────
 
 def _collect_recommendations(market: str) -> list[dict]:
@@ -211,6 +244,60 @@ def _collect_recommendations(market: str) -> list[dict]:
     return sorted(seen.values(), key=lambda x: x["ev"], reverse=True)
 
 
+def _collect_focus_symbols(market: str) -> set[str]:
+    """오늘 알림에서 실제로 의사결정할 추천·보유 종목만 이벤트 대상으로 삼는다."""
+    symbols = {
+        str(item.get("symbol") or "").strip().upper()
+        for item in _collect_recommendations(market)
+        if str(item.get("symbol") or "").strip()
+    }
+    for path in (ROOT / f"holdings_{market}.csv", DATA_DIR / f"holdings_{market}.csv"):
+        for row in _read_csv(path):
+            symbol = str(row.get("symbol") or row.get("ticker") or "").strip().upper()
+            if symbol:
+                symbols.add(symbol)
+    return symbols
+
+
+def _event_rows_for_market(market: str, days: int = 1) -> list[dict]:
+    """Finnhub 실시간 캘린더를 우선하고, 장애 시 저장된 캘린더로 안전하게 폴백한다."""
+    today = datetime.now()
+    end = today + timedelta(days=days)
+    data = _finnhub_get(
+        f"/calendar/economic?from={today.strftime('%Y-%m-%d')}&to={end.strftime('%Y-%m-%d')}"
+    )
+    rows: list[dict] = []
+    if isinstance(data, dict):
+        for item in data.get("economicCalendar") or []:
+            country = _text(item.get("country")).upper()
+            # 국장 브리핑은 한국 지표와 미국의 고영향 지표, 미장 브리핑은 미국 지표를 표시한다.
+            is_relevant = country == "US" if market == "us" else country in {"KR", "KOREA", "US"}
+            if not is_relevant:
+                continue
+            rows.append({
+                "date": _text(item.get("time") or item.get("date")),
+                "country": country,
+                "event": _text(item.get("event")),
+                "impact": _text(item.get("impact")).lower() or "unknown",
+                "actual": _text(item.get("actual")),
+                "forecast": _text(item.get("estimate")),
+                "previous": _text(item.get("prev")),
+                "unit": _text(item.get("unit")),
+                "source": "finnhub_live",
+            })
+    if rows:
+        return rows
+
+    # API 키/네트워크 장애에서도 오래된 추천을 매수 근거로 삼지 않도록, 캘린더가 있으면 출처를 표기한다.
+    country_set = {"US"} if market == "us" else {"KR", "KOREA", "US"}
+    return [
+        row for row in _calendar_rows("macro_calendar.csv")
+        if _text(row.get("country")).upper() in country_set
+        and _text(row.get("date"))[:10] <= end.strftime("%Y-%m-%d")
+        and _text(row.get("date"))[:10] >= today.strftime("%Y-%m-%d")
+    ]
+
+
 def _fmt_mode(m: str) -> str:
     return {"conservative": "보수", "balanced": "균형", "aggressive": "공격"}.get(m, m)
 
@@ -223,7 +310,9 @@ def _fmt_price(v: float, market: str) -> str:
     return f"${v:,.2f}" if market == "us" else f"{round(v):,}원"
 
 
-def build_recommendation_section(market: str) -> str:
+def build_recommendation_section(
+    market: str, earnings_risk_symbols: set[str] | None = None
+) -> str:
     items = _collect_recommendations(market)
     top = [i for i in items if i["bucket"] == "오늘 진입"][:3]
     if not top:
@@ -248,6 +337,8 @@ def build_recommendation_section(market: str) -> str:
             f"| 목표 {_fmt_price(r['target'], market)}"
         )
         lines.append(f"   EV <b>{r['ev']:+.1f}%</b>  점수 {r['score']:.0f}점")
+        if str(r["symbol"]).upper() in (earnings_risk_symbols or set()):
+            lines.append("   ⚠️ 오늘/익일 실적 일정: 신규 진입은 실적 위험을 반영해 보수적으로")
 
         # 종목별 최신 뉴스 1줄
         news_list = (
@@ -372,13 +463,13 @@ def build_stock_news_for(items: list[dict], market: str) -> str:
 
 
 def build_market_news_section(market: str) -> str:
-    """시장 전체 뉴스 요약."""
+    """전일 장후부터 장전까지의 시장 뉴스 요약."""
     if market == "us":
         articles = _finnhub_market_news("general")
-        label = "🌐 <b>미장 시장 뉴스</b>"
+        label = "🌐 <b>전일 장후·장전 미장 핵심 뉴스</b>"
     else:
         articles = _gnews_market_news()
-        label = "🌐 <b>국장 시장 뉴스</b>"
+        label = "🌐 <b>전일 장후·장전 국장 핵심 뉴스</b>"
 
     if not articles:
         return ""
@@ -557,26 +648,95 @@ def build_earnings_section() -> str:
     return "\n".join(lines)
 
 
-def build_economic_section() -> str:
-    today = datetime.now()
-    end   = today + timedelta(days=3)
-    data  = _finnhub_get(
-        f"/calendar/economic?from={today.strftime('%Y-%m-%d')}&to={end.strftime('%Y-%m-%d')}"
-    )
-    if not data:
-        return ""
-    items = data.get("economicCalendar", []) or []
-    # 중요도 HIGH만
-    high = [x for x in items if str(x.get("impact", "")).upper() == "HIGH"][:5]
+def build_economic_section(market: str) -> str:
+    """오늘 장에 영향을 줄 지표를 예상치·이전치·실제치까지 포함해 보여준다."""
+    rows = _event_rows_for_market(market, days=1)
+    high = [
+        row for row in rows
+        if _text(row.get("event"))
+        and _text(row.get("impact")).lower() in {"high", "critical"}
+    ][:5]
     if not high:
         return ""
-    lines = ["\n📊 <b>주요 경제지표 (HIGH impact)</b>"]
-    for x in high:
-        date  = x.get("time", x.get("date", ""))[:10]
-        event = x.get("event", "")
-        country = x.get("country", "")
-        lines.append(f"  • {date} [{country}] {event}")
+
+    lines = ["\n📊 <b>오늘의 고영향 경제 일정</b>"]
+    for row in high:
+        when = _event_time(row.get("date")) or "시각 미확인"
+        event = _text(row.get("event"))
+        country = _text(row.get("country")) or ("US" if market == "us" else "KR")
+        metrics = [
+            _event_metric("실제", row.get("actual"), row.get("unit")),
+            _event_metric("예상", row.get("forecast"), row.get("unit")),
+            _event_metric("이전", row.get("previous"), row.get("unit")),
+        ]
+        metrics = [metric for metric in metrics if metric]
+        detail = " / ".join(metrics) if metrics else "컨센서스·이전치 수집 대기"
+        lines.append(f"  • {when} [{country}] <b>{event}</b> — {detail}")
+
+    # 이 문구는 알림을 단순한 일정표가 아닌 실행 제약으로 만든다.
+    lines.append("  ↳ 고영향 발표 전·직후에는 갭 추격을 금지하고, 아래 진입가 범위 안에서만 주문합니다.")
     return "\n".join(lines)
+
+
+def _focus_earnings_rows(market: str, days: int = 1) -> list[dict]:
+    """오늘·익일의 추천/보유종목 실적만 선별한다. 넓은 시장 실적 목록으로 알림을 채우지 않는다."""
+    today = datetime.now()
+    end = today + timedelta(days=days)
+    symbols = _collect_focus_symbols(market)
+    rows: list[dict] = []
+
+    if market == "us":
+        data = _finnhub_get(
+            f"/calendar/earnings?from={today.strftime('%Y-%m-%d')}&to={end.strftime('%Y-%m-%d')}"
+        )
+        if isinstance(data, dict):
+            for item in data.get("earningsCalendar") or []:
+                symbol = _text(item.get("symbol")).upper()
+                if symbol and symbol in symbols:
+                    rows.append({
+                        "date": _text(item.get("date")), "market": market,
+                        "symbol": symbol, "name": symbol,
+                        "epsEstimate": _text(item.get("epsEstimate")),
+                        "revenueEstimate": _text(item.get("revenueEstimate")),
+                        "hour": _text(item.get("hour")), "source": "finnhub_live",
+                    })
+
+    if not rows:
+        for row in _calendar_rows("earnings_calendar.csv"):
+            symbol = _text(row.get("symbol")).upper()
+            if (
+                _text(row.get("market")).lower() == market
+                and symbol in symbols
+                and _text(row.get("date"))[:10] <= end.strftime("%Y-%m-%d")
+                and _text(row.get("date"))[:10] >= today.strftime("%Y-%m-%d")
+            ):
+                rows.append(row)
+    return sorted(rows, key=lambda row: (_text(row.get("date")), _text(row.get("symbol"))))
+
+
+def build_earnings_risk_section(market: str) -> tuple[str, set[str]]:
+    rows = _focus_earnings_rows(market)
+    symbols = {_text(row.get("symbol")).upper() for row in rows}
+    if not rows:
+        return "", symbols
+
+    market_label = "미장" if market == "us" else "국장"
+    lines = [f"\n📅 <b>{market_label} 추천·보유종목 실적 위험</b>"]
+    for row in rows[:6]:
+        symbol = _text(row.get("symbol"))
+        name = _text(row.get("name"))
+        label = f"{name} ({symbol})" if name and name != symbol else symbol
+        hour_raw = _text(row.get("hour")).lower()
+        hour = {"bmo": "장전", "amc": "장후"}.get(hour_raw, hour_raw)
+        timing = f" ({hour})" if hour else ""
+        metrics = [
+            _event_metric("EPS 예상", row.get("epsEstimate")),
+            _event_metric("매출 예상", row.get("revenueEstimate")),
+        ]
+        detail = " / ".join(metric for metric in metrics if metric) or "컨센서스 수집 대기"
+        lines.append(f"  • {_text(row.get('date'))[:10]} <b>{label}</b>{timing} — {detail}")
+    lines.append("  ↳ 실적 전 신규 진입은 원칙적으로 보류하며, 발표 결과·갭을 반영해 다음 장전 계획에서 다시 판단합니다.")
+    return "\n".join(lines), symbols
 
 
 # ── DART 주요 공시 (KR) ───────────────────────────────────────────────────────
@@ -638,7 +798,8 @@ def main() -> None:
     if market not in ("kr", "us", "all"):
         market = "all"
 
-    now = datetime.now().strftime("%Y-%m-%d %H:%M KST")
+    tz = ZoneInfo("Asia/Seoul") if market != "us" else ZoneInfo("America/New_York")
+    now = datetime.now(tz).strftime("%Y-%m-%d %H:%M %Z")
     mkt_label = {"kr": "🇰🇷 국장", "us": "🇺🇸 미장", "all": "국장+미장"}[market]
     print(f"[{now}] 일일 요약 알림 시작 (market={market})")
 
@@ -646,13 +807,16 @@ def main() -> None:
 
     # 국장 블록
     if market in ("kr", "all"):
+        kr_earn, kr_earn_symbols = build_earnings_risk_section("kr")
+        kr_economic = build_economic_section("kr")
+        if kr_economic:
+            sections.append(kr_economic)
         kr_mkt = build_market_news_section("kr")
         if kr_mkt:
             sections.append(kr_mkt)
-        kr_rec = build_recommendation_section("kr")
+        kr_rec = build_recommendation_section("kr", kr_earn_symbols)
         if kr_rec:
             sections.append("\n" + kr_rec)
-        kr_earn = build_kr_earnings_section()
         if kr_earn:
             sections.append(kr_earn)
         dart = build_dart_section()
@@ -661,21 +825,18 @@ def main() -> None:
 
     # 미장 블록
     if market in ("us", "all"):
+        us_earn, us_earn_symbols = build_earnings_risk_section("us")
+        us_economic = build_economic_section("us")
+        if us_economic:
+            sections.append(us_economic)
         us_mkt = build_market_news_section("us")
         if us_mkt:
             sections.append(us_mkt)
-        us_rec = build_recommendation_section("us")
+        us_rec = build_recommendation_section("us", us_earn_symbols)
         if us_rec:
             sections.append("\n" + us_rec)
-        us_earn = build_earnings_section()
         if us_earn:
             sections.append(us_earn)
-
-    # 공통 매크로 (경제지표) — 미장 포함 시에만
-    if market in ("us", "all"):
-        economic = build_economic_section()
-        if economic:
-            sections.append(economic)
 
     sections.append("\n<a href='https://mone-by-agnas.vercel.app'>📱 MONE 앱 열기</a>")
 
