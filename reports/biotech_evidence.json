@@ -1,6 +1,6 @@
 {
   "status": "OK",
-  "generatedAt": "2026-10-21T00:56:15+00:00",
+  "generatedAt": "2026-10-21T07:14:01+00:00",
   "asOfDate": "2026-10-21",
   "count": 21,
   "items": [
@@ -686,7 +686,7 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Bristol-Myers Squibb",
-        "publicationCountRecent5y": 3005,
+        "publicationCountRecent5y": 3003,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
         "publications": [
           {
@@ -976,7 +976,7 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Johnson & Johnson",
-        "publicationCountRecent5y": 2455,
+        "publicationCountRecent5y": 2456,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
         "publications": [
           {
@@ -1260,7 +1260,7 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Eli Lilly and Company",
-        "publicationCountRecent5y": 2853,
+        "publicationCountRecent5y": 2852,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
         "publications": [
           {
@@ -1719,9 +1719,16 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Novo Nordisk",
-        "publicationCountRecent5y": 6309,
+        "publicationCountRecent5y": 6312,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
         "publications": [
+          {
+            "pmid": "42901645",
+            "title": "Degradation of gossypol and improvement of nutritional components in defatted cottonseed meal through fermentation by a synthetic microbial community.",
+            "publicationDate": "2027 Mar",
+            "journal": "Food microbiology",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42901645/"
+          },
           {
             "pmid": "42381379",
             "title": "Multi-omics analysis of saccharomyces boulardii supplementation reveals coordinated microbiome, metabolic, and immune signaling changes accompanying tumor suppression.",
@@ -1749,13 +1756,6 @@
             "publicationDate": "2026 Dec 1",
             "journal": "International journal of cardiology",
             "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42669312/"
-          },
-          {
-            "pmid": "42532460",
-            "title": "Nonclinical safety profile for DCR-AUD GalNAc-conjugated siRNA: Subchronic versus chronic findings in mouse and non-human primate.",
-            "publicationDate": "2026 Dec",
-            "journal": "Regulatory toxicology and pharmacology : RTP",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42532460/"
           }
         ],
         "source": "NCBI PubMed E-utilities",
@@ -1954,7 +1954,7 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Pfizer",
-        "publicationCountRecent5y": 6953,
+        "publicationCountRecent5y": 6952,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
         "publications": [
           {
@@ -4263,14 +4263,14 @@
   ],
   "pointInTimeLedger": {
     "status": "OK",
-    "addedSnapshots": 0,
-    "addedEvents": 0,
-    "snapshotCount": 1812,
-    "eventCount": 6644
+    "addedSnapshots": 5,
+    "addedEvents": 1,
+    "snapshotCount": 1817,
+    "eventCount": 6645
   },
   "validationGate": {
     "status": "RESEARCH_ONLY",
-    "generatedAt": "2026-10-21T00:56:16+00:00",
+    "generatedAt": "2026-10-21T07:14:01+00:00",
     "evaluatedDirectionalEventCount": 0,
     "promotionCount": 0,
     "operationalScoreAdjustmentAllowed": false,
