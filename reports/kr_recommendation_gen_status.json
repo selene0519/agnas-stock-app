@@ -1,17 +1,17 @@
 {
-  "generatedAt": "2026-10-21T12:56:49.518490+00:00",
+  "generatedAt": "2026-10-21T13:27:28.792429+00:00",
   "source": "ohlcv_quant_scanner",
-  "symbols": 748,
+  "symbols": 813,
   "kisSymbols": 167,
   "newsSentimentSymbols": 28,
   "financialSymbols": 5,
-  "supplySymbols": 641,
+  "supplySymbols": 677,
   "scanCoverage": {
     "configuredUniverseSymbols": 973,
-    "ohlcvEligibleSymbols": 743,
-    "coverageRatio": 0.7636,
+    "ohlcvEligibleSymbols": 808,
+    "coverageRatio": 0.8304,
     "status": "PARTIAL_COVERAGE",
-    "missingSymbols": 230,
+    "missingSymbols": 165,
     "minimumHistoryRows": 30
   },
   "marketRegime": {
@@ -22,13 +22,13 @@
     "kospiLatest": 5736.0,
     "distToMa20": -11.52,
     "trend60": -15.62,
-    "volRatio": 0.925,
+    "volRatio": 0.927,
     "definition": "trend60+거래량(약추세만)",
     "asOf": "2026-10-21",
     "source": "kr_KOSPI_daily.csv"
   },
   "evFiltered": 0,
-  "regimeFiltered": 4485,
+  "regimeFiltered": 4875,
   "results": {
     "conservative_short": 0,
     "conservative_swing": 0,
