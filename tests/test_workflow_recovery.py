@@ -177,6 +177,17 @@ def test_delayed_scheduled_writers_skip_without_false_failure_alerts():
     assert "steps.capture.outputs.scheduled_skip != 'true'" in journal
 
 
+def test_ai_journal_commits_postmortem_written_by_evaluation() -> None:
+    journal = (ROOT / ".github" / "workflows" / "mone-vtj-capture.yml").read_text(encoding="utf-8")
+
+    # A settled losing trade writes this ledger during evaluate().  Leaving it
+    # unstaged makes `git pull --rebase` reject the capture worktree after a
+    # successful capture, which turns a data persistence issue into a false
+    # workflow failure.
+    assert "data/postmortem_ledger.csv" in journal
+    assert "git add data/virtual_trade_journal.csv data/virtual_trade_evaluations.csv data/postmortem_ledger.csv reports/virtual_trade_journal_status.json" in journal
+
+
 def test_recommendation_generation_cannot_fail_silently():
     workflow = (ROOT / ".github" / "workflows" / "mone-auto-accumulator.yml").read_text(encoding="utf-8")
 

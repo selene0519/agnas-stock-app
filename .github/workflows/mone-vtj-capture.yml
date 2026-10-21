@@ -170,13 +170,17 @@ jobs:
       - name: Commit durable journal ledger
         if: steps.capture.outputs.scheduled_skip != 'true'
         run: |
-          if git diff --quiet -- data/virtual_trade_journal.csv data/virtual_trade_evaluations.csv reports/virtual_trade_journal_status.json; then
+          # evaluate() can append loss diagnostics to the postmortem ledger.
+          # It must be committed with the journal/evaluation pair; otherwise the
+          # following pull --rebase refuses the dirty worktree and reports an
+          # otherwise successful scheduled capture as a failure.
+          if git diff --quiet -- data/virtual_trade_journal.csv data/virtual_trade_evaluations.csv data/postmortem_ledger.csv reports/virtual_trade_journal_status.json; then
             echo "No journal ledger changes"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/virtual_trade_journal.csv data/virtual_trade_evaluations.csv reports/virtual_trade_journal_status.json
+          git add data/virtual_trade_journal.csv data/virtual_trade_evaluations.csv data/postmortem_ledger.csv reports/virtual_trade_journal_status.json
           git commit -m "chore(journal): persist scheduled capture [skip ci]"
           git pull --rebase origin "${GITHUB_REF_NAME}"
           git push origin "HEAD:${GITHUB_REF_NAME}"
