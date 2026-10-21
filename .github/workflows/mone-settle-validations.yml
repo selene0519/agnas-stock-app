@@ -57,15 +57,25 @@ jobs:
         run: |
           set +e
           python scripts/settle_pending_validations.py
-          echo "settle_pending_validations: exit $?"
+          code=$?
           set -e
+          echo "settle_pending_validations: exit ${code}"
+          if [ "${code}" != "0" ]; then
+            echo "::error::Core validation settlement failed"
+            exit "${code}"
+          fi
 
       - name: Update strategy win rates
         run: |
           set +e
           python scripts/update_win_rates.py
-          echo "update_win_rates: exit $?"
+          code=$?
           set -e
+          echo "update_win_rates: exit ${code}"
+          if [ "${code}" != "0" ]; then
+            echo "::error::Strategy win-rate update failed after settlement"
+            exit "${code}"
+          fi
 
       - name: 전략별 sleeve 자본곡선 갱신
         # 승률만으로 전략을 고르면 손익 비대칭을 놓친다. 실측(오염 구간 662건)에서
@@ -121,12 +131,27 @@ jobs:
           echo "update_champion_challenger: exit $?"
           # Settle only predictions that were sealed in the recommendation
           # workflow. --no-record prevents historical recommendation backfill.
-          python scripts/update_self_correction_shadow.py --no-record
-          code=$?
-          echo "update_self_correction_shadow(settle): exit ${code}"
-          if [ "${code}" != "0" ]; then
-            echo "::error::Self-correction settlement failed"
-            exit "${code}"
+          # Shadow evidence must fail closed, but must not discard a completed
+          # core validation settlement. The previous coupling made six runs
+          # fail and skipped their core-ledger commit as well.
+          shadow_code=1
+          for attempt in 1 2; do
+            python scripts/update_self_correction_shadow.py --no-record
+            shadow_code=$?
+            echo "update_self_correction_shadow(settle, attempt ${attempt}): exit ${shadow_code}"
+            if [ "${shadow_code}" = "0" ]; then
+              break
+            fi
+            if [ "${attempt}" = "1" ]; then
+              echo "::warning::Self-correction settlement failed once; retrying after 3 seconds"
+              sleep 3
+            fi
+          done
+          if [ "${shadow_code}" != "0" ]; then
+            echo "::warning::Self-correction settlement is DEGRADED; core validation results will still be committed."
+            echo "MONE_SELF_CORRECTION_SETTLEMENT=DEGRADED" >> "$GITHUB_ENV"
+          else
+            echo "MONE_SELF_CORRECTION_SETTLEMENT=OK" >> "$GITHUB_ENV"
           fi
           set -e
 
@@ -198,6 +223,18 @@ jobs:
 
           echo "Push 실패"
           exit 1
+
+      - name: Self-correction settlement degraded warning
+        if: env.MONE_SELF_CORRECTION_SETTLEMENT == 'DEGRADED'
+        run: |
+          echo "::warning::Self-correction shadow evidence was not updated after two attempts."
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+            exit 0
+          fi
+          curl -sf -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -H "Content-Type: application/json" \
+            -d "{\"chat_id\":\"${TELEGRAM_CHAT_ID}\",\"text\":\"⚠️ MONE 자기보정 증거 정산 지연\\n검증 정산·승률 갱신은 완료됐습니다. 자기보정 shadow 증거만 2회 재시도 후 보류되어, 기존 추천 로직에는 반영되지 않습니다.\\nrun: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\"}" \
+            || echo "텔레그램 전송 실패 (무시)"
 
       - name: 실패 시 텔레그램 알림
         if: failure()

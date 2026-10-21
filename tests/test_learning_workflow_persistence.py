@@ -4,7 +4,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_settlement_persists_self_correction_lineage_and_fails_on_error() -> None:
+def test_settlement_persists_self_correction_lineage_without_blocking_core_ledgers() -> None:
     workflow = (ROOT / ".github/workflows/mone-settle-validations.yml").read_text(encoding="utf-8")
     for path in (
         "data/self_correction_candidate_registry.csv",
@@ -15,7 +15,17 @@ def test_settlement_persists_self_correction_lineage_and_fails_on_error() -> Non
     ):
         assert path in workflow
     assert 'if [ -f "$path" ]; then git add -- "$path"; fi' in workflow
-    assert "Self-correction settlement failed" in workflow
+    assert "for attempt in 1 2" in workflow
+    assert "MONE_SELF_CORRECTION_SETTLEMENT=DEGRADED" in workflow
+    assert "core validation results will still be committed" in workflow
+    assert "자기보정 증거 정산 지연" in workflow
+
+
+def test_settlement_fails_closed_when_the_core_ledger_or_win_rates_fail() -> None:
+    workflow = (ROOT / ".github/workflows/mone-settle-validations.yml").read_text(encoding="utf-8")
+    assert "Core validation settlement failed" in workflow
+    assert "Strategy win-rate update failed after settlement" in workflow
+    assert 'exit "${code}"' in workflow
 
 
 def test_ledger_writers_queue_and_checkout_current_branch() -> None:
