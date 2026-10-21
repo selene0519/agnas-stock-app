@@ -1,23 +1,21 @@
 {
-  "generatedAt": "2026-10-21T13:27:53.577694+00:00",
+  "generatedAt": "2026-10-21T14:20:05.968896+00:00",
   "asOfDate": "2026-10-21",
   "market": "kr",
   "marketRegime": "BEAR",
-  "breadthAboveMa60": 0.34,
+  "breadthAboveMa60": 0.355,
   "activeLens": "BOTTOM_CATCH",
   "activeSetupByRegime": {
     "BULL": [
       "BREAKOUT"
     ],
-    "SIDE": [
-      "BREAKOUT"
-    ],
+    "SIDE": [],
     "BEAR": []
   },
   "selfCalibrated": true,
   "liveSamplesTotal": 300,
-  "universeSize": 838,
-  "candidateCount": 50,
+  "universeSize": 905,
+  "candidateCount": 52,
   "actionableCount": 0,
   "disclaimer": "생존편향(현상장 glob만)로 백테스트 낙관. actionable(ACTIVE)만 자가보정 통과 — 실사이징은 라이브 VTJ forward 검증 후.",
   "candidates": [
@@ -257,6 +255,22 @@
       "rrRatio": 1.29,
       "rsi14": 22.4,
       "distMa20Pct": -17.1,
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
+    },
+    {
+      "symbol": "452430",
+      "name": "사피엔반도체",
+      "setup": "BOTTOM_CATCH",
+      "asOfDate": "2026-10-21",
+      "close": 27850.0,
+      "entryRef": 27850.0,
+      "stop": 26250,
+      "target": 30078,
+      "rrRatio": 1.39,
+      "rsi14": 22.5,
+      "distMa20Pct": -20.2,
       "calibrationGate": "SUPPRESSED_LOW_EDGE",
       "sizeMultiplier": 0.0,
       "actionable": false
@@ -785,6 +799,22 @@
       "rrRatio": 2.86,
       "rsi14": 31.4,
       "distMa20Pct": -16.0,
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
+    },
+    {
+      "symbol": "377450",
+      "name": "리파인",
+      "setup": "BOTTOM_CATCH",
+      "asOfDate": "2026-10-21",
+      "close": 14000.0,
+      "entryRef": 14000.0,
+      "stop": 13475,
+      "target": 15120,
+      "rrRatio": 2.13,
+      "rsi14": 31.4,
+      "distMa20Pct": -1.4,
       "calibrationGate": "SUPPRESSED_LOW_EDGE",
       "sizeMultiplier": 0.0,
       "actionable": false
