@@ -22,6 +22,7 @@ import os
 import re
 import sys
 import time
+import urllib.error
 import urllib.request
 import urllib.parse
 from datetime import datetime, timedelta
@@ -61,13 +62,15 @@ def _send(text: str) -> bool:
     if not BOT_TOKEN or not CHAT_ID:
         print("TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID 없음 — 전송 생략")
         return False
-    data = json.dumps({
-        "chat_id": CHAT_ID,
-        "text": text,
-        "parse_mode": "HTML",
-        "disable_web_page_preview": True,
-    }).encode()
-    for attempt in range(1, max(1, TG_RETRIES) + 1):
+    def post(body: str, *, html: bool) -> tuple[bool, int | None]:
+        payload: dict[str, Any] = {
+            "chat_id": CHAT_ID,
+            "text": body,
+            "disable_web_page_preview": True,
+        }
+        if html:
+            payload["parse_mode"] = "HTML"
+        data = json.dumps(payload).encode()
         req = urllib.request.Request(
             f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
             data=data,
@@ -75,11 +78,29 @@ def _send(text: str) -> bool:
         )
         try:
             with urllib.request.urlopen(req, timeout=TG_TIMEOUT) as r:
-                return r.status == 200
+                return r.status == 200, None
+        except urllib.error.HTTPError as e:
+            print(f"텔레그램 HTTP 오류: {e.code} {e.reason}")
+            return False, e.code
         except Exception as e:
-            print(f"텔레그램 전송 오류({attempt}/{max(1, TG_RETRIES)}): {e}")
-            if attempt < max(1, TG_RETRIES):
-                time.sleep(min(2 * attempt, 5))
+            print(f"텔레그램 전송 오류: {e}")
+            return False, None
+
+    # 외부 뉴스/공시 제목에는 HTML 예약 문자가 들어갈 수 있다. HTML 해석 오류가
+    # 나더라도 당일 브리핑 자체를 잃지 않도록 평문으로 한 번 폴백한다.
+    plain_text = re.sub(r"</?[^>]+>", "", text)
+    for attempt in range(1, max(1, TG_RETRIES) + 1):
+        delivered, status = post(text, html=True)
+        if delivered:
+            return True
+        if status == 400:
+            print("텔레그램 HTML 해석 오류 — 서식 없는 본문으로 재전송")
+            delivered, _ = post(plain_text, html=False)
+            if delivered:
+                return True
+        if attempt < max(1, TG_RETRIES):
+            print(f"텔레그램 전송 재시도({attempt}/{max(1, TG_RETRIES)})")
+            time.sleep(min(2 * attempt, 5))
     return False
 
 
@@ -793,7 +814,7 @@ def _parse_market_arg() -> str:
     return "all"
 
 
-def main() -> None:
+def main() -> int:
     market = _parse_market_arg()
     if market not in ("kr", "us", "all"):
         market = "all"
@@ -848,7 +869,10 @@ def main() -> None:
 
     ok = _send(message)
     print("전송 완료" if ok else "전송 실패")
+    # GitHub Actions가 실제 전송 실패를 '성공'으로 기록하면 운영자가 알 방법이 없다.
+    # 비밀값 누락·API 거절·네트워크 실패 모두 실행 실패로 올려 재발을 드러낸다.
+    return 0 if ok else 1
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

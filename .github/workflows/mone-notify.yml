@@ -154,20 +154,38 @@ jobs:
         run: |
           KR_HOUR=$(TZ=Asia/Seoul date +%H)
           ET_HOUR=$(TZ=America/New_York date +%H)
+          SCHEDULE_EXPRESSION="${{ github.event.schedule }}"
           WEEKDAY=$(date +%u)
           if [ "$WEEKDAY" -ge 6 ]; then
             echo "주말 — 알림 스킵"
             exit 0
           fi
-          if [ "$KR_HOUR" = "08" ]; then
-            echo "국장 장전 (KST ${KR_HOUR}시) — KR 예측 알림 발송"
-            python scripts/notify_daily_summary.py --market kr
-          elif [ "$ET_HOUR" = "09" ]; then
-            echo "미장 장전 (ET ${ET_HOUR}시) — US 예측 알림 발송"
-            python scripts/notify_daily_summary.py --market us
-          else
-            echo "장전 시간창 외 (KST=${KR_HOUR}, ET=${ET_HOUR}) — 알림 스킵"
+          case "${SCHEDULE_EXPRESSION}" in
+            "30 23 * * 0-4")
+              [ "$KR_HOUR" = "08" ] || { echo "::error::KR 장전 예약이 KST ${KR_HOUR}시에 늦게 실행되었습니다. 알림을 보내지 않았습니다."; exit 1; }
+              MARKET="kr"
+              ;;
+            "0 13 * * 1-5"|"0 14 * * 1-5")
+              [ "$ET_HOUR" = "09" ] || { echo "::error::US 장전 예약이 ET ${ET_HOUR}시에 늦게 실행되었습니다. 알림을 보내지 않았습니다."; exit 1; }
+              MARKET="us"
+              ;;
+            "")
+              # 수동 실행은 현재 시간으로 시장을 고른다. 장전 시간이 아니면 명시적으로 중단한다.
+              if [ "$KR_HOUR" = "08" ]; then MARKET="kr";
+              elif [ "$ET_HOUR" = "09" ]; then MARKET="us";
+              else echo "::error::수동 실행은 KR 08시 또는 US 09시(ET)에만 허용됩니다 (KST=${KR_HOUR}, ET=${ET_HOUR})."; exit 1; fi
+              ;;
+            *)
+              echo "::error::알 수 없는 예약식: ${SCHEDULE_EXPRESSION}"
+              exit 1
+              ;;
+          esac
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+            echo "::error::TELEGRAM_BOT_TOKEN 또는 TELEGRAM_CHAT_ID GitHub Secret이 비어 있습니다."
+            exit 1
           fi
+          echo "${MARKET} 장전 알림 발송 (KST=${KR_HOUR}, ET=${ET_HOUR}, schedule=${SCHEDULE_EXPRESSION:-manual})"
+          python scripts/notify_daily_summary.py --market "${MARKET}"
 
       - name: 실패 시 텔레그램 알림
         if: failure()

@@ -61,3 +61,44 @@ def test_focus_earnings_marks_candidate_with_estimates(monkeypatch):
 
 def test_event_metric_keeps_a_zero_actual_value():
     assert notify._event_metric("실제", 0, "%") == "실제 0%"
+
+
+def test_main_returns_nonzero_when_telegram_delivery_fails(monkeypatch):
+    monkeypatch.setattr(notify, "_send", lambda _message: False)
+    monkeypatch.setattr(notify, "build_economic_section", lambda _market: "")
+    monkeypatch.setattr(notify, "build_market_news_section", lambda _market: "")
+    monkeypatch.setattr(notify, "build_recommendation_section", lambda *_args: "")
+    monkeypatch.setattr(notify, "build_earnings_risk_section", lambda _market: ("", set()))
+    monkeypatch.setattr(notify.sys, "argv", ["notify_daily_summary.py", "--market", "kr"])
+
+    assert notify.main() == 1
+
+
+def test_send_retries_plain_text_after_telegram_html_error(monkeypatch):
+    class Response:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    calls: list[dict] = []
+
+    def fake_urlopen(request, timeout):
+        calls.append(__import__("json").loads(request.data))
+        if len(calls) == 1:
+            raise notify.urllib.error.HTTPError(
+                request.full_url, 400, "Bad Request", hdrs=None, fp=None
+            )
+        return Response()
+
+    monkeypatch.setattr(notify, "BOT_TOKEN", "token")
+    monkeypatch.setattr(notify, "CHAT_ID", "chat")
+    monkeypatch.setattr(notify, "DRY_RUN", False)
+    monkeypatch.setattr(notify.urllib.request, "urlopen", fake_urlopen)
+
+    assert notify._send("<b>brief</b> & broken <tag") is True
+    assert calls[0]["parse_mode"] == "HTML"
+    assert "parse_mode" not in calls[1]
