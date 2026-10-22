@@ -18,7 +18,7 @@
   "lastRun": {
     "status": "OK",
     "dryRun": false,
-    "createdAt": "2026-10-22T22:48:07",
+    "createdAt": "2026-10-22T23:23:25",
     "market": "us",
     "markets": {
       "us": {
@@ -51,37 +51,37 @@
           "seed": 5000.0,
           "cash": 4443.62,
           "invested": 616.02,
-          "valuation": 650.11,
-          "portfolioValue": 5093.73,
-          "unrealizedPnl": 34.1,
-          "totalPnl": 93.73,
-          "totalReturnPct": 1.87,
+          "valuation": 657.86,
+          "portfolioValue": 5101.48,
+          "unrealizedPnl": 41.85,
+          "totalPnl": 101.48,
+          "totalReturnPct": 2.03,
           "positionCount": 4,
           "tradeCount": 12
         },
         "liveMetrics": {
           "status": "OK",
           "proofStatus": "RUNNING",
-          "sampleCount": 85,
-          "navPointCount": 86,
-          "totalReturnPct": 1.87,
+          "sampleCount": 86,
+          "navPointCount": 87,
+          "totalReturnPct": 2.03,
           "mddPct": -0.6,
-          "sharpe": 2.46,
-          "winRate": 31.8,
+          "sharpe": 2.63,
+          "winRate": 32.6,
           "avgPeriodReturnPct": 0.02,
-          "cashPct": 87.2,
-          "peakValue": 5095.33,
-          "currentValue": 5093.73,
+          "cashPct": 87.1,
+          "peakValue": 5101.48,
+          "currentValue": 5101.48,
           "lastNavDate": "2026-10-22",
           "recentReturnsPct": [
-            -0.01,
             0.27,
             -0.01,
             -0.27,
             0.0,
             0.13,
             -0.02,
-            0.17
+            0.17,
+            0.15
           ],
           "equityCurve": [
             {
@@ -91,8 +91,8 @@
             },
             {
               "index": 1,
-              "value": 5075.52,
-              "returnPct": 1.51
+              "value": 5083.16,
+              "returnPct": 1.66
             },
             {
               "index": 2,
@@ -101,8 +101,8 @@
             },
             {
               "index": 3,
-              "value": 5083.16,
-              "returnPct": 1.66
+              "value": 5095.33,
+              "returnPct": 1.91
             },
             {
               "index": 4,
@@ -111,33 +111,33 @@
             },
             {
               "index": 5,
-              "value": 5095.33,
-              "returnPct": 1.91
-            },
-            {
-              "index": 6,
               "value": 5089.86,
               "returnPct": 1.8
             },
             {
-              "index": 7,
+              "index": 6,
               "value": 5080.67,
               "returnPct": 1.61
             },
             {
-              "index": 8,
+              "index": 7,
               "value": 5080.09,
               "returnPct": 1.6
             },
             {
-              "index": 9,
+              "index": 8,
               "value": 5093.72,
               "returnPct": 1.87
             },
             {
-              "index": 10,
+              "index": 9,
               "value": 5093.29,
               "returnPct": 1.87
+            },
+            {
+              "index": 10,
+              "value": 5079.62,
+              "returnPct": 1.59
             },
             {
               "index": 11,
@@ -146,23 +146,23 @@
             },
             {
               "index": 12,
-              "value": 5079.62,
-              "returnPct": 1.59
-            },
-            {
-              "index": 13,
               "value": 5086.27,
               "returnPct": 1.73
             },
             {
-              "index": 14,
+              "index": 13,
               "value": 5085.11,
               "returnPct": 1.7
             },
             {
-              "index": 15,
+              "index": 14,
               "value": 5093.73,
               "returnPct": 1.87
+            },
+            {
+              "index": 15,
+              "value": 5101.48,
+              "returnPct": 2.03
             }
           ]
         },
@@ -184,8 +184,8 @@
         "survival": {
           "state": "ALIVE",
           "seed": 5000.0,
-          "portfolioValue": 5093.73,
-          "survivalPct": 101.87
+          "portfolioValue": 5101.48,
+          "survivalPct": 102.03
         },
         "proofBoard": {
           "status": "OK",
@@ -411,7 +411,7 @@
             ]
           },
           "candidateCount": 0,
-          "rawCandidateCount": 7,
+          "rawCandidateCount": 8,
           "researchCandidateCount": 3,
           "paperResearch": {
             "enabled": true,
@@ -741,8 +741,8 @@
             "priceSession": "us_intraday",
             "sessionLabel": "미장 장중",
             "priceBasis": "미장 장중 · KIS 현재가 기준",
-            "nowKst": "2026-10-22T22:48:07.561247+09:00",
-            "nowLocal": "2026-10-22T09:48:07.561247-04:00",
+            "nowKst": "2026-10-22T23:23:25.300205+09:00",
+            "nowLocal": "2026-10-22T10:23:25.300205-04:00",
             "isHoliday": false,
             "isReviewMode": false,
             "isUsDst": true
@@ -769,7 +769,7 @@
         },
         "nav": {
           "date": "2026-10-22",
-          "createdAt": "2026-10-22T22:48:07",
+          "createdAt": "2026-10-22T23:23:25",
           "market": "us",
           "agentId": "ml_rank_conservative_swing",
           "agentLabel": "ML Rank Conservative Swing",
@@ -777,11 +777,11 @@
           "state": "ALIVE",
           "seed": 5000.0,
           "cash": 4443.62,
-          "valuation": 650.11,
-          "portfolioValue": 5093.73,
-          "totalPnl": 93.73,
-          "totalReturnPct": 1.87,
-          "survivalPct": 101.87,
+          "valuation": 657.86,
+          "portfolioValue": 5101.48,
+          "totalPnl": 101.48,
+          "totalReturnPct": 2.03,
+          "survivalPct": 102.03,
           "positionCount": 4,
           "tradeCount": 12,
           "buyCount": 0,
