@@ -74,6 +74,20 @@ def test_main_returns_nonzero_when_telegram_delivery_fails(monkeypatch):
     assert notify.main() == 1
 
 
+def test_main_marks_a_late_scheduled_briefing(monkeypatch):
+    sent: list[str] = []
+    monkeypatch.setattr(notify, "_send", lambda message: sent.append(message) or True)
+    monkeypatch.setattr(notify, "build_economic_section", lambda _market: "")
+    monkeypatch.setattr(notify, "build_market_news_section", lambda _market: "")
+    monkeypatch.setattr(notify, "build_recommendation_section", lambda *_args: "")
+    monkeypatch.setattr(notify, "build_earnings_risk_section", lambda _market: ("", set()))
+    monkeypatch.setattr(notify, "DELAY_NOTICE", "⚠️ 예약 지연 도착")
+    monkeypatch.setattr(notify.sys, "argv", ["notify_daily_summary.py", "--market", "us"])
+
+    assert notify.main() == 0
+    assert "⚠️ 예약 지연 도착" in sent[0]
+
+
 def test_send_retries_plain_text_after_telegram_html_error(monkeypatch):
     class Response:
         status = 200

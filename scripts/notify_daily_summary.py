@@ -45,6 +45,7 @@ AV_KEY        = os.environ.get("ALPHA_VANTAGE_KEY", "")
 GNEWS_API_KEY = os.environ.get("GNEWS_API_KEY", "")
 DRY_RUN       = os.environ.get("NOTIFY_DRY_RUN", "0") == "1"
 LIVE_GNEWS    = os.environ.get("MONE_NOTIFY_LIVE_GNEWS", "0") == "1"
+DELAY_NOTICE  = os.environ.get("MONE_NOTIFY_DELAY_NOTICE", "").strip()
 TG_TIMEOUT    = int(os.environ.get("TELEGRAM_TIMEOUT_SEC", "25"))
 TG_RETRIES    = int(os.environ.get("TELEGRAM_RETRY_COUNT", "3"))
 
@@ -824,7 +825,10 @@ def main() -> int:
     mkt_label = {"kr": "🇰🇷 국장", "us": "🇺🇸 미장", "all": "국장+미장"}[market]
     print(f"[{now}] 일일 요약 알림 시작 (market={market})")
 
-    sections = [f"🤖 <b>MONE {mkt_label} 투자 점검</b>\n{now}"]
+    header = f"🤖 <b>MONE {mkt_label} 투자 점검</b>\n{now}"
+    if DELAY_NOTICE:
+        header += f"\n{DELAY_NOTICE}"
+    sections = [header]
 
     # 국장 블록
     if market in ("kr", "all"):
