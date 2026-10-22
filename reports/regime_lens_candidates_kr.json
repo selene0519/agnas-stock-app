@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-22T13:05:33.836555+00:00",
+  "generatedAt": "2026-10-22T13:40:48.357189+00:00",
   "asOfDate": "2026-10-22",
   "market": "kr",
   "marketRegime": "BEAR",
@@ -20,6 +20,22 @@
   "disclaimer": "생존편향(현상장 glob만)로 백테스트 낙관. actionable(ACTIVE)만 자가보정 통과 — 실사이징은 라이브 VTJ forward 검증 후.",
   "candidates": [
     {
+      "symbol": "006280",
+      "name": "녹십자",
+      "setup": "BREAKOUT",
+      "asOfDate": "2026-10-20",
+      "close": 132300.0,
+      "entryRef": 132300.0,
+      "stop": 127008,
+      "target": 142884,
+      "rrRatio": 2.0,
+      "rsi14": 65.1,
+      "distMa20Pct": 4.8,
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
+    },
+    {
       "symbol": "008350",
       "name": "남선알미늄",
       "setup": "BREAKOUT",
@@ -31,6 +47,22 @@
       "rrRatio": 2.0,
       "rsi14": 71.2,
       "distMa20Pct": 5.8,
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
+    },
+    {
+      "symbol": "107640",
+      "name": "한중엔시에스",
+      "setup": "BREAKOUT",
+      "asOfDate": "2026-10-21",
+      "close": 51400.0,
+      "entryRef": 51400.0,
+      "stop": 49344,
+      "target": 55512,
+      "rrRatio": 2.0,
+      "rsi14": 65.5,
+      "distMa20Pct": 17.3,
       "calibrationGate": "SUPPRESSED_LOW_EDGE",
       "sizeMultiplier": 0.0,
       "actionable": false
@@ -68,38 +100,6 @@
       "actionable": false
     },
     {
-      "symbol": "006280",
-      "name": "녹십자",
-      "setup": "BREAKOUT",
-      "asOfDate": "2026-10-20",
-      "close": 132300.0,
-      "entryRef": 132300.0,
-      "stop": 127008,
-      "target": 142884,
-      "rrRatio": 2.0,
-      "rsi14": 65.1,
-      "distMa20Pct": 4.8,
-      "calibrationGate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "actionable": false
-    },
-    {
-      "symbol": "107640",
-      "name": "한중엔시에스",
-      "setup": "BREAKOUT",
-      "asOfDate": "2026-10-21",
-      "close": 51400.0,
-      "entryRef": 51400.0,
-      "stop": 49344,
-      "target": 55512,
-      "rrRatio": 2.0,
-      "rsi14": 65.5,
-      "distMa20Pct": 17.3,
-      "calibrationGate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "actionable": false
-    },
-    {
       "symbol": "354320",
       "name": "알멕",
       "setup": "BREAKOUT",
@@ -116,22 +116,6 @@
       "actionable": false
     },
     {
-      "symbol": "127120",
-      "name": "제이에스링크",
-      "setup": "BOTTOM_CATCH",
-      "asOfDate": "2026-10-21",
-      "close": 18790.0,
-      "entryRef": 18790.0,
-      "stop": 17632,
-      "target": 20293,
-      "rrRatio": 1.3,
-      "rsi14": 12.5,
-      "distMa20Pct": -31.3,
-      "calibrationGate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "actionable": false
-    },
-    {
       "symbol": "250030",
       "name": "진코스텍",
       "setup": "BOTTOM_CATCH",
@@ -143,6 +127,22 @@
       "rrRatio": 2.67,
       "rsi14": 12.5,
       "distMa20Pct": -44.2,
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
+    },
+    {
+      "symbol": "127120",
+      "name": "제이에스링크",
+      "setup": "BOTTOM_CATCH",
+      "asOfDate": "2026-10-21",
+      "close": 18790.0,
+      "entryRef": 18790.0,
+      "stop": 17632,
+      "target": 20293,
+      "rrRatio": 1.3,
+      "rsi14": 12.5,
+      "distMa20Pct": -31.3,
       "calibrationGate": "SUPPRESSED_LOW_EDGE",
       "sizeMultiplier": 0.0,
       "actionable": false
@@ -308,22 +308,6 @@
       "actionable": false
     },
     {
-      "symbol": "487580",
-      "name": "폴레드",
-      "setup": "BOTTOM_CATCH",
-      "asOfDate": "2026-10-21",
-      "close": 2500.0,
-      "entryRef": 2500.0,
-      "stop": 2398,
-      "target": 2700,
-      "rrRatio": 1.96,
-      "rsi14": 25.1,
-      "distMa20Pct": -8.3,
-      "calibrationGate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "actionable": false
-    },
-    {
       "symbol": "094170",
       "name": "동운아나텍",
       "setup": "BOTTOM_CATCH",
@@ -335,6 +319,22 @@
       "rrRatio": 4.02,
       "rsi14": 25.1,
       "distMa20Pct": -16.8,
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
+    },
+    {
+      "symbol": "487580",
+      "name": "폴레드",
+      "setup": "BOTTOM_CATCH",
+      "asOfDate": "2026-10-21",
+      "close": 2500.0,
+      "entryRef": 2500.0,
+      "stop": 2398,
+      "target": 2700,
+      "rrRatio": 1.96,
+      "rsi14": 25.1,
+      "distMa20Pct": -8.3,
       "calibrationGate": "SUPPRESSED_LOW_EDGE",
       "sizeMultiplier": 0.0,
       "actionable": false
