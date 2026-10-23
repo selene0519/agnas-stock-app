@@ -154,6 +154,7 @@ jobs:
         run: |
           KR_HOUR=$(TZ=Asia/Seoul date +%H)
           ET_HOUR=$(TZ=America/New_York date +%H)
+          ET_ZONE=$(TZ=America/New_York date +%Z)
           SCHEDULE_EXPRESSION="${{ github.event.schedule }}"
           DELAY_NOTICE=""
           WEEKDAY=$(date +%u)
@@ -169,7 +170,25 @@ jobs:
                 echo "::warning::KR 장전 예약이 KST ${KR_HOUR}시에 늦게 실행되었습니다. 최신 브리핑을 계속 발송합니다."
               fi
               ;;
-            "0 13 * * 1-5"|"0 14 * * 1-5")
+            "0 13 * * 1-5")
+              # 13:00 UTC는 미국 서머타임(EDT) 전용이다. EST 기간에는 두 번째
+              # 예약이 담당하므로 이 실행은 중복 발송 없이 정상 스킵한다.
+              if [ "$ET_ZONE" != "EDT" ]; then
+                echo "EDT 비활성 기간 — US 중복 알림 스킵"
+                exit 0
+              fi
+              MARKET="us"
+              if [ "$ET_HOUR" != "09" ]; then
+                DELAY_NOTICE="⚠️ 예약 지연 도착: ET ${ET_HOUR}시 기준 최신 데이터로 재계산한 브리핑입니다."
+                echo "::warning::US 장전 예약이 ET ${ET_HOUR}시에 늦게 실행되었습니다. 최신 브리핑을 계속 발송합니다."
+              fi
+              ;;
+            "0 14 * * 1-5")
+              # 14:00 UTC는 미국 표준시(EST) 전용이다.
+              if [ "$ET_ZONE" != "EST" ]; then
+                echo "EST 비활성 기간 — US 중복 알림 스킵"
+                exit 0
+              fi
               MARKET="us"
               if [ "$ET_HOUR" != "09" ]; then
                 DELAY_NOTICE="⚠️ 예약 지연 도착: ET ${ET_HOUR}시 기준 최신 데이터로 재계산한 브리핑입니다."
