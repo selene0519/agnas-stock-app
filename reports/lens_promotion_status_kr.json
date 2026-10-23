@@ -8,14 +8,14 @@
     "minWinRate": 0.5,
     "minAvgNetPnlPct": 0.0
   },
-  "totalSettledTrades": 309,
+  "totalSettledTrades": 316,
   "promotable": [],
   "verdicts": {
     "BEAR|BOTTOM_CATCH": {
-      "sampleCount": 131,
-      "winRatePct": 16.0,
+      "sampleCount": 132,
+      "winRatePct": 15.9,
       "profitFactor": 0.32,
-      "avgNetPnlPct": -2.213,
+      "avgNetPnlPct": -2.217,
       "status": "STAY_PAPER",
       "blockingReasons": [
         "PROFIT_FACTOR_NOT_ABOVE_1",
@@ -61,13 +61,13 @@
       ]
     },
     "SIDE|BREAKOUT": {
-      "sampleCount": 4,
+      "sampleCount": 10,
       "winRatePct": 0.0,
       "profitFactor": 0.0,
-      "avgNetPnlPct": -4.502,
+      "avgNetPnlPct": -4.501,
       "status": "STAY_PAPER",
       "blockingReasons": [
-        "SAMPLES_4_BELOW_12",
+        "SAMPLES_10_BELOW_12",
         "PROFIT_FACTOR_NOT_ABOVE_1",
         "WIN_RATE_BELOW_50",
         "NON_POSITIVE_EXPECTANCY"
