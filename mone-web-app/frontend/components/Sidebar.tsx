@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart2, Briefcase, ChevronRight, Cpu, LayoutDashboard, LogIn, LogOut, MoreHorizontal, Search, ShieldCheck, UserRound } from "lucide-react";
+import { Briefcase, ChevronRight, Cpu, LayoutDashboard, LogIn, LogOut, MoreHorizontal, Search, ShieldCheck, UserRound } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 import type { MoneUserProfile } from "@/lib/userId";
@@ -21,13 +21,12 @@ export type PageId =
 
 const primaryItems: { id: PageId; label: string; icon: React.ReactNode }[] = [
   { id: "home", label: "MONE 홈", icon: <LayoutDashboard size={16} /> },
-  { id: "stocks", label: "종목 탐색", icon: <Search size={16} /> },
+  { id: "stocks", label: "종목 분석", icon: <Search size={16} /> },
   { id: "holdings", label: "보유·리스크", icon: <Briefcase size={16} /> },
-  { id: "chart", label: "분석", icon: <BarChart2 size={16} /> },
 ];
 
 const moreItems: { id: PageId; label: string; icon: React.ReactNode }[] = [
-  { id: "advanced", label: "MONE 퀀트 랩", icon: <Cpu size={16} /> },
+  { id: "advanced", label: "운영·검증", icon: <Cpu size={16} /> },
 ];
 
 const adminItem: { id: PageId; label: string; icon: React.ReactNode } = {
@@ -68,7 +67,9 @@ function BrandMark({ collapsed }: { collapsed: boolean }) {
 
 export default function Sidebar({ current, onChange, isAdmin = false, onAdminLogin, onAdminLogout, userProfile, onUserLogout }: Props) {
   const [collapsed, setCollapsed] = useState(false);
-  const visibleMoreItems = isAdmin ? [...moreItems, adminItem] : moreItems;
+  // 소비자 화면은 세 가지 의사결정 경로만 노출한다. 검증·일지·운영 도구는
+  // 관리자 세션에서만 열어 초기 선택 부담과 불필요한 화면 진입을 없앤다.
+  const visibleMoreItems = isAdmin ? [...moreItems, adminItem] : [];
 
   const SidebarContent = () => (
     <div className="flex h-full flex-col">
@@ -103,7 +104,7 @@ export default function Sidebar({ current, onChange, isAdmin = false, onAdminLog
         </div>
 
         <div className="mt-auto space-y-0.5 border-t border-slate-800/40 pt-2">
-          {!collapsed && (
+          {!collapsed && visibleMoreItems.length > 0 && (
             <div className="flex items-center gap-1 px-2 pb-1 pt-1 text-[9px] font-semibold uppercase tracking-widest text-slate-400">
               <MoreHorizontal size={10} />
               <span>더보기</span>

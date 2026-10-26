@@ -209,12 +209,8 @@ export default function App() {
     const primaryTimer = window.setTimeout(() => {
       void Promise.allSettled([loadStocksPage(), loadHoldingsPage()]);
     }, 700);
-    const secondaryTimer = window.setTimeout(() => {
-      void Promise.allSettled([loadChartPage(), loadAdvancedPage(), loadPaperTradingPage()]);
-    }, 2200);
     return () => {
       window.clearTimeout(primaryTimer);
-      window.clearTimeout(secondaryTimer);
     };
   }, [booting, mounted]);
 
@@ -315,11 +311,13 @@ export default function App() {
       case "prediction":
         return <PredictionPage />;
       case "advanced":
-        return <AdvancedPage initialOrder={tradeOrder ?? undefined} onOrderConsumed={() => setTradeOrder(null)} />;
+        return adminToken
+          ? <AdvancedPage initialOrder={tradeOrder ?? undefined} onOrderConsumed={() => setTradeOrder(null)} />
+          : <AdminLoginPage onSuccess={handleAdminLogin} onUserLogin={openUserLogin} />;
       case "paper":
-        return <PaperTradingPage />;
+        return adminToken ? <PaperTradingPage /> : <AdminLoginPage onSuccess={handleAdminLogin} onUserLogin={openUserLogin} />;
       case "journal":
-        return <VirtualJournalPage />;
+        return adminToken ? <VirtualJournalPage /> : <AdminLoginPage onSuccess={handleAdminLogin} onUserLogin={openUserLogin} />;
       case "broker":
         return (
           <BrokerPage

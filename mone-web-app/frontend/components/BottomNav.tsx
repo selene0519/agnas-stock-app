@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart2, Briefcase, Cpu, LayoutDashboard, LogIn, LogOut, MoreHorizontal, Search, ShieldCheck, UserRound, X } from "lucide-react";
+import { Briefcase, Cpu, LayoutDashboard, LogIn, LogOut, MoreHorizontal, Search, ShieldCheck, UserRound, X } from "lucide-react";
 import { useRef, useState } from "react";
 import type { PageId } from "./Sidebar";
 import type { MoneUserProfile } from "@/lib/userId";
@@ -17,13 +17,12 @@ interface BottomNavProps {
 
 const primaryTabs: { id: PageId; label: string; Icon: React.ElementType }[] = [
   { id: "home", label: "홈", Icon: LayoutDashboard },
-  { id: "stocks", label: "탐색", Icon: Search },
+  { id: "stocks", label: "종목 분석", Icon: Search },
   { id: "holdings", label: "보유", Icon: Briefcase },
-  { id: "chart", label: "분석", Icon: BarChart2 },
 ];
 
 const moreTabs: { id: PageId; label: string; desc: string; Icon: React.ElementType }[] = [
-  { id: "advanced", label: "MONE 퀀트 랩", desc: "Paper 검증, AI 추천일지, 계산기, 몬테카를로, 전략검증", Icon: Cpu },
+  { id: "advanced", label: "운영·검증", desc: "Paper 검증, AI 일지, 계산기, 전략 검증", Icon: Cpu },
 ];
 
 const adminTab: { id: PageId; label: string; desc: string; Icon: React.ElementType } = {
@@ -37,7 +36,7 @@ export default function BottomNav({ current, onChange, isAdmin = false, onAdminL
   const [moreOpen, setMoreOpen] = useState(false);
   const moreTriggerRef = useRef<HTMLButtonElement | null>(null);
   const sheetRef = useRef<HTMLDivElement | null>(null);
-  const visibleMoreTabs = isAdmin ? [...moreTabs, adminTab] : moreTabs;
+  const visibleMoreTabs = isAdmin ? [...moreTabs, adminTab] : [];
   const isMoreActive = current === "admin" || visibleMoreTabs.some((t) => t.id === current);
 
   const handlePrimary = (id: PageId) => {
