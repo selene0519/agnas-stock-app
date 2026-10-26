@@ -1,28 +1,28 @@
 {
-  "updatedAt": "2026-10-26 09:58:41",
-  "totalRows": 3412,
+  "updatedAt": "2026-10-26 16:35:27",
+  "totalRows": 3415,
   "olsSampleSize": 2795,
   "byStrategy": {
     "conservative_short": {
-      "total": 304,
-      "wins": 81,
+      "total": 305,
+      "wins": 82,
       "losses": 223,
-      "winRate": 0.2664,
-      "avgWinPct": 5.033,
+      "winRate": 0.2689,
+      "avgWinPct": 5.035,
       "avgLossPct": 3.385,
       "payoffRatio": 1.487,
-      "avgProbability": 58.7,
-      "probAccuracy": -0.32
+      "avgProbability": 58.6,
+      "probAccuracy": -0.318
     },
     "conservative_swing": {
-      "total": 320,
+      "total": 321,
       "wins": 93,
-      "losses": 227,
-      "winRate": 0.2906,
+      "losses": 228,
+      "winRate": 0.2897,
       "avgWinPct": 10.184,
-      "avgLossPct": 5.995,
-      "payoffRatio": 1.699,
-      "avgProbability": 61.2,
+      "avgLossPct": 5.991,
+      "payoffRatio": 1.7,
+      "avgProbability": 61.1,
       "probAccuracy": -0.321
     },
     "conservative_mid": {
@@ -81,15 +81,15 @@
       "probAccuracy": -0.401
     },
     "aggressive_swing": {
-      "total": 338,
+      "total": 339,
       "wins": 66,
-      "losses": 272,
-      "winRate": 0.1953,
+      "losses": 273,
+      "winRate": 0.1947,
       "avgWinPct": 9.797,
-      "avgLossPct": 7.51,
-      "payoffRatio": 1.304,
-      "avgProbability": 60.8,
-      "probAccuracy": -0.413
+      "avgLossPct": 7.52,
+      "payoffRatio": 1.303,
+      "avgProbability": 60.7,
+      "probAccuracy": -0.412
     },
     "aggressive_mid": {
       "total": 538,
@@ -112,17 +112,17 @@
       "payoffRatio": 1.412
     },
     "us": {
-      "total": 2214,
-      "winRate": 0.2222,
-      "avgWinPct": 10.8,
-      "avgLossPct": 6.983,
-      "payoffRatio": 1.547
+      "total": 2217,
+      "winRate": 0.2224,
+      "avgWinPct": 10.789,
+      "avgLossPct": 6.984,
+      "payoffRatio": 1.545
     }
   },
   "byProbBand": {
     "low_50-60": {
-      "count": 1122,
-      "actualWinRate": 0.1203
+      "count": 1125,
+      "actualWinRate": 0.1209
     },
     "mid_60-75": {
       "count": 1096,
