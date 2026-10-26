@@ -54,6 +54,7 @@ import { confidenceLabel, normalizeAction, normalizeStatus, toneTextClass } from
 import type { BootPreloadData, BootStatus } from "@/lib/bootPreload";
 import { getAuthenticatedUserId } from "@/lib/userId";
 import { alertStatusTone, toneClassName } from "@/lib/tone";
+import HomeDecisionSections from "@/components/HomeDecisionSections";
 
 const MODES: Mode[] = ["conservative", "balanced", "aggressive"];
 const HORIZONS: Horizon[] = ["short", "swing", "mid"];
@@ -669,9 +670,8 @@ function EventBanner({ alert }: { alert: any }) {
           </span>
           <div className="min-w-0 flex-1">
           <div className="truncate text-[13.5px] font-semibold text-slate-100">오늘 주요 일정 · 확인 중</div>
-          <div className="mt-0.5 truncate text-[10.5px] text-slate-400">진입 전 경제지표와 실적 일정을 함께 확인하세요</div>
+          <div className="mt-0.5 text-xs text-slate-400">경제지표·실적 일정 수집 대기</div>
           </div>
-          <ChevronRight size={16} className="shrink-0 text-slate-400" />
         </div>
       </section>
     );
@@ -702,8 +702,8 @@ function EventBanner({ alert }: { alert: any }) {
       : "다음 거래일 전략 점검에 반영하세요";
 
   return (
-    <section className="mone-home-card px-3.5 py-3">
-      <div className="flex items-center gap-3">
+    <details className="mone-home-card px-3.5 py-1">
+      <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 py-2">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-300">
           <AlertTriangle size={18} />
         </span>
@@ -711,9 +711,22 @@ function EventBanner({ alert }: { alert: any }) {
           <div className="truncate text-[13.5px] font-semibold text-slate-100">{title}</div>
           <div className="mt-0.5 truncate text-[10.5px] text-slate-400">{subtitle}</div>
         </div>
-        <ChevronRight size={16} className="shrink-0 text-slate-400" />
+        <ChevronDown size={16} className="shrink-0 text-slate-400" aria-hidden="true" />
+      </summary>
+      <div className="space-y-3 border-t border-slate-800/70 py-3 text-xs leading-6 text-slate-300">
+        {[{ label: "오늘 경제지표", rows: allMacro.length ? allMacro : highMacro }, { label: "오늘 실적", rows: todayEarnings }, { label: "내일 경제지표", rows: tmrwHigh }, { label: "내일 실적", rows: tmrwEarnings }].filter((group) => group.rows.length).map((group) => (
+          <div key={group.label}>
+            <h3 className="font-semibold text-slate-400">{group.label}</h3>
+            {group.rows.slice(0, 6).map((event: any, index: number) => (
+              <div key={`${group.label}-${index}`} className="mt-1">
+                <p>{firstText(event.event, event.name, event.symbol, "일정")} · {firstText(event.time, event.datetime, event.date, "시각 미제공")}</p>
+                <p className="text-slate-400">{group.label.includes("실적") ? `EPS 예상 ${firstText(event.epsEstimate, event.estimate, "미제공")}` : `실제 ${firstText(event.actual, "미제공")} / 예상 ${firstText(event.forecast, event.estimate, "미제공")} / 이전 ${firstText(event.previous, "미제공")}`}</p>
+              </div>
+            ))}
+          </div>
+        ))}
       </div>
-    </section>
+    </details>
   );
 }
 
@@ -881,25 +894,27 @@ function ReferenceMarketGateCard({
   const gate = getMarketGateInfo(regime, dataHealth);
   const strength = Math.max(0, Math.min(100, Number(gate.strength || 0)));
   const maDist = Number(gate.maDist || 0);
-  const sentiment = Math.max(0, Math.min(100, Number(fearGreedData?.score ?? fearGreedData?.composite?.score ?? regime?.fearGreed ?? regime?.sentimentScore ?? 0)));
+  const sentimentValue = safeNumber(fearGreedData?.score ?? fearGreedData?.composite?.score ?? regime?.fearGreed ?? regime?.sentimentScore);
+  const sentiment = sentimentValue == null ? null : Math.max(0, Math.min(100, sentimentValue));
   const pending = !regime || !gate.hasOhlcv;
   const stateTone = pending ? "slate" : gate.isHigh ? "emerald" : gate.isMid ? "amber" : "red";
   const toneClass = stateTone === "emerald" ? "text-emerald-300" : stateTone === "amber" ? "text-amber-300" : stateTone === "red" ? "text-red-300" : "text-slate-400";
   const trendTone = !gate.hasRegimeMa ? "text-slate-400" : maDist >= 0 ? "text-emerald-300" : "text-red-300";
-  const sentimentTone = sentiment >= 70 ? "text-emerald-300" : sentiment >= 40 ? "text-amber-300" : "text-red-300";
-  const dataDate = firstText(regime?.asOf, regime?.latestDataDate, dataHealth?.latestDataDate, "");
+  const sentimentTone = sentiment == null ? "text-slate-400" : sentiment >= 70 ? "text-emerald-300" : sentiment >= 40 ? "text-amber-300" : "text-red-300";
+  const dataDate = firstText(dataHealth?.ohlcvLatestDate, regime?.asOf, regime?.latestDataDate, dataHealth?.latestDataDate, "확인 중");
+  const regimeText = regime?.regime === "BULL" ? "상승장" : regime?.regime === "BEAR" ? "하락장" : regime?.regime === "SIDE" || regime?.regime === "NEUTRAL" ? "횡보장" : "장세 확인 중";
 
   return (
     <section className="mone-home-card overflow-hidden">
         <div className="flex items-center gap-3 px-3.5 py-3">
           <span className="h-2 w-2 rounded-full bg-teal-300" />
           <div className="min-w-0 flex-1">
-          <h2 className="mone-home-section-title">시장 컨디션 게이트</h2>
-          <p className="mt-0.5 text-[10px] text-slate-400">진입 조건보다 먼저 확인하는 시장 필터</p>
+          <h2 className="mone-home-section-title">오늘의 시장 판단</h2>
+          <p className="mt-1 text-xs text-slate-400">{regimeText} · {pending ? "시장 데이터 확인 전 신규 진입 보류" : gate.isLow ? "신규 진입 보류 · 보유 리스크 우선" : gate.isMid ? "개별 종목의 진입 계획을 선별 확인" : "조건을 통과한 종목의 진입 계획 확인"}</p>
         </div>
         <div className="text-right">
           <div className={`text-[16px] font-bold ${toneClass}`}>{pending ? "확인 중" : gate.levelText}</div>
-          <div className="font-mono text-[10px] text-slate-400">판단 점수 {strength.toFixed(0)} / 100</div>
+          <div className="font-mono text-[10px] text-slate-400">판단 점수 {pending ? "—" : strength.toFixed(0)} / 100</div>
         </div>
       </div>
       <div className="grid grid-cols-3 divide-x divide-slate-800/80 border-t border-slate-800/80">
@@ -910,8 +925,8 @@ function ReferenceMarketGateCard({
         </div>
         <div className="min-w-0 px-2.5 py-2.5 text-center">
           <div className="text-[9.5px] text-slate-400">심리</div>
-          <div className={`mt-1 font-mono text-[12px] font-semibold tabular-nums ${sentimentTone}`}>{pending ? "-" : sentiment.toFixed(0)}</div>
-          <div className="mt-0.5 truncate text-[9.5px] text-slate-400">{pending ? "확인 중" : sentiment >= 70 ? "탐욕" : sentiment >= 40 ? "중립" : "공포"}</div>
+          <div className={`mt-1 font-mono text-[12px] font-semibold tabular-nums ${sentimentTone}`}>{pending || sentiment == null ? "—" : sentiment.toFixed(0)}</div>
+          <div className="mt-0.5 truncate text-[9.5px] text-slate-400">{pending || sentiment == null ? "수집 대기" : sentiment >= 70 ? "탐욕" : sentiment >= 40 ? "중립" : "공포"}</div>
         </div>
         <div className="min-w-0 px-2.5 py-2.5 text-center">
           <div className="text-[9.5px] text-slate-400">데이터</div>
@@ -3947,12 +3962,14 @@ export default function HomePage({
   bootData,
   bootStatus = "idle",
   booting = false,
+  isAdmin = false,
 }: {
   onNavigate?: (page: PageId) => void;
   onTradePaper?: (order: { symbol: string; name: string; price: number; market: "kr" | "us"; quantity?: number }) => void;
   bootData?: BootPreloadData | null;
   bootStatus?: BootStatus;
   booting?: boolean;
+  isAdmin?: boolean;
 }) {
   const [allItems, setAllItems] = useState<any[]>([]);
   const [matrix, setMatrix] = useState<StrategyCell[]>([]);
@@ -3969,7 +3986,6 @@ export default function HomePage({
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [showJournal, setShowJournal] = useState(false);
   const [showMatrix, setShowMatrix] = useState(false);
-  const [candidateTab, setCandidateTab] = useState<"today" | "watch" | "risk">("today");
   const [badgeMap, setBadgeMap] = useState<Record<string, any>>({});
   const [storyMap, setStoryMap] = useState<Record<string, any>>({});
   const [editStory, setEditStory] = useState<string | null>(null);
@@ -4237,9 +4253,9 @@ export default function HomePage({
     };
   }, [clientReady, selectedMarket]);
 
-  // 손절/목표가 근접 알림 로드
+  // 관리자 검증 기록에 쓰는 데이터는 일반 홈에서 요청하지 않는다.
   useEffect(() => {
-    if (!clientReady) return;
+    if (!clientReady || !isAdmin) return;
     let active = true;
     const timer = window.setTimeout(() => {
       mone.nearAlerts({ market: selectedMarket, thresholdPct: 5 })
@@ -4252,10 +4268,10 @@ export default function HomePage({
       active = false;
       window.clearTimeout(timer);
     };
-  }, [clientReady, selectedMarket]);
+  }, [clientReady, isAdmin, selectedMarket]);
 
   useEffect(() => {
-    if (!clientReady) return;
+    if (!clientReady || !isAdmin) return;
     let active = true;
     const timer = window.setTimeout(() => {
       mone.signalsLedger({ market: selectedMarket, limit: 12 }).then((ledger) => {
@@ -4270,7 +4286,7 @@ export default function HomePage({
       active = false;
       window.clearTimeout(timer);
     };
-  }, [clientReady, selectedMarket]);
+  }, [clientReady, isAdmin, selectedMarket]);
 
   // ── 브라우저 알림: 장중 진입 임박 종목 감지 (1분 주기)
   useEffect(() => {
@@ -4377,45 +4393,12 @@ export default function HomePage({
     return collapseCandidateSymbols(rows).slice(0, 6);
   }, [allItems, todayCandidateSymbols, watchCandidateSymbols]);
 
-  useEffect(() => {
-    if (loading) return;
-    const activeCount =
-      candidateTab === "today" ? todayEntries.length
-      : candidateTab === "watch" ? watchItems.length
-      : riskItems.length;
-    if (activeCount > 0) return;
-    if (todayEntries.length > 0) setCandidateTab("today");
-    else if (watchItems.length > 0) setCandidateTab("watch");
-    else if (riskItems.length > 0) setCandidateTab("risk");
-  }, [candidateTab, loading, riskItems.length, todayEntries.length, watchItems.length]);
-
   const riskCount = holdings.filter((h) => ["위험", "주의", "HIGH", "WATCH"].includes(String(h.riskStatus || ""))).length;
 
   const topObservation = useMemo(
     () => pickTopObservation(todayEntries, watchItems, allItems),
     [todayEntries, watchItems, allItems],
   );
-
-  const dailyBriefing = useMemo(
-    () => buildDailyBriefing({
-      topItem: topObservation,
-      regime: marketRegime,
-      dataHealth,
-      todayCount: todayEntries.length,
-      watchCount: watchItems.length,
-      riskCount,
-      selectedMarket,
-    }),
-    [topObservation, marketRegime, dataHealth, todayEntries.length, watchItems.length, riskCount, selectedMarket],
-  );
-  // 오늘 진입/대기 관찰 버킷에 실제 후보가 있을 때만 "관찰 1순위"로 부른다.
-  // 둘 다 비어(약세장 게이트 등) 히어로가 점수순 폴백으로 뽑힌 경우엔 "관망·참고"로
-  // 표기해 아래 "관찰 0" 카운트와의 자기모순을 없앤다.
-  const hasActionableTop = todayEntries.length > 0 || watchItems.length > 0;
-  const primaryObservationTitle = hasActionableTop
-    ? (sessionCtx.targetLabel === "다음 거래일" ? "다음 거래일 관찰 1순위" : "오늘의 관찰 1순위")
-    : (sessionCtx.targetLabel === "다음 거래일" ? "다음 거래일 관망 · 참고 1순위" : "오늘 관망 · 참고 1순위");
-  const candidateSectionTitle = sessionCtx.targetLabel === "다음 거래일" ? "다음 거래일 후보" : "오늘의 후보";
 
   useEffect(() => {
     if (!clientReady || !topObservation) return;
@@ -4495,6 +4478,7 @@ export default function HomePage({
 
   // ── 백테스트 뱃지 fetch (매수 검토 + 대기 관찰 종목)
   useEffect(() => {
+    if (!isAdmin) return;
     const items = [...todayEntries, ...watchItems];
     if (!items.length) return;
     const unique = Array.from(new Set(items.map((i) =>
@@ -4517,7 +4501,7 @@ export default function HomePage({
       });
     }, 5500);
     return () => window.clearTimeout(timer);
-  }, [todayEntries, watchItems]);
+  }, [isAdmin, todayEntries, watchItems]);
 
   if (loading && !allItems.length) {
     return (
@@ -4546,7 +4530,7 @@ export default function HomePage({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 className="mone-page-title">MONE 홈</h1>
-            <p className="mone-page-subtitle">오늘의 운용 브리핑</p>
+            <p className="mone-page-subtitle">시장을 판단하고, 오늘의 계획을 확인합니다.</p>
             <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-400">
               <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
                 sessionPhase === "장중" ? "bg-emerald-500/15 text-emerald-300"
@@ -4580,6 +4564,7 @@ export default function HomePage({
                   ? "mone-selection-brand"
                   : "text-slate-400 hover:text-slate-200"
               }`}
+              aria-pressed={marketChoice === choice}
             >
               {choice === "auto" ? "자동" : choice === "kr" ? "국장" : "미장"}
             </button>
@@ -4593,13 +4578,6 @@ export default function HomePage({
         </div>
       )}
 
-      {/* 매크로/실적 이벤트 배너 */}
-      <EventBanner alert={calendarAlert} />
-
-      {!loading && (
-        <ReferenceBriefingCard briefing={dailyBriefing} onAnalyze={setSelectedItem} headingLabel={primaryObservationTitle} />
-      )}
-
       {!loading && (
         <ReferenceMarketGateCard
           regime={marketRegime}
@@ -4608,21 +4586,43 @@ export default function HomePage({
         />
       )}
 
+      <EventBanner alert={calendarAlert} />
+
+      {basisWarning && (
+        <p role="status" className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-xs leading-6 text-amber-200">
+          기준일 확인 · 추천 {basisWarning.recommendation || "미확인"} / 현재가 {basisWarning.current || "미확인"} / 차트 {basisWarning.ohlcv || "미확인"}
+        </p>
+      )}
+
       {!loading && (
-        <ReferenceCandidateListSection
-          loading={loading}
-          candidateTab={candidateTab}
-          setCandidateTab={setCandidateTab}
-          todayEntries={todayEntries}
+        <HomeDecisionSections
+          entries={todayEntries}
           watchItems={watchItems}
           riskItems={riskItems}
-          sectionTitle={candidateSectionTitle}
-          featuredItem={topObservation}
+          marketReady={Boolean(marketRegime && getMarketGateInfo(marketRegime, dataHealth).hasOhlcv && !getMarketGateInfo(marketRegime, dataHealth).isLow)}
+          dataAvailable={Boolean(dataHealth && Number(dataHealth.ohlcvCount) > 0)}
+          nextSession={sessionCtx.targetLabel === "다음 거래일"}
           onSelect={setSelectedItem}
+          onAnalyze={openAnalysis}
+          onExplore={() => onNavigate?.("stocks")}
         />
       )}
 
       {!loading && (
+        <section className="mone-home-card p-4 sm:p-5" aria-label="보유 리스크">
+          <h2 className="mb-4 mone-home-section-title">보유 리스크</h2>
+          {summary == null && holdings.length === 0 ? (
+            <div className="text-xs leading-6 text-slate-400">
+              <p>보유종목 정보를 아직 확인하지 못했습니다.</p>
+              <button type="button" onClick={() => onNavigate?.("holdings")} className="mt-2 min-h-11 font-semibold text-teal-300">보유·리스크에서 확인 →</button>
+            </div>
+          ) : <CompactHoldingsSection holdings={[...holdings].sort((a, b) => Number(["위험", "주의", "HIGH", "WATCH"].includes(String(b.riskStatus || ""))) - Number(["위험", "주의", "HIGH", "WATCH"].includes(String(a.riskStatus || ""))))} summary={summary} riskCount={riskCount} onNavigate={onNavigate} />}
+        </section>
+      )}
+
+      {!loading && isAdmin && (
+        <details className="mone-home-card p-4">
+        <summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold text-slate-300">관리자 · 자금 계산·검증 기록</summary>
         <HomeUtilitySection
           items={allItems}
           priorityCount={todayEntries.length}
@@ -4644,6 +4644,7 @@ export default function HomePage({
           onMatrixClick={() => setShowMatrix((value) => !value)}
           onSelectItem={setSelectedItem}
         />
+        </details>
       )}
     </div>
     </ErrorBoundary>

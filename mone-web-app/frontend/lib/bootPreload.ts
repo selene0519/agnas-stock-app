@@ -259,10 +259,10 @@ export async function runBootPreload(onProgress?: (progress: BootProgress) => vo
   clearApiSnapshots();
 
   onProgress?.({ progress: 32, message: "국장 예측 스냅샷을 받는 중...", step: "home" });
-  const [krHome, usHome, supportErrors] = await Promise.all([
+  queueSupportingSnapshots();
+  const [krHome, usHome] = await Promise.all([
     fetchHomeSnapshot("kr"),
     fetchHomeSnapshot("us"),
-    preloadSupportingSnapshots(),
   ]);
 
   onProgress?.({ progress: 66, message: "미장 예측 스냅샷을 받는 중...", step: "stocks" });
@@ -272,7 +272,6 @@ export async function runBootPreload(onProgress?: (progress: BootProgress) => vo
     resultError(healthResult),
     resultError(krHome),
     resultError(usHome),
-    ...supportErrors,
   ].filter(Boolean);
 
   const state: BootPreloadState = {

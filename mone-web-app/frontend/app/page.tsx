@@ -297,7 +297,7 @@ export default function App() {
   const renderPage = () => {
     switch (page) {
       case "home":
-        return <HomePage onNavigate={navigateTo} onTradePaper={(order) => { setTradeOrder(order); navigateTo("advanced"); }} bootData={bootState.bootData} bootStatus={bootState.bootStatus} booting={booting} />;
+        return <HomePage isAdmin={Boolean(adminToken)} onNavigate={navigateTo} onTradePaper={adminToken ? (order) => { setTradeOrder(order); navigateTo("advanced"); } : undefined} bootData={bootState.bootData} bootStatus={bootState.bootStatus} booting={booting} />;
       case "report":
         return <ReportPage />;
       case "stocks":
@@ -333,7 +333,7 @@ export default function App() {
         }
         return <AdminLoginPage onSuccess={handleAdminLogin} onUserLogin={openUserLogin} />;
       default:
-        return <HomePage bootData={bootState.bootData} bootStatus={bootState.bootStatus} booting={booting} />;
+        return <HomePage isAdmin={Boolean(adminToken)} bootData={bootState.bootData} bootStatus={bootState.bootStatus} booting={booting} />;
     }
   };
 
@@ -377,7 +377,7 @@ export default function App() {
           <div className="flex shrink-0 items-center gap-2">
             <span className="hidden font-mono text-xs text-slate-400 md:block">{headerDate}</span>
             <span className="hidden text-slate-400 md:block">·</span>
-            <span className="hidden text-xs text-slate-400 md:block">{mounted ? "실시간 동기화" : "방금 전"}</span>
+            <span className="hidden text-xs text-slate-400 md:block">장전 계획 · 기준 시각 확인</span>
 
             <button
               type="button"
