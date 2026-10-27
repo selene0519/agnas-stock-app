@@ -58,14 +58,17 @@ def test_production_sources_contain_no_known_live_broker_order_endpoint() -> Non
     assert all(marker not in combined for marker in FORBIDDEN_LIVE_ORDER_MARKERS)
 
 
-def test_quant_lab_ui_names_paper_evidence_and_user_decision_boundary() -> None:
+def test_operations_ui_names_paper_evidence_and_user_decision_boundary() -> None:
     bottom_nav = (ROOT / "mone-web-app" / "frontend" / "components" / "BottomNav.tsx").read_text(encoding="utf-8")
     sidebar = (ROOT / "mone-web-app" / "frontend" / "components" / "Sidebar.tsx").read_text(encoding="utf-8")
     advanced = (ROOT / "mone-web-app" / "frontend" / "components" / "pages" / "AdvancedPage.tsx").read_text(encoding="utf-8")
     paper = (ROOT / "mone-web-app" / "frontend" / "components" / "pages" / "PaperTradingPage.tsx").read_text(encoding="utf-8")
     status = (ROOT / "mone-web-app" / "frontend" / "components" / "QuantOperatingStatus.tsx").read_text(encoding="utf-8")
 
-    assert "MONE 퀀트 랩" in bottom_nav + sidebar
+    assert "운영·검증" in bottom_nav + sidebar
+    assert "Paper 검증, AI 일지, 계산기, 전략 검증" in bottom_nav
+    assert 'isAdmin ? [...moreTabs, adminTab] : []' in bottom_nav
+    assert 'isAdmin ? [...moreItems, adminItem] : []' in sidebar
     assert "AI 추천일지" in advanced
     assert "Paper 검증 계좌" in paper
     assert "실제 주문 없이" in paper

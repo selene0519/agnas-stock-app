@@ -235,7 +235,8 @@ def test_launch_overlay_waits_for_home_and_light_supporting_snapshots() -> None:
     assert "APP_SHELL_TIMEOUT_MS" not in page
     assert "const showLaunchLoading = !cachedBoot.hasBootData;" in page
     assert "void preloadSupportingSnapshots()" in preload
-    assert "const [krHome, usHome, supportErrors] = await Promise.all" in preload
+    assert "const [krHome, usHome] = await Promise.all" in preload
+    assert "supportErrors] = await Promise.all" not in preload
     assert "await preloadSupportingSnapshots" not in preload
     assert "fetchChartSnapshot" not in preload
     assert 'fetchApiSnapshot("/api/final/operation-summary"' not in preload
