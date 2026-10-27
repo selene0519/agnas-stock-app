@@ -1,28 +1,28 @@
 {
-  "updatedAt": "2026-10-27 23:36:02",
-  "totalRows": 3455,
+  "updatedAt": "2026-10-28 07:15:25",
+  "totalRows": 3459,
   "olsSampleSize": 2832,
   "byStrategy": {
     "conservative_short": {
-      "total": 307,
-      "wins": 82,
+      "total": 308,
+      "wins": 83,
       "losses": 225,
-      "winRate": 0.2671,
-      "avgWinPct": 5.035,
+      "winRate": 0.2695,
+      "avgWinPct": 5.048,
       "avgLossPct": 3.373,
-      "payoffRatio": 1.493,
+      "payoffRatio": 1.496,
       "avgProbability": 58.6,
-      "probAccuracy": -0.319
+      "probAccuracy": -0.316
     },
     "conservative_swing": {
-      "total": 326,
+      "total": 328,
       "wins": 93,
-      "losses": 233,
-      "winRate": 0.2853,
+      "losses": 235,
+      "winRate": 0.2835,
       "avgWinPct": 10.184,
-      "avgLossPct": 5.974,
-      "payoffRatio": 1.705,
-      "avgProbability": 60.8,
+      "avgLossPct": 5.984,
+      "payoffRatio": 1.702,
+      "avgProbability": 60.7,
       "probAccuracy": -0.323
     },
     "conservative_mid": {
@@ -70,13 +70,13 @@
       "probAccuracy": -0.406
     },
     "aggressive_short": {
-      "total": 286,
+      "total": 287,
       "wins": 66,
-      "losses": 220,
-      "winRate": 0.2308,
+      "losses": 221,
+      "winRate": 0.23,
       "avgWinPct": 5.213,
-      "avgLossPct": 4.14,
-      "payoffRatio": 1.259,
+      "avgLossPct": 4.133,
+      "payoffRatio": 1.261,
       "avgProbability": 63.3,
       "probAccuracy": -0.403
     },
@@ -112,17 +112,17 @@
       "payoffRatio": 1.412
     },
     "us": {
-      "total": 2257,
-      "winRate": 0.2206,
-      "avgWinPct": 10.856,
-      "avgLossPct": 6.918,
-      "payoffRatio": 1.569
+      "total": 2261,
+      "winRate": 0.2207,
+      "avgWinPct": 10.846,
+      "avgLossPct": 6.915,
+      "payoffRatio": 1.568
     }
   },
   "byProbBand": {
     "low_50-60": {
-      "count": 1159,
-      "actualWinRate": 0.1199
+      "count": 1163,
+      "actualWinRate": 0.1204
     },
     "mid_60-75": {
       "count": 1102,
@@ -200,7 +200,7 @@
     }
   },
   "insight": [
-    "호라이즌: swing 전략 평균 승률 25.3%로 최고",
+    "호라이즌: swing 전략 평균 승률 25.2%로 최고",
     "모드: conservative 전략 평균 payoff 1.68x로 최고",
     "마켓: KR 승률 24.7%로 우위",
     "회귀분석: intercept 낮을수록 수익률 향상 (β=-16.330)",
