@@ -1,6 +1,7 @@
 export type Market = "kr" | "us" | "all";
 export type Mode = "conservative" | "balanced" | "aggressive" | "all";
 export type Horizon = "short" | "swing" | "mid" | "long" | "all";
+export type ApiGetOptions = { forceRefresh?: boolean };
 
 import { getAuthenticatedUserId, getUserToken } from "./userId";
 import { adminAuthHeaders } from "./adminAuth";
@@ -433,14 +434,21 @@ async function fetchJson<T>(url: string, externalSignal?: AbortSignal, retryCoun
 async function apiGetNetwork<T = any>(
   path: string,
   params?: Record<string, string | number | boolean | undefined | null>,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  options?: ApiGetOptions,
 ): Promise<T> {
   // 5분 이내 스냅샷만 네트워크 생략 대상. 그보다 오래된 스냅샷은 라이브 조회를
   // 우선하고, 조회 실패 시에만 18시간 내 스냅샷을 폴백으로 쓴다.
-  const cached = readApiSnapshot<T>(path, params, API_SNAPSHOT_FRESH_TTL_MS);
+  const cached = options?.forceRefresh ? null : readApiSnapshot<T>(path, params, API_SNAPSHOT_FRESH_TTL_MS);
   if (cached) return cached;
 
-  const staleFallback = () => readApiSnapshot<T>(path, params);
+  const staleFallback = () => {
+    const value = readApiSnapshot<any>(path, params);
+    // 네트워크 실패로 캐시를 쓰면 화면에서 이를 구분할 수 있도록 전달한다.
+    return value && typeof value === "object" && !Array.isArray(value)
+      ? { ...value, snapshotFallback: true } as T
+      : value as T | null;
+  };
 
   const proxyUrl = buildUrl(API_BASE, path, params);
   const proxyResult: any = await fetchJson<T>(proxyUrl, signal);
@@ -487,12 +495,13 @@ export function apiGet<T = any>(
   path: string,
   params?: Record<string, string | number | boolean | undefined | null>,
   signal?: AbortSignal,
+  options?: ApiGetOptions,
 ): Promise<T> {
-  if (signal) return apiGetNetwork<T>(path, params, signal);
-  const key = `${apiSnapshotScope(path)}:${path}?${JSON.stringify(normalizeParams(params))}`;
+  if (signal) return apiGetNetwork<T>(path, params, signal, options);
+  const key = `${apiSnapshotScope(path)}:${path}?${JSON.stringify(normalizeParams(params))}:${options?.forceRefresh ? "network" : "cached"}`;
   const existing = inFlightGets.get(key);
   if (existing) return existing as Promise<T>;
-  const request = apiGetNetwork<T>(path, params).finally(() => {
+  const request = apiGetNetwork<T>(path, params, undefined, options).finally(() => {
     if (inFlightGets.get(key) === request) inFlightGets.delete(key);
   });
   inFlightGets.set(key, request);
@@ -567,8 +576,8 @@ export const mone = {
     apiGet<ApiList>("/api/symbols", p),
   watchlist: (p?: { market?: Market; limit?: number }) =>
     apiGet<ApiList>("/api/watchlist", p),
-  homeSummary: (p?: { market?: Market; limit?: number }) =>
-    apiGet<ApiList>("/api/home/summary", p),
+  homeSummary: (p?: { market?: Market; limit?: number }, options?: ApiGetOptions) =>
+    apiGet<ApiList>("/api/home/summary", p, undefined, options),
   watchlistScored: (p?: { market?: Market; mode?: string; horizon?: string }) =>
     apiGet<ApiList>("/api/watchlist/scored", p),
   sectorsList: (p?: { market?: Market }) =>

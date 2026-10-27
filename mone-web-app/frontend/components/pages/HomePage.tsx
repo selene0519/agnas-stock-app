@@ -902,7 +902,7 @@ function ReferenceMarketGateCard({
   const trendTone = !gate.hasRegimeMa ? "text-slate-400" : maDist >= 0 ? "text-emerald-300" : "text-red-300";
   const sentimentTone = sentiment == null ? "text-slate-400" : sentiment >= 70 ? "text-emerald-300" : sentiment >= 40 ? "text-amber-300" : "text-red-300";
   const dataDate = firstText(dataHealth?.ohlcvLatestDate, regime?.asOf, regime?.latestDataDate, dataHealth?.latestDataDate, "확인 중");
-  const regimeText = regime?.regime === "BULL" ? "상승장" : regime?.regime === "BEAR" ? "하락장" : regime?.regime === "SIDE" || regime?.regime === "NEUTRAL" ? "횡보장" : "장세 확인 중";
+  const regimeText = regime?.regime === "BULL" ? "상승장" : regime?.regime === "BEAR" ? "하락장" : ["SIDE", "SIDEWAYS", "NEUTRAL"].includes(regime?.regime) ? "횡보장" : "장세 확인 중";
 
   return (
     <section className="mone-home-card overflow-hidden">
@@ -933,6 +933,10 @@ function ReferenceMarketGateCard({
           <div className="mt-1 truncate font-mono text-[12px] font-semibold tabular-nums text-slate-200">{dataDate || "확인 중"}</div>
           <div className="mt-0.5 truncate text-[9.5px] text-slate-400">OHLCV 기준</div>
         </div>
+      </div>
+      <div className="border-t border-slate-800/80 px-3.5 py-2.5 text-[11px] leading-5 text-slate-400">
+        <p>추천 생성 · {firstText(dataHealth?.recoGeneratedAt, "확인 중")}</p>
+        {regime?.basisNote && <p>{regime.basisNote}</p>}
       </div>
     </section>
   );
@@ -4008,6 +4012,13 @@ export default function HomePage({
   });
   const sessionClock = clock || new Date();
   const selectedMarket = marketChoice === "auto" ? (clientReady ? getDefaultMarketBySession(sessionClock) : "kr") : marketChoice;
+  const activeMarketRef = useRef(selectedMarket);
+  const homeRequestRef = useRef(0);
+  const lastHomeRequestAt = useRef(0);
+  useEffect(() => {
+    activeMarketRef.current = selectedMarket;
+    return () => { homeRequestRef.current++; };
+  }, [selectedMarket]);
   const sessionStatus = clientReady ? getMarketSessionStatus(selectedMarket, sessionClock) : "확인 중";
   const sessionPhase = sessionStatus as SessionPhase;
   const countdown = clientReady ? getSessionCountdown(selectedMarket, sessionClock) : "";
@@ -4061,6 +4072,7 @@ export default function HomePage({
   }
 
   const applyCachedOrBootState = useCallback(async (market: "kr" | "us") => {
+    if (activeMarketRef.current !== market) return false;
     // 1. Re-entry: use module-level cache (user navigated away and came back)
     const cached = readHomeCache(market);
     if (cached) {
@@ -4098,6 +4110,7 @@ export default function HomePage({
     setRefreshWarning("");
 
     const personalHoldings = await fetchPersonalHomeHoldings(market);
+    if (activeMarketRef.current !== market) return false;
     if (personalHoldings) {
       const holdingItems = personalHoldings.items;
       const holdingSummary = personalHoldings.summary || homeHoldings.summary;
@@ -4109,6 +4122,8 @@ export default function HomePage({
   }, [bootData]);
 
   async function load(options: { background?: boolean } = {}) {
+    const requestId = ++homeRequestRef.current;
+    lastHomeRequestAt.current = Date.now();
     const hasCurrentData = options.background || allItems.length > 0 || matrix.length > 0 || Boolean(dataHealth);
     if (hasCurrentData) {
       setLoading(false);
@@ -4118,7 +4133,8 @@ export default function HomePage({
     setRefreshWarning("");
     try {
       // 단일 통합 API 호출 (기존 10회 → 1회)
-      const result = await mone.homeSummary({ market: selectedMarket, limit: 12 });
+      const result = await mone.homeSummary({ market: selectedMarket, limit: 12 }, { forceRefresh: true });
+      if (requestId !== homeRequestRef.current || activeMarketRef.current !== selectedMarket) return;
       if (String(result?.status || "").toUpperCase() === "ERROR") {
         throw new Error(String(result?.error || "HOME_SUMMARY_UNAVAILABLE"));
       }
@@ -4128,6 +4144,7 @@ export default function HomePage({
 
       const homeHoldings = extractHoldingsFromHome(result);
       const personalHoldings = await fetchPersonalHomeHoldings(selectedMarket);
+      if (requestId !== homeRequestRef.current || activeMarketRef.current !== selectedMarket) return;
       const holdingItems = personalHoldings?.items?.length ? personalHoldings.items : homeHoldings.items;
       const holdingSummary = personalHoldings?.summary || homeHoldings.summary;
       const regime = normalizeMarketRegime(result.marketRegime, selectedMarket);
@@ -4140,15 +4157,23 @@ export default function HomePage({
       setDataHealth(health);
       setAllItems(allItemsFlat);
       // Save to module cache so re-entry is instant
-      writeHomeCache(selectedMarket, { matrix: matrixResult, holdings: holdingItems, summary: holdingSummary, marketRegime: regime, dataHealth: health, allItems: allItemsFlat });
+      if (result.snapshotFallback) {
+        setRefreshWarning("서버 조회에 실패해 저장된 데이터를 표시합니다. 아래 추천 생성·차트 기준일을 확인해 주세요.");
+      } else {
+        writeHomeCache(selectedMarket, { matrix: matrixResult, holdings: holdingItems, summary: holdingSummary, marketRegime: regime, dataHealth: health, allItems: allItemsFlat });
+      }
     } catch {
+      if (requestId !== homeRequestRef.current || activeMarketRef.current !== selectedMarket) return;
       if (!hasCurrentData) {
         setHoldings([]); setSummary(null); setMatrix([]); setAllItems([]); setMarketRegime(null); setDataHealth(null);
       } else {
         setRefreshWarning("데이터 갱신에 실패해 기존 값을 유지합니다.");
       }
     } finally {
-      setLoading(false);
+      if (requestId === homeRequestRef.current && activeMarketRef.current === selectedMarket) {
+        setLoading(false);
+        setHomeRefreshing(false);
+      }
     }
   }
 
@@ -4183,15 +4208,24 @@ export default function HomePage({
   useEffect(() => {
     if (!clientReady) return;
     const handleGlobalRefresh = () => load({ background: allItems.length > 0 || matrix.length > 0 || Boolean(dataHealth) });
+    const handleReturn = () => {
+      if (document.visibilityState === "hidden" || Date.now() - lastHomeRequestAt.current < 30_000) return;
+      void handleGlobalRefresh();
+    };
     window.addEventListener("mone-global-refresh", handleGlobalRefresh);
-    return () => window.removeEventListener("mone-global-refresh", handleGlobalRefresh);
+    window.addEventListener("focus", handleReturn);
+    document.addEventListener("visibilitychange", handleReturn);
+    return () => {
+      window.removeEventListener("mone-global-refresh", handleGlobalRefresh);
+      window.removeEventListener("focus", handleReturn);
+      document.removeEventListener("visibilitychange", handleReturn);
+    };
   }, [clientReady, selectedMarket, allItems.length, matrix.length, Boolean(dataHealth)]);
 
   function triggerHomeRefresh() {
     if (homeRefreshing) return;
     setHomeRefreshing(true);
     window.dispatchEvent(new CustomEvent("mone-global-refresh"));
-    window.setTimeout(() => setHomeRefreshing(false), 2500);
   }
 
   useEffect(() => {
