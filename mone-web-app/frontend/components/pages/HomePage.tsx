@@ -1,4 +1,5 @@
 "use client";
+import SessionSafetyBanner from "../SessionSafetyBanner";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -4377,7 +4378,7 @@ export default function HomePage({
     const rows = allItems
       .filter((i) => {
         const publicBlocked = Boolean(i.isTradeBlocked) || String(i.publicTradeStatus || "").toUpperCase() === "NO_TRADE";
-        return !publicBlocked && i.decisionBucket === "오늘 진입" && Number(i.expectedValue || 0) > 0;
+        return !publicBlocked && !i.reviewOnly && i.executionPlan?.status === "READY" && i.decisionBucket === "오늘 진입" && Number(i.expectedValue || 0) > 0;
       })
       .sort((a, b) => Number(b.expectedValue || 0) - Number(a.expectedValue || 0));
     return collapseCandidateSymbols(rows).slice(0, 6);
@@ -4392,7 +4393,7 @@ export default function HomePage({
   const watchItems = useMemo(() => {
     const timingOrder: Record<string, number> = { "1~2일 후 진입": 0, "3~5일 후 진입": 1, "눌림 대기": 2, "다음 주 진입": 3 };
     const rows = allItems
-      .filter((i) => i.decisionBucket === "대기 관찰" && !todayCandidateSymbols.has(candidateSymbolKey(i)))
+      .filter((i) => ["대기 관찰", "관찰"].includes(i.decisionBucket) && !i.isTradeBlocked && !i.reviewOnly && !todayCandidateSymbols.has(candidateSymbolKey(i)))
       .sort((a, b) => {
         const ao = timingOrder[a.timingLabel] ?? 9;
         const bo = timingOrder[b.timingLabel] ?? 9;
@@ -4554,6 +4555,7 @@ export default function HomePage({
   return (
     <ErrorBoundary>
     <div className="mone-home space-y-4">
+      <SessionSafetyBanner key={selectedMarket} market={selectedMarket} />
       {/* 추천 근거 패널 */}
       {selectedItem && <WhyPanel item={selectedItem} onClose={() => setSelectedItem(null)} marketRegime={marketRegime} />}
       {/* 운용 일지 모달 */}
@@ -4634,7 +4636,7 @@ export default function HomePage({
           watchItems={watchItems}
           riskItems={riskItems}
           marketReady={Boolean(marketRegime && getMarketGateInfo(marketRegime, dataHealth).hasOhlcv && !getMarketGateInfo(marketRegime, dataHealth).isLow)}
-          dataAvailable={Boolean(dataHealth && Number(dataHealth.ohlcvCount) > 0)}
+          dataAvailable={Boolean(dataHealth && Number(dataHealth.ohlcvCount) > 0 && matrix.length && matrix.every((cell) => cell.status !== "ERROR"))}
           nextSession={sessionCtx.targetLabel === "다음 거래일"}
           onSelect={setSelectedItem}
           onAnalyze={openAnalysis}

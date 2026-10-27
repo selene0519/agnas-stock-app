@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowRight, ChevronRight } from "lucide-react";
+import { useState } from "react";
 import {
   dataFreshnessBadgeClass, dataFreshnessInfo, displayName, entryPlanStale,
   firstText, horizonLabel, modeLabel, moneReasonLines, priceText, toNumber,
@@ -21,18 +22,22 @@ function PlanCard({ item, observation, marketReady, onSelect, onAnalyze }: {
   onAnalyze: (item: Candidate) => void;
 }) {
   const freshness = dataFreshnessInfo(item);
+  const execution = item.executionPlan || {};
   const stalePlan = entryPlanStale(priceText(item, "current"), priceText(item, "entry")).stale;
   const blocked = item.isTradeBlocked || item.isBlocked || item.reviewOnly
     || String(item.publicTradeStatus || "").toUpperCase() === "NO_TRADE";
-  const suppressed = stalePlan || freshness.state === "old";
-  const available = marketReady && !blocked && !suppressed;
+  const suppressed = stalePlan || freshness.state === "old" || execution.reasonCodes?.includes("PLAN_EXPIRED");
+  const available = marketReady && !blocked && !suppressed && execution.status === "READY";
   const label = observation ? "관찰 · 진입 대기" : available ? "진입 계획" : "진입 보류";
   const reasons = moneReasonLines(item).slice(0, 2);
   const plan = item.positionPlan || item.quantTraderVerdict?.positionPlan || {};
   const weight = toNumber(plan.suggestedWeightPct);
   const timing = text(item.timingLabel);
-  const cancel = text(item.invalidationReason, item.invalidation, item.cancelCondition);
-  const validity = text(item.validUntil, item.expiresAt);
+  const cancel = text(execution.cancelCondition, item.invalidationReason, item.invalidation, item.cancelCondition);
+  const expiry = text(execution.validUntil, item.validUntil, item.expiresAt);
+  const validity = expiry && Number.isFinite(Date.parse(expiry))
+    ? new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(expiry)) + " KST"
+    : "확인 필요";
   const condition = observation
     ? text(item.entryCondition, item.timingReason, item.decisionReason)
     : "";
@@ -71,12 +76,13 @@ function PlanCard({ item, observation, marketReady, onSelect, onAnalyze }: {
         {observation && <p className="text-slate-400">관찰 기준가 도달만으로 매수 신호가 확정되지 않습니다.</p>}
       </div>
       <div className="mt-4 space-y-1 border-t border-slate-800/70 pt-3 text-[11px] leading-5 text-slate-400">
-        {!observation && <p>권장 비중 {weight != null ? `${weight.toFixed(1)}%` : "미제공"} · 유효기한 {validity || "미제공"}</p>}
+        {!observation && <p>권장 비중 {plan.status === "NO_POSITION" || weight == null ? "자본·보유 위험 확인 후 산정" : `${weight.toFixed(1)}%`}</p>}
+        <p>유효기한 {validity}</p>
         {cancel && <p>취소 조건 · {cancel}</p>}
         <p>{freshness.basisText}</p>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2">
-        <button type="button" onClick={() => onSelect(item)} className="min-h-11 rounded-lg border border-slate-700 px-2 text-xs font-semibold text-slate-300 hover:bg-slate-800/40">선정 근거</button>
+        <button type="button" onClick={() => onSelect(item)} className="min-h-11 rounded-lg border border-slate-700 px-2 text-xs font-semibold text-slate-300 hover:bg-slate-800/40">추천 이유·위험</button>
         <button type="button" onClick={() => onAnalyze(item)} className="flex min-h-11 items-center justify-center gap-1 rounded-lg border border-teal-400/25 px-2 text-xs font-semibold text-teal-300 hover:bg-teal-400/10">상세 분석 <ArrowRight size={13} aria-hidden="true" /></button>
       </div>
     </article>
@@ -94,6 +100,8 @@ export default function HomeDecisionSections({ entries, watchItems, riskItems, m
   onAnalyze: (item: Candidate) => void;
   onExplore: () => void;
 }) {
+  const [allEntries, setAllEntries] = useState(false);
+  const [allWatch, setAllWatch] = useState(false);
   return (
     <>
       <section className="mone-home-card p-4 sm:p-5" aria-labelledby="home-entry-title">
@@ -106,7 +114,7 @@ export default function HomeDecisionSections({ entries, watchItems, riskItems, m
         </div>
         {entries.length ? (
           <div className="grid gap-3 lg:grid-cols-2">
-            {entries.map((item) => <PlanCard key={`${item.market}-${item.symbol}`} item={item} observation={false} marketReady={marketReady} onSelect={onSelect} onAnalyze={onAnalyze} />)}
+            {(allEntries ? entries : entries.slice(0, 2)).map((item) => <PlanCard key={`${item.market}-${item.symbol}`} item={item} observation={false} marketReady={marketReady} onSelect={onSelect} onAnalyze={onAnalyze} />)}
           </div>
         ) : (
           <div className="mone-home-inset rounded-xl border px-4 py-6">
@@ -115,6 +123,7 @@ export default function HomeDecisionSections({ entries, watchItems, riskItems, m
           </div>
         )}
       </section>
+      {entries.length > 2 && <button type="button" aria-expanded={allEntries} onClick={() => setAllEntries(!allEntries)} className="min-h-11 w-full rounded-lg border border-slate-700 text-xs text-teal-300">{allEntries ? "핵심 후보만 보기" : `진입 후보 ${entries.length - 2}개 더 보기`}</button>}
       <section className="mone-home-card p-4 sm:p-5" aria-labelledby="home-watch-title">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
@@ -125,10 +134,11 @@ export default function HomeDecisionSections({ entries, watchItems, riskItems, m
         </div>
         {watchItems.length ? (
           <div className="grid gap-3 lg:grid-cols-2">
-            {watchItems.map((item) => <PlanCard key={`${item.market}-${item.symbol}`} item={item} observation marketReady={marketReady} onSelect={onSelect} onAnalyze={onAnalyze} />)}
+            {(allWatch ? watchItems : watchItems.slice(0, 2)).map((item) => <PlanCard key={`${item.market}-${item.symbol}`} item={item} observation marketReady={marketReady} onSelect={onSelect} onAnalyze={onAnalyze} />)}
           </div>
         ) : <p className="py-4 text-xs leading-6 text-slate-400">{dataAvailable ? "관찰 조건을 통과한 후보가 없습니다. 종목 분석에서 추천되지 않은 종목도 검색할 수 있습니다." : "관찰 후보를 불러오지 못했습니다. 추천 데이터 갱신 후 다시 표시합니다."}</p>}
         <button type="button" onClick={onExplore} className="mt-3 flex min-h-11 w-full items-center justify-between border-t border-slate-800/70 pt-2 text-xs font-semibold text-teal-300">종목 검색·분석으로 이동 <ChevronRight size={15} aria-hidden="true" /></button>
+        {watchItems.length > 2 && <button type="button" aria-expanded={allWatch} onClick={() => setAllWatch(!allWatch)} className="min-h-11 w-full rounded-lg border border-slate-700 text-xs text-teal-300">{allWatch ? "핵심 관찰 후보만 보기" : `관찰 후보 ${watchItems.length - 2}개 더 보기`}</button>}
         {riskItems.length > 0 && (
           <details className="mt-2 border-t border-slate-800/70 text-xs">
             <summary className="min-h-11 cursor-pointer py-3 text-slate-400">진입 제외·주의 종목 {riskItems.length}개</summary>

@@ -1127,9 +1127,12 @@ def build(
             "promotionEligible": len(certificates),
             "readyForReview": int(readiness.get("readyForReview") or 0),
             "eligibleSuggestions": int(readiness.get("eligibleSuggestions") or 0),
+            "recordingStatus": "NO_ACTIVE_CANDIDATE" if not results else (
+                "COLLECTING" if active_predictions else "AWAITING_FIRST_PREDICTION"
+            ),
             "recordingHealthy": all(
                 bool((row.get("recordingHealth") or {}).get("healthy")) for row in results
-            ) if results else True,
+            ) if results else False,
             "stalledCandidates": sum(
                 1 for row in results
                 if (row.get("recordingHealth") or {}).get("status") in {"STALLED", "ERROR"}

@@ -26,6 +26,7 @@ import urllib.error
 import urllib.request
 import urllib.parse
 from datetime import datetime, timedelta
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -36,6 +37,9 @@ DATA_DIR = ROOT / "data"
 CALENDAR_DIR = DATA_DIR / "calendar"
 MODES    = ("conservative", "balanced", "aggressive")
 HORIZONS = ("short", "swing", "mid")
+BACKEND = ROOT / "mone-web-app" / "backend"
+if str(BACKEND) not in sys.path:
+    sys.path.insert(0, str(BACKEND))
 
 BOT_TOKEN  = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 CHAT_ID    = os.environ.get("TELEGRAM_CHAT_ID", "")
@@ -227,13 +231,18 @@ def _calendar_rows(filename: str) -> list[dict]:
 
 # ── 추천 종목 요약 ────────────────────────────────────────────────────────────
 
+@lru_cache(maxsize=2)
 def _collect_recommendations(market: str) -> list[dict]:
-    """모든 전략/기간에서 추천 종목 수집 후 EV/점수 기준 정렬."""
+    """홈·분석과 같은 검증을 통과한 결과만 사용한다."""
+    from app.services.recommendation_contract import public_recommendations
+
     seen: dict[str, dict] = {}
     for mode in MODES:
         for horizon in HORIZONS:
-            path = REPORTS / f"mone_v36_final_recommendations_{market}_{mode}_{horizon}.csv"
-            for row in _read_csv(path):
+            payload = public_recommendations(market, mode, horizon)
+            if payload.get("status") == "ERROR":
+                raise RuntimeError("추천 검증 응답 오류")
+            for row in payload.get("items") or []:
                 sym = str(row.get("symbol", "")).strip()
                 if not sym:
                     continue
@@ -241,10 +250,14 @@ def _collect_recommendations(market: str) -> list[dict]:
                 score = _num(row.get("finalScore") or row.get("score") or 0)
                 bucket = str(row.get("decisionBucket") or "").strip()
                 block = str(row.get("tradeBlockStatus") or "").upper()
-                if block in ("BLOCK", "CAUTION") or ev < 0:
+                if row.get("isTradeBlocked") or row.get("reviewOnly") or row.get("publicTradeStatus") != "TRADE_CANDIDATE" or block in ("BLOCK", "CAUTION") or ev < 0:
                     continue
+                plan = row.get("executionPlan") or {}
+                if plan.get("status") != "READY":
+                    bucket = "관찰"
                 key = f"{sym}_{market}"
-                if key not in seen or ev > _num(seen[key].get("ev", 0)):
+                rank = (bucket == "오늘 진입", ev)
+                if key not in seen or rank > (seen[key]["bucket"] == "오늘 진입", seen[key]["ev"]):
                     seen[key] = {
                         "symbol": sym,
                         "name": _display_name(
@@ -262,15 +275,21 @@ def _collect_recommendations(market: str) -> list[dict]:
                         "target": _num(row.get("target") or row.get("targetPrice") or 0),
                         "current": _num(row.get("currentPrice") or 0),
                         "bucket": bucket,
+                        "validUntil": plan.get("validUntil"),
+                        "cancelCondition": plan.get("cancelCondition"),
                     }
     return sorted(seen.values(), key=lambda x: x["ev"], reverse=True)
 
 
 def _collect_focus_symbols(market: str) -> set[str]:
     """오늘 알림에서 실제로 의사결정할 추천·보유 종목만 이벤트 대상으로 삼는다."""
+    try:
+        recommendations = _collect_recommendations(market)
+    except Exception:
+        recommendations = []
     symbols = {
         str(item.get("symbol") or "").strip().upper()
-        for item in _collect_recommendations(market)
+        for item in recommendations
         if str(item.get("symbol") or "").strip()
     }
     for path in (ROOT / f"holdings_{market}.csv", DATA_DIR / f"holdings_{market}.csv"):
@@ -335,16 +354,23 @@ def _fmt_price(v: float, market: str) -> str:
 def build_recommendation_section(
     market: str, earnings_risk_symbols: set[str] | None = None
 ) -> str:
-    items = _collect_recommendations(market)
+    label = "🇰🇷 국장" if market == "kr" else "🇺🇸 미장"
+    try:
+        items = _collect_recommendations(market)
+    except Exception as exc:
+        print(f"추천 검증 실패: {type(exc).__name__}")
+        return f"{label} 추천 검증 지연 · 진입 판단 보류\n검증 결과를 불러오지 못했습니다. 종목 없음과 구분해 확인이 필요합니다.\n"
     top = [i for i in items if i["bucket"] == "오늘 진입"][:3]
-    if not top:
+    observation = not top
+    if observation:
         top = items[:3]
 
-    label = "🇰🇷 국장" if market == "kr" else "🇺🇸 미장"
     if not top:
         return f"{label} 오늘 진입 후보 없음\n"
 
-    lines = [f"<b>{label} 오늘 진입 후보</b>"]
+    lines = [f"<b>{label} {'관찰 후보 · 신규 진입 대기' if observation else '오늘 진입 후보'}</b>"]
+    if observation:
+        lines.append("오늘 진입 후보 없음 · 다음 장전 브리핑에서 조건을 다시 평가합니다.")
     for i, r in enumerate(top, 1):
         tag = "🟢" if r["bucket"] == "오늘 진입" else "🟡"
         lines.append(
@@ -359,6 +385,11 @@ def build_recommendation_section(
             f"| 목표 {_fmt_price(r['target'], market)}"
         )
         lines.append(f"   EV <b>{r['ev']:+.1f}%</b>  점수 {r['score']:.0f}점")
+        if r.get("validUntil"):
+            expiry = datetime.fromisoformat(r["validUntil"]).astimezone(ZoneInfo("Asia/Seoul"))
+            lines.append(f"   유효기한 {expiry:%m/%d %H:%M} KST")
+        if r.get("cancelCondition"):
+            lines.append(f"   취소: {r['cancelCondition']}")
         if str(r["symbol"]).upper() in (earnings_risk_symbols or set()):
             lines.append("   ⚠️ 오늘/익일 실적 일정: 신규 진입은 실적 위험을 반영해 보수적으로")
 

@@ -14,7 +14,7 @@ from typing import Any
 
 _BULL = {"BULL", "RISK_ON", "UPTREND", "BROADENING"}
 _BEAR = {"BEAR", "RISK_OFF", "DOWNTREND", "CONTRACTION", "SHOCK"}
-_SIDE = {"SIDE", "NEUTRAL", "RANGE", "TRANSITIONAL", "INFLATIONARY"}
+_SIDE = {"SIDE", "SIDEWAYS", "NEUTRAL", "RANGE", "TRANSITIONAL", "INFLATIONARY"}
 _NEGATIVE_SUPPLY = {"SELL_PRESSURE", "DISTRIBUTION", "NEGATIVE"}
 _POSITIVE_SUPPLY = {"STRONG_BUY", "INST_BUY", "ACCUMULATION", "POSITIVE"}
 
@@ -184,11 +184,11 @@ def build_trade_plan(
         "target": _price(target),
         "reasonCodes": sorted(set(reasons)),
         "evidence": {
-            "rsi14": _price(rsi),
-            "bbPercentB": _price(bb_percent_b),
-            "distanceToMa20": _price(distance_ma20),
-            "volumeRatio20": _price(volume_ratio),
-            "eventRisk": _price(event_risk),
+            "rsi14": rsi,
+            "bbPercentB": bb_percent_b,
+            "distanceToMa20": distance_ma20,
+            "volumeRatio20": volume_ratio,
+            "eventRisk": event_risk,
             "supplySignal": supply or None,
         },
     }

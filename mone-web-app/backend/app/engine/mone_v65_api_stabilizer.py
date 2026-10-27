@@ -2317,13 +2317,12 @@ def _validation_policy_payload() -> dict[str, Any]:
 
 
 def _reco_file_version(market: str, mode: str, horizon: str) -> int:
-    """추천 CSV의 최신 mtime을 5분 버킷으로 반올림한 정수 반환.
+    """추천 CSV의 정밀 수정 시각 반환.
     파일이 바뀌면 lru_cache 키가 달라져 자동 갱신된다."""
     try:
         path = _repo_root() / "reports" / f"mone_v36_final_recommendations_{market}_{mode}_{horizon}.csv"
         if path.exists():
-            mtime = path.stat().st_mtime
-            return int(mtime // 300)   # 5분 버킷
+            return path.stat().st_mtime_ns
     except Exception:
         pass
     return 0
@@ -2377,6 +2376,10 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
             "items": deduped,
         }
 
+    paths = _recommendation_paths(market, mode, horizon)
+    if not any(_read_csv(path, 1) for path, _ in paths):
+        return {"status": "NO_DATA", "market": market, "mode": mode, "horizon": horizon,
+                "items": [], "count": 0, "sourceFiles": [path.name for path, _ in paths]}
     names = _build_recommendation_name_map(market, mode, horizon, _ver)
     quotes = _quote_index(market)
     watch = _watch_symbols()
@@ -2388,7 +2391,7 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
 
     scanned_count = 0
     scan_limit = min(max(limit * 3, limit), max_allowed * 3)
-    for path, source_status in _recommendation_paths(market, mode, horizon):
+    for path, source_status in paths:
         if path.name not in source_files:
             source_files.append(path.name)
         rows = _read_csv(path, scan_limit)
@@ -2414,32 +2417,42 @@ def _recommendations_payload_cached(market: str, mode: str, horizon: str, limit:
             item = _recommendation_item(row, market, mode, horizon, source_status, source_mode, source_horizon, names, quotes, watch)
             if not item:
                 continue
-            try:
-                from app.engine.quant_scanner import apply_quant_overlay
+            published = source_status == "MATCH" and row.get("correctionInputContractVersion") == "correction-shadow-input-v1"
+            if published:
+                from app.services.recommendation_contract import preserve_published_inputs
+                from app.engine.quant_scanner import indicators, load_ohlcv
+                item = preserve_published_inputs(item, row)
+                bars = load_ohlcv(_repo_root(), market, sym)
+                item["indicators"] = indicators(bars) if bars else {}
+                if bars:
+                    item["ohlcvLatestDate"] = str(bars[-1].get("date") or "")[:10]
+            else:
+                try:
+                    from app.engine.quant_scanner import apply_quant_overlay
 
-                item = apply_quant_overlay(item, _repo_root(), mode, horizon)
-            except Exception:
-                item.setdefault("computedFields", []).append("quant_scanner_unavailable")
-            item = _clear_stale_ohlcv_short_warning(item)
-            if correction_state.get("active"):
-                item = _apply_light_correction(item, correction_state)
-                item.setdefault("computedFields", []).append("self_correction_penalty")
-            if attr_mult != 1.0:
-                # probability는 이 코드베이스 전체에서 0~100 퍼센트다(0~1 분수가
-                # 아니다). 그런데 상한이 1.0으로 걸려 있어서, 배율이 적용되는
-                # 순간 8.9% 같은 값이 1.0으로 잘려 화면에 "승률 1%"로 떴다.
-                # 승률 소스가 낙관적인 백테스트(44~55%)였을 땐 어차피 상한에
-                # 걸려 늘 1.0이라 아무도 이상함을 못 느꼈다.
-                for _akey in ("finalRankScore", "probability"):
-                    _val = item.get(_akey)
-                    if _val is not None:
-                        item[_akey] = round(_clamp(float(_val) * attr_mult, 0.0, 100.0), 1)
-                # 배율이 probability를 바꿨으면 표시 문자열도 같이 갱신한다.
-                # 안 그러면 숫자 필드(8.6)와 화면 문자열(8.9%)이 어긋난다.
-                if item.get("probability") is not None:
-                    item["probabilityText"] = _pct_text(item["probability"])
-                item.setdefault("computedFields", []).append(f"attribution_mult_{attr_mult}")
-            item = _apply_chart_signal_overlay(item, mode, horizon)
+                    item = apply_quant_overlay(item, _repo_root(), mode, horizon)
+                except Exception:
+                    item.setdefault("computedFields", []).append("quant_scanner_unavailable")
+                item = _clear_stale_ohlcv_short_warning(item)
+                if correction_state.get("active"):
+                    item = _apply_light_correction(item, correction_state)
+                    item.setdefault("computedFields", []).append("self_correction_penalty")
+                if attr_mult != 1.0:
+                    # probability는 이 코드베이스 전체에서 0~100 퍼센트다(0~1 분수가
+                    # 아니다). 그런데 상한이 1.0으로 걸려 있어서, 배율이 적용되는
+                    # 순간 8.9% 같은 값이 1.0으로 잘려 화면에 "승률 1%"로 떴다.
+                    # 승률 소스가 낙관적인 백테스트(44~55%)였을 땐 어차피 상한에
+                    # 걸려 늘 1.0이라 아무도 이상함을 못 느꼈다.
+                    for _akey in ("finalRankScore", "probability"):
+                        _val = item.get(_akey)
+                        if _val is not None:
+                            item[_akey] = round(_clamp(float(_val) * attr_mult, 0.0, 100.0), 1)
+                    # 배율이 probability를 바꿨으면 표시 문자열도 같이 갱신한다.
+                    # 안 그러면 숫자 필드(8.6)와 화면 문자열(8.9%)이 어긋난다.
+                    if item.get("probability") is not None:
+                        item["probabilityText"] = _pct_text(item["probability"])
+                    item.setdefault("computedFields", []).append(f"attribution_mult_{attr_mult}")
+                item = _apply_chart_signal_overlay(item, mode, horizon)
             try:
                 from app.services.validation_display_policy import enrich_item_and_build
                 enrich_item_and_build(item)
@@ -2903,7 +2916,10 @@ def _apply_recommendation_performance_safety(payload: dict[str, Any], market: st
     # explicitly labelled as such; unavailable coverage cannot create a buy.
     try:
         from app.services import market_context_gate as _market_context
-        market_context = _market_context.build_market_context(market)
+        hit, market_context = _ttl_get(f"public_market_context:{market}", 60)
+        if not hit:
+            market_context = _market_context.build_market_context(market)
+            _ttl_set(f"public_market_context:{market}", market_context)
     except Exception as exc:
         _market_context = None
         market_context = {
@@ -3341,7 +3357,7 @@ def _apply_low_atr_next_open_guard(items: list[dict[str, Any]], market: str) -> 
             item["action"] = result["decisionBucket"]
 
 
-def _recommendations_payload(market: str, mode: str, horizon: str, cash: float, limit: int, watch_only: bool) -> dict[str, Any]:
+def _recommendations_payload(market: str, mode: str, horizon: str, cash: float, limit: int, watch_only: bool, *, record_ledger: bool = True) -> dict[str, Any]:
     normalized_market = _market_norm(market)
     normalized_mode = _mode_norm(mode)
     normalized_horizon = _horizon_norm(horizon)
@@ -3368,7 +3384,8 @@ def _recommendations_payload(market: str, mode: str, horizon: str, cash: float, 
         payload["noDataReason"] = "MARKET_OR_EXPECTED_VALUE_GATE"
         return payload
     try:
-        _record_virtual_ledger(payload.get("items", []), "api/final/recommendations")
+        if record_ledger:
+            _record_virtual_ledger(payload.get("items", []), "api/final/recommendations")
     except Exception:
         pass
     _inject_pattern_strategy(payload.get("items", []), normalized_market)
@@ -3383,7 +3400,8 @@ def _recommendations_payload(market: str, mode: str, horizon: str, cash: float, 
         _apply_low_atr_next_open_guard(payload.get("items", []), normalized_market)
     except Exception:
         pass
-    return json.loads(json.dumps(payload, ensure_ascii=False))
+    from app.services.recommendation_contract import attach_execution_plans
+    return attach_execution_plans(json.loads(json.dumps(payload, ensure_ascii=False)))
 
 
 def _pct_gap(current: float, level: float) -> float | None:

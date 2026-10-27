@@ -444,6 +444,8 @@ def test_settlement_only_build_preserves_last_recording_diagnostics(monkeypatch,
 
     assert payload["lastRecordingRun"] == previous_run
     assert payload["predictionRun"]["appended"] == 0
+    assert payload["summary"]["recordingStatus"] == "NO_ACTIVE_CANDIDATE"
+    assert payload["summary"]["recordingHealthy"] is False
 
 
 def test_operational_exit_code_fails_integrity_and_registration_not_normal_warmup() -> None:

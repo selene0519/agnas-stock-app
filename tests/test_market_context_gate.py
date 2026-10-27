@@ -41,3 +41,13 @@ def test_pre_trade_gate_blocks_unknown_context_and_performance_block():
     assert result["status"] == "NO_TRADE"
     assert "MARKET_BREADTH_UNAVAILABLE" in result["reasonCodes"]
     assert "PERFORMANCE_GATE_BLOCKED" in result["reasonCodes"]
+
+
+def test_recent_reader_matches_full_history_with_unsorted_invalid_rows(tmp_path):
+    from datetime import date, timedelta
+    path = tmp_path / "us_TEST_daily.csv"
+    rows = [f"{date(2026, 1, 1) + timedelta(days=i)},{100+i}" for i in range(90)]
+    rows.reverse()
+    path.write_text("date,close\n" + "\n".join(rows + ["2027-01-01,nan", "2027-01-02,-1", "2027-01-03,inf"]), encoding="utf-8")
+    dates, closes = gate._closes(gate._rows(path))
+    assert gate._recent_closes(path) == (dates[-64:], closes[-64:])

@@ -970,7 +970,9 @@ def api_final_recommendation_detail(
     market: str = Query("kr", pattern="^(kr|us)$"),
     symbol: str = Query(..., min_length=1),
 ) -> dict:
-    return final_engine.recommendation_detail(_market(market), symbol)
+    from app.services.recommendation_contract import bind_public_detail
+    mk = _market(market)
+    return bind_public_detail(final_engine.recommendation_detail(mk, symbol), mk)
 
 
 @app.get("/api/final/conditional-executions")
@@ -7843,15 +7845,6 @@ def api_home_summary(
             "381180",
         }
 
-        def _home_float(value: object) -> float | None:
-            try:
-                text = str(value or "").strip().replace(",", "").replace("%", "")
-                if not text or text.lower() in {"nan", "none", "null"}:
-                    return None
-                number = float(text)
-                return number if number > 0 else None
-            except Exception:
-                return None
 
         def _home_number(value: object) -> float | None:
             try:
@@ -7862,56 +7855,6 @@ def api_home_summary(
             except Exception:
                 return None
 
-        def _home_quote_index() -> dict[str, dict]:
-            paths = [
-                _REPO / "data" / "stockapp" / f"kis_current_price_{mk}.csv",
-                _REPO / "reports" / f"kis_current_price_{mk}.csv",
-                _REPO / "data" / "stockapp" / f"intraday_quote_snapshot_{mk}.csv",
-                _REPO / "reports" / f"intraday_quote_snapshot_{mk}.csv",
-            ]
-            quotes: dict[str, dict] = {}
-            for path in paths:
-                for row in _read_csv_safe(path):
-                    symbol = str(row.get("symbol") or row.get("code") or row.get("ticker") or "").strip().upper()
-                    if mk == "kr":
-                        symbol = "".join(ch for ch in symbol if ch.isdigit()).zfill(6)[-6:]
-                    if not symbol:
-                        continue
-                    current = _home_float(row.get("currentPrice") or row.get("current_price") or row.get("last_price") or row.get("price"))
-                    if current is None:
-                        continue
-                    quotes[symbol] = {
-                        "currentPrice": current,
-                        "prevClose": _home_float(row.get("prevClose") or row.get("previousClose") or row.get("prev_close") or row.get("basePrice")),
-                        "changePct": _home_number(row.get("changePct") or row.get("changeRate") or row.get("prdy_ctrt")),
-                        "quoteTimestamp": str(row.get("priceTime") or row.get("priceSourceDate") or row.get("updated_at") or row.get("timestamp") or "").strip(),
-                        "priceSource": str(row.get("priceSource") or row.get("source") or path.name).strip(),
-                    }
-            return quotes
-
-        home_quotes = _home_quote_index()
-
-        def _home_quote_is_fresh(quote: dict) -> bool:
-            timestamp = str(quote.get("quoteTimestamp") or "")[:10]
-            if not timestamp:
-                return False
-            try:
-                from datetime import date as _date
-                age_days = (_date.today() - _date.fromisoformat(timestamp)).days
-                return 0 <= age_days <= 7
-            except Exception:
-                return False
-
-        def _home_ohlcv_is_fresh(date_text: object) -> bool:
-            timestamp = str(date_text or "")[:10]
-            if not timestamp:
-                return False
-            try:
-                from datetime import date as _date
-                age_days = (_date.today() - _date.fromisoformat(timestamp)).days
-                return 0 <= age_days <= 7
-            except Exception:
-                return False
 
         def _is_kr_etf_row(row: dict) -> bool:
             if mk != "kr":
@@ -7922,124 +7865,6 @@ def api_home_summary(
             name = str(row.get("name") or row.get("displayName") or "").lower()
             return any(token in name for token in ("etf", "kodex", "tiger", "kbstar", "ace ", "arirang", "hanaro", "sol "))
 
-        ohlcv_change_refs: dict[str, dict] = {}
-
-        def _ohlcv_change_ref(symbol: str) -> dict:
-            sym = str(symbol or "").strip().upper()
-            if not sym:
-                return {}
-            if sym in ohlcv_change_refs:
-                return ohlcv_change_refs[sym]
-            rows = _read_csv_safe(_OHLCV_DIR / f"{mk}_{sym}_daily.csv")
-            closes: list[tuple[str, float]] = []
-            for row in rows:
-                close = _home_float(row.get("close") or row.get("Close") or row.get("stck_clpr"))
-                date = str(row.get("date") or row.get("Date") or row.get("tradeDate") or "").strip()[:10]
-                if close and date:
-                    closes.append((date, close))
-            closes.sort(key=lambda item: item[0])
-            result: dict = {}
-            if len(closes) >= 2:
-                prev_date, prev_close = closes[-2]
-                latest_date, latest_close = closes[-1]
-                if prev_close > 0:
-                    change_pct = (latest_close - prev_close) / prev_close * 100
-                    result = {
-                        "currentPrice": latest_close,
-                        "prevClose": prev_close,
-                        "prevCloseDate": prev_date,
-                        "ohlcvLatestDate": latest_date,
-                        "changePct": change_pct,
-                        "changePctText": f"{change_pct:+.2f}%",
-                        "changePctSource": "ohlcv_latest_vs_previous_close",
-                    }
-            ohlcv_change_refs[sym] = result
-            return result
-
-        def _enrich_home_matrix_row(row: dict) -> dict:
-            out = dict(row or {})
-            symbol = str(out.get("symbol") or out.get("code") or out.get("ticker") or "").strip().upper()
-            # ── EV·종합점수·RR 보강 ──────────────────────────────────────────
-            # 홈 매트릭스는 추천 CSV를 직접 읽는데 CSV엔 expectedValue/finalScore/
-            # rrActual 컬럼이 없어 "EV +0.0% / 종합 0점 / RR —"으로 떴다.
-            # final_recommendations와 동일한 정식 공식으로 여기서도 채운다.
-            _ev_entry = data._safe_float(out.get("entry"))
-            _ev_stop = data._safe_float(out.get("stop"))
-            _ev_target = data._safe_float(out.get("target"))
-            _ev_score = data._safe_float(out.get("finalRankScore") or out.get("finalScore"))
-            _ev_hz = str(out.get("horizon") or "swing").strip() or "swing"
-            if data._safe_float(out.get("expectedValue")) is None:
-                _ev_val = final_engine._expected_value_pct(_ev_entry, _ev_stop, _ev_target, _ev_score, _ev_hz, mk)
-                if _ev_val is not None:
-                    out["expectedValue"] = _ev_val
-                    out["evNegative"] = _ev_val < 0
-                    out["expectedValueText"] = f"{_ev_val:+.1f}%"
-            if data._safe_float(out.get("finalScore")) is None and _ev_score is not None:
-                out["finalScore"] = _ev_score
-            if data._safe_float(out.get("rrActual")) is None and _ev_entry and _ev_stop and _ev_target and _ev_target > _ev_entry:
-                _ev_risk = abs(_ev_entry - _ev_stop)
-                if _ev_risk > 0:
-                    out["rrActual"] = round((_ev_target - _ev_entry) / _ev_risk, 2)
-
-            quote = home_quotes.get(symbol, {})
-            if _home_quote_is_fresh(quote):
-                current = quote["currentPrice"]
-                prev_close = quote.get("prevClose")
-                change_pct = quote.get("changePct")
-                if change_pct is None and prev_close and prev_close > 0:
-                    change_pct = (current - prev_close) / prev_close * 100
-                out.update({
-                    "currentPrice": current,
-                    "currentPriceText": f"${current:,.2f}" if mk == "us" else f"{round(current):,}원",
-                    "currentPriceSource": "kis_snapshot",
-                    "priceSource": quote.get("priceSource") or "KIS current price",
-                    "quoteTimestamp": quote.get("quoteTimestamp") or "",
-                    "dataStatus": "NORMAL",
-                    "priceDataStatus": "NORMAL",
-                })
-                if prev_close and prev_close > 0:
-                    out["prevClose"] = prev_close
-                    out["prevCloseSource"] = "kis_snapshot"
-                if change_pct is not None:
-                    out["changePct"] = change_pct
-                    out["changePctText"] = f"{change_pct:+.2f}%"
-                    out["changePctSource"] = "kis_current_vs_previous_close"
-                else:
-                    out["previousCloseStatus"] = "UNAVAILABLE"
-                return out
-
-            ref = _ohlcv_change_ref(symbol)
-            if not ref:
-                out["previousCloseStatus"] = "UNAVAILABLE"
-                return out
-            if not _home_ohlcv_is_fresh(ref.get("ohlcvLatestDate")):
-                for key in ("prevClose", "previousClose", "changePct", "changePctText", "changePctSource"):
-                    out.pop(key, None)
-                out.update({
-                    "ohlcvLatestDate": ref["ohlcvLatestDate"],
-                    "dataStatus": "STALE",
-                    "priceDataStatus": "STALE",
-                    "priceStatusLabel": "OHLCV update required",
-                    "previousCloseStatus": "STALE_OHLCV",
-                })
-                return out
-            out.update({
-                "currentPrice": ref["currentPrice"],
-                "currentPriceText": f"${ref['currentPrice']:,.2f}" if mk == "us" else f"{round(ref['currentPrice']):,}원",
-                "prevClose": ref["prevClose"],
-                "prevCloseDate": ref["prevCloseDate"],
-                "changePct": ref["changePct"],
-                "changePctText": ref["changePctText"],
-                "changePctSource": ref["changePctSource"],
-                "ohlcvLatestDate": ref["ohlcvLatestDate"],
-                "dataAsOf": ref["ohlcvLatestDate"],
-                "latestDataDate": ref["ohlcvLatestDate"],
-                "currentPriceSource": "ohlcv_close",
-                "dataStatus": "PREVIOUS_CLOSE_BASIS",
-                "priceDataStatus": "PREVIOUS_CLOSE_BASIS",
-                "priceStatusLabel": "최신 마감 OHLCV 기준",
-            })
-            return out
 
         # 마켓 레짐 (KOSPI/SPY 20일선 기반 — priority 9)
         regime = "UNKNOWN"
@@ -8108,7 +7933,8 @@ def api_home_summary(
             pass
 
         try:
-            _now_dt = __import__("datetime").datetime.now()
+            from zoneinfo import ZoneInfo
+            _now_dt = __import__("datetime").datetime.now(ZoneInfo("Asia/Seoul"))
             _today = _now_dt.strftime("%Y-%m-%d")
             _as_of = str(regime_detail.get("asOf") or "")
             if mk == "kr":
@@ -8133,149 +7959,24 @@ def api_home_summary(
         except Exception:
             pass
 
-        def _csv_matrix_cell(mode_: str, horizon_: str) -> tuple[str, dict]:
-            import csv as _csv_mod
-            key_ = f"{mode_}_{horizon_}"
-            try:
-                csv_path = data.ensure_fresh(
-                    data.REPORT_DIR / f"mone_v36_final_recommendations_{mk}_{mode_}_{horizon_}.csv",
-                    max_age_hours=6.0,
-                )
-                if not csv_path.exists() or csv_path.stat().st_size < 20:
-                    return key_, {"status": "NO_DATA", "items": [], "count": 0, "positiveEvCount": 0, "source": "csv_missing"}
-                rows_: list[dict] = []
-                for enc_ in ("utf-8-sig", "utf-8", "cp949"):
-                    try:
-                        with csv_path.open("r", encoding=enc_) as _fh:
-                            rows_ = [dict(r) for r in _csv_mod.DictReader(_fh)]
-                        break
-                    except Exception:
-                        continue
-                if not rows_:
-                    return key_, {"status": "NO_DATA", "items": [], "count": 0, "positiveEvCount": 0, "source": "csv_empty"}
-                # ── CSV rows 신규 필드 보강 (riskReason 등 live 계산) ───────
-                try:
-                    _lev_kw = ("레버리지", "인버스", "2x", "3x", "곱버스")
-                    _wf_cache = final_engine._load_walkforward_metrics(mk)
-                    _wf_cell  = _wf_cache.get(f"{mode_}_{horizon_}", {})
-                    for _r in rows_:
-                        # riskReason
-                        if not _r.get("riskReason"):
-                            _sc = {
-                                "riskScore":        float(_r.get("riskScore") or 0),
-                                "opportunityScore": float(_r.get("opportunityScore") or 0),
-                            }
-                            _r["riskReason"] = final_engine._risk_reason(
-                                _sc,
-                                int(float(_r.get("eventRiskScore") or 0)),
-                                str(_r.get("surgeLabel") or ""),
-                            )
-                        # priceLevelWarning
-                        if not _r.get("priceLevelWarning"):
-                            def _pf(v: object) -> "float | None":
-                                try:
-                                    f = float(v or 0); return f if f > 0 else None
-                                except Exception: return None
-                            _r["priceLevelWarning"] = final_engine._price_level_warning(
-                                _pf(_r.get("entry")), _pf(_r.get("stop")), _pf(_r.get("target"))
-                            )
-                        # dataAsOf
-                        if not _r.get("dataAsOf"):
-                            _r["dataAsOf"] = str(
-                                _r.get("ohlcvLatestDate") or _r.get("latestDataDate") or _r.get("dataDate") or ""
-                            )
-                        # gapWarningPct
-                        if _r.get("gapWarningPct") is None:
-                            try:
-                                _g = float(_r.get("gap") or 0)
-                                _r["gapWarningPct"] = round(abs(_g) * 100, 1) if _g else None
-                            except Exception:
-                                _r["gapWarningPct"] = None
-                        # currentPriceSource
-                        if not _r.get("currentPriceSource"):
-                            _r["currentPriceSource"] = str(
-                                _r.get("priceSourceType") or _r.get("dataSourceType") or "OHLCV"
-                            )
-                        # isLeveragedEtf / leverageWarning
-                        if "isLeveragedEtf" not in _r:
-                            _nm_l = str(_r.get("name", "")).lower()
-                            _is_lev = any(kw in _nm_l for kw in _lev_kw)
-                            _r["isLeveragedEtf"] = _is_lev
-                            _r["leverageWarning"] = (
-                                "레버리지/인버스 ETF — 단기 변동성 매우 크며 복리 손실 위험 있음"
-                                if _is_lev else ""
-                            )
-                        # walkforwardMetrics
-                        if not _r.get("walkforwardMetrics"):
-                            _r["walkforwardMetrics"] = _wf_cell
-                        # walkforwardAdjustment
-                        if _r.get("walkforwardAdjustment") is None:
-                            _r["walkforwardAdjustment"] = round(float(_wf_cell.get("adjustment", 0.0)), 1)
-                except Exception:
-                    pass
-                # ─────────────────────────────────────────────────────────────
-                # 이름 보정: name == symbol 인 경우 sector_map에서 조회
-                try:
-                    sm_path = data.REPO_ROOT / "data" / f"sector_map_{mk}.csv"
-                    nm_map_: dict[str, str] = {}
-                    if sm_path.exists():
-                        with sm_path.open("r", encoding="utf-8-sig") as _smf:
-                            for _smr in _csv_mod.DictReader(_smf):
-                                _s, _n = str(_smr.get("symbol", "")).strip(), str(_smr.get("name", "")).strip()
-                                if _s and _n:
-                                    nm_map_[_s] = _n
-                    for _row in rows_:
-                        _sym, _nm = str(_row.get("symbol", "")).strip(), str(_row.get("name", "")).strip()
-                        if (_nm == _sym or not _nm) and _sym in nm_map_:
-                            _row["name"] = nm_map_[_sym]
-                except Exception:
-                    pass
-                # EV 양수 우선 정렬
-                rows_ = [_enrich_home_matrix_row(_row) for _row in rows_ if not _is_kr_etf_row(_row)]
-                def _fv(v: object) -> float:
-                    try:
-                        return float(v or 0)  # type: ignore[arg-type]
-                    except Exception:
-                        return 0.0
-                rows_.sort(key=lambda r: (_fv(r.get("expectedValue", 0)) > 0, _fv(r.get("finalRankScore") or r.get("finalScore") or 0)), reverse=True)
-                pos_ev_ = [r for r in rows_ if _fv(r.get("expectedValue", 0)) > 0]
-                display_ = (pos_ev_ if pos_ev_ else rows_)[:5]
-                try:
-                    from app.services.validation_display_policy import enrich_item_and_build as _vd_enrich
-                    for _di in display_:
-                        _vd_enrich(_di)
-                except Exception:
-                    pass
-                return key_, {"status": "OK", "items": display_, "count": len(rows_), "positiveEvCount": len(pos_ev_), "source": "csv"}
-            except Exception as exc_:
-                return key_, {"status": "ERROR", "error": str(exc_), "items": [], "count": 0, "positiveEvCount": 0}
+        # All public surfaces use the same data/performance/operating gates.
+        # Keep errors visible; never replace a failed gate with unvalidated CSV rows.
+        from app.services.recommendation_contract import public_recommendations
 
         matrix: dict = {}
-        # CSV 읽기: 각 셀 <5ms → 9셀 전체 <50ms
-        _csv_ok = any(
-            (data.REPORT_DIR / f"mone_v36_final_recommendations_{mk}_{m}_{h}.csv").exists()
-            for m in MODES for h in HORIZONS
-        )
-        if _csv_ok:
-            for _m, _h in [(m, h) for m in MODES for h in HORIZONS]:
-                _ck, _cv = _csv_matrix_cell(_m, _h)
-                matrix[_ck] = _cv
-        else:
-            # CSV 없으면 실시간 계산 (ThreadPool 병렬)
-            def _fetch_matrix_cell(args: tuple[str, str]) -> tuple[str, dict]:
-                _mode, _horizon = args
-                _key = f"{_mode}_{_horizon}"
+        for mode_ in MODES:
+            for horizon_ in HORIZONS:
+                key_ = f"{mode_}_{horizon_}"
                 try:
-                    rec = final_engine.final_recommendations(mk, _mode, _horizon)
-                    cell_items = rec.get("items", [])
-                    pos_ev = [i for i in cell_items if _safe_float_v2(i.get("expectedValue", 0)) > 0]
-                    display = (pos_ev if pos_ev else cell_items)[:5]
-                    return _key, {"status": "OK" if display else "NO_DATA", "items": display, "count": len(cell_items), "positiveEvCount": len(pos_ev)}
+                    cell = public_recommendations(mk, mode_, horizon_, max(5, min(limit, 50)))
+                    items = [row for row in cell.get("items", []) if not _is_kr_etf_row(row)]
+                    matrix[key_] = {
+                        **cell, "items": items, "count": len(items),
+                        "positiveEvCount": sum(1 for row in items if (_home_number(row.get("expectedValue")) or 0) > 0),
+                        "source": "public_recommendation_contract",
+                    }
                 except Exception as exc:
-                    return _key, {"status": "ERROR", "error": str(exc), "items": [], "count": 0}
-            with ThreadPoolExecutor(max_workers=4) as _pool:
-                for _cell_key, _cell_val in _pool.map(_fetch_matrix_cell, [(m, h) for m in MODES for h in HORIZONS]):
-                    matrix[_cell_key] = _cell_val
+                    matrix[key_] = {"status": "ERROR", "error": str(exc), "items": [], "count": 0, "positiveEvCount": 0}
 
         # 보유종목 (holdingsClean 엔드포인트 재사용)
         holdings_payload: dict = _empty_home_holdings(mk)

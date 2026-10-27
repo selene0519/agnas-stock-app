@@ -7,13 +7,11 @@ import Image from "next/image";
 import Sidebar, { type PageId } from "../components/Sidebar";
 import BottomNav from "../components/BottomNav";
 import TopHoldingTicker from "../components/TopHoldingTicker";
-import SessionSafetyBanner from "../components/SessionSafetyBanner";
 import AppLaunchLoading, { type AppLaunchLoadingStep } from "../components/AppLaunchLoading";
 import HomePage from "../components/pages/HomePage";
 import { mone } from "../lib/api";
 import { clearAdminToken, getAdminToken, saveAdminToken } from "../lib/adminAuth";
 import { clearAuthenticatedUser, getUserProfile, getUserToken, type MoneUserProfile } from "../lib/userId";
-import { getDefaultMarketBySession } from "../lib/marketSession";
 import { getCachedBootPreload, runBootPreload, type BootPreloadState } from "../lib/bootPreload";
 import { useFocusTrap } from "../lib/useFocusTrap";
 
@@ -461,7 +459,6 @@ export default function App() {
         {/* 메인 콘텐츠 — 모바일은 하단 탭바 높이(56px) + safe area 만큼 여백 */}
         <main ref={mainRef} id="main-content" tabIndex={-1} className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-3 pb-[calc(80px+env(safe-area-inset-bottom))] outline-none md:p-6 md:pb-6">
           <div className="mx-auto min-w-0 max-w-7xl space-y-4">
-            {page === "home" && <SessionSafetyBanner market={getDefaultMarketBySession()} />}
             {renderPage()}
           </div>
         </main>

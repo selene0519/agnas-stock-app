@@ -187,33 +187,9 @@ function compactPriceText(value: string, market: string) {
   return `${Math.round(n).toLocaleString("ko-KR")}원`;
 }
 
-function adjustedText(
-  item: any,
-  key: "stop" | "target" | "entry",
-  mode: Mode,
-  market: string,
-) {
-  const base = toNumber(
-    key === "stop"
-      ? item.stopPrice || item.stop || item.stopText
-      : key === "target"
-        ? item.targetPrice || item.target || item.targetText
-        : item.entryPrice || item.entry || item.entryText,
-  );
-  const price = base;
-  if (price === null || price <= 0) return "-";
-  if (key === "entry") return formatMoney(price, market);
-  const modeAdj =
-    mode === "conservative"
-      ? key === "stop"
-        ? 0.985
-        : 0.97
-      : mode === "aggressive"
-        ? key === "stop"
-          ? 0.97
-          : 1.05
-        : 1;
-  return formatMoney(price * modeAdj, market);
+function adjustedText(item: any, key: "stop" | "target" | "entry", _mode: Mode, market: string) {
+  // Risk profiles are already reflected in the issued recommendation.
+  return priceText({ ...item, market }, key);
 }
 
 function cleanMarket(value: any): Market {

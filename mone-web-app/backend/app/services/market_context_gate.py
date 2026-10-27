@@ -64,7 +64,26 @@ def _pct_change(values: list[float], days: int) -> float | None:
 
 
 def _read_symbol(market: str, symbol: str) -> tuple[list[str], list[float]]:
-    return _closes(_rows(OHLCV_DIR / f"{market}_{symbol}_daily.csv"))
+    return _recent_closes(OHLCV_DIR / f"{market}_{symbol}_daily.csv")
+
+
+def _recent_closes(path: Path) -> tuple[list[str], list[float]]:
+    """Read only price/date columns; breadth/macro need at most 64 valid closes."""
+    import pandas as pd
+    if not path.is_file() or path.stat().st_size == 0:
+        return [], []
+    for encoding in ("utf-8-sig", "cp949"):
+        try:
+            frame = pd.read_csv(path, encoding=encoding, usecols=lambda key: key in {"date", "Date", "close", "Close"}, dtype=str)
+            date_key = "date" if "date" in frame else "Date"
+            close_key = "close" if "close" in frame else "Close"
+            closes = pd.to_numeric(frame[close_key].str.replace(",", "", regex=False), errors="coerce")
+            frame = frame.loc[closes.gt(0) & closes.lt(float("inf")) & frame[date_key].notna()]
+            frame = frame.sort_values(date_key).tail(64)
+            return _closes(frame.to_dict("records"))
+        except Exception:
+            continue
+    return [], []
 
 
 def market_breadth(market: str, *, directory: Path | None = None) -> dict[str, Any]:
@@ -78,7 +97,7 @@ def market_breadth(market: str, *, directory: Path | None = None) -> dict[str, A
         # Indices, FX and ETFs are market context inputs, not constituents.
         if symbol.upper() in {"KOSPI", "KOSDAQ", "SPY", "QQQ", "DIA", "IWM", "TLT", "XLE", "XLF", "SMH", "SOXX", "GLD", "SCHD", "SOXL", "BTC-USD", "USD/ KRW", "USDKRW"}:
             continue
-        dates, closes = _closes(_rows(path))
+        dates, closes = _recent_closes(path)
         if len(closes) >= 51:
             universe.append((symbol, dates, closes))
 

@@ -45,6 +45,13 @@ def test_sideways_mean_reversion_requires_oversold_structure_and_uses_ma20_targe
     assert plan["riskFractionMultiplier"] == 0.5
 
 
+def test_sideways_alias_preserves_negative_and_zero_evidence():
+    plan = build_trade_plan(_item(), market="us", mode="balanced", horizon="swing", regime="SIDEWAYS")
+    assert plan["status"] == "READY"
+    assert plan["evidence"]["distanceToMa20"] == -1.0
+    assert plan["evidence"]["eventRisk"] == 0.0
+
+
 def test_bear_market_is_cash_only_without_oversold_positive_supply_confirmation():
     plan = build_trade_plan(
         _item(supplySignal="DISTRIBUTION"), market="kr", mode="balanced", horizon="short", regime="BEAR"

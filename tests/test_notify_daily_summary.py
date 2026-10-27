@@ -63,6 +63,43 @@ def test_event_metric_keeps_a_zero_actual_value():
     assert notify._event_metric("실제", 0, "%") == "실제 0%"
 
 
+def test_watch_candidates_are_never_labelled_today_entries(monkeypatch):
+    monkeypatch.setattr(notify, "_collect_recommendations", lambda _market: [{
+        "symbol": "TEST", "name": "Test", "mode": "balanced", "horizon": "swing",
+        "bucket": "관찰", "current": 100, "entry": 99, "stop": 95, "target": 110, "ev": 1, "score": 70,
+    }])
+    monkeypatch.setattr(notify, "_finnhub_company_news", lambda *_args: [])
+    text = notify.build_recommendation_section("us")
+    assert "관찰 후보 · 신규 진입 대기" in text
+    assert "오늘 진입 후보 없음" in text
+    assert "미장 오늘 진입 후보</b>" not in text
+
+
+def test_policy_failure_is_not_reported_as_empty_candidates(monkeypatch):
+    def failed(_market):
+        raise RuntimeError("unavailable")
+    monkeypatch.setattr(notify, "_collect_recommendations", failed)
+    assert "추천 검증 지연" in notify.build_recommendation_section("us")
+
+
+def test_collector_rejects_blocked_rows_and_prioritizes_ready_profile(monkeypatch):
+    from app.services import recommendation_contract
+    base = {"symbol": "TEST", "entry": 100, "stop": 95, "target": 110, "expectedValue": 1, "publicTradeStatus": "TRADE_CANDIDATE", "decisionBucket": "오늘 진입", "executionPlan": {"status": "READY"}}
+    def read(_market, mode, horizon):
+        if (mode, horizon) == ("conservative", "short"):
+            return {"items": [base, {**base, "symbol": "BLOCKED", "isTradeBlocked": True}]}
+        return {"items": [{**base, "expectedValue": 99, "executionPlan": {"status": "WATCH"}}]}
+    notify._collect_recommendations.cache_clear()
+    monkeypatch.setattr(recommendation_contract, "public_recommendations", read)
+    try:
+        result = notify._collect_recommendations("us")
+        assert len(result) == 1
+        assert result[0]["bucket"] == "오늘 진입"
+        assert result[0]["mode"] == "conservative"
+    finally:
+        notify._collect_recommendations.cache_clear()
+
+
 def test_main_returns_nonzero_when_telegram_delivery_fails(monkeypatch):
     monkeypatch.setattr(notify, "_send", lambda _message: False)
     monkeypatch.setattr(notify, "build_economic_section", lambda _market: "")

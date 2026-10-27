@@ -24,7 +24,9 @@ def test_secondary_pages_reuse_boot_snapshots_and_prefetch_chunks() -> None:
     assert "homeSummary({ market: resolvedMarket, limit: 12 })" in stocks
     assert "homeSummary({ market: gateMarket, limit: 12 })" in chart
     assert "loadStocksPage(), loadHoldingsPage()" in page
-    assert "loadChartPage(), loadAdvancedPage(), loadPaperTradingPage()" in page
+    # Normal startup only warms the two normal navigation destinations.
+    assert "loadChartPage(), loadAdvancedPage(), loadPaperTradingPage()" not in page
+    assert "dynamicImport(loadAdvancedPage" in page
 
 
 def test_analysis_core_does_not_wait_for_supporting_feeds() -> None:

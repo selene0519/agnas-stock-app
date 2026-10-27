@@ -87,6 +87,7 @@ def _clear_all_caches() -> int:
     targets = [
         "app.services.data_loader",
         "app.services.final_engine",
+        "app.services.recommendation_contract",
         "app.engine.mone_v65_api_stabilizer",
         "app.engine.quant_scanner",
     ]
