@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-26T23:48:40.829592+00:00",
-  "asOfDate": "2026-10-12",
+  "generatedAt": "2026-10-27T01:58:46.955806+00:00",
+  "asOfDate": "2026-10-13",
   "sources": {
     "live": "reports/lens_live_journal_kr.csv",
     "prior": "reports/lens_journal_kr.csv"
@@ -12,7 +12,7 @@
     "refEdgePct": 0.62,
     "priorStrengthK": 40.0
   },
-  "liveSamplesTotal": 324,
+  "liveSamplesTotal": 338,
   "note": "라이브 forward 실측 우선 + 백테스트 prior shrinkage. 라이브(lens_live_journal)가 쌓일수록 생존편향 제거되고 liveFraction↑. 현재 liveSamplesTotal이 0이면 사실상 백테스트 prior.",
   "activeSetupByRegime": {
     "BULL": [
@@ -25,7 +25,7 @@
     "BREAKOUT|SIDE": {
       "setup": "BREAKOUT",
       "regime": "SIDE",
-      "blendedNetAvgPct": -0.542,
+      "blendedNetAvgPct": -0.54,
       "blendedWinRate": 35.1,
       "gate": "SUPPRESSED_LOW_EDGE",
       "sizeMultiplier": 0.0,
@@ -40,37 +40,22 @@
     "BOTTOM_CATCH|BEAR": {
       "setup": "BOTTOM_CATCH",
       "regime": "BEAR",
-      "blendedNetAvgPct": -1.997,
-      "blendedWinRate": 19.6,
+      "blendedNetAvgPct": -1.96,
+      "blendedWinRate": 20.8,
       "gate": "SUPPRESSED_LOW_EDGE",
       "sizeMultiplier": 0.0,
-      "liveEffectiveSamples": 122.6,
-      "liveRawSamples": 137,
-      "liveNetAvgPct": -2.31,
-      "priorNetAvgPct": -1.038,
-      "priorRawSamples": 4764,
-      "liveFraction": 0.754,
-      "profitFactor": 0.3
-    },
-    "BOTTOM_CATCH|BULL": {
-      "setup": "BOTTOM_CATCH",
-      "regime": "BULL",
-      "blendedNetAvgPct": -1.127,
-      "blendedWinRate": 35.6,
-      "gate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "liveEffectiveSamples": 0.0,
-      "liveRawSamples": 0,
-      "liveNetAvgPct": null,
-      "priorNetAvgPct": -1.127,
-      "priorRawSamples": 2176,
-      "liveFraction": 0.0,
-      "profitFactor": 0.66
+      "liveEffectiveSamples": 135.1,
+      "liveRawSamples": 150,
+      "liveNetAvgPct": -2.26,
+      "priorNetAvgPct": -0.946,
+      "priorRawSamples": 4778,
+      "liveFraction": 0.772,
+      "profitFactor": 0.33
     },
     "LEADER_BREAKOUT|BULL": {
       "setup": "LEADER_BREAKOUT",
       "regime": "BULL",
-      "blendedNetAvgPct": -0.729,
+      "blendedNetAvgPct": -0.727,
       "blendedWinRate": 8.1,
       "gate": "SUPPRESSED_LOW_EDGE",
       "sizeMultiplier": 0.0,
@@ -81,21 +66,6 @@
       "priorRawSamples": 0,
       "liveFraction": 0.228,
       "profitFactor": 0.49
-    },
-    "BREAKOUT|BEAR": {
-      "setup": "BREAKOUT",
-      "regime": "BEAR",
-      "blendedNetAvgPct": -1.096,
-      "blendedWinRate": 28.4,
-      "gate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "liveEffectiveSamples": 145.8,
-      "liveRawSamples": 162,
-      "liveNetAvgPct": -1.092,
-      "priorNetAvgPct": -1.11,
-      "priorRawSamples": 3211,
-      "liveFraction": 0.785,
-      "profitFactor": 0.66
     },
     "BOTTOM_CATCH|SIDE": {
       "setup": "BOTTOM_CATCH",
@@ -112,6 +82,21 @@
       "liveFraction": 0.024,
       "profitFactor": 0.0
     },
+    "BOTTOM_CATCH|BULL": {
+      "setup": "BOTTOM_CATCH",
+      "regime": "BULL",
+      "blendedNetAvgPct": -1.127,
+      "blendedWinRate": 35.6,
+      "gate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "liveEffectiveSamples": 0.0,
+      "liveRawSamples": 0,
+      "liveNetAvgPct": null,
+      "priorNetAvgPct": -1.127,
+      "priorRawSamples": 2176,
+      "liveFraction": 0.0,
+      "profitFactor": 0.66
+    },
     "BREAKOUT|BULL": {
       "setup": "BREAKOUT",
       "regime": "BULL",
@@ -126,6 +111,21 @@
       "priorRawSamples": 9568,
       "liveFraction": 0.0,
       "profitFactor": 1.11
+    },
+    "BREAKOUT|BEAR": {
+      "setup": "BREAKOUT",
+      "regime": "BEAR",
+      "blendedNetAvgPct": -1.049,
+      "blendedWinRate": 28.8,
+      "gate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "liveEffectiveSamples": 146.2,
+      "liveRawSamples": 163,
+      "liveNetAvgPct": -1.033,
+      "priorNetAvgPct": -1.107,
+      "priorRawSamples": 3212,
+      "liveFraction": 0.785,
+      "profitFactor": 0.67
     }
   }
 }
