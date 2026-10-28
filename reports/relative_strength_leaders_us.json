@@ -1,103 +1,19 @@
 {
   "version": "relative-strength-v1",
   "market": "us",
-  "asOf": "2026-10-27",
+  "asOf": "2026-10-28",
   "regime": "BEAR",
   "status": "BEAR_DEFENSIVE",
   "lensNote": "Bear: RS dispersion is gone; rotate to low-volatility defensives (halve the drawdown) instead of chasing returns.",
-  "universeCount": 137,
+  "universeCount": 1,
   "leaders": [],
   "laggardsToAvoid": [],
   "defensiveHolds": [
     {
       "symbol": "SP500",
-      "rs60Pct": 1.61,
+      "rs60Pct": -0.05,
       "relToIndexPp": 0.02,
-      "vol60Pct": 0.63
-    },
-    {
-      "symbol": "BRK-B",
-      "rs60Pct": 5.82,
-      "relToIndexPp": 4.23,
-      "vol60Pct": 0.84
-    },
-    {
-      "symbol": "JPM",
-      "rs60Pct": -4.78,
-      "relToIndexPp": -6.36,
-      "vol60Pct": 0.97
-    },
-    {
-      "symbol": "KO",
-      "rs60Pct": 4.97,
-      "relToIndexPp": 3.39,
-      "vol60Pct": 1.06
-    },
-    {
-      "symbol": "COST",
-      "rs60Pct": 3.99,
-      "relToIndexPp": 2.41,
-      "vol60Pct": 1.12
-    },
-    {
-      "symbol": "MA",
-      "rs60Pct": 6.81,
-      "relToIndexPp": 5.23,
-      "vol60Pct": 1.15
-    },
-    {
-      "symbol": "AAPL",
-      "rs60Pct": 14.4,
-      "relToIndexPp": 12.81,
-      "vol60Pct": 1.17
-    },
-    {
-      "symbol": "V",
-      "rs60Pct": 9.9,
-      "relToIndexPp": 8.31,
-      "vol60Pct": 1.19
-    },
-    {
-      "symbol": "PFE",
-      "rs60Pct": 19.06,
-      "relToIndexPp": 17.47,
-      "vol60Pct": 1.24
-    },
-    {
-      "symbol": "ABBV",
-      "rs60Pct": 16.85,
-      "relToIndexPp": 15.26,
-      "vol60Pct": 1.24
-    },
-    {
-      "symbol": "PEP",
-      "rs60Pct": -4.39,
-      "relToIndexPp": -5.97,
-      "vol60Pct": 1.24
-    },
-    {
-      "symbol": "PG",
-      "rs60Pct": 9.84,
-      "relToIndexPp": 8.25,
-      "vol60Pct": 1.28
-    },
-    {
-      "symbol": "MCD",
-      "rs60Pct": -5.94,
-      "relToIndexPp": -7.52,
-      "vol60Pct": 1.28
-    },
-    {
-      "symbol": "BAC",
-      "rs60Pct": -18.89,
-      "relToIndexPp": -20.47,
-      "vol60Pct": 1.32
-    },
-    {
-      "symbol": "MSFT",
-      "rs60Pct": 8.96,
-      "relToIndexPp": 7.37,
-      "vol60Pct": 1.36
+      "vol60Pct": 0.59
     }
   ],
   "note": "Research/paper only. Capital preservation, not return."
