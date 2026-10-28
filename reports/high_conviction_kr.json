@@ -1,16 +1,16 @@
 {
-  "generatedAt": "2026-10-28T07:30:02.568944+00:00",
+  "generatedAt": "2026-10-28T13:06:57.227855+00:00",
   "market": "kr",
   "marketRegime": "BULL",
   "marketRegimeLabel": "강세장",
   "regimeDetail": {
     "asOf": "2026-10-28",
-    "distToMa20": -2.46,
-    "mom5": 4.54,
-    "trend60": 5.88,
-    "volRatio": 0.911,
+    "distToMa20": -2.21,
+    "mom5": 4.83,
+    "trend60": 6.17,
+    "volRatio": 0.927,
     "definition": "trend60+거래량(약추세만)",
-    "kospi": 5996.1
+    "kospi": 6012.44
   },
   "favorableRegime": true,
   "finalScoreThreshold": 84.0,
@@ -24,7 +24,7 @@
   },
   "forwardProof": {
     "settled": 0,
-    "pending": 0,
+    "pending": 3,
     "avgNetPct": null,
     "winRate": null
   },
@@ -48,7 +48,7 @@
     {
       "symbol": "352820",
       "name": "하이브",
-      "finalScore": 89.2,
+      "finalScore": 89.4,
       "entry": null,
       "stop": null,
       "target": null,
@@ -74,7 +74,7 @@
     {
       "symbol": "086900",
       "name": "메디톡스",
-      "finalScore": 79.6,
+      "finalScore": 79.7,
       "entry": null,
       "stop": null,
       "target": null,
@@ -82,7 +82,7 @@
       "supplySignal": "FOREIGN_BUY",
       "eventBadges": "외국인 순매수",
       "highConviction": false,
-      "gateReason": "관찰만 — finalScore 79.6<84"
+      "gateReason": "관찰만 — finalScore 79.7<84"
     },
     {
       "symbol": "035760",
@@ -100,7 +100,7 @@
     {
       "symbol": "018260",
       "name": "삼성에스디에스",
-      "finalScore": 75.4,
+      "finalScore": 75.8,
       "entry": null,
       "stop": null,
       "target": null,
@@ -108,7 +108,7 @@
       "supplySignal": "INST_BUY",
       "eventBadges": "기관 순매수",
       "highConviction": false,
-      "gateReason": "관찰만 — finalScore 75.4<84"
+      "gateReason": "관찰만 — finalScore 75.8<84"
     },
     {
       "symbol": "046970",
@@ -139,7 +139,7 @@
     {
       "symbol": "031210",
       "name": "031210",
-      "finalScore": 73.8,
+      "finalScore": 73.5,
       "entry": null,
       "stop": null,
       "target": null,
@@ -147,7 +147,7 @@
       "supplySignal": "STRONG_BUY",
       "eventBadges": "이격도수렴 | 기관+외국인 동반매수",
       "highConviction": false,
-      "gateReason": "관찰만 — finalScore 73.8<84"
+      "gateReason": "관찰만 — finalScore 73.5<84"
     },
     {
       "symbol": "008350",
@@ -165,15 +165,15 @@
     {
       "symbol": "035900",
       "name": "JYP Ent.",
-      "finalScore": 71.4,
+      "finalScore": 70.7,
       "entry": null,
       "stop": null,
       "target": null,
       "decisionBucket": "오늘 진입",
       "supplySignal": "INST_BUY",
-      "eventBadges": "기관 순매수 | 저평가성장주",
+      "eventBadges": "이격도수렴 | 기관 순매수 | 저평가성장주",
       "highConviction": false,
-      "gateReason": "관찰만 — finalScore 71.4<84"
+      "gateReason": "관찰만 — finalScore 70.7<84"
     },
     {
       "symbol": "009900",
