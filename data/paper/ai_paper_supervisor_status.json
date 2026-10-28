@@ -1,11 +1,11 @@
 {
   "status": "OK",
-  "lastRunAt": "2026-10-28T23:26:26+09:00",
-  "market": "us",
+  "lastRunAt": "2026-10-29T08:57:57+09:00",
+  "market": "kr",
   "execute": true,
   "repair": {
     "status": "OK",
-    "journalRows": 4291,
+    "journalRows": 4352,
     "beforeRows": 4284,
     "afterRows": 4284,
     "changed": false,
@@ -15,9 +15,9 @@
   },
   "repairAfterEvaluation": {
     "status": "OK",
-    "journalRows": 4291,
-    "beforeRows": 4284,
-    "afterRows": 4284,
+    "journalRows": 4352,
+    "beforeRows": 4318,
+    "afterRows": 4318,
     "changed": false,
     "droppedMissingId": 0,
     "droppedOrphan": 0,
@@ -25,26 +25,26 @@
   },
   "evaluation": {
     "status": "OK",
-    "evaluated": 387,
+    "evaluated": 220,
     "outcomes": {
-      "PENDING": 262,
-      "DATA_PENDING": 125
+      "PENDING": 159,
+      "DATA_PENDING": 61
     }
   },
   "journal": {
     "status": "RUNNING",
     "recordingStatus": "OK",
     "evaluationStatus": "OK",
-    "latestCapturedAt": "2026-10-28T11:05:01",
-    "latestEvaluatedAt": "2026-10-28T23:26:25"
+    "latestCapturedAt": "2026-10-29T07:25:50",
+    "latestEvaluatedAt": "2026-10-29T08:57:55"
   },
   "paper": {
     "status": "OK",
     "dryRun": false,
-    "createdAt": "2026-10-28T23:26:26",
-    "market": "us",
+    "createdAt": "2026-10-29T08:57:56",
+    "market": "kr",
     "markets": {
-      "us": {
+      "kr": {
         "activeAgent": {
           "id": "ml_rank_conservative_swing",
           "label": "ML Rank Conservative Swing",
@@ -56,7 +56,7 @@
           {
             "action": "SKIP",
             "scope": "NEW_ENTRY",
-            "market": "us",
+            "market": "kr",
             "reason": "QUANT_OPERATING_GATE",
             "reasonCodes": [
               "REALIZED_WIN_RATE_BELOW_GATE",
@@ -74,144 +74,144 @@
           "agentId": "ml_rank_conservative_swing",
           "agentLabel": "ML Rank Conservative Swing",
           "generation": 2,
-          "seed": 5000.0,
-          "cash": 4958.16,
-          "invested": 131.53,
-          "valuation": 146.1,
-          "portfolioValue": 5104.26,
-          "unrealizedPnl": 14.56,
-          "totalPnl": 104.26,
-          "totalReturnPct": 2.09,
-          "positionCount": 2,
-          "tradeCount": 14
+          "seed": 5000000.0,
+          "cash": 4992296.6,
+          "invested": 0,
+          "valuation": 0,
+          "portfolioValue": 4992296.6,
+          "unrealizedPnl": 0,
+          "totalPnl": -7703.4,
+          "totalReturnPct": -0.15,
+          "positionCount": 0,
+          "tradeCount": 10
         },
         "liveMetrics": {
           "status": "OK",
           "proofStatus": "RUNNING",
-          "sampleCount": 94,
-          "navPointCount": 95,
-          "totalReturnPct": 2.09,
-          "mddPct": -0.6,
-          "sharpe": 2.45,
-          "winRate": 35.1,
-          "avgPeriodReturnPct": 0.02,
-          "cashPct": 97.1,
-          "peakValue": 5104.26,
-          "currentValue": 5104.26,
-          "lastNavDate": "2026-10-28",
+          "sampleCount": 27,
+          "navPointCount": 28,
+          "totalReturnPct": -0.15,
+          "mddPct": -0.52,
+          "sharpe": -0.96,
+          "winRate": 22.2,
+          "avgPeriodReturnPct": -0.01,
+          "cashPct": 100.0,
+          "peakValue": 5018311.28,
+          "currentValue": 4992296.6,
+          "lastNavDate": "2026-10-29",
           "recentReturnsPct": [
-            -0.32,
-            -0.11,
-            0.21,
-            0.18,
-            -0.01,
-            0.03,
-            0.06,
-            0.02
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
           ],
           "equityCurve": [
             {
               "index": 0,
-              "value": 5093.72,
-              "returnPct": 1.87
+              "value": 5011189.14,
+              "returnPct": 0.22
             },
             {
               "index": 1,
-              "value": 5093.29,
-              "returnPct": 1.87
+              "value": 4998954.65,
+              "returnPct": -0.02
             },
             {
               "index": 2,
-              "value": 5079.62,
-              "returnPct": 1.59
+              "value": 4998754.65,
+              "returnPct": -0.02
             },
             {
               "index": 3,
-              "value": 5079.62,
-              "returnPct": 1.59
+              "value": 4998554.65,
+              "returnPct": -0.03
             },
             {
               "index": 4,
-              "value": 5086.27,
-              "returnPct": 1.73
+              "value": 4992296.6,
+              "returnPct": -0.15
             },
             {
               "index": 5,
-              "value": 5085.11,
-              "returnPct": 1.7
+              "value": 4992296.6,
+              "returnPct": -0.15
             },
             {
               "index": 6,
-              "value": 5093.73,
-              "returnPct": 1.87
+              "value": 4992296.6,
+              "returnPct": -0.15
             },
             {
               "index": 7,
-              "value": 5101.48,
-              "returnPct": 2.03
+              "value": 4992296.6,
+              "returnPct": -0.15
             },
             {
               "index": 8,
-              "value": 5085.02,
-              "returnPct": 1.7
+              "value": 4992296.6,
+              "returnPct": -0.15
             },
             {
               "index": 9,
-              "value": 5079.27,
-              "returnPct": 1.59
+              "value": 4992296.6,
+              "returnPct": -0.15
             },
             {
               "index": 10,
-              "value": 5090.13,
-              "returnPct": 1.8
+              "value": 4992296.6,
+              "returnPct": -0.15
             },
             {
               "index": 11,
-              "value": 5099.25,
-              "returnPct": 1.98
+              "value": 4992296.6,
+              "returnPct": -0.15
             },
             {
               "index": 12,
-              "value": 5098.87,
-              "returnPct": 1.98
+              "value": 4992296.6,
+              "returnPct": -0.15
             },
             {
               "index": 13,
-              "value": 5100.18,
-              "returnPct": 2.0
+              "value": 4992296.6,
+              "returnPct": -0.15
             },
             {
               "index": 14,
-              "value": 5103.34,
-              "returnPct": 2.07
+              "value": 4992296.6,
+              "returnPct": -0.15
             },
             {
               "index": 15,
-              "value": 5104.26,
-              "returnPct": 2.09
+              "value": 4992296.6,
+              "returnPct": -0.15
             }
           ]
         },
         "realizedTrades": {
-          "closedTradeCount": 6,
-          "winRate": 50.0,
-          "avgNetPnlPct": 7.739,
-          "profitFactor": 3.732,
-          "payoffRatio": 3.732,
+          "closedTradeCount": 5,
+          "winRate": 40.0,
+          "avgNetPnlPct": 0.848,
+          "profitFactor": 0.575,
+          "payoffRatio": 0.863,
           "ratioStatus": "DEFINED",
-          "grossProfit": 122.52,
-          "grossLoss": 32.83,
+          "grossProfit": 10441.86,
+          "grossLoss": 18145.26,
           "costModel": "buy/sell slippage plus tax-commission",
           "costRates": {
             "buy": 0.001,
-            "sell": 0.002
+            "sell": 0.0031
           }
         },
         "survival": {
           "state": "ALIVE",
-          "seed": 5000.0,
-          "portfolioValue": 5104.26,
-          "survivalPct": 102.09
+          "seed": 5000000.0,
+          "portfolioValue": 4992296.6,
+          "survivalPct": 99.85
         },
         "proofBoard": {
           "status": "OK",
@@ -221,7 +221,7 @@
           "mddEvidenceReady": false,
           "mddEvidenceStatus": "NON_INFORMATIVE_OR_MISSING",
           "verdict": "NOT_PROVEN",
-          "currentRank": 5,
+          "currentRank": 6,
           "profileCount": 9,
           "current": {
             "agentId": "ml_rank_conservative_swing",
@@ -229,64 +229,80 @@
             "mode": "conservative",
             "horizon": "swing",
             "strategy": "corrected",
-            "sampleCount": 266,
-            "winRate": 10.9,
-            "avgNetPnlPct": -0.02,
+            "sampleCount": 213,
+            "winRate": 13.6,
+            "avgNetPnlPct": 0.93,
             "positiveWindowRate": 66.7,
             "mddPct": -100.0,
             "mddNormalized": false,
             "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-            "proofScore": 8.24,
+            "proofScore": 20.6,
             "lastWindow": "2026-08-01"
           },
           "leader": {
-            "agentId": "ml_rank_conservative_mid",
-            "agentLabel": "ML Rank Conservative Mid",
-            "mode": "conservative",
+            "agentId": "ml_rank_aggressive_mid",
+            "agentLabel": "ML Rank Aggressive Mid",
+            "mode": "aggressive",
             "horizon": "mid",
             "strategy": "corrected",
-            "sampleCount": 293,
-            "winRate": 21.8,
-            "avgNetPnlPct": 0.63,
-            "positiveWindowRate": 83.3,
+            "sampleCount": 178,
+            "winRate": 24.7,
+            "avgNetPnlPct": 1.97,
+            "positiveWindowRate": 80.0,
             "mddPct": -100.0,
             "mddNormalized": false,
             "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-            "proofScore": 24.07,
+            "proofScore": 40.33,
             "lastWindow": "2026-08-01"
           },
           "bestBaseline": {
-            "agentId": "baseline_ml_rank_conservative_mid",
-            "agentLabel": "Raw baseline conservative/mid",
-            "mode": "conservative",
+            "agentId": "baseline_ml_rank_aggressive_mid",
+            "agentLabel": "Raw baseline aggressive/mid",
+            "mode": "aggressive",
             "horizon": "mid",
             "strategy": "baseline",
-            "sampleCount": 292,
-            "winRate": 24.0,
-            "avgNetPnlPct": 0.71,
-            "positiveWindowRate": 83.3,
+            "sampleCount": 178,
+            "winRate": 24.2,
+            "avgNetPnlPct": 1.76,
+            "positiveWindowRate": 80.0,
             "mddPct": -100.0,
             "mddNormalized": false,
             "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-            "proofScore": 25.72,
+            "proofScore": 37.63,
             "lastWindow": "2026-08-01"
           },
           "beatsBestBaseline": false,
           "rows": [
+            {
+              "agentId": "ml_rank_aggressive_mid",
+              "agentLabel": "ML Rank Aggressive Mid",
+              "mode": "aggressive",
+              "horizon": "mid",
+              "strategy": "corrected",
+              "sampleCount": 178,
+              "winRate": 24.7,
+              "avgNetPnlPct": 1.97,
+              "positiveWindowRate": 80.0,
+              "mddPct": -100.0,
+              "mddNormalized": false,
+              "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
+              "proofScore": 40.33,
+              "lastWindow": "2026-08-01"
+            },
             {
               "agentId": "ml_rank_conservative_mid",
               "agentLabel": "ML Rank Conservative Mid",
               "mode": "conservative",
               "horizon": "mid",
               "strategy": "corrected",
-              "sampleCount": 293,
-              "winRate": 21.8,
-              "avgNetPnlPct": 0.63,
+              "sampleCount": 224,
+              "winRate": 22.3,
+              "avgNetPnlPct": 1.67,
               "positiveWindowRate": 83.3,
               "mddPct": -100.0,
               "mddNormalized": false,
               "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-              "proofScore": 24.07,
+              "proofScore": 36.69,
               "lastWindow": "2026-08-01"
             },
             {
@@ -295,30 +311,30 @@
               "mode": "balanced",
               "horizon": "mid",
               "strategy": "corrected",
-              "sampleCount": 271,
-              "winRate": 20.7,
-              "avgNetPnlPct": 0.52,
-              "positiveWindowRate": 83.3,
+              "sampleCount": 193,
+              "winRate": 23.8,
+              "avgNetPnlPct": 1.79,
+              "positiveWindowRate": 66.7,
               "mddPct": -100.0,
               "mddNormalized": false,
               "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-              "proofScore": 22.34,
+              "proofScore": 34.47,
               "lastWindow": "2026-08-01"
             },
             {
-              "agentId": "ml_rank_aggressive_mid",
-              "agentLabel": "ML Rank Aggressive Mid",
+              "agentId": "ml_rank_aggressive_swing",
+              "agentLabel": "ML Rank Aggressive Swing",
               "mode": "aggressive",
-              "horizon": "mid",
+              "horizon": "swing",
               "strategy": "corrected",
-              "sampleCount": 260,
-              "winRate": 20.4,
-              "avgNetPnlPct": 0.49,
-              "positiveWindowRate": 83.3,
+              "sampleCount": 168,
+              "winRate": 14.9,
+              "avgNetPnlPct": 1.2,
+              "positiveWindowRate": 60.0,
               "mddPct": -100.0,
               "mddNormalized": false,
               "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-              "proofScore": 21.87,
+              "proofScore": 22.64,
               "lastWindow": "2026-08-01"
             },
             {
@@ -327,48 +343,48 @@
               "mode": "balanced",
               "horizon": "swing",
               "strategy": "corrected",
-              "sampleCount": 232,
-              "winRate": 8.2,
-              "avgNetPnlPct": -0.24,
-              "positiveWindowRate": 83.3,
+              "sampleCount": 178,
+              "winRate": 14.6,
+              "avgNetPnlPct": 1.06,
+              "positiveWindowRate": 60.0,
               "mddPct": -100.0,
               "mddNormalized": false,
               "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-              "proofScore": 8.78,
-              "lastWindow": "2026-08-01"
-            },
-            {
-              "agentId": "ml_rank_conservative_swing",
-              "agentLabel": "ML Rank Conservative Swing",
-              "mode": "conservative",
-              "horizon": "swing",
-              "strategy": "corrected",
-              "sampleCount": 266,
-              "winRate": 10.9,
-              "avgNetPnlPct": -0.02,
-              "positiveWindowRate": 66.7,
-              "mddPct": -100.0,
-              "mddNormalized": false,
-              "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-              "proofScore": 8.24,
+              "proofScore": 20.85,
               "lastWindow": "2026-08-01"
             }
           ],
           "baselines": [
+            {
+              "agentId": "baseline_ml_rank_aggressive_mid",
+              "agentLabel": "Raw baseline aggressive/mid",
+              "mode": "aggressive",
+              "horizon": "mid",
+              "strategy": "baseline",
+              "sampleCount": 178,
+              "winRate": 24.2,
+              "avgNetPnlPct": 1.76,
+              "positiveWindowRate": 80.0,
+              "mddPct": -100.0,
+              "mddNormalized": false,
+              "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
+              "proofScore": 37.63,
+              "lastWindow": "2026-08-01"
+            },
             {
               "agentId": "baseline_ml_rank_conservative_mid",
               "agentLabel": "Raw baseline conservative/mid",
               "mode": "conservative",
               "horizon": "mid",
               "strategy": "baseline",
-              "sampleCount": 292,
-              "winRate": 24.0,
-              "avgNetPnlPct": 0.71,
+              "sampleCount": 225,
+              "winRate": 21.8,
+              "avgNetPnlPct": 1.45,
               "positiveWindowRate": 83.3,
               "mddPct": -100.0,
               "mddNormalized": false,
               "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-              "proofScore": 25.72,
+              "proofScore": 33.84,
               "lastWindow": "2026-08-01"
             },
             {
@@ -377,36 +393,20 @@
               "mode": "balanced",
               "horizon": "mid",
               "strategy": "baseline",
-              "sampleCount": 269,
-              "winRate": 22.7,
-              "avgNetPnlPct": 0.61,
-              "positiveWindowRate": 83.3,
+              "sampleCount": 193,
+              "winRate": 23.3,
+              "avgNetPnlPct": 1.57,
+              "positiveWindowRate": 66.7,
               "mddPct": -100.0,
               "mddNormalized": false,
               "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-              "proofScore": 24.03,
-              "lastWindow": "2026-08-01"
-            },
-            {
-              "agentId": "baseline_ml_rank_aggressive_mid",
-              "agentLabel": "Raw baseline aggressive/mid",
-              "mode": "aggressive",
-              "horizon": "mid",
-              "strategy": "baseline",
-              "sampleCount": 257,
-              "winRate": 22.6,
-              "avgNetPnlPct": 0.6,
-              "positiveWindowRate": 83.3,
-              "mddPct": -100.0,
-              "mddNormalized": false,
-              "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-              "proofScore": 23.96,
+              "proofScore": 31.69,
               "lastWindow": "2026-08-01"
             }
           ]
         },
         "operatingAuthority": {
-          "market": "us",
+          "market": "kr",
           "operatingState": "BLOCKED",
           "recommendationActionable": false,
           "entryAllowed": false,
@@ -437,7 +437,7 @@
             ]
           },
           "candidateCount": 0,
-          "rawCandidateCount": 4,
+          "rawCandidateCount": 3,
           "researchCandidateCount": 0,
           "paperResearch": {
             "enabled": true,
@@ -506,24 +506,24 @@
           ],
           "performanceGate": {
             "allowed": false,
-            "market": "us",
+            "market": "kr",
             "strategy": "conservative_swing",
-            "sampleCount": 112,
+            "sampleCount": 46,
             "minSamples": 20,
-            "winRate": 0.3571,
+            "winRate": 0.2826,
             "minWinRate": 0.45,
-            "avgReturnPct": -1.2342,
+            "avgReturnPct": -1.66,
             "reason": "REALIZED_WIN_RATE_BELOW_GATE"
           },
           "evCalibrationGate": {
-            "market": "us",
+            "market": "kr",
             "status": "INSUFFICIENT",
             "operationalEntryAllowed": false,
             "paperResearchAllowed": true,
             "researchSelectionPolicy": "EV_NEUTRAL_STRATIFIED",
             "autoInverseApplied": false,
             "cleanWindowStart": "2026-07-10",
-            "rowSamples": 55,
+            "rowSamples": 34,
             "distinctSignalDates": 9,
             "trainDateSamples": 6,
             "holdoutDateSamples": 3,
@@ -534,16 +534,16 @@
               "holdoutDates": 6
             },
             "highMinusLowBootstrapCi95": [
-              -8.9148,
-              12.8909
+              -17.2659,
+              2.8349
             ],
-            "rowCorrelation": -0.0922,
-            "dateCorrelation": -0.1024,
-            "trainDateCorrelation": -0.7191,
-            "holdoutDateCorrelation": 0.2592,
-            "lowEvQuartileAvgPnlPct": -1.8925,
-            "highEvQuartileAvgPnlPct": -2.5426,
-            "highMinusLowPnlPct": -0.6501
+            "rowCorrelation": -0.1857,
+            "dateCorrelation": 0.4418,
+            "trainDateCorrelation": -0.3734,
+            "holdoutDateCorrelation": 0.9301,
+            "lowEvQuartileAvgPnlPct": 0.348,
+            "highEvQuartileAvgPnlPct": -5.4605,
+            "highMinusLowPnlPct": -5.8086
           },
           "proofBoard": {
             "status": "OK",
@@ -553,7 +553,7 @@
             "mddEvidenceReady": false,
             "mddEvidenceStatus": "NON_INFORMATIVE_OR_MISSING",
             "verdict": "NOT_PROVEN",
-            "currentRank": 5,
+            "currentRank": 6,
             "profileCount": 9,
             "current": {
               "agentId": "ml_rank_conservative_swing",
@@ -561,64 +561,80 @@
               "mode": "conservative",
               "horizon": "swing",
               "strategy": "corrected",
-              "sampleCount": 266,
-              "winRate": 10.9,
-              "avgNetPnlPct": -0.02,
+              "sampleCount": 213,
+              "winRate": 13.6,
+              "avgNetPnlPct": 0.93,
               "positiveWindowRate": 66.7,
               "mddPct": -100.0,
               "mddNormalized": false,
               "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-              "proofScore": 8.24,
+              "proofScore": 20.6,
               "lastWindow": "2026-08-01"
             },
             "leader": {
-              "agentId": "ml_rank_conservative_mid",
-              "agentLabel": "ML Rank Conservative Mid",
-              "mode": "conservative",
+              "agentId": "ml_rank_aggressive_mid",
+              "agentLabel": "ML Rank Aggressive Mid",
+              "mode": "aggressive",
               "horizon": "mid",
               "strategy": "corrected",
-              "sampleCount": 293,
-              "winRate": 21.8,
-              "avgNetPnlPct": 0.63,
-              "positiveWindowRate": 83.3,
+              "sampleCount": 178,
+              "winRate": 24.7,
+              "avgNetPnlPct": 1.97,
+              "positiveWindowRate": 80.0,
               "mddPct": -100.0,
               "mddNormalized": false,
               "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-              "proofScore": 24.07,
+              "proofScore": 40.33,
               "lastWindow": "2026-08-01"
             },
             "bestBaseline": {
-              "agentId": "baseline_ml_rank_conservative_mid",
-              "agentLabel": "Raw baseline conservative/mid",
-              "mode": "conservative",
+              "agentId": "baseline_ml_rank_aggressive_mid",
+              "agentLabel": "Raw baseline aggressive/mid",
+              "mode": "aggressive",
               "horizon": "mid",
               "strategy": "baseline",
-              "sampleCount": 292,
-              "winRate": 24.0,
-              "avgNetPnlPct": 0.71,
-              "positiveWindowRate": 83.3,
+              "sampleCount": 178,
+              "winRate": 24.2,
+              "avgNetPnlPct": 1.76,
+              "positiveWindowRate": 80.0,
               "mddPct": -100.0,
               "mddNormalized": false,
               "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-              "proofScore": 25.72,
+              "proofScore": 37.63,
               "lastWindow": "2026-08-01"
             },
             "beatsBestBaseline": false,
             "rows": [
+              {
+                "agentId": "ml_rank_aggressive_mid",
+                "agentLabel": "ML Rank Aggressive Mid",
+                "mode": "aggressive",
+                "horizon": "mid",
+                "strategy": "corrected",
+                "sampleCount": 178,
+                "winRate": 24.7,
+                "avgNetPnlPct": 1.97,
+                "positiveWindowRate": 80.0,
+                "mddPct": -100.0,
+                "mddNormalized": false,
+                "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
+                "proofScore": 40.33,
+                "lastWindow": "2026-08-01"
+              },
               {
                 "agentId": "ml_rank_conservative_mid",
                 "agentLabel": "ML Rank Conservative Mid",
                 "mode": "conservative",
                 "horizon": "mid",
                 "strategy": "corrected",
-                "sampleCount": 293,
-                "winRate": 21.8,
-                "avgNetPnlPct": 0.63,
+                "sampleCount": 224,
+                "winRate": 22.3,
+                "avgNetPnlPct": 1.67,
                 "positiveWindowRate": 83.3,
                 "mddPct": -100.0,
                 "mddNormalized": false,
                 "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-                "proofScore": 24.07,
+                "proofScore": 36.69,
                 "lastWindow": "2026-08-01"
               },
               {
@@ -627,30 +643,30 @@
                 "mode": "balanced",
                 "horizon": "mid",
                 "strategy": "corrected",
-                "sampleCount": 271,
-                "winRate": 20.7,
-                "avgNetPnlPct": 0.52,
-                "positiveWindowRate": 83.3,
+                "sampleCount": 193,
+                "winRate": 23.8,
+                "avgNetPnlPct": 1.79,
+                "positiveWindowRate": 66.7,
                 "mddPct": -100.0,
                 "mddNormalized": false,
                 "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-                "proofScore": 22.34,
+                "proofScore": 34.47,
                 "lastWindow": "2026-08-01"
               },
               {
-                "agentId": "ml_rank_aggressive_mid",
-                "agentLabel": "ML Rank Aggressive Mid",
+                "agentId": "ml_rank_aggressive_swing",
+                "agentLabel": "ML Rank Aggressive Swing",
                 "mode": "aggressive",
-                "horizon": "mid",
+                "horizon": "swing",
                 "strategy": "corrected",
-                "sampleCount": 260,
-                "winRate": 20.4,
-                "avgNetPnlPct": 0.49,
-                "positiveWindowRate": 83.3,
+                "sampleCount": 168,
+                "winRate": 14.9,
+                "avgNetPnlPct": 1.2,
+                "positiveWindowRate": 60.0,
                 "mddPct": -100.0,
                 "mddNormalized": false,
                 "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-                "proofScore": 21.87,
+                "proofScore": 22.64,
                 "lastWindow": "2026-08-01"
               },
               {
@@ -659,48 +675,48 @@
                 "mode": "balanced",
                 "horizon": "swing",
                 "strategy": "corrected",
-                "sampleCount": 232,
-                "winRate": 8.2,
-                "avgNetPnlPct": -0.24,
-                "positiveWindowRate": 83.3,
+                "sampleCount": 178,
+                "winRate": 14.6,
+                "avgNetPnlPct": 1.06,
+                "positiveWindowRate": 60.0,
                 "mddPct": -100.0,
                 "mddNormalized": false,
                 "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-                "proofScore": 8.78,
-                "lastWindow": "2026-08-01"
-              },
-              {
-                "agentId": "ml_rank_conservative_swing",
-                "agentLabel": "ML Rank Conservative Swing",
-                "mode": "conservative",
-                "horizon": "swing",
-                "strategy": "corrected",
-                "sampleCount": 266,
-                "winRate": 10.9,
-                "avgNetPnlPct": -0.02,
-                "positiveWindowRate": 66.7,
-                "mddPct": -100.0,
-                "mddNormalized": false,
-                "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-                "proofScore": 8.24,
+                "proofScore": 20.85,
                 "lastWindow": "2026-08-01"
               }
             ],
             "baselines": [
+              {
+                "agentId": "baseline_ml_rank_aggressive_mid",
+                "agentLabel": "Raw baseline aggressive/mid",
+                "mode": "aggressive",
+                "horizon": "mid",
+                "strategy": "baseline",
+                "sampleCount": 178,
+                "winRate": 24.2,
+                "avgNetPnlPct": 1.76,
+                "positiveWindowRate": 80.0,
+                "mddPct": -100.0,
+                "mddNormalized": false,
+                "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
+                "proofScore": 37.63,
+                "lastWindow": "2026-08-01"
+              },
               {
                 "agentId": "baseline_ml_rank_conservative_mid",
                 "agentLabel": "Raw baseline conservative/mid",
                 "mode": "conservative",
                 "horizon": "mid",
                 "strategy": "baseline",
-                "sampleCount": 292,
-                "winRate": 24.0,
-                "avgNetPnlPct": 0.71,
+                "sampleCount": 225,
+                "winRate": 21.8,
+                "avgNetPnlPct": 1.45,
                 "positiveWindowRate": 83.3,
                 "mddPct": -100.0,
                 "mddNormalized": false,
                 "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-                "proofScore": 25.72,
+                "proofScore": 33.84,
                 "lastWindow": "2026-08-01"
               },
               {
@@ -709,30 +725,14 @@
                 "mode": "balanced",
                 "horizon": "mid",
                 "strategy": "baseline",
-                "sampleCount": 269,
-                "winRate": 22.7,
-                "avgNetPnlPct": 0.61,
-                "positiveWindowRate": 83.3,
+                "sampleCount": 193,
+                "winRate": 23.3,
+                "avgNetPnlPct": 1.57,
+                "positiveWindowRate": 66.7,
                 "mddPct": -100.0,
                 "mddNormalized": false,
                 "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-                "proofScore": 24.03,
-                "lastWindow": "2026-08-01"
-              },
-              {
-                "agentId": "baseline_ml_rank_aggressive_mid",
-                "agentLabel": "Raw baseline aggressive/mid",
-                "mode": "aggressive",
-                "horizon": "mid",
-                "strategy": "baseline",
-                "sampleCount": 257,
-                "winRate": 22.6,
-                "avgNetPnlPct": 0.6,
-                "positiveWindowRate": 83.3,
-                "mddPct": -100.0,
-                "mddNormalized": false,
-                "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-                "proofScore": 23.96,
+                "proofScore": 31.69,
                 "lastWindow": "2026-08-01"
               }
             ]
@@ -765,15 +765,15 @@
             "killSwitch": false
           },
           "priceSession": {
-            "market": "us",
-            "priceSession": "us_intraday",
-            "sessionLabel": "미장 장중",
-            "priceBasis": "미장 장중 · KIS 현재가 기준",
-            "nowKst": "2026-10-28T23:26:26.378562+09:00",
-            "nowLocal": "2026-10-28T10:26:26.378562-04:00",
+            "market": "kr",
+            "priceSession": "kr_premarket",
+            "sessionLabel": "국장 장전",
+            "priceBasis": "국장 장전 · 전일 OHLCV 종가 기준",
+            "nowKst": "2026-10-29T08:57:56.986239+09:00",
+            "nowLocal": "2026-10-29T08:57:56.986239+09:00",
             "isHoliday": false,
             "isReviewMode": false,
-            "isUsDst": true
+            "isUsDst": false
           },
           "quantShadow": {
             "status": "WARN",
@@ -796,22 +796,22 @@
           }
         },
         "nav": {
-          "date": "2026-10-28",
-          "createdAt": "2026-10-28T23:26:26",
-          "market": "us",
+          "date": "2026-10-29",
+          "createdAt": "2026-10-29T08:57:57",
+          "market": "kr",
           "agentId": "ml_rank_conservative_swing",
           "agentLabel": "ML Rank Conservative Swing",
           "generation": 2,
           "state": "ALIVE",
-          "seed": 5000.0,
-          "cash": 4958.16,
-          "valuation": 146.1,
-          "portfolioValue": 5104.26,
-          "totalPnl": 104.26,
-          "totalReturnPct": 2.09,
-          "survivalPct": 102.09,
-          "positionCount": 2,
-          "tradeCount": 14,
+          "seed": 5000000.0,
+          "cash": 4992296.6,
+          "valuation": 0,
+          "portfolioValue": 4992296.6,
+          "totalPnl": -7703.4,
+          "totalReturnPct": -0.15,
+          "survivalPct": 99.85,
+          "positionCount": 0,
+          "tradeCount": 10,
           "buyCount": 0,
           "sellCount": 0,
           "proofStatus": "RUNNING"
@@ -822,14 +822,14 @@
   "byMarket": {
     "kr": {
       "status": "OK",
-      "lastRunAt": "2026-10-28T08:58:49+09:00",
+      "lastRunAt": "2026-10-29T08:57:57+09:00",
       "market": "kr",
       "execute": true,
       "repair": {
         "status": "OK",
-        "journalRows": 4275,
-        "beforeRows": 4219,
-        "afterRows": 4219,
+        "journalRows": 4352,
+        "beforeRows": 4284,
+        "afterRows": 4284,
         "changed": false,
         "droppedMissingId": 0,
         "droppedOrphan": 0,
@@ -837,9 +837,9 @@
       },
       "repairAfterEvaluation": {
         "status": "OK",
-        "journalRows": 4275,
-        "beforeRows": 4246,
-        "afterRows": 4246,
+        "journalRows": 4352,
+        "beforeRows": 4318,
+        "afterRows": 4318,
         "changed": false,
         "droppedMissingId": 0,
         "droppedOrphan": 0,
@@ -847,23 +847,23 @@
       },
       "evaluation": {
         "status": "OK",
-        "evaluated": 213,
+        "evaluated": 220,
         "outcomes": {
-          "PENDING": 155,
-          "DATA_PENDING": 58
+          "PENDING": 159,
+          "DATA_PENDING": 61
         }
       },
       "journal": {
         "status": "RUNNING",
         "recordingStatus": "OK",
         "evaluationStatus": "OK",
-        "latestCapturedAt": "2026-10-28T07:25:50",
-        "latestEvaluatedAt": "2026-10-28T08:58:48"
+        "latestCapturedAt": "2026-10-29T07:25:50",
+        "latestEvaluatedAt": "2026-10-29T08:57:55"
       },
       "paper": {
         "status": "OK",
         "dryRun": false,
-        "createdAt": "2026-10-28T08:58:48",
+        "createdAt": "2026-10-29T08:57:56",
         "market": "kr",
         "markets": {
           "kr": {
@@ -910,17 +910,17 @@
             "liveMetrics": {
               "status": "OK",
               "proofStatus": "RUNNING",
-              "sampleCount": 26,
-              "navPointCount": 27,
+              "sampleCount": 27,
+              "navPointCount": 28,
               "totalReturnPct": -0.15,
               "mddPct": -0.52,
-              "sharpe": -0.98,
-              "winRate": 23.1,
+              "sharpe": -0.96,
+              "winRate": 22.2,
               "avgPeriodReturnPct": -0.01,
               "cashPct": 100.0,
               "peakValue": 5018311.28,
               "currentValue": 4992296.6,
-              "lastNavDate": "2026-10-28",
+              "lastNavDate": "2026-10-29",
               "recentReturnsPct": [
                 0.0,
                 0.0,
@@ -934,28 +934,28 @@
               "equityCurve": [
                 {
                   "index": 0,
-                  "value": 5018311.28,
-                  "returnPct": 0.37
-                },
-                {
-                  "index": 1,
                   "value": 5011189.14,
                   "returnPct": 0.22
                 },
                 {
-                  "index": 2,
+                  "index": 1,
                   "value": 4998954.65,
                   "returnPct": -0.02
                 },
                 {
-                  "index": 3,
+                  "index": 2,
                   "value": 4998754.65,
                   "returnPct": -0.02
                 },
                 {
-                  "index": 4,
+                  "index": 3,
                   "value": 4998554.65,
                   "returnPct": -0.03
+                },
+                {
+                  "index": 4,
+                  "value": 4992296.6,
+                  "returnPct": -0.15
                 },
                 {
                   "index": 5,
@@ -1259,7 +1259,7 @@
                 ]
               },
               "candidateCount": 0,
-              "rawCandidateCount": 72,
+              "rawCandidateCount": 3,
               "researchCandidateCount": 0,
               "paperResearch": {
                 "enabled": true,
@@ -1591,8 +1591,8 @@
                 "priceSession": "kr_premarket",
                 "sessionLabel": "국장 장전",
                 "priceBasis": "국장 장전 · 전일 OHLCV 종가 기준",
-                "nowKst": "2026-10-28T08:58:49.001148+09:00",
-                "nowLocal": "2026-10-28T08:58:49.001148+09:00",
+                "nowKst": "2026-10-29T08:57:56.986239+09:00",
+                "nowLocal": "2026-10-29T08:57:56.986239+09:00",
                 "isHoliday": false,
                 "isReviewMode": false,
                 "isUsDst": false
@@ -1618,8 +1618,8 @@
               }
             },
             "nav": {
-              "date": "2026-10-28",
-              "createdAt": "2026-10-28T08:58:49",
+              "date": "2026-10-29",
+              "createdAt": "2026-10-29T08:57:57",
               "market": "kr",
               "agentId": "ml_rank_conservative_swing",
               "agentLabel": "ML Rank Conservative Swing",
