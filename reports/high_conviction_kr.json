@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-28T14:57:21.546770+00:00",
+  "generatedAt": "2026-10-28T22:11:14.510985+00:00",
   "market": "kr",
   "marketRegime": "BULL",
   "marketRegimeLabel": "강세장",
@@ -29,9 +29,22 @@
     "winRate": null
   },
   "note": "앱이 지는 이유=전부 거래. 실측상 (+)인 유일 구성(강세장+finalScore≥84)만 실전. 약세/횡보/저점수는 실전 없음(현금 보존). 이게 −1.92%→+0.72%의 차이.",
-  "candidateCount": 15,
+  "candidateCount": 16,
   "actionableCount": 3,
   "candidates": [
+    {
+      "symbol": "031210",
+      "name": "031210",
+      "finalScore": 93.8,
+      "entry": null,
+      "stop": null,
+      "target": null,
+      "decisionBucket": "오늘 진입",
+      "supplySignal": "STRONG_BUY",
+      "eventBadges": "이격도수렴 | 기관+외국인 동반매수",
+      "highConviction": true,
+      "gateReason": "실전 후보 (강세장 + finalScore≥84, 실측 +0.72%)"
+    },
     {
       "symbol": "121440",
       "name": "121440",
@@ -48,7 +61,7 @@
     {
       "symbol": "352820",
       "name": "하이브",
-      "finalScore": 89.4,
+      "finalScore": 91.4,
       "entry": null,
       "stop": null,
       "target": null,
@@ -59,30 +72,17 @@
       "gateReason": "실전 후보 (강세장 + finalScore≥84, 실측 +0.72%)"
     },
     {
-      "symbol": "004490",
-      "name": "004490",
-      "finalScore": 85.6,
+      "symbol": "035900",
+      "name": "JYP Ent.",
+      "finalScore": 80.1,
       "entry": null,
       "stop": null,
       "target": null,
       "decisionBucket": "오늘 진입",
-      "supplySignal": "SELL_PRESSURE",
-      "eventBadges": "이격도수렴 | 기관+외국인 순매도",
-      "highConviction": true,
-      "gateReason": "실전 후보 (강세장 + finalScore≥84, 실측 +0.72%)"
-    },
-    {
-      "symbol": "086900",
-      "name": "메디톡스",
-      "finalScore": 79.7,
-      "entry": null,
-      "stop": null,
-      "target": null,
-      "decisionBucket": "기다림",
-      "supplySignal": "FOREIGN_BUY",
-      "eventBadges": "외국인 순매수",
+      "supplySignal": "INST_BUY",
+      "eventBadges": "기관 순매수 | 저평가성장주",
       "highConviction": false,
-      "gateReason": "관찰만 — finalScore 79.7<84"
+      "gateReason": "관찰만 — finalScore 80.1<84"
     },
     {
       "symbol": "035760",
@@ -137,17 +137,30 @@
       "gateReason": "관찰만 — finalScore 74.8<84"
     },
     {
-      "symbol": "031210",
-      "name": "031210",
-      "finalScore": 73.5,
+      "symbol": "086900",
+      "name": "메디톡스",
+      "finalScore": 73.8,
+      "entry": null,
+      "stop": null,
+      "target": null,
+      "decisionBucket": "기다림",
+      "supplySignal": "SELL_PRESSURE",
+      "eventBadges": "기관+외국인 순매도",
+      "highConviction": false,
+      "gateReason": "관찰만 — finalScore 73.8<84"
+    },
+    {
+      "symbol": "006120",
+      "name": "006120",
+      "finalScore": 73.3,
       "entry": null,
       "stop": null,
       "target": null,
       "decisionBucket": "오늘 진입",
-      "supplySignal": "STRONG_BUY",
-      "eventBadges": "이격도수렴 | 기관+외국인 동반매수",
+      "supplySignal": "FOREIGN_BUY",
+      "eventBadges": "외국인 순매수",
       "highConviction": false,
-      "gateReason": "관찰만 — finalScore 73.5<84"
+      "gateReason": "관찰만 — finalScore 73.3<84"
     },
     {
       "symbol": "008350",
@@ -163,30 +176,30 @@
       "gateReason": "관찰만 — finalScore 72.7<84"
     },
     {
-      "symbol": "035900",
-      "name": "JYP Ent.",
-      "finalScore": 70.7,
-      "entry": null,
-      "stop": null,
-      "target": null,
-      "decisionBucket": "오늘 진입",
-      "supplySignal": "INST_BUY",
-      "eventBadges": "이격도수렴 | 기관 순매수 | 저평가성장주",
-      "highConviction": false,
-      "gateReason": "관찰만 — finalScore 70.7<84"
-    },
-    {
       "symbol": "009900",
       "name": "009900",
-      "finalScore": 67.5,
+      "finalScore": 69.5,
       "entry": null,
       "stop": null,
       "target": null,
       "decisionBucket": "오늘 진입",
+      "supplySignal": "STRONG_BUY",
+      "eventBadges": "기관+외국인 동반매수",
+      "highConviction": false,
+      "gateReason": "관찰만 — finalScore 69.5<84"
+    },
+    {
+      "symbol": "271560",
+      "name": "271560",
+      "finalScore": 67.6,
+      "entry": null,
+      "stop": null,
+      "target": null,
+      "decisionBucket": "기다림",
       "supplySignal": "INST_BUY",
       "eventBadges": "기관 순매수",
       "highConviction": false,
-      "gateReason": "관찰만 — finalScore 67.5<84"
+      "gateReason": "관찰만 — finalScore 67.6<84"
     },
     {
       "symbol": "006280",
@@ -202,30 +215,30 @@
       "gateReason": "관찰만 — finalScore 64.6<84"
     },
     {
-      "symbol": "393210",
-      "name": "393210",
-      "finalScore": 64.1,
-      "entry": null,
-      "stop": null,
-      "target": null,
-      "decisionBucket": "기다림",
-      "supplySignal": "FOREIGN_BUY",
-      "eventBadges": "EV음수 | 외국인 순매수",
-      "highConviction": false,
-      "gateReason": "관찰만 — finalScore 64.1<84"
-    },
-    {
       "symbol": "027710",
       "name": "027710",
-      "finalScore": 59.6,
+      "finalScore": 63.6,
       "entry": null,
       "stop": null,
       "target": null,
       "decisionBucket": "기다림",
-      "supplySignal": "SELL_PRESSURE",
-      "eventBadges": "EV음수 | 이격도수렴 | 기관+외국인 순매도",
+      "supplySignal": "INST_BUY",
+      "eventBadges": "EV음수 | 이격도수렴 | 기관 순매수",
       "highConviction": false,
-      "gateReason": "관찰만 — finalScore 59.6<84"
+      "gateReason": "관찰만 — finalScore 63.6<84"
+    },
+    {
+      "symbol": "393210",
+      "name": "393210",
+      "finalScore": 62.1,
+      "entry": null,
+      "stop": null,
+      "target": null,
+      "decisionBucket": "기다림",
+      "supplySignal": "NEUTRAL",
+      "eventBadges": "EV음수",
+      "highConviction": false,
+      "gateReason": "관찰만 — finalScore 62.1<84"
     }
   ]
 }
