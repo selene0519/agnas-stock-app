@@ -3,10 +3,26 @@
   "created": [
     {
       "market": "kr",
+      "mode": "conservative",
+      "horizon": "swing",
+      "file": "mone_v36_final_trade_validation_kr_conservative_swing_20261028.csv",
+      "rows": 1,
+      "normalRows": 1
+    },
+    {
+      "market": "kr",
+      "mode": "conservative",
+      "horizon": "mid",
+      "file": "mone_v36_final_trade_validation_kr_conservative_mid_20261028.csv",
+      "rows": 3,
+      "normalRows": 1
+    },
+    {
+      "market": "kr",
       "mode": "balanced",
       "horizon": "mid",
       "file": "mone_v36_final_trade_validation_kr_balanced_mid_20261028.csv",
-      "rows": 10,
+      "rows": 11,
       "normalRows": 10
     },
     {
@@ -14,8 +30,8 @@
       "mode": "aggressive",
       "horizon": "mid",
       "file": "mone_v36_final_trade_validation_kr_aggressive_mid_20261028.csv",
-      "rows": 23,
-      "normalRows": 23
+      "rows": 29,
+      "normalRows": 26
     }
   ],
   "skipped": [
@@ -28,37 +44,23 @@
     },
     {
       "market": "kr",
-      "mode": "conservative",
-      "horizon": "swing",
-      "rows": 0,
-      "reason": "no_today_ohlcv_or_no_recommendations"
-    },
-    {
-      "market": "kr",
-      "mode": "conservative",
-      "horizon": "mid",
-      "rows": 0,
-      "reason": "no_today_ohlcv_or_no_recommendations"
-    },
-    {
-      "market": "kr",
       "mode": "balanced",
       "horizon": "short",
-      "rows": 0,
+      "rows": 2,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
       "market": "kr",
       "mode": "balanced",
       "horizon": "swing",
-      "rows": 0,
+      "rows": 1,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
       "market": "kr",
       "mode": "aggressive",
       "horizon": "short",
-      "rows": 0,
+      "rows": 1,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
@@ -132,5 +134,5 @@
       "reason": "no_today_ohlcv_or_no_recommendations"
     }
   ],
-  "updatedAt": "2026-10-28T11:02:56"
+  "updatedAt": "2026-10-28T16:30:14"
 }
