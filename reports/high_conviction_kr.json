@@ -1,16 +1,16 @@
 {
-  "generatedAt": "2026-10-29T07:29:29.135578+00:00",
+  "generatedAt": "2026-10-29T13:06:28.495942+00:00",
   "market": "kr",
   "marketRegime": "BULL",
   "marketRegimeLabel": "강세장",
   "regimeDetail": {
     "asOf": "2026-10-29",
-    "distToMa20": -3.57,
-    "mom5": 6.28,
-    "trend60": 5.14,
-    "volRatio": 0.928,
+    "distToMa20": -2.69,
+    "mom5": 7.3,
+    "trend60": 6.15,
+    "volRatio": 0.943,
     "definition": "trend60+거래량(약추세만)",
-    "kospi": 5881.19
+    "kospi": 5937.66
   },
   "favorableRegime": true,
   "finalScoreThreshold": 84.0,
@@ -24,13 +24,13 @@
   },
   "forwardProof": {
     "settled": 0,
-    "pending": 6,
+    "pending": 8,
     "avgNetPct": null,
     "winRate": null
   },
   "note": "앱이 지는 이유=전부 거래. 실측상 (+)인 유일 구성(강세장+finalScore≥84)만 실전. 약세/횡보/저점수는 실전 없음(현금 보존). 이게 −1.92%→+0.72%의 차이.",
-  "candidateCount": 20,
-  "actionableCount": 2,
+  "candidateCount": 22,
+  "actionableCount": 3,
   "candidates": [
     {
       "symbol": "121440",
@@ -59,6 +59,19 @@
       "gateReason": "실전 후보 (강세장 + finalScore≥84, 실측 +0.72%)"
     },
     {
+      "symbol": "031210",
+      "name": "031210",
+      "finalScore": 85.6,
+      "entry": null,
+      "stop": null,
+      "target": null,
+      "decisionBucket": "오늘 진입",
+      "supplySignal": "STRONG_BUY",
+      "eventBadges": "이격도수렴 | 기관+외국인 동반매수",
+      "highConviction": true,
+      "gateReason": "실전 후보 (강세장 + finalScore≥84, 실측 +0.72%)"
+    },
+    {
       "symbol": "035900",
       "name": "JYP Ent.",
       "finalScore": 82.2,
@@ -74,7 +87,7 @@
     {
       "symbol": "293490",
       "name": "카카오게임즈",
-      "finalScore": 79.7,
+      "finalScore": 80.5,
       "entry": null,
       "stop": null,
       "target": null,
@@ -82,12 +95,12 @@
       "supplySignal": "INST_BUY",
       "eventBadges": "기관 순매수",
       "highConviction": false,
-      "gateReason": "관찰만 — finalScore 79.7<84"
+      "gateReason": "관찰만 — finalScore 80.5<84"
     },
     {
       "symbol": "018260",
       "name": "삼성에스디에스",
-      "finalScore": 78.0,
+      "finalScore": 77.9,
       "entry": null,
       "stop": null,
       "target": null,
@@ -95,7 +108,7 @@
       "supplySignal": "INST_BUY",
       "eventBadges": "기관 순매수",
       "highConviction": false,
-      "gateReason": "관찰만 — finalScore 78.0<84"
+      "gateReason": "관찰만 — finalScore 77.9<84"
     },
     {
       "symbol": "046970",
@@ -124,22 +137,22 @@
       "gateReason": "관찰만 — finalScore 74.8<84"
     },
     {
-      "symbol": "352820",
-      "name": "하이브",
-      "finalScore": 74.1,
+      "symbol": "036460",
+      "name": "036460",
+      "finalScore": 73.8,
       "entry": null,
       "stop": null,
       "target": null,
-      "decisionBucket": "대기 관찰",
-      "supplySignal": "STRONG_BUY",
-      "eventBadges": "기관+외국인 동반매수",
+      "decisionBucket": "오늘 진입",
+      "supplySignal": "INST_BUY",
+      "eventBadges": "이격도수렴 | 기관 순매수",
       "highConviction": false,
-      "gateReason": "관찰만 — finalScore 74.1<84"
+      "gateReason": "관찰만 — finalScore 73.8<84"
     },
     {
       "symbol": "012750",
       "name": "012750",
-      "finalScore": 73.5,
+      "finalScore": 73.8,
       "entry": null,
       "stop": null,
       "target": null,
@@ -147,20 +160,7 @@
       "supplySignal": "INST_BUY",
       "eventBadges": "기관 순매수",
       "highConviction": false,
-      "gateReason": "관찰만 — finalScore 73.5<84"
-    },
-    {
-      "symbol": "006120",
-      "name": "006120",
-      "finalScore": 73.3,
-      "entry": null,
-      "stop": null,
-      "target": null,
-      "decisionBucket": "오늘 진입",
-      "supplySignal": "FOREIGN_BUY",
-      "eventBadges": "외국인 순매수",
-      "highConviction": false,
-      "gateReason": "관찰만 — finalScore 73.3<84"
+      "gateReason": "관찰만 — finalScore 73.8<84"
     },
     {
       "symbol": "008350",
@@ -174,6 +174,19 @@
       "eventBadges": "기관 순매수",
       "highConviction": false,
       "gateReason": "관찰만 — finalScore 72.7<84"
+    },
+    {
+      "symbol": "352820",
+      "name": "하이브",
+      "finalScore": 72.2,
+      "entry": null,
+      "stop": null,
+      "target": null,
+      "decisionBucket": "대기 관찰",
+      "supplySignal": "INST_BUY",
+      "eventBadges": "기관 순매수",
+      "highConviction": false,
+      "gateReason": "관찰만 — finalScore 72.2<84"
     },
     {
       "symbol": "035760",
@@ -191,7 +204,7 @@
     {
       "symbol": "000810",
       "name": "삼성화재",
-      "finalScore": 70.8,
+      "finalScore": 71.8,
       "entry": null,
       "stop": null,
       "target": null,
@@ -199,7 +212,33 @@
       "supplySignal": "STRONG_BUY",
       "eventBadges": "기관+외국인 동반매수",
       "highConviction": false,
-      "gateReason": "관찰만 — finalScore 70.8<84"
+      "gateReason": "관찰만 — finalScore 71.8<84"
+    },
+    {
+      "symbol": "326030",
+      "name": "SK바이오팜",
+      "finalScore": 71.3,
+      "entry": null,
+      "stop": null,
+      "target": null,
+      "decisionBucket": "대기 관찰",
+      "supplySignal": "INST_BUY",
+      "eventBadges": "기관 순매수 | 저평가성장주",
+      "highConviction": false,
+      "gateReason": "관찰만 — finalScore 71.3<84"
+    },
+    {
+      "symbol": "033780",
+      "name": "033780",
+      "finalScore": 65.0,
+      "entry": null,
+      "stop": null,
+      "target": null,
+      "decisionBucket": "오늘 진입",
+      "supplySignal": "SELL_PRESSURE",
+      "eventBadges": "기관+외국인 순매도",
+      "highConviction": false,
+      "gateReason": "관찰만 — finalScore 65.0<84"
     },
     {
       "symbol": "006280",
@@ -228,19 +267,6 @@
       "gateReason": "관찰만 — finalScore 64.1<84"
     },
     {
-      "symbol": "032830",
-      "name": "삼성생명",
-      "finalScore": 63.8,
-      "entry": null,
-      "stop": null,
-      "target": null,
-      "decisionBucket": "기다림",
-      "supplySignal": "INST_BUY",
-      "eventBadges": "EV음수 | 기관 순매수",
-      "highConviction": false,
-      "gateReason": "관찰만 — finalScore 63.8<84"
-    },
-    {
       "symbol": "027710",
       "name": "027710",
       "finalScore": 63.6,
@@ -254,19 +280,6 @@
       "gateReason": "관찰만 — finalScore 63.6<84"
     },
     {
-      "symbol": "033780",
-      "name": "033780",
-      "finalScore": 62.0,
-      "entry": null,
-      "stop": null,
-      "target": null,
-      "decisionBucket": "오늘 진입",
-      "supplySignal": "SELL_PRESSURE",
-      "eventBadges": "기관+외국인 순매도",
-      "highConviction": false,
-      "gateReason": "관찰만 — finalScore 62.0<84"
-    },
-    {
       "symbol": "009900",
       "name": "009900",
       "finalScore": 61.5,
@@ -278,19 +291,6 @@
       "eventBadges": "기관+외국인 순매도",
       "highConviction": false,
       "gateReason": "관찰만 — finalScore 61.5<84"
-    },
-    {
-      "symbol": "271560",
-      "name": "271560",
-      "finalScore": 45.6,
-      "entry": null,
-      "stop": null,
-      "target": null,
-      "decisionBucket": "기다림",
-      "supplySignal": "INST_BUY",
-      "eventBadges": "EV음수 | 기관 순매수",
-      "highConviction": false,
-      "gateReason": "관찰만 — finalScore 45.6<84"
     }
   ]
 }
