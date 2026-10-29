@@ -1,6 +1,6 @@
 {
   "status": "OK",
-  "generatedAt": "2026-10-29T02:05:43+00:00",
+  "generatedAt": "2026-10-29T07:11:17+00:00",
   "asOfDate": "2026-10-29",
   "count": 21,
   "items": [
@@ -776,9 +776,16 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Bristol-Myers Squibb",
-        "publicationCountRecent5y": 3017,
+        "publicationCountRecent5y": 3019,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
         "publications": [
+          {
+            "pmid": "42951519",
+            "title": "De novo development strategy for a robust immunocapture-LC-MS/MS assay to quantify soluble fibrinogen-like protein 1 (FGL1) as a potential clinical biomarker for immunotherapy drug development.",
+            "publicationDate": "2026 Dec 1",
+            "journal": "Analytica chimica acta",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42951519/"
+          },
           {
             "pmid": "42787530",
             "title": "Quality of life and care experience in durable responders to immune checkpoint inhibitors for advanced or metastatic NSCLC or melanoma.",
@@ -806,13 +813,6 @@
             "publicationDate": "2026 Dec",
             "journal": "mAbs",
             "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42253269/"
-          },
-          {
-            "pmid": "42105309",
-            "title": "Cost-effectiveness analysis of xanomeline and trospium chloride for the treatment of adults with schizophrenia in the US.",
-            "publicationDate": "2026 Dec",
-            "journal": "Journal of medical economics",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42105309/"
           }
         ],
         "source": "NCBI PubMed E-utilities",
@@ -1325,7 +1325,7 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Eli Lilly and Company",
-        "publicationCountRecent5y": 2861,
+        "publicationCountRecent5y": 2862,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
         "publications": [
           {
@@ -1811,7 +1811,7 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Novo Nordisk",
-        "publicationCountRecent5y": 6331,
+        "publicationCountRecent5y": 6333,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
         "publications": [
           {
@@ -2432,7 +2432,7 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Vertex Pharmaceuticals",
-        "publicationCountRecent5y": 381,
+        "publicationCountRecent5y": 380,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
         "publications": [
           {
@@ -4181,14 +4181,14 @@
   ],
   "pointInTimeLedger": {
     "status": "OK",
-    "addedSnapshots": 0,
-    "addedEvents": 0,
-    "snapshotCount": 2074,
-    "eventCount": 7612
+    "addedSnapshots": 4,
+    "addedEvents": 1,
+    "snapshotCount": 2078,
+    "eventCount": 7613
   },
   "validationGate": {
     "status": "RESEARCH_ONLY",
-    "generatedAt": "2026-10-29T02:05:43+00:00",
+    "generatedAt": "2026-10-29T07:11:17+00:00",
     "evaluatedDirectionalEventCount": 0,
     "promotionCount": 0,
     "operationalScoreAdjustmentAllowed": false,
