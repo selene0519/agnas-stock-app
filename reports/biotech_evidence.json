@@ -1,6 +1,6 @@
 {
   "status": "OK",
-  "generatedAt": "2026-10-30T02:14:51+00:00",
+  "generatedAt": "2026-10-30T07:11:24+00:00",
   "asOfDate": "2026-10-30",
   "count": 21,
   "items": [
@@ -332,7 +332,7 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "AbbVie",
-        "publicationCountRecent5y": 3220,
+        "publicationCountRecent5y": 3221,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
         "publications": [
           {
@@ -564,7 +564,7 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Amgen",
-        "publicationCountRecent5y": 2246,
+        "publicationCountRecent5y": 2247,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
         "publications": [
           {
@@ -768,9 +768,16 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Bristol-Myers Squibb",
-        "publicationCountRecent5y": 3020,
+        "publicationCountRecent5y": 3022,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
         "publications": [
+          {
+            "pmid": "42636950",
+            "title": "Mavacamten monotherapy in obstructive hypertrophic cardiomyopathy: An integrated analysis of phase 3 clinical trials.",
+            "publicationDate": "2027 Jan",
+            "journal": "American heart journal",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42636950/"
+          },
           {
             "pmid": "42951519",
             "title": "De novo development strategy for a robust immunocapture-LC-MS/MS assay to quantify soluble fibrinogen-like protein 1 (FGL1) as a potential clinical biomarker for immunotherapy drug development.",
@@ -798,13 +805,6 @@
             "publicationDate": "2026 Dec",
             "journal": "Journal of medical economics",
             "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42258343/"
-          },
-          {
-            "pmid": "42253269",
-            "title": "Subcutaneous drug delivery of high concentration antibody products - part 2: formulation, device options, and clinical bridging strategies for patient-centric commercial presentations.",
-            "publicationDate": "2026 Dec",
-            "journal": "mAbs",
-            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/42253269/"
           }
         ],
         "source": "NCBI PubMed E-utilities",
@@ -1368,7 +1368,7 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Eli Lilly and Company",
-        "publicationCountRecent5y": 2864,
+        "publicationCountRecent5y": 2865,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
         "publications": [
           {
@@ -2101,7 +2101,7 @@
       "pubMed": {
         "status": "OK",
         "queryCompany": "Pfizer",
-        "publicationCountRecent5y": 6980,
+        "publicationCountRecent5y": 6981,
         "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
         "publications": [
           {
@@ -4471,14 +4471,14 @@
   ],
   "pointInTimeLedger": {
     "status": "OK",
-    "addedSnapshots": 0,
-    "addedEvents": 0,
-    "snapshotCount": 2113,
-    "eventCount": 7789
+    "addedSnapshots": 5,
+    "addedEvents": 1,
+    "snapshotCount": 2118,
+    "eventCount": 7790
   },
   "validationGate": {
     "status": "RESEARCH_ONLY",
-    "generatedAt": "2026-10-30T02:14:51+00:00",
+    "generatedAt": "2026-10-30T07:11:24+00:00",
     "evaluatedDirectionalEventCount": 0,
     "promotionCount": 0,
     "operationalScoreAdjustmentAllowed": false,

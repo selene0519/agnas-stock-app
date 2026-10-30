@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-10-30T02:31:36.522124+00:00",
+  "generatedAt": "2026-10-30T07:27:20.915119+00:00",
   "asOfDate": "2026-10-30",
   "market": "kr",
-  "marketRegime": "BULL",
-  "breadthAboveMa60": 0.103,
-  "activeLens": "BREAKOUT",
+  "marketRegime": "BEAR",
+  "breadthAboveMa60": 0.106,
+  "activeLens": "BOTTOM_CATCH",
   "activeSetupByRegime": {
     "BULL": [
       "BREAKOUT"
@@ -13,10 +13,10 @@
     "BEAR": []
   },
   "selfCalibrated": true,
-  "liveSamplesTotal": 411,
+  "liveSamplesTotal": 412,
   "universeSize": 959,
-  "candidateCount": 32,
-  "actionableCount": 7,
+  "candidateCount": 37,
+  "actionableCount": 0,
   "disclaimer": "생존편향(현상장 glob만)로 백테스트 낙관. actionable(ACTIVE)만 자가보정 통과 — 실사이징은 라이브 VTJ forward 검증 후.",
   "candidates": [
     {
@@ -31,9 +31,9 @@
       "rrRatio": 2.0,
       "rsi14": 69.4,
       "distMa20Pct": 3.7,
-      "calibrationGate": "ACTIVE",
-      "sizeMultiplier": 0.41,
-      "actionable": true
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
     },
     {
       "symbol": "008350",
@@ -47,9 +47,9 @@
       "rrRatio": 2.0,
       "rsi14": 71.2,
       "distMa20Pct": 5.8,
-      "calibrationGate": "ACTIVE",
-      "sizeMultiplier": 0.41,
-      "actionable": true
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
     },
     {
       "symbol": "107640",
@@ -63,25 +63,41 @@
       "rrRatio": 2.0,
       "rsi14": 65.5,
       "distMa20Pct": 17.3,
-      "calibrationGate": "ACTIVE",
-      "sizeMultiplier": 0.41,
-      "actionable": true
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
     },
     {
       "symbol": "033780",
       "name": "KT&G",
       "setup": "BREAKOUT",
       "asOfDate": "2026-10-30",
-      "close": 194700.0,
-      "entryRef": 194700.0,
-      "stop": 186912,
-      "target": 210276,
+      "close": 195500.0,
+      "entryRef": 195500.0,
+      "stop": 187680,
+      "target": 211140,
       "rrRatio": 2.0,
-      "rsi14": 72.8,
-      "distMa20Pct": 4.6,
-      "calibrationGate": "ACTIVE",
-      "sizeMultiplier": 0.41,
-      "actionable": true
+      "rsi14": 73.4,
+      "distMa20Pct": 5.1,
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
+    },
+    {
+      "symbol": "036460",
+      "name": "한국가스공사",
+      "setup": "BREAKOUT",
+      "asOfDate": "2026-10-30",
+      "close": 36950.0,
+      "entryRef": 36950.0,
+      "stop": 35472,
+      "target": 39906,
+      "rrRatio": 2.0,
+      "rsi14": 63.9,
+      "distMa20Pct": 2.0,
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
     },
     {
       "symbol": "260870",
@@ -95,9 +111,9 @@
       "rrRatio": 2.0,
       "rsi14": 75.0,
       "distMa20Pct": 0.2,
-      "calibrationGate": "ACTIVE",
-      "sizeMultiplier": 0.41,
-      "actionable": true
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
     },
     {
       "symbol": "354320",
@@ -111,9 +127,9 @@
       "rrRatio": 2.0,
       "rsi14": 69.9,
       "distMa20Pct": 33.9,
-      "calibrationGate": "ACTIVE",
-      "sizeMultiplier": 0.41,
-      "actionable": true
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
     },
     {
       "symbol": "006280",
@@ -127,9 +143,9 @@
       "rrRatio": 2.0,
       "rsi14": 65.1,
       "distMa20Pct": 4.8,
-      "calibrationGate": "ACTIVE",
-      "sizeMultiplier": 0.41,
-      "actionable": true
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
     },
     {
       "symbol": "250030",
@@ -180,17 +196,49 @@
       "actionable": false
     },
     {
+      "symbol": "010950",
+      "name": "S-Oil",
+      "setup": "BOTTOM_CATCH",
+      "asOfDate": "2026-10-30",
+      "close": 122300.0,
+      "entryRef": 122300.0,
+      "stop": 117806,
+      "target": 132084,
+      "rrRatio": 2.18,
+      "rsi14": 17.0,
+      "distMa20Pct": -17.3,
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
+    },
+    {
+      "symbol": "329180",
+      "name": "HD현대중공업",
+      "setup": "BOTTOM_CATCH",
+      "asOfDate": "2026-10-30",
+      "close": 272500.0,
+      "entryRef": 272500.0,
+      "stop": 259548,
+      "target": 294300,
+      "rrRatio": 1.68,
+      "rsi14": 17.7,
+      "distMa20Pct": -20.6,
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
+    },
+    {
       "symbol": "035250",
       "name": "강원랜드",
       "setup": "BOTTOM_CATCH",
       "asOfDate": "2026-10-30",
-      "close": 13710.0,
-      "entryRef": 13710.0,
+      "close": 13770.0,
+      "entryRef": 13770.0,
       "stop": 13347,
-      "target": 14807,
-      "rrRatio": 3.02,
-      "rsi14": 16.8,
-      "distMa20Pct": -3.1,
+      "target": 14872,
+      "rrRatio": 2.61,
+      "rsi14": 21.5,
+      "distMa20Pct": -2.7,
       "calibrationGate": "SUPPRESSED_LOW_EDGE",
       "sizeMultiplier": 0.0,
       "actionable": false
@@ -223,6 +271,22 @@
       "rrRatio": 1.39,
       "rsi14": 22.5,
       "distMa20Pct": -20.2,
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
+    },
+    {
+      "symbol": "055550",
+      "name": "신한지주",
+      "setup": "BOTTOM_CATCH",
+      "asOfDate": "2026-10-30",
+      "close": 89700.0,
+      "entryRef": 89700.0,
+      "stop": 86286,
+      "target": 96876,
+      "rrRatio": 2.1,
+      "rsi14": 22.6,
+      "distMa20Pct": -5.3,
       "calibrationGate": "SUPPRESSED_LOW_EDGE",
       "sizeMultiplier": 0.0,
       "actionable": false
@@ -324,22 +388,6 @@
       "actionable": false
     },
     {
-      "symbol": "443060",
-      "name": "HD현대마린솔루션",
-      "setup": "BOTTOM_CATCH",
-      "asOfDate": "2026-10-30",
-      "close": 167600.0,
-      "entryRef": 167600.0,
-      "stop": 158092,
-      "target": 181008,
-      "rrRatio": 1.41,
-      "rsi14": 25.3,
-      "distMa20Pct": -18.1,
-      "calibrationGate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "actionable": false
-    },
-    {
       "symbol": "294870",
       "name": "IPARK현대산업개발",
       "setup": "BOTTOM_CATCH",
@@ -372,6 +420,22 @@
       "actionable": false
     },
     {
+      "symbol": "302440",
+      "name": "SK바이오사이언스",
+      "setup": "BOTTOM_CATCH",
+      "asOfDate": "2026-10-30",
+      "close": 32600.0,
+      "entryRef": 32600.0,
+      "stop": 31372,
+      "target": 35208,
+      "rrRatio": 2.12,
+      "rsi14": 27.1,
+      "distMa20Pct": -7.3,
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
+    },
+    {
       "symbol": "475040",
       "name": "스트라드비젼",
       "setup": "BOTTOM_CATCH",
@@ -399,6 +463,22 @@
       "rrRatio": 1.23,
       "rsi14": 27.5,
       "distMa20Pct": -17.9,
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
+    },
+    {
+      "symbol": "383220",
+      "name": "F&F",
+      "setup": "BOTTOM_CATCH",
+      "asOfDate": "2026-10-30",
+      "close": 62800.0,
+      "entryRef": 62800.0,
+      "stop": 60085,
+      "target": 67824,
+      "rrRatio": 1.85,
+      "rsi14": 27.5,
+      "distMa20Pct": -7.4,
       "calibrationGate": "SUPPRESSED_LOW_EDGE",
       "sizeMultiplier": 0.0,
       "actionable": false

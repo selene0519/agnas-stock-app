@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-10-30T02:31:11.376577+00:00",
+  "generatedAt": "2026-10-30T07:27:00.706163+00:00",
   "source": "ohlcv_quant_scanner",
   "symbols": 940,
   "kisSymbols": 167,
-  "newsSentimentSymbols": 12,
+  "newsSentimentSymbols": 9,
   "financialSymbols": 5,
   "supplySymbols": 742,
   "scanCoverage": {
@@ -15,29 +15,29 @@
     "minimumHistoryRows": 30
   },
   "marketRegime": {
-    "regime": "BULL",
-    "label": "강세장",
-    "scoreAdjust": 5.0,
-    "description": "KOSPI 60일 추세 +6.2%, 거래량비 0.94",
-    "kospiLatest": 5938.0,
-    "distToMa20": -2.69,
-    "trend60": 6.15,
-    "volRatio": 0.945,
+    "regime": "BEAR",
+    "label": "약세장",
+    "scoreAdjust": -15.0,
+    "description": "KOSPI 60일 추세 -14.7%, 거래량비 0.93",
+    "kospiLatest": 5623.0,
+    "distToMa20": -6.92,
+    "trend60": -14.74,
+    "volRatio": 0.931,
     "definition": "trend60+거래량(약추세만)",
-    "asOf": "2026-10-29",
+    "asOf": "2026-10-30",
     "source": "kr_KOSPI_daily.csv"
   },
-  "evFiltered": 1,
-  "regimeFiltered": 3127,
+  "evFiltered": 0,
+  "regimeFiltered": 5638,
   "results": {
     "conservative_short": 0,
-    "conservative_swing": 1,
-    "conservative_mid": 2,
-    "balanced_short": 3,
-    "balanced_swing": 1,
-    "balanced_mid": 1,
-    "aggressive_short": 3,
-    "aggressive_swing": 2,
-    "aggressive_mid": 6
+    "conservative_swing": 0,
+    "conservative_mid": 0,
+    "balanced_short": 0,
+    "balanced_swing": 0,
+    "balanced_mid": 0,
+    "aggressive_short": 0,
+    "aggressive_swing": 0,
+    "aggressive_mid": 0
   }
 }
