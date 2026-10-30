@@ -1,193 +1,25 @@
 {
   "version": "relative-strength-v1",
   "market": "us",
-  "asOf": "2026-10-29",
+  "asOf": "2026-10-30",
   "regime": "SIDE",
   "status": "OK",
   "lensNote": "Long the RS leaders, avoid the laggards. RS edge holds in BULL/SIDE.",
-  "universeCount": 137,
+  "universeCount": 1,
   "leaders": [
     {
-      "symbol": "TEM",
-      "rs60Pct": 66.68,
-      "relToIndexPp": 66.74,
-      "vol60Pct": 6.13
-    },
-    {
-      "symbol": "OKTA",
-      "rs60Pct": 50.88,
-      "relToIndexPp": 50.94,
-      "vol60Pct": 5.16
-    },
-    {
-      "symbol": "ESTC",
-      "rs60Pct": 48.16,
-      "relToIndexPp": 48.22,
-      "vol60Pct": 4.08
-    },
-    {
-      "symbol": "RBLX",
-      "rs60Pct": 44.96,
-      "relToIndexPp": 45.01,
-      "vol60Pct": 3.55
-    },
-    {
-      "symbol": "MSTR",
-      "rs60Pct": 43.97,
-      "relToIndexPp": 44.02,
-      "vol60Pct": 5.45
-    },
-    {
-      "symbol": "RXRX",
-      "rs60Pct": 33.75,
-      "relToIndexPp": 33.81,
-      "vol60Pct": 5.94
-    },
-    {
-      "symbol": "SPCX",
-      "rs60Pct": 32.9,
-      "relToIndexPp": 32.96,
-      "vol60Pct": 4.01
-    },
-    {
-      "symbol": "ELF",
-      "rs60Pct": 30.77,
-      "relToIndexPp": 30.83,
-      "vol60Pct": 2.74
-    },
-    {
-      "symbol": "COP",
-      "rs60Pct": 30.42,
-      "relToIndexPp": 30.47,
-      "vol60Pct": 1.8
-    },
-    {
-      "symbol": "CRCL",
-      "rs60Pct": 26.41,
-      "relToIndexPp": 26.46,
-      "vol60Pct": 5.13
-    },
-    {
-      "symbol": "TSLA",
-      "rs60Pct": 25.42,
-      "relToIndexPp": 25.48,
-      "vol60Pct": 2.52
-    },
-    {
-      "symbol": "CRWD",
-      "rs60Pct": 24.44,
-      "relToIndexPp": 24.5,
-      "vol60Pct": 4.56
-    },
-    {
-      "symbol": "IBIT",
-      "rs60Pct": 24.41,
-      "relToIndexPp": 24.47,
-      "vol60Pct": 2.36
-    },
-    {
-      "symbol": "CVX",
-      "rs60Pct": 24.17,
-      "relToIndexPp": 24.22,
-      "vol60Pct": 1.39
-    },
-    {
-      "symbol": "PLTR",
-      "rs60Pct": 23.98,
-      "relToIndexPp": 24.03,
-      "vol60Pct": 2.97
+      "symbol": "SP500",
+      "rs60Pct": -1.33,
+      "relToIndexPp": -0.0,
+      "vol60Pct": 0.62
     }
   ],
   "laggardsToAvoid": [
     {
-      "symbol": "CRDO",
-      "rs60Pct": -26.42,
-      "relToIndexPp": -26.36,
-      "vol60Pct": 5.88
-    },
-    {
-      "symbol": "COHR",
-      "rs60Pct": -27.73,
-      "relToIndexPp": -27.67,
-      "vol60Pct": 5.84
-    },
-    {
-      "symbol": "RGTI",
-      "rs60Pct": -28.13,
-      "relToIndexPp": -28.07,
-      "vol60Pct": 4.1
-    },
-    {
-      "symbol": "HUT",
-      "rs60Pct": -28.37,
-      "relToIndexPp": -28.32,
-      "vol60Pct": 5.38
-    },
-    {
-      "symbol": "SOUN",
-      "rs60Pct": -32.19,
-      "relToIndexPp": -32.14,
-      "vol60Pct": 3.68
-    },
-    {
-      "symbol": "IREN",
-      "rs60Pct": -32.5,
-      "relToIndexPp": -32.45,
-      "vol60Pct": 5.14
-    },
-    {
-      "symbol": "SE",
-      "rs60Pct": -33.38,
-      "relToIndexPp": -33.33,
-      "vol60Pct": 3.12
-    },
-    {
-      "symbol": "JOBY",
-      "rs60Pct": -34.87,
-      "relToIndexPp": -34.82,
-      "vol60Pct": 2.87
-    },
-    {
-      "symbol": "RIOT",
-      "rs60Pct": -36.09,
-      "relToIndexPp": -36.04,
-      "vol60Pct": 5.01
-    },
-    {
-      "symbol": "MARA",
-      "rs60Pct": -36.25,
-      "relToIndexPp": -36.2,
-      "vol60Pct": 5.15
-    },
-    {
-      "symbol": "SMR",
-      "rs60Pct": -36.89,
-      "relToIndexPp": -36.83,
-      "vol60Pct": 5.15
-    },
-    {
-      "symbol": "ASTS",
-      "rs60Pct": -37.01,
-      "relToIndexPp": -36.96,
-      "vol60Pct": 4.73
-    },
-    {
-      "symbol": "OKLO",
-      "rs60Pct": -37.64,
-      "relToIndexPp": -37.58,
-      "vol60Pct": 4.82
-    },
-    {
-      "symbol": "AAOI",
-      "rs60Pct": -38.4,
-      "relToIndexPp": -38.35,
-      "vol60Pct": 6.26
-    },
-    {
-      "symbol": "APP",
-      "rs60Pct": -38.99,
-      "relToIndexPp": -38.93,
-      "vol60Pct": 3.66
+      "symbol": "SP500",
+      "rs60Pct": -1.33,
+      "relToIndexPp": -0.0,
+      "vol60Pct": 0.62
     }
   ],
   "defensiveHolds": [],
