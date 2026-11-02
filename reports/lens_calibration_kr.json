@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-02T13:03:46.363692+00:00",
+  "generatedAt": "2026-11-02T14:20:53.123632+00:00",
   "asOfDate": "2026-10-19",
   "sources": {
     "live": "reports/lens_live_journal_kr.csv",
@@ -22,21 +22,6 @@
     "BEAR": []
   },
   "calibration": {
-    "BOTTOM_CATCH|BULL": {
-      "setup": "BOTTOM_CATCH",
-      "regime": "BULL",
-      "blendedNetAvgPct": -1.183,
-      "blendedWinRate": 37.4,
-      "gate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "liveEffectiveSamples": 0.0,
-      "liveRawSamples": 0,
-      "liveNetAvgPct": null,
-      "priorNetAvgPct": -1.183,
-      "priorRawSamples": 2268,
-      "liveFraction": 0.0,
-      "profitFactor": 0.62
-    },
     "BOTTOM_CATCH|SIDE": {
       "setup": "BOTTOM_CATCH",
       "regime": "SIDE",
@@ -50,6 +35,51 @@
       "priorNetAvgPct": -0.848,
       "priorRawSamples": 3149,
       "liveFraction": 0.023,
+      "profitFactor": 0.0
+    },
+    "BREAKOUT|BULL": {
+      "setup": "BREAKOUT",
+      "regime": "BULL",
+      "blendedNetAvgPct": 0.255,
+      "blendedWinRate": 42.4,
+      "gate": "ACTIVE",
+      "sizeMultiplier": 0.41,
+      "liveEffectiveSamples": 0.0,
+      "liveRawSamples": 0,
+      "liveNetAvgPct": null,
+      "priorNetAvgPct": 0.255,
+      "priorRawSamples": 9570,
+      "liveFraction": 0.0,
+      "profitFactor": 1.11
+    },
+    "BOTTOM_CATCH|BEAR": {
+      "setup": "BOTTOM_CATCH",
+      "regime": "BEAR",
+      "blendedNetAvgPct": -2.649,
+      "blendedWinRate": 17.5,
+      "gate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "liveEffectiveSamples": 226.1,
+      "liveRawSamples": 245,
+      "liveNetAvgPct": -2.945,
+      "priorNetAvgPct": -0.973,
+      "priorRawSamples": 4868,
+      "liveFraction": 0.85,
+      "profitFactor": 0.25
+    },
+    "BREAKOUT|SIDE": {
+      "setup": "BREAKOUT",
+      "regime": "SIDE",
+      "blendedNetAvgPct": -0.523,
+      "blendedWinRate": 35.2,
+      "gate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "liveEffectiveSamples": 8.9,
+      "liveRawSamples": 10,
+      "liveNetAvgPct": -4.501,
+      "priorNetAvgPct": 0.363,
+      "priorRawSamples": 7013,
+      "liveFraction": 0.182,
       "profitFactor": 0.0
     },
     "BREAKOUT|BEAR": {
@@ -67,21 +97,6 @@
       "liveFraction": 0.792,
       "profitFactor": 0.61
     },
-    "BOTTOM_CATCH|BEAR": {
-      "setup": "BOTTOM_CATCH",
-      "regime": "BEAR",
-      "blendedNetAvgPct": -2.649,
-      "blendedWinRate": 17.5,
-      "gate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "liveEffectiveSamples": 226.1,
-      "liveRawSamples": 245,
-      "liveNetAvgPct": -2.945,
-      "priorNetAvgPct": -0.973,
-      "priorRawSamples": 4868,
-      "liveFraction": 0.85,
-      "profitFactor": 0.25
-    },
     "LEADER_BREAKOUT|BULL": {
       "setup": "LEADER_BREAKOUT",
       "regime": "BULL",
@@ -97,35 +112,20 @@
       "liveFraction": 0.224,
       "profitFactor": 0.49
     },
-    "BREAKOUT|SIDE": {
-      "setup": "BREAKOUT",
-      "regime": "SIDE",
-      "blendedNetAvgPct": -0.523,
-      "blendedWinRate": 35.2,
+    "BOTTOM_CATCH|BULL": {
+      "setup": "BOTTOM_CATCH",
+      "regime": "BULL",
+      "blendedNetAvgPct": -1.183,
+      "blendedWinRate": 37.4,
       "gate": "SUPPRESSED_LOW_EDGE",
       "sizeMultiplier": 0.0,
-      "liveEffectiveSamples": 8.9,
-      "liveRawSamples": 10,
-      "liveNetAvgPct": -4.501,
-      "priorNetAvgPct": 0.363,
-      "priorRawSamples": 7013,
-      "liveFraction": 0.182,
-      "profitFactor": 0.0
-    },
-    "BREAKOUT|BULL": {
-      "setup": "BREAKOUT",
-      "regime": "BULL",
-      "blendedNetAvgPct": 0.255,
-      "blendedWinRate": 42.4,
-      "gate": "ACTIVE",
-      "sizeMultiplier": 0.41,
       "liveEffectiveSamples": 0.0,
       "liveRawSamples": 0,
       "liveNetAvgPct": null,
-      "priorNetAvgPct": 0.255,
-      "priorRawSamples": 9570,
+      "priorNetAvgPct": -1.183,
+      "priorRawSamples": 2268,
       "liveFraction": 0.0,
-      "profitFactor": 1.11
+      "profitFactor": 0.62
     }
   }
 }
