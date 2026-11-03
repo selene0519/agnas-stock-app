@@ -18,7 +18,7 @@
   "lastRun": {
     "status": "OK",
     "dryRun": false,
-    "createdAt": "2026-11-03T22:13:14",
+    "createdAt": "2026-11-03T23:21:38",
     "market": "us",
     "markets": {
       "us": {
@@ -34,11 +34,9 @@
             "action": "SKIP",
             "scope": "NEW_ENTRY",
             "market": "us",
-            "reason": "QUANT_OPERATING_GATE",
+            "reason": "QUANT_EXECUTION_PLAN_INVALID",
             "reasonCodes": [
-              "REALIZED_WIN_RATE_BELOW_GATE",
-              "QUANT_SHADOW_NOT_APPROVED",
-              "EV_CALIBRATION_NOT_VALIDATED"
+              "NO_CURRENT_DISCOVERY_CANDIDATE"
             ],
             "result": {
               "ok": false,
@@ -64,92 +62,92 @@
         "liveMetrics": {
           "status": "OK",
           "proofStatus": "RUNNING",
-          "sampleCount": 101,
-          "navPointCount": 102,
+          "sampleCount": 102,
+          "navPointCount": 103,
           "totalReturnPct": 1.92,
           "mddPct": -0.6,
-          "sharpe": 2.16,
-          "winRate": 34.7,
+          "sharpe": 2.15,
+          "winRate": 34.3,
           "avgPeriodReturnPct": 0.02,
           "cashPct": 98.3,
           "peakValue": 5104.59,
           "currentValue": 5095.95,
           "lastNavDate": "2026-11-03",
           "recentReturnsPct": [
-            0.02,
             -0.01,
             0.02,
             -0.06,
             0.01,
             -0.1,
             0.0,
-            -0.02
+            -0.02,
+            0.0
           ],
           "equityCurve": [
             {
               "index": 0,
-              "value": 5101.48,
-              "returnPct": 2.03
-            },
-            {
-              "index": 1,
               "value": 5085.02,
               "returnPct": 1.7
             },
             {
-              "index": 2,
+              "index": 1,
               "value": 5079.27,
               "returnPct": 1.59
             },
             {
-              "index": 3,
+              "index": 2,
               "value": 5090.13,
               "returnPct": 1.8
             },
             {
-              "index": 4,
+              "index": 3,
               "value": 5099.25,
               "returnPct": 1.98
             },
             {
-              "index": 5,
+              "index": 4,
               "value": 5098.87,
               "returnPct": 1.98
             },
             {
-              "index": 6,
+              "index": 5,
               "value": 5100.18,
               "returnPct": 2.0
             },
             {
-              "index": 7,
+              "index": 6,
               "value": 5103.34,
               "returnPct": 2.07
             },
             {
-              "index": 8,
+              "index": 7,
               "value": 5104.26,
               "returnPct": 2.09
             },
             {
-              "index": 9,
+              "index": 8,
               "value": 5103.78,
               "returnPct": 2.08
             },
             {
-              "index": 10,
+              "index": 9,
               "value": 5104.59,
               "returnPct": 2.09
             },
             {
-              "index": 11,
+              "index": 10,
               "value": 5101.36,
               "returnPct": 2.03
             },
             {
-              "index": 12,
+              "index": 11,
               "value": 5101.96,
               "returnPct": 2.04
+            },
+            {
+              "index": 12,
+              "value": 5096.74,
+              "returnPct": 1.93
             },
             {
               "index": 13,
@@ -158,8 +156,8 @@
             },
             {
               "index": 14,
-              "value": 5096.74,
-              "returnPct": 1.93
+              "value": 5095.95,
+              "returnPct": 1.92
             },
             {
               "index": 15,
@@ -383,11 +381,11 @@
         },
         "operatingAuthority": {
           "market": "us",
-          "operatingState": "ABSTAIN",
+          "operatingState": "BLOCKED",
           "recommendationActionable": false,
           "entryAllowed": false,
           "paperEntryAllowed": false,
-          "paperResearchEntryAllowed": false,
+          "paperResearchEntryAllowed": true,
           "exitAllowed": true,
           "liveOrderAllowed": false,
           "productScope": {
@@ -414,23 +412,23 @@
           },
           "candidateCount": 0,
           "rawCandidateCount": 8,
-          "researchCandidateCount": 0,
+          "researchCandidateCount": 1,
           "paperResearch": {
             "enabled": true,
-            "entryAllowed": false,
+            "entryAllowed": true,
             "purpose": "forward evidence collection only",
             "promotionAuthority": false,
-            "blockedReasons": [
-              "NO_ELIGIBLE_RESEARCH_CANDIDATE"
-            ]
+            "blockedReasons": []
           },
           "reasonCodes": [
             "REALIZED_WIN_RATE_BELOW_GATE",
+            "QUANT_EVIDENCE_INTEGRITY_NOT_READY",
             "QUANT_SHADOW_NOT_APPROVED",
             "EV_CALIBRATION_NOT_VALIDATED"
           ],
           "reasons": [
             "실현 승률이 운용 기준보다 낮습니다.",
+            "Quant V2 evidence reports are missing, stale, or invalid.",
             "Quant V2 evidence has not approved a new entry.",
             "Expected-value ranking has not passed clean chronological validation."
           ],
@@ -743,8 +741,8 @@
             "priceSession": "us_premarket",
             "sessionLabel": "미장 장전",
             "priceBasis": "미장 장전 · 프리마켓 업데이트 기준",
-            "nowKst": "2026-11-03T22:13:14.357072+09:00",
-            "nowLocal": "2026-11-03T08:13:14.357072-05:00",
+            "nowKst": "2026-11-03T23:21:39.085903+09:00",
+            "nowLocal": "2026-11-03T09:21:39.085903-05:00",
             "isHoliday": false,
             "isReviewMode": false,
             "isUsDst": false
@@ -754,6 +752,7 @@
             "mode": "SHADOW_ONLY",
             "decision": "ABSTAIN",
             "decisionReasons": [
+              "STALE_EVIDENCE_REPORTS",
               "ALPHA_NOT_PROVEN",
               "RESIDUAL_ALPHA_MODEL_NOT_PROVEN",
               "NO_APPROVED_RISK_EXPOSURE",
@@ -762,13 +761,15 @@
               "WALKFORWARD_NOT_PROMOTION_GRADE"
             ],
             "missingReports": [],
-            "staleReports": [],
+            "staleReports": [
+              "walkForward"
+            ],
             "liveTradingAllowed": false
           }
         },
         "nav": {
           "date": "2026-11-03",
-          "createdAt": "2026-11-03T22:13:14",
+          "createdAt": "2026-11-03T23:21:39",
           "market": "us",
           "agentId": "ml_rank_conservative_swing",
           "agentLabel": "ML Rank Conservative Swing",
