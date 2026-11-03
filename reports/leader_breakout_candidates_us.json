@@ -1,7 +1,7 @@
 {
   "version": "leader-breakout-v1",
   "market": "us",
-  "asOf": "2026-11-02",
+  "asOf": "2026-11-03",
   "status": "US_BACKDROP_UNFAVORABLE",
   "usBackdropFavorable": false,
   "scanned": 133,
@@ -9,19 +9,6 @@
     "note": "leader breakout only holds up on SPY>MA50; deep 2014-2026 train+OOS forward-return, not cost/trade-sim"
   },
   "candidates": [],
-  "heldForUnfavorableBackdrop": [
-    {
-      "symbol": "PFE",
-      "asOf": "2026-11-02",
-      "entry": 30.67,
-      "stop": 29.22,
-      "target": 33.57,
-      "rrRatio": 2.0,
-      "ret60Pct": 14.61,
-      "posRange250": 1.0,
-      "volRatio50": 1.56,
-      "setup": "LEADER_BREAKOUT"
-    }
-  ],
+  "heldForUnfavorableBackdrop": [],
   "note": "Research/paper only. Feed the paper loop for live proof before promotion."
 }
