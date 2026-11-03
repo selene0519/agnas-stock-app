@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-11-03T07:27:11.831690+00:00",
+  "generatedAt": "2026-11-03T13:07:25.933594+00:00",
   "asOfDate": "2026-11-03",
   "market": "kr",
   "marketRegime": "BEAR",
-  "breadthAboveMa60": 0.106,
+  "breadthAboveMa60": 0.11,
   "activeLens": "BOTTOM_CATCH",
   "activeSetupByRegime": {
     "BULL": [
@@ -15,7 +15,7 @@
   "selfCalibrated": true,
   "liveSamplesTotal": 451,
   "universeSize": 959,
-  "candidateCount": 32,
+  "candidateCount": 34,
   "actionableCount": 0,
   "disclaimer": "생존편향(현상장 glob만)로 백테스트 낙관. actionable(ACTIVE)만 자가보정 통과 — 실사이징은 라이브 VTJ forward 검증 후.",
   "candidates": [
@@ -164,6 +164,22 @@
       "actionable": false
     },
     {
+      "symbol": "329180",
+      "name": "HD현대중공업",
+      "setup": "BOTTOM_CATCH",
+      "asOfDate": "2026-11-03",
+      "close": 289000.0,
+      "entryRef": 289000.0,
+      "stop": 274322,
+      "target": 312120,
+      "rrRatio": 1.58,
+      "rsi14": 21.9,
+      "distMa20Pct": -12.1,
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
+    },
+    {
       "symbol": "452430",
       "name": "사피엔반도체",
       "setup": "BOTTOM_CATCH",
@@ -180,22 +196,6 @@
       "actionable": false
     },
     {
-      "symbol": "443060",
-      "name": "HD현대마린솔루션",
-      "setup": "BOTTOM_CATCH",
-      "asOfDate": "2026-11-03",
-      "close": 170700.0,
-      "entryRef": 170700.0,
-      "stop": 162722,
-      "target": 184356,
-      "rrRatio": 1.71,
-      "rsi14": 22.9,
-      "distMa20Pct": -13.7,
-      "calibrationGate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "actionable": false
-    },
-    {
       "symbol": "475150",
       "name": "SK이터닉스",
       "setup": "BOTTOM_CATCH",
@@ -207,6 +207,22 @@
       "rrRatio": 2.96,
       "rsi14": 23.9,
       "distMa20Pct": -12.4,
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
+    },
+    {
+      "symbol": "443060",
+      "name": "HD현대마린솔루션",
+      "setup": "BOTTOM_CATCH",
+      "asOfDate": "2026-11-03",
+      "close": 172000.0,
+      "entryRef": 172000.0,
+      "stop": 162722,
+      "target": 185760,
+      "rrRatio": 1.48,
+      "rsi14": 24.0,
+      "distMa20Pct": -13.1,
       "calibrationGate": "SUPPRESSED_LOW_EDGE",
       "sizeMultiplier": 0.0,
       "actionable": false
@@ -239,22 +255,6 @@
       "rrRatio": 3.09,
       "rsi14": 24.5,
       "distMa20Pct": -10.8,
-      "calibrationGate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "actionable": false
-    },
-    {
-      "symbol": "383220",
-      "name": "F&F",
-      "setup": "BOTTOM_CATCH",
-      "asOfDate": "2026-11-03",
-      "close": 63600.0,
-      "entryRef": 63600.0,
-      "stop": 61267,
-      "target": 68688,
-      "rrRatio": 2.18,
-      "rsi14": 24.5,
-      "distMa20Pct": -5.4,
       "calibrationGate": "SUPPRESSED_LOW_EDGE",
       "sizeMultiplier": 0.0,
       "actionable": false
@@ -420,6 +420,22 @@
       "actionable": false
     },
     {
+      "symbol": "011170",
+      "name": "롯데케미칼",
+      "setup": "BOTTOM_CATCH",
+      "asOfDate": "2026-11-03",
+      "close": 48650.0,
+      "entryRef": 48650.0,
+      "stop": 46394,
+      "target": 52542,
+      "rrRatio": 1.73,
+      "rsi14": 30.1,
+      "distMa20Pct": -7.6,
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
+    },
+    {
       "symbol": "124500",
       "name": "아이티센글로벌",
       "setup": "BOTTOM_CATCH",
@@ -436,17 +452,33 @@
       "actionable": false
     },
     {
-      "symbol": "011170",
-      "name": "롯데케미칼",
+      "symbol": "267270",
+      "name": "HD건설기계",
       "setup": "BOTTOM_CATCH",
       "asOfDate": "2026-11-03",
-      "close": 48800.0,
-      "entryRef": 48800.0,
-      "stop": 46394,
-      "target": 52704,
-      "rrRatio": 1.62,
-      "rsi14": 30.5,
-      "distMa20Pct": -7.3,
+      "close": 81600.0,
+      "entryRef": 81600.0,
+      "stop": 78504,
+      "target": 88128,
+      "rrRatio": 2.11,
+      "rsi14": 30.6,
+      "distMa20Pct": -11.6,
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
+    },
+    {
+      "symbol": "009830",
+      "name": "한화솔루션",
+      "setup": "BOTTOM_CATCH",
+      "asOfDate": "2026-11-03",
+      "close": 24150.0,
+      "entryRef": 24150.0,
+      "stop": 22458,
+      "target": 26082,
+      "rrRatio": 1.14,
+      "rsi14": 30.6,
+      "distMa20Pct": -19.0,
       "calibrationGate": "SUPPRESSED_LOW_EDGE",
       "sizeMultiplier": 0.0,
       "actionable": false
