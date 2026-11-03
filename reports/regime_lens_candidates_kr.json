@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-11-03T04:06:46.726933+00:00",
+  "generatedAt": "2026-11-03T07:27:11.831690+00:00",
   "asOfDate": "2026-11-03",
   "market": "kr",
   "marketRegime": "BEAR",
-  "breadthAboveMa60": 0.115,
+  "breadthAboveMa60": 0.106,
   "activeLens": "BOTTOM_CATCH",
   "activeSetupByRegime": {
     "BULL": [
@@ -13,9 +13,9 @@
     "BEAR": []
   },
   "selfCalibrated": true,
-  "liveSamplesTotal": 450,
+  "liveSamplesTotal": 451,
   "universeSize": 959,
-  "candidateCount": 31,
+  "candidateCount": 32,
   "actionableCount": 0,
   "disclaimer": "생존편향(현상장 glob만)로 백테스트 낙관. actionable(ACTIVE)만 자가보정 통과 — 실사이징은 라이브 VTJ forward 검증 후.",
   "candidates": [
@@ -148,22 +148,6 @@
       "actionable": false
     },
     {
-      "symbol": "329180",
-      "name": "HD현대중공업",
-      "setup": "BOTTOM_CATCH",
-      "asOfDate": "2026-11-03",
-      "close": 288000.0,
-      "entryRef": 288000.0,
-      "stop": 274322,
-      "target": 311040,
-      "rrRatio": 1.68,
-      "rsi14": 21.4,
-      "distMa20Pct": -12.4,
-      "calibrationGate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "actionable": false
-    },
-    {
       "symbol": "459550",
       "name": "알트",
       "setup": "BOTTOM_CATCH",
@@ -200,13 +184,13 @@
       "name": "HD현대마린솔루션",
       "setup": "BOTTOM_CATCH",
       "asOfDate": "2026-11-03",
-      "close": 170900.0,
-      "entryRef": 170900.0,
+      "close": 170700.0,
+      "entryRef": 170700.0,
       "stop": 162722,
-      "target": 184572,
-      "rrRatio": 1.67,
-      "rsi14": 23.1,
-      "distMa20Pct": -13.6,
+      "target": 184356,
+      "rrRatio": 1.71,
+      "rsi14": 22.9,
+      "distMa20Pct": -13.7,
       "calibrationGate": "SUPPRESSED_LOW_EDGE",
       "sizeMultiplier": 0.0,
       "actionable": false
@@ -255,6 +239,22 @@
       "rrRatio": 3.09,
       "rsi14": 24.5,
       "distMa20Pct": -10.8,
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
+    },
+    {
+      "symbol": "383220",
+      "name": "F&F",
+      "setup": "BOTTOM_CATCH",
+      "asOfDate": "2026-11-03",
+      "close": 63600.0,
+      "entryRef": 63600.0,
+      "stop": 61267,
+      "target": 68688,
+      "rrRatio": 2.18,
+      "rsi14": 24.5,
+      "distMa20Pct": -5.4,
       "calibrationGate": "SUPPRESSED_LOW_EDGE",
       "sizeMultiplier": 0.0,
       "actionable": false
@@ -420,22 +420,6 @@
       "actionable": false
     },
     {
-      "symbol": "011170",
-      "name": "롯데케미칼",
-      "setup": "BOTTOM_CATCH",
-      "asOfDate": "2026-11-03",
-      "close": 48650.0,
-      "entryRef": 48650.0,
-      "stop": 46394,
-      "target": 52542,
-      "rrRatio": 1.73,
-      "rsi14": 30.1,
-      "distMa20Pct": -7.6,
-      "calibrationGate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "actionable": false
-    },
-    {
       "symbol": "124500",
       "name": "아이티센글로벌",
       "setup": "BOTTOM_CATCH",
@@ -447,6 +431,22 @@
       "rrRatio": 2.42,
       "rsi14": 30.2,
       "distMa20Pct": -17.8,
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
+    },
+    {
+      "symbol": "011170",
+      "name": "롯데케미칼",
+      "setup": "BOTTOM_CATCH",
+      "asOfDate": "2026-11-03",
+      "close": 48800.0,
+      "entryRef": 48800.0,
+      "stop": 46394,
+      "target": 52704,
+      "rrRatio": 1.62,
+      "rsi14": 30.5,
+      "distMa20Pct": -7.3,
       "calibrationGate": "SUPPRESSED_LOW_EDGE",
       "sizeMultiplier": 0.0,
       "actionable": false
@@ -495,6 +495,22 @@
       "rrRatio": 2.13,
       "rsi14": 31.4,
       "distMa20Pct": -1.4,
+      "calibrationGate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "actionable": false
+    },
+    {
+      "symbol": "011780",
+      "name": "금호석유화학",
+      "setup": "BOTTOM_CATCH",
+      "asOfDate": "2026-11-03",
+      "close": 107000.0,
+      "entryRef": 107000.0,
+      "stop": 103524,
+      "target": 115560,
+      "rrRatio": 2.46,
+      "rsi14": 31.7,
+      "distMa20Pct": -3.6,
       "calibrationGate": "SUPPRESSED_LOW_EDGE",
       "sizeMultiplier": 0.0,
       "actionable": false
