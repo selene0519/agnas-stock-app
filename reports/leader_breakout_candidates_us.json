@@ -1,14 +1,75 @@
 {
   "version": "leader-breakout-v1",
   "market": "us",
-  "asOf": "2026-11-03",
-  "status": "US_BACKDROP_UNFAVORABLE",
-  "usBackdropFavorable": false,
+  "asOf": "2026-11-04",
+  "status": "OK",
+  "usBackdropFavorable": true,
   "scanned": 133,
   "validatedEdge": {
     "note": "leader breakout only holds up on SPY>MA50; deep 2014-2026 train+OOS forward-return, not cost/trade-sim"
   },
-  "candidates": [],
+  "candidates": [
+    {
+      "symbol": "V",
+      "asOf": "2026-11-04",
+      "entry": 436.57,
+      "stop": 394.0,
+      "target": 521.71,
+      "rrRatio": 2.0,
+      "ret60Pct": 20.33,
+      "posRange250": 1.0,
+      "volRatio50": 1.56,
+      "setup": "LEADER_BREAKOUT"
+    },
+    {
+      "symbol": "MA",
+      "asOf": "2026-11-04",
+      "entry": 672.68,
+      "stop": 605.0,
+      "target": 808.04,
+      "rrRatio": 2.0,
+      "ret60Pct": 19.81,
+      "posRange250": 1.0,
+      "volRatio50": 1.52,
+      "setup": "LEADER_BREAKOUT"
+    },
+    {
+      "symbol": "PG",
+      "asOf": "2026-11-04",
+      "entry": 167.32,
+      "stop": 157.4,
+      "target": 187.16,
+      "rrRatio": 2.0,
+      "ret60Pct": 15.23,
+      "posRange250": 1.0,
+      "volRatio50": 1.54,
+      "setup": "LEADER_BREAKOUT"
+    },
+    {
+      "symbol": "DIS",
+      "asOf": "2026-11-04",
+      "entry": 118.95,
+      "stop": 108.75,
+      "target": 139.35,
+      "rrRatio": 2.0,
+      "ret60Pct": 14.89,
+      "posRange250": 1.0,
+      "volRatio50": 1.62,
+      "setup": "LEADER_BREAKOUT"
+    },
+    {
+      "symbol": "MSFT",
+      "asOf": "2026-11-04",
+      "entry": 555.8,
+      "stop": 504.96,
+      "target": 657.48,
+      "rrRatio": 2.0,
+      "ret60Pct": 10.32,
+      "posRange250": 1.0,
+      "volRatio50": 2.23,
+      "setup": "LEADER_BREAKOUT"
+    }
+  ],
   "heldForUnfavorableBackdrop": [],
   "note": "Research/paper only. Feed the paper loop for live proof before promotion."
 }
