@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-04T13:04:17.517238+00:00",
+  "generatedAt": "2026-11-04T14:28:37.323261+00:00",
   "asOfDate": "2026-10-21",
   "sources": {
     "live": "reports/lens_live_journal_kr.csv",
@@ -22,6 +22,21 @@
     "BEAR": []
   },
   "calibration": {
+    "BREAKOUT|BEAR": {
+      "setup": "BREAKOUT",
+      "regime": "BEAR",
+      "blendedNetAvgPct": -1.276,
+      "blendedWinRate": 26.9,
+      "gate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "liveEffectiveSamples": 154.6,
+      "liveRawSamples": 176,
+      "liveNetAvgPct": -1.32,
+      "priorNetAvgPct": -1.105,
+      "priorRawSamples": 3218,
+      "liveFraction": 0.794,
+      "profitFactor": 0.59
+    },
     "BREAKOUT|SIDE": {
       "setup": "BREAKOUT",
       "regime": "SIDE",
@@ -52,36 +67,6 @@
       "liveFraction": 0.0,
       "profitFactor": 0.65
     },
-    "BREAKOUT|BEAR": {
-      "setup": "BREAKOUT",
-      "regime": "BEAR",
-      "blendedNetAvgPct": -1.276,
-      "blendedWinRate": 26.9,
-      "gate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "liveEffectiveSamples": 154.6,
-      "liveRawSamples": 176,
-      "liveNetAvgPct": -1.32,
-      "priorNetAvgPct": -1.105,
-      "priorRawSamples": 3218,
-      "liveFraction": 0.794,
-      "profitFactor": 0.59
-    },
-    "BOTTOM_CATCH|SIDE": {
-      "setup": "BOTTOM_CATCH",
-      "regime": "SIDE",
-      "blendedNetAvgPct": -0.891,
-      "blendedWinRate": 35.5,
-      "gate": "SUPPRESSED_LOW_EDGE",
-      "sizeMultiplier": 0.0,
-      "liveEffectiveSamples": 0.9,
-      "liveRawSamples": 1,
-      "liveNetAvgPct": -2.739,
-      "priorNetAvgPct": -0.848,
-      "priorRawSamples": 3149,
-      "liveFraction": 0.023,
-      "profitFactor": 0.0
-    },
     "LEADER_BREAKOUT|BULL": {
       "setup": "LEADER_BREAKOUT",
       "regime": "BULL",
@@ -111,6 +96,21 @@
       "priorRawSamples": 4908,
       "liveFraction": 0.868,
       "profitFactor": 0.24
+    },
+    "BOTTOM_CATCH|SIDE": {
+      "setup": "BOTTOM_CATCH",
+      "regime": "SIDE",
+      "blendedNetAvgPct": -0.891,
+      "blendedWinRate": 35.5,
+      "gate": "SUPPRESSED_LOW_EDGE",
+      "sizeMultiplier": 0.0,
+      "liveEffectiveSamples": 0.9,
+      "liveRawSamples": 1,
+      "liveNetAvgPct": -2.739,
+      "priorNetAvgPct": -0.848,
+      "priorRawSamples": 3149,
+      "liveFraction": 0.023,
+      "profitFactor": 0.0
     },
     "BREAKOUT|BULL": {
       "setup": "BREAKOUT",
