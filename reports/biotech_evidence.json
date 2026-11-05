@@ -1,9 +1,47 @@
 {
   "status": "PARTIAL",
-  "generatedAt": "2026-11-05T07:11:14+00:00",
+  "generatedAt": "2026-11-05T12:49:16+00:00",
   "asOfDate": "2026-11-05",
   "count": 21,
   "items": [
+    {
+      "market": "kr",
+      "symbol": "207940",
+      "company": "삼성바이오로직스",
+      "queryCompany": "Samsung Biologics",
+      "sector": "",
+      "universeSource": "current_recommendation",
+      "asOfDate": "2026-11-05",
+      "researchOnly": true,
+      "scoreAdjustment": 0.0,
+      "promotionEligible": false,
+      "clinicalTrials": {
+        "status": "OK",
+        "queryCompany": "Samsung Biologics",
+        "apiTotalCount": 0,
+        "fetchedStudyCount": 0,
+        "verifiedStudyCountInFetchedPage": 0,
+        "rejectedIdentityCountInFetchedPage": 0,
+        "ambiguousSponsorMatches": [],
+        "identityStatus": "NO_VERIFIED_SPONSOR_MATCH",
+        "identityConfidence": "NONE",
+        "activeStudyCountInFetchedPage": 0,
+        "phase3StudyCountInFetchedPage": 0,
+        "riskStatusStudyCountInFetchedPage": 0,
+        "upcomingCompletion180dCountInFetchedPage": 0,
+        "studies": [],
+        "source": "ClinicalTrials.gov API v2",
+        "sourceUrl": "https://clinicaltrials.gov/api/v2/studies?query.spons=Samsung+Biologics&pageSize=20&countTotal=true&format=json"
+      },
+      "pubMed": {
+        "status": "ERROR",
+        "error": "HTTPError"
+      },
+      "status": "PARTIAL",
+      "errors": [
+        "PUBMED_UNAVAILABLE"
+      ]
+    },
     {
       "market": "us",
       "symbol": "ABBV",
@@ -1232,13 +1270,16 @@
         "sourceUrl": "https://clinicaltrials.gov/api/v2/studies?query.spons=Merck+Sharp+%26+Dohme&pageSize=20&countTotal=true&format=json"
       },
       "pubMed": {
-        "status": "ERROR",
-        "error": "HTTPError"
+        "status": "OK",
+        "queryCompany": "Merck Sharp & Dohme",
+        "publicationCountRecent5y": 0,
+        "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
+        "publications": [],
+        "source": "NCBI PubMed E-utilities",
+        "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22Merck+Sharp+%26+Dohme%22%5BAffiliation%5D"
       },
-      "status": "PARTIAL",
-      "errors": [
-        "PUBMED_UNAVAILABLE"
-      ]
+      "status": "OK",
+      "errors": []
     },
     {
       "market": "us",
@@ -2711,13 +2752,16 @@
         "sourceUrl": "https://clinicaltrials.gov/api/v2/studies?query.spons=Medytox&pageSize=20&countTotal=true&format=json"
       },
       "pubMed": {
-        "status": "ERROR",
-        "error": "HTTPError"
+        "status": "OK",
+        "queryCompany": "Medytox",
+        "publicationCountRecent5y": 0,
+        "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
+        "publications": [],
+        "source": "NCBI PubMed E-utilities",
+        "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22Medytox%22%5BAffiliation%5D"
       },
-      "status": "PARTIAL",
-      "errors": [
-        "PUBMED_UNAVAILABLE"
-      ]
+      "status": "OK",
+      "errors": []
     },
     {
       "market": "kr",
@@ -2980,13 +3024,16 @@
         "sourceUrl": "https://clinicaltrials.gov/api/v2/studies?query.spons=Hanmi+Pharmaceutical&pageSize=20&countTotal=true&format=json"
       },
       "pubMed": {
-        "status": "ERROR",
-        "error": "HTTPError"
+        "status": "OK",
+        "queryCompany": "Hanmi Pharmaceutical",
+        "publicationCountRecent5y": 0,
+        "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
+        "publications": [],
+        "source": "NCBI PubMed E-utilities",
+        "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22Hanmi+Pharmaceutical%22%5BAffiliation%5D"
       },
-      "status": "PARTIAL",
-      "errors": [
-        "PUBMED_UNAVAILABLE"
-      ]
+      "status": "OK",
+      "errors": []
     },
     {
       "market": "kr",
@@ -3072,7 +3119,7 @@
       },
       "pubMed": {
         "status": "ERROR",
-        "error": "HTTPError"
+        "error": "TimeoutError"
       },
       "status": "PARTIAL",
       "errors": [
@@ -3435,44 +3482,6 @@
     },
     {
       "market": "kr",
-      "symbol": "207940",
-      "company": "Samsung Biologics",
-      "queryCompany": "Samsung Biologics",
-      "sector": "Bio/Healthcare",
-      "universeSource": "curated_official_query_alias",
-      "asOfDate": "2026-11-05",
-      "researchOnly": true,
-      "scoreAdjustment": 0.0,
-      "promotionEligible": false,
-      "clinicalTrials": {
-        "status": "OK",
-        "queryCompany": "Samsung Biologics",
-        "apiTotalCount": 0,
-        "fetchedStudyCount": 0,
-        "verifiedStudyCountInFetchedPage": 0,
-        "rejectedIdentityCountInFetchedPage": 0,
-        "ambiguousSponsorMatches": [],
-        "identityStatus": "NO_VERIFIED_SPONSOR_MATCH",
-        "identityConfidence": "NONE",
-        "activeStudyCountInFetchedPage": 0,
-        "phase3StudyCountInFetchedPage": 0,
-        "riskStatusStudyCountInFetchedPage": 0,
-        "upcomingCompletion180dCountInFetchedPage": 0,
-        "studies": [],
-        "source": "ClinicalTrials.gov API v2",
-        "sourceUrl": "https://clinicaltrials.gov/api/v2/studies?query.spons=Samsung+Biologics&pageSize=20&countTotal=true&format=json"
-      },
-      "pubMed": {
-        "status": "ERROR",
-        "error": "HTTPError"
-      },
-      "status": "PARTIAL",
-      "errors": [
-        "PUBMED_UNAVAILABLE"
-      ]
-    },
-    {
-      "market": "kr",
       "symbol": "214150",
       "company": "Classys",
       "queryCompany": "Classys",
@@ -3646,14 +3655,14 @@
   ],
   "pointInTimeLedger": {
     "status": "OK",
-    "addedSnapshots": 21,
+    "addedSnapshots": 3,
     "addedEvents": 0,
-    "snapshotCount": 2335,
+    "snapshotCount": 2338,
     "eventCount": 8475
   },
   "validationGate": {
     "status": "RESEARCH_ONLY",
-    "generatedAt": "2026-11-05T07:11:14+00:00",
+    "generatedAt": "2026-11-05T12:49:16+00:00",
     "evaluatedDirectionalEventCount": 0,
     "promotionCount": 0,
     "operationalScoreAdjustmentAllowed": false,
