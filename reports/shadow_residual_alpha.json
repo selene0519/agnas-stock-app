@@ -1,6 +1,6 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-11-05T22:13:16.676324+00:00",
+  "generatedAt": "2026-11-05T23:43:30.037054+00:00",
   "policy": {
     "version": "shadow-residual-alpha-v1.1.2",
     "label": "POST_SIGNAL_PRE_EVENT_MARKET_MODEL_CAR_BY_HORIZON",
@@ -57,7 +57,7 @@
     "fingerprint": "7f3642213237690bb880"
   },
   "data": {
-    "rawJournalRows": 4804,
+    "rawJournalRows": 4868,
     "forwardIndependentRows": 526,
     "labeledIndependentDecisions": 501,
     "distinctSignalDates": 25,
@@ -173,7 +173,7 @@
       "candidateKey": "edb68146c411c73dcba66ef9",
       "economicEventKey": "f7bc40e5d416ab01ddff7f34",
       "signalDate": "2026-11-05",
-      "generatedAt": "2026-11-05T22:13:08.092266+00:00",
+      "generatedAt": "2026-11-05T23:43:23.249318+00:00",
       "market": "us",
       "mode": "conservative",
       "horizon": "mid",
@@ -195,7 +195,7 @@
       "candidateKey": "14c3287f5e526862365ef674",
       "economicEventKey": "940632ec452f97dfa589c469",
       "signalDate": "2026-11-05",
-      "generatedAt": "2026-11-05T22:13:08.092266+00:00",
+      "generatedAt": "2026-11-05T23:43:23.249318+00:00",
       "market": "us",
       "mode": "conservative",
       "horizon": "mid",
@@ -225,8 +225,8 @@
       "trainDates": 23,
       "trainingDataFingerprint": "7fdec0df1ed94ec1e2b608ab01192d6dfb613ba053b664d13646e2fc743e7fd3",
       "modelInstanceFingerprint": "10b3756d346451717c6c0d5b",
-      "predictedResidualAlphaPct": -9.245918192690446,
-      "predictionLower90Pct": -27.58671754782359,
+      "predictedResidualAlphaPct": -9.24591819269045,
+      "predictionLower90Pct": -27.586717547823593,
       "baselinePredictionPct": -3.626818493225629,
       "realizedResidualAlphaPct": -11.535769654400886
     }
