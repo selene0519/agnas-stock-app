@@ -1,6 +1,6 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-11-05T23:43:30.037054+00:00",
+  "generatedAt": "2026-11-06T03:07:05.685085+00:00",
   "policy": {
     "version": "shadow-residual-alpha-v1.1.2",
     "label": "POST_SIGNAL_PRE_EVENT_MARKET_MODEL_CAR_BY_HORIZON",
@@ -112,7 +112,7 @@
   },
   "forwardEvidence": {
     "modelFingerprint": "7f3642213237690bb880",
-    "predictionJournalRows": 2,
+    "predictionJournalRows": 0,
     "settlementJournalRows": 0,
     "settledCurrentModelEconomicEvents": 0,
     "journalIntegrity": {
@@ -140,23 +140,23 @@
     "predictionJournal": {
       "path": "data/shadow_residual_alpha_predictions.csv",
       "existingRows": 0,
-      "appendedRows": 2,
+      "appendedRows": 0,
       "duplicateRows": 0,
       "lateCandidatesSkipped": 0,
       "missingGeneratedAtSkipped": 0,
       "futureGeneratedAtSkipped": 0,
       "immutableConflicts": 0,
       "schemaError": null,
-      "recordMarket": "all",
-      "candidateRowsConsidered": 2
+      "recordMarket": "none",
+      "candidateRowsConsidered": 0
     },
     "settlementJournal": {
       "path": "data/shadow_residual_alpha_settlements.csv",
-      "predictionRows": 2,
+      "predictionRows": 0,
       "existingRows": 0,
       "appendedRows": 0,
       "duplicateRows": 0,
-      "unresolvedPredictions": 2,
+      "unresolvedPredictions": 0,
       "immutableConflicts": 0,
       "schemaError": null
     },
@@ -173,7 +173,7 @@
       "candidateKey": "edb68146c411c73dcba66ef9",
       "economicEventKey": "f7bc40e5d416ab01ddff7f34",
       "signalDate": "2026-11-05",
-      "generatedAt": "2026-11-05T23:43:23.249318+00:00",
+      "generatedAt": "2026-11-06T03:07:00.520952+00:00",
       "market": "us",
       "mode": "conservative",
       "horizon": "mid",
@@ -189,13 +189,13 @@
       "predictionLower90Pct": 4.322797,
       "baselinePredictionPct": -3.304817,
       "predictionId": "c53b5fdde2791abcbf9579fe80ab",
-      "forwardSealStatus": "SEALED_FORWARD"
+      "forwardSealStatus": "UNSEALED"
     },
     {
       "candidateKey": "14c3287f5e526862365ef674",
       "economicEventKey": "940632ec452f97dfa589c469",
       "signalDate": "2026-11-05",
-      "generatedAt": "2026-11-05T23:43:23.249318+00:00",
+      "generatedAt": "2026-11-06T03:07:00.520952+00:00",
       "market": "us",
       "mode": "conservative",
       "horizon": "mid",
@@ -211,7 +211,7 @@
       "predictionLower90Pct": 2.533253,
       "baselinePredictionPct": -3.304817,
       "predictionId": "d16fa81f6925547d13f6e653004b",
-      "forwardSealStatus": "SEALED_FORWARD"
+      "forwardSealStatus": "UNSEALED"
     }
   ],
   "forwardOosAudit": [],
