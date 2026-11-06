@@ -1,7 +1,7 @@
 {
   "version": "leader-breakout-v1",
   "market": "us",
-  "asOf": "2026-11-05",
+  "asOf": "2026-11-06",
   "status": "US_BACKDROP_UNFAVORABLE",
   "usBackdropFavorable": false,
   "scanned": 133,
@@ -9,6 +9,19 @@
     "note": "leader breakout only holds up on SPY>MA50; deep 2014-2026 train+OOS forward-return, not cost/trade-sim"
   },
   "candidates": [],
-  "heldForUnfavorableBackdrop": [],
+  "heldForUnfavorableBackdrop": [
+    {
+      "symbol": "ABNB",
+      "asOf": "2026-11-06",
+      "entry": 189.99,
+      "stop": 164.1,
+      "target": 241.77,
+      "rrRatio": 2.0,
+      "ret60Pct": 2.63,
+      "posRange250": 0.994,
+      "volRatio50": 2.69,
+      "setup": "LEADER_BREAKOUT"
+    }
+  ],
   "note": "Research/paper only. Feed the paper loop for live proof before promotion."
 }

@@ -1,6 +1,6 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-11-06T20:21:50.313669+00:00",
+  "generatedAt": "2026-11-06T22:09:33.680272+00:00",
   "policy": {
     "version": "shadow-residual-alpha-v1.1.2",
     "label": "POST_SIGNAL_PRE_EVENT_MARKET_MODEL_CAR_BY_HORIZON",
@@ -147,7 +147,7 @@
       "futureGeneratedAtSkipped": 0,
       "immutableConflicts": 0,
       "schemaError": null,
-      "recordMarket": "none",
+      "recordMarket": "all",
       "candidateRowsConsidered": 0
     },
     "settlementJournal": {
@@ -163,57 +163,12 @@
     "integrityBlockingReasons": []
   },
   "summary": {
-    "candidates": 2,
-    "predicted": 2,
-    "positiveLower90": 2,
+    "candidates": 0,
+    "predicted": 0,
+    "positiveLower90": 0,
     "evidenceStatus": "WAIT"
   },
-  "predictions": [
-    {
-      "candidateKey": "edb68146c411c73dcba66ef9",
-      "economicEventKey": "f7bc40e5d416ab01ddff7f34",
-      "signalDate": "2026-11-05",
-      "generatedAt": "2026-11-06T15:35:50.738998+00:00",
-      "market": "us",
-      "mode": "conservative",
-      "horizon": "mid",
-      "symbol": "RSP",
-      "modelFingerprint": "7f3642213237690bb880",
-      "trainingDataFingerprint": "850c1bc9693273448ab06c85f50024fc242a6bb62fed79160da633c0af365128",
-      "modelInstanceFingerprint": "a7d9a5ce33daf865e618874b",
-      "trainRows": 501,
-      "trainDates": 25,
-      "status": "PREDICTED",
-      "trainMaxLabelAvailableDate": "2026-08-25",
-      "predictedResidualAlphaPct": 22.428312,
-      "predictionLower90Pct": 4.322797,
-      "baselinePredictionPct": -3.304817,
-      "predictionId": "c53b5fdde2791abcbf9579fe80ab",
-      "forwardSealStatus": "UNSEALED"
-    },
-    {
-      "candidateKey": "14c3287f5e526862365ef674",
-      "economicEventKey": "940632ec452f97dfa589c469",
-      "signalDate": "2026-11-05",
-      "generatedAt": "2026-11-06T15:35:50.738998+00:00",
-      "market": "us",
-      "mode": "conservative",
-      "horizon": "mid",
-      "symbol": "ABBV",
-      "modelFingerprint": "7f3642213237690bb880",
-      "trainingDataFingerprint": "850c1bc9693273448ab06c85f50024fc242a6bb62fed79160da633c0af365128",
-      "modelInstanceFingerprint": "a7d9a5ce33daf865e618874b",
-      "trainRows": 501,
-      "trainDates": 25,
-      "status": "PREDICTED",
-      "trainMaxLabelAvailableDate": "2026-08-25",
-      "predictedResidualAlphaPct": 20.638768,
-      "predictionLower90Pct": 2.533253,
-      "baselinePredictionPct": -3.304817,
-      "predictionId": "d16fa81f6925547d13f6e653004b",
-      "forwardSealStatus": "UNSEALED"
-    }
-  ],
+  "predictions": [],
   "forwardOosAudit": [],
   "researchOosAudit": [
     {
