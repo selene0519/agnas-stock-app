@@ -1,6 +1,6 @@
 {
   "status": "OK",
-  "generatedAt": "2026-11-06T12:48:29+00:00",
+  "generatedAt": "2026-11-06T13:58:27+00:00",
   "asOfDate": "2026-11-06",
   "count": 21,
   "items": [
@@ -97,231 +97,167 @@
         "queryCompany": "AbbVie",
         "apiTotalCount": 1477,
         "fetchedStudyCount": 20,
-        "verifiedStudyCountInFetchedPage": 17,
-        "rejectedIdentityCountInFetchedPage": 3,
-        "ambiguousSponsorMatches": [],
+        "verifiedStudyCountInFetchedPage": 12,
+        "rejectedIdentityCountInFetchedPage": 8,
+        "ambiguousSponsorMatches": [
+          "AbbVie (prior sponsor, Abbott)"
+        ],
         "identityStatus": "VERIFIED",
         "identityConfidence": "HIGH",
-        "activeStudyCountInFetchedPage": 7,
-        "phase3StudyCountInFetchedPage": 2,
-        "riskStatusStudyCountInFetchedPage": 2,
+        "activeStudyCountInFetchedPage": 2,
+        "phase3StudyCountInFetchedPage": 1,
+        "riskStatusStudyCountInFetchedPage": 4,
         "upcomingCompletion180dCountInFetchedPage": 0,
         "studies": [
           {
-            "nctId": "NCT02966756",
-            "title": "A Study of Venetoclax in Participants With Relapsed or Refractory Chronic Lymphocytic Leukemia/Small Lymphocytic Lymphoma",
-            "leadSponsor": "AbbVie",
-            "identityConfidence": "HIGH",
-            "overallStatus": "ACTIVE_NOT_RECRUITING",
-            "phases": [
-              "PHASE2"
-            ],
-            "completionDate": "2030-12",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT02966756"
-          },
-          {
-            "nctId": "NCT06218251",
-            "title": "A Study to Evaluate Participant Satisfaction and Natural Outcomes Following Administration of BOTOX Cosmetic Injections in Adult Participants for Treatment of Upper Facial Lines",
+            "nctId": "NCT02616380",
+            "title": "Real-World Outcome of Adalimumab on Rheumatoid Arthritis Patients in Taiwan",
             "leadSponsor": "AbbVie",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE4"
-            ],
-            "completionDate": "2024-12-17",
-            "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT06218251"
-          },
-          {
-            "nctId": "NCT05283694",
-            "title": "A Study to Evaluate the Bioavailability of Risankizumab Following Subcutaneous Dosing in Healthy Male Participants",
-            "leadSponsor": "AbbVie",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE1"
-            ],
-            "completionDate": "2018-06-12",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT05283694"
-          },
-          {
-            "nctId": "NCT06632951",
-            "title": "Study to Evaluate Adverse Events and Change in Disease Activity When Intravenously (IV) Infused Livmoniplimab is Used in Combination With IV Infused Budigalimab in Adult Participants With Urothelial Carcinoma (UC)",
-            "leadSponsor": "AbbVie",
-            "identityConfidence": "HIGH",
-            "overallStatus": "ACTIVE_NOT_RECRUITING",
-            "phases": [
-              "PHASE2"
-            ],
-            "completionDate": "2028-08",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT06632951"
-          },
-          {
-            "nctId": "NCT06548542",
-            "title": "Study of Targeted Therapies for the Treatment of Adult Participants With Moderate to Severe Crohn's Disease",
-            "leadSponsor": "AbbVie",
-            "identityConfidence": "HIGH",
-            "overallStatus": "RECRUITING",
-            "phases": [
-              "PHASE2"
-            ],
-            "completionDate": "2030-01",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT06548542"
-          },
-          {
-            "nctId": "NCT01969669",
-            "title": "A Study to Assess the Effect of Ketoconazole on the Metabolism of ABT-199",
-            "leadSponsor": "AbbVie",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE1"
-            ],
-            "completionDate": "2014-09",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT01969669"
-          },
-          {
-            "nctId": "NCT03067129",
-            "title": "A Study to Evaluate the Pharmacokinetics, Safety, and Efficacy of Glecaprevir/Pibrentasvir in Pediatric Subjects With Genotypes 1-6 Chronic Hepatitis C Virus (HCV) Infection",
-            "leadSponsor": "AbbVie",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE2",
-              "PHASE3"
-            ],
-            "completionDate": "2022-09-12",
-            "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT03067129"
-          },
-          {
-            "nctId": "NCT05127954",
-            "title": "Long-term Extension Study to Assess Safety and Tolerability of Oral Ubrogepant Tablets for the Acute Treatment of Migraine in Pediatric Participants (Ages 6-17)",
-            "leadSponsor": "AbbVie",
-            "identityConfidence": "HIGH",
-            "overallStatus": "ENROLLING_BY_INVITATION",
-            "phases": [
-              "PHASE3"
-            ],
-            "completionDate": "2028-01",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT05127954"
-          },
-          {
-            "nctId": "NCT05606757",
-            "title": "A Study to Evaluate Adverse Events and Effectiveness of OnabotulinumtoxinA in Participants Undergoing Open Abdominal Ventral Hernia Repair for the Achievement of Primary Fascial Closure Without the Use of Component Separation Technique",
-            "leadSponsor": "AbbVie",
-            "identityConfidence": "HIGH",
-            "overallStatus": "WITHDRAWN",
-            "phases": [
-              "PHASE2"
-            ],
-            "completionDate": "2025-09-26",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT05606757"
-          },
-          {
-            "nctId": "NCT06247319",
-            "title": "Study to Evaluate the Effectiveness of Risankizumab in Participants With a Recent Diagnosis of Moderate Plaque Psoriasis in a Real-life Setting in Greece",
-            "leadSponsor": "AbbVie",
-            "identityConfidence": "HIGH",
-            "overallStatus": "ACTIVE_NOT_RECRUITING",
             "phases": [],
-            "completionDate": "2027-10",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT06247319"
+            "completionDate": "2017-11-23",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02616380"
           },
           {
-            "nctId": "NCT02985879",
-            "title": "A Study to Assess Efficacy, Safety, Tolerability, and Pharmacokinetics of ABBV-8E12 in Subjects With Progressive Supranuclear Palsy (PSP)",
+            "nctId": "NCT04254783",
+            "title": "A Study to Evaluate the Effect of Intravenous (IV) Infusions of Risankizumab on Pharmacokinetics of Cytochome P450 Substrates in Adult Participants With Moderately to Severely Active Ulcerative Colitis or Crohn's Disease",
+            "leadSponsor": "AbbVie",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2022-10-14",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT04254783"
+          },
+          {
+            "nctId": "NCT03859869",
+            "title": "A Study of Creon (Pancrelipase) in Resected and Non-resected Pancreatic Cancer Participants With Exocrine Pancreatic Insufficiency (EPI)",
             "leadSponsor": "AbbVie",
             "identityConfidence": "HIGH",
             "overallStatus": "TERMINATED",
             "phases": [
-              "PHASE2"
+              "PHASE4"
             ],
-            "completionDate": "2019-11-20",
+            "completionDate": "2022-03-23",
             "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT02985879"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT03859869"
           },
           {
-            "nctId": "NCT04497597",
-            "title": "A Study of Oral Upadacitinib Tablets to Assess Treatment Patterns, Achievement of Treatment Targets and Maintenance of Response in Adult Participants With Moderate to Severe Rheumatoid Arthritis",
+            "nctId": "NCT06362031",
+            "title": "A Study to Explore Treatment Patterns, Treatment Outcomes, Healthcare Resource Utilization in Adult Participants With Acute Myeloid Leukemia (AML) Receiving Venetoclax Through Chart Review",
             "leadSponsor": "AbbVie",
             "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
+            "overallStatus": "WITHDRAWN",
             "phases": [],
-            "completionDate": "2024-05-15",
+            "completionDate": "2024-04-30",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT04497597"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT06362031"
           },
           {
-            "nctId": "NCT02896920",
-            "title": "Canadian Humira Post Marketing Observational Epidemiological Study : Assessing Humira Real-life Effectiveness and Impact on HS Burden of Illness",
+            "nctId": "NCT07241039",
+            "title": "A Study to Assess the Adverse Events, Change in Disease Activity, and How Oral ABBV-711 Tablets Move Through the Body as a Monotherapy and in Combination With Intravenously Infused Budigalimab (ABBV-181), in Adults With Advanced Squamous Tumors",
             "leadSponsor": "AbbVie",
             "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [],
-            "completionDate": "2019-04-29",
+            "overallStatus": "RECRUITING",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2030-10",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT02896920"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT07241039"
           },
           {
-            "nctId": "NCT06054425",
-            "title": "A Study to Compare the Bioavailability of Intravenously Infused Risankizumab Manufactured by Two Different Processes in Healthy Adults",
+            "nctId": "NCT00986037",
+            "title": "Assessment of the Safety of ABT-308 in Healthy Volunteers and Subjects With Asthma",
             "leadSponsor": "AbbVie",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE1"
             ],
-            "completionDate": "2024-05-06",
+            "completionDate": "",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT06054425"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT00986037"
           },
           {
-            "nctId": "NCT05456685",
-            "title": "Mirvetuximab Soravtansine (MIRV) With Carboplatin in Second-line Treatment of Folate Receptor Alpha (FRα) Expressing, Platinum-sensitive Epithelial Ovarian Cancer",
+            "nctId": "NCT07807956",
+            "title": "A Study to Assess Adverse Events, Change in Disease Activity and How Intravenous ABBV-253 Moves Through the Body in Adult Participants With Advanced Solid Tumors",
             "leadSponsor": "AbbVie",
             "identityConfidence": "HIGH",
-            "overallStatus": "ACTIVE_NOT_RECRUITING",
+            "overallStatus": "RECRUITING",
             "phases": [
-              "PHASE2"
+              "PHASE1"
             ],
-            "completionDate": "2026-11",
+            "completionDate": "2029-12",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT05456685"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT07807956"
           },
           {
-            "nctId": "NCT05821855",
-            "title": "A Study to Evaluate Adverse Events and Change in Disease Activity With the XEN45 Glaucoma Treatment System Implantation In Adult Participants With Open-Angle Glaucoma in China",
+            "nctId": "NCT04948645",
+            "title": "A Phase 1 Study to Investigate the Safety and Pharmacokinetics of Fosigotifator in Patients With Amyotrophic Lateral Sclerosis",
             "leadSponsor": "AbbVie",
             "identityConfidence": "HIGH",
-            "overallStatus": "ACTIVE_NOT_RECRUITING",
+            "overallStatus": "TERMINATED",
             "phases": [
-              "PHASE4"
+              "PHASE1"
             ],
-            "completionDate": "2030-07",
+            "completionDate": "2025-07-15",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT05821855"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT04948645"
           },
           {
-            "nctId": "NCT03823391",
-            "title": "A Study to Evaluate the Safety, Tolerability, Pharmacokinetics, and Efficacy of ABBV-3373 in Participants With Moderate to Severe Rheumatoid Arthritis (RA)",
+            "nctId": "NCT05940402",
+            "title": "A Study to Evaluate Pharmacokinetic and Safety Trial of Emraclidine in Participants With Renal Impairment Compared With Participants With Normal Renal Function",
             "leadSponsor": "AbbVie",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
-              "PHASE2"
+              "PHASE1"
             ],
-            "completionDate": "2020-08-26",
+            "completionDate": "2024-12-19",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT05940402"
+          },
+          {
+            "nctId": "NCT04433442",
+            "title": "Study to Assess the Safety and Change in Disease Symptoms of Risankizumab (Skyrizi) in Adult Participants With Moderate to Severe Plaque Psoriasis and Psoriatic Arthritis",
+            "leadSponsor": "AbbVie",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [],
+            "completionDate": "2025-06-13",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT04433442"
+          },
+          {
+            "nctId": "NCT02684370",
+            "title": "BI 655066 (Risankizumab) Compared to Placebo and Active Comparator (Ustekinumab) in Patients With Moderate to Severe Chronic Plaque Psoriasis",
+            "leadSponsor": "AbbVie",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE3"
+            ],
+            "completionDate": "2017-09",
             "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT03823391"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02684370"
+          },
+          {
+            "nctId": "NCT06078202",
+            "title": "A Study to Assess the Relative Bioavailability of Three Immediate-Release Tablet Formulations of ABBV-903 in Healthy Adult Volunteers",
+            "leadSponsor": "AbbVie",
+            "identityConfidence": "HIGH",
+            "overallStatus": "WITHDRAWN",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2025-01-31",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT06078202"
           }
         ],
         "source": "ClinicalTrials.gov API v2",
@@ -389,95 +325,170 @@
       "clinicalTrials": {
         "status": "OK",
         "queryCompany": "Amgen",
-        "apiTotalCount": 1601,
+        "apiTotalCount": 1602,
         "fetchedStudyCount": 20,
-        "verifiedStudyCountInFetchedPage": 6,
-        "rejectedIdentityCountInFetchedPage": 14,
-        "ambiguousSponsorMatches": [
-          "Amgen Research (Munich) GmbH"
-        ],
+        "verifiedStudyCountInFetchedPage": 12,
+        "rejectedIdentityCountInFetchedPage": 8,
+        "ambiguousSponsorMatches": [],
         "identityStatus": "VERIFIED",
         "identityConfidence": "HIGH",
-        "activeStudyCountInFetchedPage": 0,
-        "phase3StudyCountInFetchedPage": 2,
-        "riskStatusStudyCountInFetchedPage": 0,
+        "activeStudyCountInFetchedPage": 1,
+        "phase3StudyCountInFetchedPage": 3,
+        "riskStatusStudyCountInFetchedPage": 2,
         "upcomingCompletion180dCountInFetchedPage": 0,
         "studies": [
           {
-            "nctId": "NCT04040894",
-            "title": "Expanded Access Protocol of Teprotumumab (HZN-001) for Patients With Active Thyroid Eye Disease",
+            "nctId": "NCT00472290",
+            "title": "Evaluating the Safety of Long Term Dosing of Romiplostim (Formerly AMG 531) in Thrombocytopenic Subjects With Myelodysplastic Syndromes (MDS)",
             "leadSponsor": "Amgen",
             "identityConfidence": "HIGH",
-            "overallStatus": "APPROVED_FOR_MARKETING",
-            "phases": [],
-            "completionDate": "",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT04040894"
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "NA"
+            ],
+            "completionDate": "2011-12-26",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT00472290"
           },
           {
-            "nctId": "NCT00950950",
-            "title": "A Study to Evaluate the Effect of Romosozumab (AMG 785) on Bone Quality of the Forearm in Postmenopausal Women With Low Bone Mass",
+            "nctId": "NCT01948427",
+            "title": "Observational Study That Will Collect Information on Patients With Urea Cycle Disorders (UCDs)",
+            "leadSponsor": "Amgen",
+            "identityConfidence": "HIGH",
+            "overallStatus": "TERMINATED",
+            "phases": [],
+            "completionDate": "2020-02-24",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01948427"
+          },
+          {
+            "nctId": "NCT02808403",
+            "title": "Long Term Post Marketing Specified Drug Use Result Survey for Evolocumab in Japan",
+            "leadSponsor": "Amgen",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [],
+            "completionDate": "2023-03-30",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02808403"
+          },
+          {
+            "nctId": "NCT04252742",
+            "title": "Erenumab - Comprehensive Assessment of Efficacy in (High-Frequency) Episodic Migraine",
+            "leadSponsor": "Amgen",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE4"
+            ],
+            "completionDate": "2023-10-26",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT04252742"
+          },
+          {
+            "nctId": "NCT07866066",
+            "title": "Maridebart Cafraglutide Versus Semaglutide in Participants With Type 2 Diabetes",
+            "leadSponsor": "Amgen",
+            "identityConfidence": "HIGH",
+            "overallStatus": "RECRUITING",
+            "phases": [
+              "PHASE3"
+            ],
+            "completionDate": "2028-12-05",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT07866066"
+          },
+          {
+            "nctId": "NCT04631601",
+            "title": "Safety and Efficacy of Therapies for Metastatic Castration-resistant Prostate Cancer (mCRPC)",
+            "leadSponsor": "Amgen",
+            "identityConfidence": "HIGH",
+            "overallStatus": "TERMINATED",
+            "phases": [
+              "PHASE1",
+              "PHASE2"
+            ],
+            "completionDate": "2023-10-23",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT04631601"
+          },
+          {
+            "nctId": "NCT05891119",
+            "title": "Study to Investigate the Effect of Rocatinlimab (AMG 451) on the Pharmacokinetics of Multiple Cytochrome P450 (CYP450) Substrates in Participants With Moderate to Severe Atopic Dermatitis",
+            "leadSponsor": "Amgen",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "EARLY_PHASE1"
+            ],
+            "completionDate": "2025-02-12",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT05891119"
+          },
+          {
+            "nctId": "NCT01652872",
+            "title": "Strategies Using Darbepoetin Alfa to Avoid Transfusions in Chronic Kidney Disease",
+            "leadSponsor": "Amgen",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE3"
+            ],
+            "completionDate": "2017-10-19",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01652872"
+          },
+          {
+            "nctId": "NCT02174861",
+            "title": "A Study to Assess the Long-term Safety and Efficacy of Erenumab (AMG 334) in Chronic Migraine Prevention.",
+            "leadSponsor": "Amgen",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE2"
+            ],
+            "completionDate": "2017-05-26",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02174861"
+          },
+          {
+            "nctId": "NCT01568866",
+            "title": "Phase 3 Study With Carfilzomib and Dexamethasone Versus Bortezomib and Dexamethasone for Relapsed Multiple Myeloma Patients",
+            "leadSponsor": "Amgen",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE3"
+            ],
+            "completionDate": "2018-02-05",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01568866"
+          },
+          {
+            "nctId": "NCT03340766",
+            "title": "Study Investigating the Safety and Efficacy of Blinatumomab in Combination With Pembrolizumab in Adults With Relapsed or Refractory Diffuse Large B Cell Lymphoma (DLBCL)",
             "leadSponsor": "Amgen",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE1"
             ],
-            "completionDate": "2010-08-19",
+            "completionDate": "2023-08-14",
             "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT00950950"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT03340766"
           },
           {
-            "nctId": "NCT02867813",
-            "title": "Further Cardiovascular Outcomes Research With PCSK9 Inhibition in Subjects With Elevated Risk Open-label Extension",
+            "nctId": "NCT02749370",
+            "title": "Study to Evaluate the Efficacy of Etanercept Treatment in Adults Who Failed Therapy With Apremilast",
             "leadSponsor": "Amgen",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
-              "PHASE3"
+              "PHASE4"
             ],
-            "completionDate": "2022-03-21",
+            "completionDate": "2017-12-06",
             "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT02867813"
-          },
-          {
-            "nctId": "NCT01992159",
-            "title": "Efficacy, Safety and Tolerability of Romosozumab in the Treatment of Japanese Women With Postmenopausal Osteoporosis",
-            "leadSponsor": "Amgen",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE2"
-            ],
-            "completionDate": "2015-06-17",
-            "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT01992159"
-          },
-          {
-            "nctId": "NCT05073315",
-            "title": "A Comparative Study Between ABP 501 and Humira® in Participants With Moderate to Severe Plaque Psoriasis",
-            "leadSponsor": "Amgen",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE3"
-            ],
-            "completionDate": "2022-12-19",
-            "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT05073315"
-          },
-          {
-            "nctId": "NCT00111423",
-            "title": "Evaluating the Safety of Extended Treatment With Pegsunercept (PEG sTNF-RI)in Subjects With Rheumatoid Arthritis (RA)",
-            "leadSponsor": "Amgen",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE2"
-            ],
-            "completionDate": "",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT00111423"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02749370"
           }
         ],
         "source": "ClinicalTrials.gov API v2",
@@ -547,127 +558,103 @@
         "queryCompany": "Bristol-Myers Squibb",
         "apiTotalCount": 2943,
         "fetchedStudyCount": 20,
-        "verifiedStudyCountInFetchedPage": 9,
-        "rejectedIdentityCountInFetchedPage": 11,
+        "verifiedStudyCountInFetchedPage": 7,
+        "rejectedIdentityCountInFetchedPage": 13,
         "ambiguousSponsorMatches": [],
         "identityStatus": "VERIFIED",
         "identityConfidence": "HIGH",
-        "activeStudyCountInFetchedPage": 1,
-        "phase3StudyCountInFetchedPage": 1,
-        "riskStatusStudyCountInFetchedPage": 2,
+        "activeStudyCountInFetchedPage": 0,
+        "phase3StudyCountInFetchedPage": 2,
+        "riskStatusStudyCountInFetchedPage": 0,
         "upcomingCompletion180dCountInFetchedPage": 0,
         "studies": [
           {
-            "nctId": "NCT03663829",
-            "title": "Impact of Anti-citrullinated Protein Antibody Status on Treatment Response and Treatment Persistence in Participants With Rheumatoid Arthritis (RA) Who Are Treated With Abatacept or Tumor Necrosis Factor Inhibitors in Australia",
+            "nctId": "NCT01030718",
+            "title": "Rollover Study of BMS-354825 in Patients With CML and Ph+ALL",
             "leadSponsor": "Bristol-Myers Squibb",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
-            "phases": [],
-            "completionDate": "2019-12-18",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT03663829"
+            "phases": [
+              "PHASE1",
+              "PHASE2"
+            ],
+            "completionDate": "2009-06",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01030718"
           },
           {
-            "nctId": "NCT00162188",
-            "title": "An Expanded Access Study of Oral Liquid Efavirenz in the Treatment of Children With HIV Infection: Canada",
+            "nctId": "NCT05170659",
+            "title": "Expanded Access for Relatlimab",
             "leadSponsor": "Bristol-Myers Squibb",
             "identityConfidence": "HIGH",
             "overallStatus": "NO_LONGER_AVAILABLE",
             "phases": [],
-            "completionDate": "2010-12",
+            "completionDate": "",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT00162188"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT05170659"
           },
           {
-            "nctId": "NCT00982488",
-            "title": "Long-term Safety of Dasatinib in Patients With Chronic Myelogenous Leukemia or Philadelphia Chromosome Positive Acute Lymphoblastic Leukemia",
+            "nctId": "NCT00777036",
+            "title": "A Phase II Study of Dasatinib in Children and Adolescents With Newly Diagnosed Chronic Phase Chronic Myelogenous Leukemia (CML) or With Ph+ Leukemias Resistant or Intolerant to Imatinib",
             "leadSponsor": "Bristol-Myers Squibb",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE2"
             ],
-            "completionDate": "2014-12",
+            "completionDate": "2025-01-27",
             "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT00982488"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT00777036"
           },
           {
-            "nctId": "NCT00850577",
-            "title": "Ph II of a Novel Anti-angiogenic Agent in Combination With Chemotherapy for the Treatment of Non-Small Cell Lung Cancer",
+            "nctId": "NCT00240370",
+            "title": "A Study to Evaluate Combining Metformin With Muraglitazar or Pioglitazone in Type 2 Diabetics",
             "leadSponsor": "Bristol-Myers Squibb",
             "identityConfidence": "HIGH",
-            "overallStatus": "TERMINATED",
+            "overallStatus": "COMPLETED",
             "phases": [
-              "PHASE2"
+              "PHASE3"
             ],
-            "completionDate": "2013-08",
+            "completionDate": "",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT00850577"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT00240370"
           },
           {
-            "nctId": "NCT00778622",
-            "title": "Body Weight Effects on Glucophage's Efficacy in Chinese Diagnosed T2DM Patients",
+            "nctId": "NCT00002041",
+            "title": "Evaluation of Amphotericin B in the Treatment of Biopsy Proven Candida Esophagitis in Immunocompromised Patients",
             "leadSponsor": "Bristol-Myers Squibb",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
-              "PHASE4"
+              "NA"
             ],
-            "completionDate": "2011-03",
-            "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT00778622"
+            "completionDate": "",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT00002041"
           },
           {
-            "nctId": "NCT01016912",
-            "title": "Safety and Efficacy of Daclatasvir (BMS-790052) Plus Standard of Care (Pegylated-interferon Alpha-2b and Ribavirin) in Japanese Patients",
+            "nctId": "NCT00410072",
+            "title": "Entecavir Plus Tenofovir Combination Therapy Versus Entecavir Monotherapy in Naive Subjects With Chronic Hepatitis B",
             "leadSponsor": "Bristol-Myers Squibb",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
-              "PHASE2"
+              "PHASE3"
             ],
-            "completionDate": "2010-09",
+            "completionDate": "2010-10",
             "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT01016912"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT00410072"
           },
           {
-            "nctId": "NCT03696069",
-            "title": "A Study is to Understand the Treatment Patterns for Immunotherapy Agents and BRAF/MEK Inhibitors Used in the Treatment of Advanced Melanoma",
+            "nctId": "NCT02532673",
+            "title": "Impact of Hyperbilirubinemia Among HIV Patients Treated With Atazanavir",
             "leadSponsor": "Bristol-Myers Squibb",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [],
-            "completionDate": "2020-02-14",
+            "completionDate": "2015-05",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT03696069"
-          },
-          {
-            "nctId": "NCT04082741",
-            "title": "A Single and Multiple Ascending Dose Study of BMS-986318 in Healthy Participants",
-            "leadSponsor": "Bristol-Myers Squibb",
-            "identityConfidence": "HIGH",
-            "overallStatus": "WITHDRAWN",
-            "phases": [
-              "PHASE1"
-            ],
-            "completionDate": "2019-09-12",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT04082741"
-          },
-          {
-            "nctId": "NCT05076175",
-            "title": "A Study Investigating Oral Ozanimod (RPC1063) in Pediatric Participants With Moderate to Severe Active Ulcerative Colitis",
-            "leadSponsor": "Bristol-Myers Squibb",
-            "identityConfidence": "HIGH",
-            "overallStatus": "RECRUITING",
-            "phases": [
-              "PHASE2",
-              "PHASE3"
-            ],
-            "completionDate": "2032-07-12",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT05076175"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02532673"
           }
         ],
         "source": "ClinicalTrials.gov API v2",
@@ -735,160 +722,167 @@
       "clinicalTrials": {
         "status": "OK",
         "queryCompany": "Gilead Sciences",
-        "apiTotalCount": 1249,
+        "apiTotalCount": 1250,
         "fetchedStudyCount": 20,
-        "verifiedStudyCountInFetchedPage": 11,
-        "rejectedIdentityCountInFetchedPage": 9,
+        "verifiedStudyCountInFetchedPage": 12,
+        "rejectedIdentityCountInFetchedPage": 8,
         "ambiguousSponsorMatches": [],
         "identityStatus": "VERIFIED",
         "identityConfidence": "HIGH",
-        "activeStudyCountInFetchedPage": 2,
-        "phase3StudyCountInFetchedPage": 2,
+        "activeStudyCountInFetchedPage": 1,
+        "phase3StudyCountInFetchedPage": 4,
         "riskStatusStudyCountInFetchedPage": 2,
         "upcomingCompletion180dCountInFetchedPage": 0,
         "studies": [
           {
-            "nctId": "NCT03100942",
-            "title": "Study to Assess Safety and Efficacy of Filgotinib, Lanraplenib and Tirabrutinib in Adults With Active Sjogren's Syndrome",
+            "nctId": "NCT04323761",
+            "title": "Expanded Access Treatment Protocol: Remdesivir (RDV; GS-5734) for the Treatment of SARS-CoV2 (CoV) Infection (COVID-19)",
             "leadSponsor": "Gilead Sciences",
             "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE2"
-            ],
-            "completionDate": "2019-10-02",
-            "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT03100942"
-          },
-          {
-            "nctId": "NCT03739866",
-            "title": "Study to Evaluate Safety, Pharmacokinetics, and Antiviral Activity of Lenacapavir Administered Subcutaneously in Human Immunodeficiency Virus (HIV) -1 Infected Adults",
-            "leadSponsor": "Gilead Sciences",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE1"
-            ],
-            "completionDate": "2020-06-15",
-            "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT03739866"
-          },
-          {
-            "nctId": "NCT05101096",
-            "title": "Study of Sacituzumab Govitecan (SG) in Japanese Participants With Advanced Solid Tumors",
-            "leadSponsor": "Gilead Sciences",
-            "identityConfidence": "HIGH",
-            "overallStatus": "ACTIVE_NOT_RECRUITING",
-            "phases": [
-              "PHASE1",
-              "PHASE2"
-            ],
-            "completionDate": "2027-05",
+            "overallStatus": "APPROVED_FOR_MARKETING",
+            "phases": [],
+            "completionDate": "",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT05101096"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT04323761"
           },
           {
-            "nctId": "NCT00725803",
-            "title": "Evaluation of the Safety, Tolerability, Pharmacokinetics, and Activity of GS-9450 in Subjects With Chronic HCV",
+            "nctId": "NCT02300103",
+            "title": "Efficacy And Safety Of Sofosbuvir/Velpatasvir Fixed Dose Combination With Ribavirin in Chronic HCV Infected Adults Who Participated in a Prior Gilead Sponsored HCV Treatment Study",
             "leadSponsor": "Gilead Sciences",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE2"
             ],
-            "completionDate": "2009-03",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT00725803"
+            "completionDate": "2016-09-15",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02300103"
           },
           {
-            "nctId": "NCT04150068",
-            "title": "Study to Evaluate the Safety and Efficacy of Lenacapavir (GS-6207) in Combination With an Optimized Background Regimen (OBR) in Heavily Treatment Experienced Participants Living With HIV-1 Infection With Multidrug Resistance",
+            "nctId": "NCT02258529",
+            "title": "Idelalisib in Combination With Rituximab for Previously Untreated Follicular Lymphoma and Small Lymphocytic Lymphoma",
             "leadSponsor": "Gilead Sciences",
             "identityConfidence": "HIGH",
-            "overallStatus": "ACTIVE_NOT_RECRUITING",
+            "overallStatus": "TERMINATED",
             "phases": [
-              "PHASE2",
-              "PHASE3"
+              "PHASE2"
             ],
-            "completionDate": "2028-01",
+            "completionDate": "2016-05-03",
             "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT04150068"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02258529"
           },
           {
-            "nctId": "NCT02562742",
-            "title": "Use-Results Surveillance Study of Sovaldi® Plus Rebetol® in Japanese Patients With Chronic Genotype 2 Hepatitis C Virus Infection",
+            "nctId": "NCT02907996",
+            "title": "Evaluate the Safety and Effectiveness of Sovaldi in Participants With Chronic Hepatitis C Virus (HCV) Infection in Korea",
             "leadSponsor": "Gilead Sciences",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [],
-            "completionDate": "2017-06-12",
+            "completionDate": "2021-12-09",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT02562742"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02907996"
           },
           {
-            "nctId": "NCT02071082",
-            "title": "Efficacy and Safety of E/C/F/TAF (Genvoya®) in HIV-1/Hepatitis B Co-infected Adults",
+            "nctId": "NCT04130919",
+            "title": "Study to Evaluate the Efficacy and Safety of Tilpisertib in Adults With Moderately to Severely Active Ulcerative Colitis",
+            "leadSponsor": "Gilead Sciences",
+            "identityConfidence": "HIGH",
+            "overallStatus": "TERMINATED",
+            "phases": [
+              "PHASE2"
+            ],
+            "completionDate": "2021-12-14",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT04130919"
+          },
+          {
+            "nctId": "NCT03852719",
+            "title": "Study to Assess Efficacy and Safety of Bulevirtide in Participants With Chronic Hepatitis Delta (CHD)",
             "leadSponsor": "Gilead Sciences",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE3"
             ],
-            "completionDate": "2016-10-26",
+            "completionDate": "2024-08-08",
             "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT02071082"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT03852719"
           },
           {
-            "nctId": "NCT01728207",
-            "title": "Phase I Dose Escalation Study of IMMU-114 in Relapsed or Refractory NHL and CLL",
-            "leadSponsor": "Gilead Sciences",
-            "identityConfidence": "HIGH",
-            "overallStatus": "TERMINATED",
-            "phases": [
-              "PHASE1"
-            ],
-            "completionDate": "2017-03",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT01728207"
-          },
-          {
-            "nctId": "NCT00002419",
-            "title": "Safety and Effectiveness of Giving Adefovir Dipivoxil Plus Abacavir Plus Efavirenz Plus Amprenavir to HIV-Infected Patients Who Have Failed to Respond to Previous Protease Inhibitor Treatment",
+            "nctId": "NCT01054729",
+            "title": "Dose-Ranging Study of Sofosbuvir in Combination With Pegylated Interferon and Ribavirin in Treatment Naïve GT 1 HCV Patients",
             "leadSponsor": "Gilead Sciences",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE2"
             ],
-            "completionDate": "",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT00002419"
+            "completionDate": "2011-08",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01054729"
           },
           {
-            "nctId": "NCT03912831",
-            "title": "Study to Evaluate the Safety and Efficacy of KITE-439 in HLA-A*02:01+ Adults With Relapsed/Refractory HPV16+ Cancers",
+            "nctId": "NCT05633654",
+            "title": "Study of Sacituzumab Govitecan-hziy and Pembrolizumab Versus Treatment of Physician's Choice in Patients With Triple Negative Breast Cancer Who Have Residual Invasive Disease After Surgery and Neoadjuvant Therapy (ASCENT-05/AFT-65 OptimICE-RD/GBG 119/NSABP B-63)",
             "leadSponsor": "Gilead Sciences",
             "identityConfidence": "HIGH",
-            "overallStatus": "TERMINATED",
+            "overallStatus": "RECRUITING",
             "phases": [
-              "PHASE1"
+              "PHASE3"
             ],
-            "completionDate": "2022-02-18",
-            "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT03912831"
+            "completionDate": "2031-08",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT05633654"
           },
           {
-            "nctId": "NCT03022981",
-            "title": "Study to Investigate the Safety and Efficacy of Sofosbuvir/Velpatasvir in Adolescents and Children With Chronic HCV Infection",
+            "nctId": "NCT00263614",
+            "title": "Evaluation of Chronic HBV Patients w/Evidence of HBV Replication and Normal or Minimally Elevated Liver Transaminases.",
+            "leadSponsor": "Gilead Sciences",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [],
+            "completionDate": "2007-06",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT00263614"
+          },
+          {
+            "nctId": "NCT01779505",
+            "title": "A Phase 1a Trial Assessing the Safety, Tolerability, and Immunogenicity of GS-4774 (GI-13020) at Various Dose Levels and Regimens in Healthy Adults",
             "leadSponsor": "Gilead Sciences",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
-              "PHASE2"
+              "PHASE1"
             ],
-            "completionDate": "2020-02-26",
-            "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT03022981"
+            "completionDate": "2013-08",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01779505"
+          },
+          {
+            "nctId": "NCT00071201",
+            "title": "Evaluate Efficacy, Safety and PK of Adefovir Dipivoxil Liquid Suspension in Patients With Chronic Hepatitis B",
+            "leadSponsor": "Gilead Sciences",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE3"
+            ],
+            "completionDate": "2006-03",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT00071201"
+          },
+          {
+            "nctId": "NCT06060665",
+            "title": "Intended to Determine the Effects of Seladelpar on Normalization of Alkaline Phosphatase Levels in Subjects With Primary Biliary Cholangitis (PBC)",
+            "leadSponsor": "Gilead Sciences",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE3"
+            ],
+            "completionDate": "2026-05-06",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT06060665"
           }
         ],
         "source": "ClinicalTrials.gov API v2",
@@ -961,11 +955,9 @@
         "verifiedStudyCountInFetchedPage": 0,
         "rejectedIdentityCountInFetchedPage": 20,
         "ambiguousSponsorMatches": [
+          "Johnson & Johnson Consumer Inc. (J&JCI)",
           "Johnson & Johnson Consumer and Personal Products Worldwide",
-          "Johnson & Johnson Medical (Suzhou) Ltd.",
-          "Johnson & Johnson Medical, China",
           "Johnson & Johnson Pharmaceutical Research & Development, L.L.C.",
-          "Johnson & Johnson Private Limited",
           "Johnson & Johnson Taiwan Ltd",
           "Johnson & Johnson Vision Care, Inc."
         ],
@@ -1041,212 +1033,201 @@
       "clinicalTrials": {
         "status": "OK",
         "queryCompany": "Eli Lilly and Company",
-        "apiTotalCount": 2935,
+        "apiTotalCount": 2936,
         "fetchedStudyCount": 20,
-        "verifiedStudyCountInFetchedPage": 15,
-        "rejectedIdentityCountInFetchedPage": 5,
-        "ambiguousSponsorMatches": [],
+        "verifiedStudyCountInFetchedPage": 14,
+        "rejectedIdentityCountInFetchedPage": 6,
+        "ambiguousSponsorMatches": [
+          "Scorpion Therapeutics, a wholly owned subsidiary of Eli Lilly and Company"
+        ],
         "identityStatus": "VERIFIED",
         "identityConfidence": "HIGH",
-        "activeStudyCountInFetchedPage": 1,
+        "activeStudyCountInFetchedPage": 2,
         "phase3StudyCountInFetchedPage": 4,
         "riskStatusStudyCountInFetchedPage": 1,
         "upcomingCompletion180dCountInFetchedPage": 0,
         "studies": [
           {
-            "nctId": "NCT01287546",
-            "title": "A Study of LY2875358 in Participants With Advanced Cancer",
-            "leadSponsor": "Eli Lilly and Company",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE1"
-            ],
-            "completionDate": "2016-10-26",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT01287546"
-          },
-          {
-            "nctId": "NCT00414960",
-            "title": "A Trial of Placebo Versus Enzastaurin for Lung Cancer Prevention in Former Smokers",
-            "leadSponsor": "Eli Lilly and Company",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE2"
-            ],
-            "completionDate": "2010-09",
-            "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT00414960"
-          },
-          {
-            "nctId": "NCT00113594",
-            "title": "Olanzapine Treated Adolescents With Schizophrenia or Bipolar I Disorder",
-            "leadSponsor": "Eli Lilly and Company",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE3"
-            ],
-            "completionDate": "2006-03",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT00113594"
-          },
-          {
-            "nctId": "NCT01285037",
-            "title": "A Study of LY2801653 in Advanced Cancer",
-            "leadSponsor": "Eli Lilly and Company",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE1"
-            ],
-            "completionDate": "2017-09-11",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT01285037"
-          },
-          {
-            "nctId": "NCT02443337",
-            "title": "A Study of LY3023414 and Necitumumab in Squamous Lung Cancer",
+            "nctId": "NCT03764774",
+            "title": "A Study of LY3463251 in Healthy Participants",
             "leadSponsor": "Eli Lilly and Company",
             "identityConfidence": "HIGH",
             "overallStatus": "TERMINATED",
             "phases": [
-              "PHASE2"
-            ],
-            "completionDate": "2017-09",
-            "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT02443337"
-          },
-          {
-            "nctId": "NCT00489996",
-            "title": "Trial Comparing 3 and 4 Week Regimen of Gemcitabine and Cisplatin in Patients With Lung Cancer",
-            "leadSponsor": "Eli Lilly and Company",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE2"
-            ],
-            "completionDate": "2005-06",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT00489996"
-          },
-          {
-            "nctId": "NCT06342596",
-            "title": "A Study of Carbon-14-Labelled [14C] LY3473329 in Healthy Male Participants",
-            "leadSponsor": "Eli Lilly and Company",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
               "PHASE1"
             ],
-            "completionDate": "2024-05-01",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT06342596"
-          },
-          {
-            "nctId": "NCT06229366",
-            "title": "[Ac-225]-PSMA-62 Trial in Oligometastatic Hormone Sensitive and Metastatic Castration Resistant Prostate Cancer",
-            "leadSponsor": "Eli Lilly and Company",
-            "identityConfidence": "HIGH",
-            "overallStatus": "ACTIVE_NOT_RECRUITING",
-            "phases": [
-              "PHASE1"
-            ],
-            "completionDate": "2032-12",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT06229366"
-          },
-          {
-            "nctId": "NCT02797951",
-            "title": "A Study of LY2951742 (Galcanezumab) in Participants With Cluster Headache",
-            "leadSponsor": "Eli Lilly and Company",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE3"
-            ],
-            "completionDate": "2021-01-21",
+            "completionDate": "2020-12-07",
             "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT02797951"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT03764774"
           },
           {
-            "nctId": "NCT02981342",
-            "title": "A Study of Abemaciclib (LY2835219) Alone or in Combination With Other Agents in Participants With Previously Treated Pancreatic Ductal Adenocarcinoma",
+            "nctId": "NCT01167023",
+            "title": "Prasugrel Versus Placebo in Adult Sickle Cell Disease",
             "leadSponsor": "Eli Lilly and Company",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE2"
             ],
-            "completionDate": "2018-11-09",
+            "completionDate": "2011-06",
             "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT02981342"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01167023"
           },
           {
-            "nctId": "NCT02109042",
-            "title": "A Study of Blosozumab (LY2541546) in Postmenopausal Female Participants",
-            "leadSponsor": "Eli Lilly and Company",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE1"
-            ],
-            "completionDate": "2014-07",
-            "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT02109042"
-          },
-          {
-            "nctId": "NCT02248480",
-            "title": "A Study of Duloxetine (LY248686) in Participants With Chronic Osteoarthritis and Knee Pain in Japan",
+            "nctId": "NCT04809220",
+            "title": "A Study of Two Doses of Dulaglutide (LY2189265) in Japanese Patients With Type 2 Diabetes",
             "leadSponsor": "Eli Lilly and Company",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE3"
             ],
-            "completionDate": "2015-06",
+            "completionDate": "2023-04-26",
             "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT02248480"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT04809220"
           },
           {
-            "nctId": "NCT00857454",
-            "title": "A Trial to Evaluate the Ongoing Skin Safety of Testosterone MD-Lotion Formulations",
-            "leadSponsor": "Eli Lilly and Company",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE3"
-            ],
-            "completionDate": "2009-08",
-            "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT00857454"
-          },
-          {
-            "nctId": "NCT02304419",
-            "title": "A Study of Galunisertib on the Immune System in Participants With Cancer",
+            "nctId": "NCT01408888",
+            "title": "A Study of LY2189265 and Sitagliptin in Participants With Type 2 Diabetes",
             "leadSponsor": "Eli Lilly and Company",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE1"
             ],
-            "completionDate": "2016-08",
+            "completionDate": "2012-04",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01408888"
+          },
+          {
+            "nctId": "NCT07698210",
+            "title": "A Study of LY4178256 in Healthy Participants",
+            "leadSponsor": "Eli Lilly and Company",
+            "identityConfidence": "HIGH",
+            "overallStatus": "RECRUITING",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2028-03",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT02304419"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT07698210"
           },
           {
-            "nctId": "NCT02942654",
-            "title": "A Study of LY900014 Formulation in Healthy Participants",
+            "nctId": "NCT06690996",
+            "title": "A Study of LY4005130 in Healthy Participants",
             "leadSponsor": "Eli Lilly and Company",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE1"
             ],
-            "completionDate": "2016-12",
+            "completionDate": "2026-04-28",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT06690996"
+          },
+          {
+            "nctId": "NCT01991483",
+            "title": "A Study of LY2928057 in Hemodialysis Participants",
+            "leadSponsor": "Eli Lilly and Company",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2015-10",
             "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT02942654"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01991483"
+          },
+          {
+            "nctId": "NCT07547540",
+            "title": "A Study of LY3971297 in Participants With Heart Failure",
+            "leadSponsor": "Eli Lilly and Company",
+            "identityConfidence": "HIGH",
+            "overallStatus": "RECRUITING",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2027-11",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT07547540"
+          },
+          {
+            "nctId": "NCT00384774",
+            "title": "A Placebo-Controlled Adaptive Treatment Assignment Study of Intravenous COL-144 in the Acute Treatment of Migraine",
+            "leadSponsor": "Eli Lilly and Company",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE2"
+            ],
+            "completionDate": "2007-06",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT00384774"
+          },
+          {
+            "nctId": "NCT01139762",
+            "title": "A Study of Tadalafil Use With Finasteride in Men With Enlarged Prostates and Urinary Symptoms",
+            "leadSponsor": "Eli Lilly and Company",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE3"
+            ],
+            "completionDate": "2012-05",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01139762"
+          },
+          {
+            "nctId": "NCT02132637",
+            "title": "A Study to Compare the Effect of a Double Dose of Two Long-acting Insulin Therapies in Participants With Type 2 Diabetes",
+            "leadSponsor": "Eli Lilly and Company",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE3"
+            ],
+            "completionDate": "2015-07",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02132637"
+          },
+          {
+            "nctId": "NCT05515601",
+            "title": "A Bioequivalence Study of Mirikizumab (LY3074828) in Healthy Participants",
+            "leadSponsor": "Eli Lilly and Company",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2023-02-20",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT05515601"
+          },
+          {
+            "nctId": "NCT03214380",
+            "title": "A Study of LY900014 Compared to Insulin Lispro in Participants With Type 2 Diabetes",
+            "leadSponsor": "Eli Lilly and Company",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE3"
+            ],
+            "completionDate": "2019-03-13",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT03214380"
+          },
+          {
+            "nctId": "NCT05086445",
+            "title": "A Study of LY3502970 in Japanese Participants With Type 2 Diabetes Mellitus",
+            "leadSponsor": "Eli Lilly and Company",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2022-09-05",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT05086445"
           }
         ],
         "source": "ClinicalTrials.gov API v2",
@@ -1314,173 +1295,167 @@
       "clinicalTrials": {
         "status": "OK",
         "queryCompany": "Merck Sharp & Dohme",
-        "apiTotalCount": 4316,
+        "apiTotalCount": 4317,
         "fetchedStudyCount": 20,
         "verifiedStudyCountInFetchedPage": 12,
         "rejectedIdentityCountInFetchedPage": 8,
         "ambiguousSponsorMatches": [],
         "identityStatus": "VERIFIED",
         "identityConfidence": "HIGH",
-        "activeStudyCountInFetchedPage": 3,
-        "phase3StudyCountInFetchedPage": 3,
-        "riskStatusStudyCountInFetchedPage": 1,
-        "upcomingCompletion180dCountInFetchedPage": 1,
+        "activeStudyCountInFetchedPage": 0,
+        "phase3StudyCountInFetchedPage": 2,
+        "riskStatusStudyCountInFetchedPage": 2,
+        "upcomingCompletion180dCountInFetchedPage": 0,
         "studies": [
           {
-            "nctId": "NCT02064920",
-            "title": "Computerized Cognition Testing in Participants With Mild Alzheimer's Disease (AD) Treated With Donepezil (MK-0000-318)",
+            "nctId": "NCT00732810",
+            "title": "SCH 727965 in Patients With Advanced Breast and Lung Cancers (Study P04716)",
             "leadSponsor": "Merck Sharp & Dohme LLC",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE2"
             ],
-            "completionDate": "2016-07-13",
-            "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT02064920"
-          },
-          {
-            "nctId": "NCT04665037",
-            "title": "Posaconazole (MK-5592) Intravenous and Oral in Children (<2 Years) With Invasive Fungal Infection (MK-5592-127)",
-            "leadSponsor": "Merck Sharp & Dohme LLC",
-            "identityConfidence": "HIGH",
-            "overallStatus": "RECRUITING",
-            "phases": [
-              "PHASE2"
-            ],
-            "completionDate": "2027-04-15",
+            "completionDate": "2011-06",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT04665037"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT00732810"
           },
           {
-            "nctId": "NCT00145080",
-            "title": "Comparison of Osteoporosis Disease Management Strategies (0000-039)",
-            "leadSponsor": "Merck Sharp & Dohme LLC",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "NA"
-            ],
-            "completionDate": "2006-01",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT00145080"
-          },
-          {
-            "nctId": "NCT02674061",
-            "title": "Efficacy and Safety Study of Pembrolizumab (MK-3475) in Participants With Advanced Recurrent Ovarian Cancer (MK-3475-100/KEYNOTE-100)",
+            "nctId": "NCT01564459",
+            "title": "Study to Evaluate MK-6096 in the Treatment of Painful Diabetic Neuropathy (PDN) in Adults (MK-6096-021)",
             "leadSponsor": "Merck Sharp & Dohme LLC",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE2"
             ],
-            "completionDate": "2021-03-18",
+            "completionDate": "2013-04-18",
             "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT02674061"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01564459"
           },
           {
-            "nctId": "NCT00972322",
-            "title": "Pharmacokinetics and Pharmacodynamics of MK-8245 in Participants With Type 2 Diabetes (MK-8245-012)",
+            "nctId": "NCT01919125",
+            "title": "Pharmacokinetics of IDX719 in Participants With Normal and Impaired Hepatic Function (MK-1894-008)",
             "leadSponsor": "Merck Sharp & Dohme LLC",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE1"
             ],
-            "completionDate": "2010-01-26",
-            "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT00972322"
+            "completionDate": "2014-02",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01919125"
           },
           {
-            "nctId": "NCT06811246",
-            "title": "A Clinical Study of Islatravir and Its Interaction With Lamivudine (MK-8591-058)",
+            "nctId": "NCT00725010",
+            "title": "Temozolomide in Concomitant Radiochemotherapy Followed by Sequential Temozolomide Chemotherapy - Observational Program (Study P04816)",
             "leadSponsor": "Merck Sharp & Dohme LLC",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE1"
-            ],
-            "completionDate": "2024-07-14",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT06811246"
+            "phases": [],
+            "completionDate": "2009-04",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT00725010"
           },
           {
-            "nctId": "NCT06136559",
-            "title": "A Study of Nemtabrutinib (MK-1026) Versus Comparator (Investigator's Choice of Ibrutinib or Acalabrutinib) in First Line (1L) Chronic Lymphocytic Leukemia (CLL)/ Small Lymphocytic Lymphoma (SLL) (MK-1026-011/BELLWAVE-011)",
+            "nctId": "NCT05064059",
+            "title": "A Study of Coformulated Favezelimab/Pembrolizumab (MK-4280A) Versus Standard of Care in Subjects With Previously Treated Metastatic PD-L1 Positive Colorectal Cancer (MK-4280A-007)",
             "leadSponsor": "Merck Sharp & Dohme LLC",
             "identityConfidence": "HIGH",
-            "overallStatus": "RECRUITING",
+            "overallStatus": "COMPLETED",
             "phases": [
               "PHASE3"
             ],
-            "completionDate": "2032-09-07",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT06136559"
+            "completionDate": "2025-02-21",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT05064059"
           },
           {
-            "nctId": "NCT00654420",
-            "title": "A Study Evaluating Dalotuzumab (MK-0646) in Combination With Erlotinib for Participants With Non-Small Cell Lung Cancer (MK-0646-007)",
+            "nctId": "NCT02577003",
+            "title": "Double-blind Ipragliflozin Add-on Study in Japanese Participants With Type 2 Diabetes Mellitus Who Have Inadequate Glycemic Control on Sitagliptin (MK-0431J-843)",
+            "leadSponsor": "Merck Sharp & Dohme LLC",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE3"
+            ],
+            "completionDate": "2016-11-25",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02577003"
+          },
+          {
+            "nctId": "NCT01527383",
+            "title": "A Study to Evaluate the Safety and Immunogenicity of Inactivated Varicella Zoster Virus (VZV) Vaccine in Adults With Autoimmune Disease (V212-009)",
             "leadSponsor": "Merck Sharp & Dohme LLC",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE2"
             ],
-            "completionDate": "2012-02-13",
+            "completionDate": "2013-02-26",
             "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT00654420"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01527383"
           },
           {
-            "nctId": "NCT02625961",
-            "title": "Study of Pembrolizumab (MK-3475) and Pembrolizumab With Other Investigational Agents in Participants With High Risk Non-muscle Invasive Bladder Cancer (MK-3475-057/KEYNOTE-057)",
+            "nctId": "NCT01050283",
+            "title": "A Study to Evaluate [18F]-FDG PET (Fluorodeoxyglucose-positron) in Patients With Pancreatic Cancer (MK-0000-144)",
             "leadSponsor": "Merck Sharp & Dohme LLC",
             "identityConfidence": "HIGH",
             "overallStatus": "TERMINATED",
             "phases": [
-              "PHASE2"
+              "PHASE1"
             ],
-            "completionDate": "2025-11-05",
+            "completionDate": "2012-05",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT02625961"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01050283"
           },
           {
-            "nctId": "NCT04882241",
-            "title": "Study of Pembrolizumab (MK-3475) Plus Chemotherapy Versus Placebo Plus Chemotherapy in Participants With Gastric or Gastroesophageal Junction (GEJ) Adenocarcinoma (MK-3475-585/KEYNOTE-585)-China Extension",
-            "leadSponsor": "Merck Sharp & Dohme LLC",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE3"
-            ],
-            "completionDate": "2025-04-23",
-            "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT04882241"
-          },
-          {
-            "nctId": "NCT07218029",
-            "title": "A Clinical Study of Sotatercept (MK-7962) in People With Pulmonary Arterial Hypertension (MK-7962-038)",
-            "leadSponsor": "Merck Sharp & Dohme LLC",
-            "identityConfidence": "HIGH",
-            "overallStatus": "ACTIVE_NOT_RECRUITING",
-            "phases": [
-              "PHASE3"
-            ],
-            "completionDate": "2028-12-07",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT07218029"
-          },
-          {
-            "nctId": "NCT05656040",
-            "title": "A Study of MK-2060 in Participants With Chronic and/or End-Stage Kidney Disease (MK-2060-011)",
+            "nctId": "NCT02269423",
+            "title": "Vaccine Treatment for Ebola Virus in Healthy Adults (V920-001)",
             "leadSponsor": "Merck Sharp & Dohme LLC",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE1"
             ],
-            "completionDate": "2024-08-12",
+            "completionDate": "2015-08-25",
             "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT05656040"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02269423"
+          },
+          {
+            "nctId": "NCT00723827",
+            "title": "Temodal (Temozolomide) Post Marketing Surveillance Protocol (Study P05557AM2)",
+            "leadSponsor": "Merck Sharp & Dohme LLC",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [],
+            "completionDate": "2011-09",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT00723827"
+          },
+          {
+            "nctId": "NCT00725842",
+            "title": "Relapse Rate in Hepatitis C Patients Treated With Peginterferon Alfa-2b Plus Ribavirin in Common Clinical Practice in France (P05484)(Completed)",
+            "leadSponsor": "Merck Sharp & Dohme LLC",
+            "identityConfidence": "HIGH",
+            "overallStatus": "TERMINATED",
+            "phases": [],
+            "completionDate": "2011-06",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT00725842"
+          },
+          {
+            "nctId": "NCT03326986",
+            "title": "Safety, Tolerability and Pharmacokinetics Study of MK-7252 in Healthy Adult Participants (MK-7252-001)",
+            "leadSponsor": "Merck Sharp & Dohme LLC",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2018-12-17",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT03326986"
           }
         ],
         "source": "ClinicalTrials.gov API v2",
@@ -1550,213 +1525,202 @@
         "queryCompany": "Novo Nordisk",
         "apiTotalCount": 1779,
         "fetchedStudyCount": 20,
-        "verifiedStudyCountInFetchedPage": 16,
-        "rejectedIdentityCountInFetchedPage": 4,
+        "verifiedStudyCountInFetchedPage": 15,
+        "rejectedIdentityCountInFetchedPage": 5,
         "ambiguousSponsorMatches": [],
         "identityStatus": "VERIFIED",
         "identityConfidence": "HIGH",
-        "activeStudyCountInFetchedPage": 0,
-        "phase3StudyCountInFetchedPage": 4,
-        "riskStatusStudyCountInFetchedPage": 0,
+        "activeStudyCountInFetchedPage": 1,
+        "phase3StudyCountInFetchedPage": 6,
+        "riskStatusStudyCountInFetchedPage": 2,
         "upcomingCompletion180dCountInFetchedPage": 0,
         "studies": [
           {
-            "nctId": "NCT04537637",
-            "title": "A Research Study Looking at How Oral Semaglutide Works in People With Type 2 Diabetes in Denmark, as Part of Local Clinical Practice",
-            "leadSponsor": "Novo Nordisk A/S",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [],
-            "completionDate": "2023-05-08",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT04537637"
-          },
-          {
-            "nctId": "NCT03674866",
-            "title": "A Canadian Study of the Effectiveness of Tresiba® (Insulin Degludec) After Switching Basal Insulin in a Population With Type 1 or Type 2 Diabetes Mellitus",
-            "leadSponsor": "Novo Nordisk A/S",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [],
-            "completionDate": "2019-04-26",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT03674866"
-          },
-          {
-            "nctId": "NCT03842202",
-            "title": "A Research Study to Look at How Semaglutide Affects Gastric Emptying in People With Obesity",
+            "nctId": "NCT01690169",
+            "title": "Investigation on Safety, Tolerability, and Pharmacokinetics of Single Doses of NNC0113-0987 in Healthy Male Subjects",
             "leadSponsor": "Novo Nordisk A/S",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE1"
             ],
-            "completionDate": "2019-11-04",
+            "completionDate": "2012-12-11",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT03842202"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01690169"
           },
           {
-            "nctId": "NCT00504673",
-            "title": "Comparison of Insulin Detemir Versus Insulin NPH on Weight Change in Overweight and Obese With Type 2 Diabetes",
+            "nctId": "NCT01492218",
+            "title": "Observational Study With Mixtard® 30 NovoLet® to Assess Patient Satisfaction",
+            "leadSponsor": "Novo Nordisk A/S",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [],
+            "completionDate": "2004-08-30",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01492218"
+          },
+          {
+            "nctId": "NCT01778023",
+            "title": "Efficacy and Safety of Recombinant Human Growth Hormone on Height Velocity in Subjects With Idiopathic Short Stature",
             "leadSponsor": "Novo Nordisk A/S",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE3"
             ],
-            "completionDate": "2006-12",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT00504673"
-          },
-          {
-            "nctId": "NCT05232786",
-            "title": "Awareness, Care & Treatment In Obesity Management - An Observation in Switzerland",
-            "leadSponsor": "Novo Nordisk A/S",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [],
-            "completionDate": "2022-04-08",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT05232786"
-          },
-          {
-            "nctId": "NCT05737810",
-            "title": "Attitudes and Unmet Needs Among Type 2 Diabetes Patients",
-            "leadSponsor": "Novo Nordisk A/S",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [],
-            "completionDate": "2023-04-17",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT05737810"
-          },
-          {
-            "nctId": "NCT00791895",
-            "title": "Efficacy of Biphasic Insulin Aspart 30 in Type 2 Diabetics Failing on OADs",
-            "leadSponsor": "Novo Nordisk A/S",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE4"
-            ],
-            "completionDate": "2004-11-29",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT00791895"
-          },
-          {
-            "nctId": "NCT02034513",
-            "title": "A Trial Comparing the Safety and Efficacy of Insulin Degludec and Insulin Glargine, Both With Insulin Aspart as Mealtime Insulin in Subjects With Type 1 Diabetes",
-            "leadSponsor": "Novo Nordisk A/S",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE3"
-            ],
-            "completionDate": "2016-01-11",
+            "completionDate": "2014-12-17",
             "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT02034513"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01778023"
           },
           {
-            "nctId": "NCT03444467",
-            "title": "First Research Study to Compare a Possible New Medicine NNC9204-1513 to the Medicine Glucagon, in Healthy People.",
-            "leadSponsor": "Novo Nordisk A/S",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE1"
-            ],
-            "completionDate": "2018-05-24",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT03444467"
-          },
-          {
-            "nctId": "NCT02212067",
-            "title": "A Trial Investigating the Effects of Semaglutide on ß-cell Function in Subjects With Type 2 Diabetes",
-            "leadSponsor": "Novo Nordisk A/S",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE1"
-            ],
-            "completionDate": "2015-05-11",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT02212067"
-          },
-          {
-            "nctId": "NCT00318422",
-            "title": "Effect of Liraglutide on Blood Glucose Control in Subjects With Type 2 Diabetes",
-            "leadSponsor": "Novo Nordisk A/S",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE3"
-            ],
-            "completionDate": "2007-05",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT00318422"
-          },
-          {
-            "nctId": "NCT04227431",
-            "title": "A Research Study, Looking at How Tresiba® Works in People With Type 2 Diabetes in Local Clinical Practice in China",
+            "nctId": "NCT01536613",
+            "title": "Post Marketing Surveillance Study of Biphasic Insulin Aspart 30",
             "leadSponsor": "Novo Nordisk A/S",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [],
-            "completionDate": "2021-07-17",
+            "completionDate": "2007-02",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT04227431"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01536613"
           },
           {
-            "nctId": "NCT00065130",
-            "title": "Safety and Efficacy of Insulin Aspart vs. Regular Human Insulin in Gestational Diabetes",
-            "leadSponsor": "Novo Nordisk A/S",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE3"
-            ],
-            "completionDate": "2003-12",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT00065130"
-          },
-          {
-            "nctId": "NCT05314283",
-            "title": "A Study Investigating the Safety and Performance of DV3395, a New Concept Device for the Delivery of Medicine.",
+            "nctId": "NCT00115973",
+            "title": "A Study of the Treatment of Type 2 Diabetes With an Insulin Infusion Pump",
             "leadSponsor": "Novo Nordisk A/S",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE1"
             ],
-            "completionDate": "2022-11-08",
+            "completionDate": "2006-01",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT05314283"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT00115973"
           },
           {
-            "nctId": "NCT00698802",
-            "title": "Safety and Efficacy of Biphasic Human Insulin Compared to EX1000 in Type 2 Diabetes",
+            "nctId": "NCT00472953",
+            "title": "Safety of Inhaled Human Insulin in Subjects With Diabetes Mellitus and Chronic Obstructive Pulmonary Disease (COPD)",
+            "leadSponsor": "Novo Nordisk A/S",
+            "identityConfidence": "HIGH",
+            "overallStatus": "TERMINATED",
+            "phases": [
+              "PHASE3"
+            ],
+            "completionDate": "2008-03-05",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT00472953"
+          },
+          {
+            "nctId": "NCT05813912",
+            "title": "A Research Study to See How a New Weekly Insulin, Insulin Icodec When Given Along With Semaglutide Helps in Reducing the Blood Sugar Level in Patients With Type 2 Diabetes",
+            "leadSponsor": "Novo Nordisk A/S",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE3"
+            ],
+            "completionDate": "2025-05-16",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT05813912"
+          },
+          {
+            "nctId": "NCT00601861",
+            "title": "Effect of rIL-21 on Metastases in Lymph Nodes in Melanoma Skin Cancer",
+            "leadSponsor": "Novo Nordisk A/S",
+            "identityConfidence": "HIGH",
+            "overallStatus": "TERMINATED",
+            "phases": [
+              "PHASE2"
+            ],
+            "completionDate": "2008-06-25",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT00601861"
+          },
+          {
+            "nctId": "NCT03693430",
+            "title": "Two-year Research Study Investigating How Well Semaglutide Works in People Suffering From Overweight or Obesity",
+            "leadSponsor": "Novo Nordisk A/S",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE3"
+            ],
+            "completionDate": "2021-03-23",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT03693430"
+          },
+          {
+            "nctId": "NCT00617565",
+            "title": "Efficacy and Safety of Biphasic Insulin Aspart 30 in Type 1 or 2 Diabetes",
+            "leadSponsor": "Novo Nordisk A/S",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE3"
+            ],
+            "completionDate": "2003-11-26",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT00617565"
+          },
+          {
+            "nctId": "NCT00617253",
+            "title": "Combination of Recombinant Human IL-21 (rIL-21) and Sunitinib in Stage IV Renal Cell Carcinoma Patients",
             "leadSponsor": "Novo Nordisk A/S",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE2"
             ],
-            "completionDate": "2009-03",
+            "completionDate": "2008-06-30",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT00698802"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT00617253"
           },
           {
-            "nctId": "NCT00365170",
-            "title": "Efficacy and Safety of Insulin Aspart vs. Human Insulin During Pregnancy by Women With Type 1 Diabetes",
+            "nctId": "NCT04601753",
+            "title": "A Research Study Looking at How Oral Semaglutide Works in People With Type 2 Diabetes in Sweden, as Part of Local Clinical Practice",
+            "leadSponsor": "Novo Nordisk A/S",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [],
+            "completionDate": "2023-03-03",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT04601753"
+          },
+          {
+            "nctId": "NCT03819153",
+            "title": "A Research Study to See How Semaglutide Works Compared to Placebo in People With Type 2 Diabetes and Chronic Kidney Disease",
             "leadSponsor": "Novo Nordisk A/S",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
-              "PHASE4"
+              "PHASE3"
             ],
-            "completionDate": "2005-04",
+            "completionDate": "2024-01-09",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT03819153"
+          },
+          {
+            "nctId": "NCT07415954",
+            "title": "A Research Study Comparing How Well Different Doses of the Medicine NNC0662-0419 Lower Blood Sugar in People With Type 2 Diabetes",
+            "leadSponsor": "Novo Nordisk A/S",
+            "identityConfidence": "HIGH",
+            "overallStatus": "RECRUITING",
+            "phases": [
+              "PHASE2"
+            ],
+            "completionDate": "2027-10-01",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT00365170"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT07415954"
+          },
+          {
+            "nctId": "NCT05621746",
+            "title": "An Observational Research Study of the Health of Joints in People With Haemophilia Taking the Medicine Esperoct",
+            "leadSponsor": "Novo Nordisk A/S",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [],
+            "completionDate": "2026-04-30",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT05621746"
           }
         ],
         "source": "ClinicalTrials.gov API v2",
@@ -1826,145 +1790,160 @@
         "queryCompany": "Pfizer",
         "apiTotalCount": 6110,
         "fetchedStudyCount": 20,
-        "verifiedStudyCountInFetchedPage": 10,
-        "rejectedIdentityCountInFetchedPage": 10,
+        "verifiedStudyCountInFetchedPage": 11,
+        "rejectedIdentityCountInFetchedPage": 9,
         "ambiguousSponsorMatches": [
-          "Hospira, now a wholly owned subsidiary of Pfizer",
-          "Seagen, a wholly owned subsidiary of Pfizer",
+          "Pfizer's Upjohn has merged with Mylan to form Viatris Inc.",
           "Wyeth is now a wholly owned subsidiary of Pfizer"
         ],
         "identityStatus": "VERIFIED",
         "identityConfidence": "HIGH",
-        "activeStudyCountInFetchedPage": 0,
-        "phase3StudyCountInFetchedPage": 1,
-        "riskStatusStudyCountInFetchedPage": 0,
+        "activeStudyCountInFetchedPage": 2,
+        "phase3StudyCountInFetchedPage": 0,
+        "riskStatusStudyCountInFetchedPage": 4,
         "upcomingCompletion180dCountInFetchedPage": 0,
         "studies": [
           {
-            "nctId": "NCT01370356",
-            "title": "A Study To Evaluate The Efficacy And Safety Of Varenicline Compared To Placebo For Smoking Cessation Through Reduction",
+            "nctId": "NCT07782450",
+            "title": "A Study to Learn About a Medicine Called PF-08154225 in Participants With Autoimmune Diseases",
+            "leadSponsor": "Pfizer",
+            "identityConfidence": "HIGH",
+            "overallStatus": "NOT_YET_RECRUITING",
+            "phases": [
+              "PHASE1",
+              "PHASE2"
+            ],
+            "completionDate": "2031-02-22",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT07782450"
+          },
+          {
+            "nctId": "NCT00484718",
+            "title": "Measuring Gait And Self-Reported Pain In Patients With Osteoarthritis Of The Knee Using Placebo/Oxycodone/Celecoxib.",
+            "leadSponsor": "Pfizer",
+            "identityConfidence": "HIGH",
+            "overallStatus": "TERMINATED",
+            "phases": [
+              "PHASE4"
+            ],
+            "completionDate": "2009-06-10",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT00484718"
+          },
+          {
+            "nctId": "NCT06646042",
+            "title": "A Study to Learn If the Study Medicine Called Carbamazepine Changes How the Body Processes the Other Study Medicine Ibuzatrelvir in Healthy Adults",
+            "leadSponsor": "Pfizer",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2025-01-17",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT06646042"
+          },
+          {
+            "nctId": "NCT07519135",
+            "title": "A Study to Learn About the Medicine Called PF-08653944 in People With and Without Reduced Liver Function",
+            "leadSponsor": "Pfizer",
+            "identityConfidence": "HIGH",
+            "overallStatus": "RECRUITING",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2027-07-09",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT07519135"
+          },
+          {
+            "nctId": "NCT05438888",
+            "title": "Safety and Effectiveness of Apixaban in Very Elderly Patients With Non-valvular Atrial Fibrillation (NVAF) Compared to Warfarin Using Administrative Claims Data",
+            "leadSponsor": "Pfizer",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [],
+            "completionDate": "2022-10-19",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT05438888"
+          },
+          {
+            "nctId": "NCT00889720",
+            "title": "A Pilot Study Of Smoking Cessation Treatment Including Varenicline In Patients Scheduled For Planned Surgery",
             "leadSponsor": "Pfizer",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE4"
             ],
-            "completionDate": "2013-07",
+            "completionDate": "2010-07",
             "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT01370356"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT00889720"
           },
           {
-            "nctId": "NCT00043420",
-            "title": "CPG 7909 in Patients With Cutaneous T-Cell Lymphoma",
+            "nctId": "NCT00037180",
+            "title": "For Prevention of Diarrhea in Patients Diagnosed With Metastatic Colorectal Cancer Treated With Chemotherapy",
             "leadSponsor": "Pfizer",
             "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
+            "overallStatus": "TERMINATED",
             "phases": [
-              "PHASE1",
               "PHASE2"
             ],
-            "completionDate": "2007-03",
+            "completionDate": "2003-01",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT00043420"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT00037180"
           },
           {
-            "nctId": "NCT00303186",
-            "title": "Study Evaluating the Cost of the Treatments of the Refractory Psoriatic Arthritis to the Conventional Therapy",
-            "leadSponsor": "Pfizer",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [],
-            "completionDate": "2011-06",
-            "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT00303186"
-          },
-          {
-            "nctId": "NCT02117570",
-            "title": "A Study To Investigate A Clostridium Difficile Vaccine In Healthy Adults Aged 50 to 85 Years, Who Will Each Receive 3 Doses Of Vaccine.",
+            "nctId": "NCT00559910",
+            "title": "A Phase II, Study To Evaluate The Efficacy And Safety Of PH-797804 In Adults With Moderate To Severe Chronic Obstructive Pulmonary Disease (COPD).",
             "leadSponsor": "Pfizer",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE2"
             ],
-            "completionDate": "2015-12",
-            "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT02117570"
+            "completionDate": "2009-12",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT00559910"
           },
           {
-            "nctId": "NCT01416194",
-            "title": "Bazedoxifene Post Approval Safety Study (PASS) in the European Union (EU)",
+            "nctId": "NCT03472560",
+            "title": "A Study of Avelumab in Combination With Axitinib In Non-Small Cell Lung Cancer (NSCLC) or Urothelial Cancer (Javelin Medley VEGF)",
             "leadSponsor": "Pfizer",
             "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [],
-            "completionDate": "2019-04-30",
+            "overallStatus": "TERMINATED",
+            "phases": [
+              "PHASE2"
+            ],
+            "completionDate": "2023-02-09",
             "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT01416194"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT03472560"
           },
           {
-            "nctId": "NCT06003829",
-            "title": "A Study to Learn About the Tastes of Different Suspensions With the Study Medicine (PF-07923568) in Healthy Adult Participants.",
+            "nctId": "NCT04604496",
+            "title": "STUDY OF PF-06882961 IN PARTICIPANTS WITH AND WITHOUT VARYING DEGREES OF HEPATIC IMPAIREMENT",
             "leadSponsor": "Pfizer",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE1"
             ],
-            "completionDate": "2023-09-20",
+            "completionDate": "2022-01-10",
             "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT06003829"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT04604496"
           },
           {
-            "nctId": "NCT00647829",
-            "title": "A Comparison Of Valdecoxib 20 Mg Twice Daily and 40 Mg Daily and Placebo In The Treatment Of Sore Throat",
+            "nctId": "NCT04171141",
+            "title": "Study to Test the Safety and Tolerability of PF-07062119 in Patients With Selected Advanced or Metastatic Gastrointestinal Tumors.",
             "leadSponsor": "Pfizer",
             "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE3"
-            ],
-            "completionDate": "2003-12",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT00647829"
-          },
-          {
-            "nctId": "NCT06924320",
-            "title": "A Study of MET233 in Combination With MET097 in Individuals With Obesity or Overweight With or Without Diabetes",
-            "leadSponsor": "Pfizer",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE1",
-              "PHASE2"
-            ],
-            "completionDate": "2026-09-29",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT06924320"
-          },
-          {
-            "nctId": "NCT01233882",
-            "title": "Bosutinib In Subjects With Renal Impairment",
-            "leadSponsor": "Pfizer",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
+            "overallStatus": "TERMINATED",
             "phases": [
               "PHASE1"
             ],
-            "completionDate": "2012-06",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT01233882"
-          },
-          {
-            "nctId": "NCT03921866",
-            "title": "UK Ibrance Patient Program (IPP) Study",
-            "leadSponsor": "Pfizer",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [],
-            "completionDate": "2021-03-04",
+            "completionDate": "2023-11-28",
             "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT03921866"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT04171141"
           }
         ],
         "source": "ClinicalTrials.gov API v2",
@@ -2034,161 +2013,165 @@
         "queryCompany": "Regeneron Pharmaceuticals",
         "apiTotalCount": 805,
         "fetchedStudyCount": 20,
-        "verifiedStudyCountInFetchedPage": 11,
-        "rejectedIdentityCountInFetchedPage": 9,
+        "verifiedStudyCountInFetchedPage": 12,
+        "rejectedIdentityCountInFetchedPage": 8,
         "ambiguousSponsorMatches": [],
         "identityStatus": "VERIFIED",
         "identityConfidence": "HIGH",
-        "activeStudyCountInFetchedPage": 6,
-        "phase3StudyCountInFetchedPage": 4,
+        "activeStudyCountInFetchedPage": 3,
+        "phase3StudyCountInFetchedPage": 2,
         "riskStatusStudyCountInFetchedPage": 1,
         "upcomingCompletion180dCountInFetchedPage": 1,
         "studies": [
           {
-            "nctId": "NCT06833190",
-            "title": "REGN5381 in Adult Participants With Uncontrolled Hypertension",
+            "nctId": "NCT05568459",
+            "title": "A Trial That Evaluates Disease Characteristics in Hemophilia B Adult Male Participants Receiving Prophylaxis With Standard of Care Factor IX Protein (FIX) Replacement Therapy",
+            "leadSponsor": "Regeneron Pharmaceuticals",
+            "identityConfidence": "HIGH",
+            "overallStatus": "ACTIVE_NOT_RECRUITING",
+            "phases": [],
+            "completionDate": "2026-08-21",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT05568459"
+          },
+          {
+            "nctId": "NCT03682770",
+            "title": "Study in Pediatric Subjects With Peanut Allergy to Evaluate Efficacy and Safety of Dupilumab as Adjunct to AR101 (Peanut Oral Immunotherapy)",
+            "leadSponsor": "Regeneron Pharmaceuticals",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE2"
+            ],
+            "completionDate": "2021-07-23",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT03682770"
+          },
+          {
+            "nctId": "NCT00082823",
+            "title": "Intravenous VEGF Trap in Treating Patients With Relapsed or Refractory Advanced Solid Tumors or Non-Hodgkin's Lymphoma",
+            "leadSponsor": "Regeneron Pharmaceuticals",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT00082823"
+          },
+          {
+            "nctId": "NCT02325791",
+            "title": "Study to Evaluate the Efficacy and Safety of Suptavumab (REGN2222) for the Prevention of Medically Attended RSV (Respiratory Syncytial Virus) Infection in Preterm Infants",
+            "leadSponsor": "Regeneron Pharmaceuticals",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE3"
+            ],
+            "completionDate": "2017-09-26",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02325791"
+          },
+          {
+            "nctId": "NCT05203380",
+            "title": "Neuropsychologic Assessments of Dupilumab-Treated Adolescent Participants With Moderate-to-Severe Atopic Dermatitis",
+            "leadSponsor": "Regeneron Pharmaceuticals",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [],
+            "completionDate": "2023-03-10",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT05203380"
+          },
+          {
+            "nctId": "NCT05352672",
+            "title": "Clinical Study of Fianlimab in Combination With Cemiplimab Versus Pembrolizumab in Adolescent and Adult Patients With Previously Untreated Unresectable Locally Advanced or Metastatic Melanoma",
+            "leadSponsor": "Regeneron Pharmaceuticals",
+            "identityConfidence": "HIGH",
+            "overallStatus": "ACTIVE_NOT_RECRUITING",
+            "phases": [
+              "PHASE3"
+            ],
+            "completionDate": "2031-09-16",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT05352672"
+          },
+          {
+            "nctId": "NCT06064656",
+            "title": "A Non-Interventional Study of Clinical Characteristics and Mortality of US Patients With Fibrodysplasia Ossificans Progressiva (FOP)",
+            "leadSponsor": "Regeneron Pharmaceuticals",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [],
+            "completionDate": "2023-09-29",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT06064656"
+          },
+          {
+            "nctId": "NCT07431086",
+            "title": "Study of Olatorepatide in Adult Participants Living With Overweight or Obesity in the US",
+            "leadSponsor": "Regeneron Pharmaceuticals",
+            "identityConfidence": "HIGH",
+            "overallStatus": "ACTIVE_NOT_RECRUITING",
+            "phases": [
+              "PHASE2"
+            ],
+            "completionDate": "2026-12-18",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT07431086"
+          },
+          {
+            "nctId": "NCT02107872",
+            "title": "Study to Assess the Safety and Tolerability of Multiple Ascending Doses of REGN1500",
+            "leadSponsor": "Regeneron Pharmaceuticals",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2015-09",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02107872"
+          },
+          {
+            "nctId": "NCT03430063",
+            "title": "A Study of REGN2810 and Ipilimumab in Patients With Lung Cancer",
             "leadSponsor": "Regeneron Pharmaceuticals",
             "identityConfidence": "HIGH",
             "overallStatus": "TERMINATED",
             "phases": [
               "PHASE2"
             ],
-            "completionDate": "2025-10-15",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT06833190"
+            "completionDate": "2021-10-27",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT03430063"
           },
           {
-            "nctId": "NCT06413680",
-            "title": "A First-In Human (FIH) Study to Find Out How Well REGN10597 Medicine Given Alone or in Combination With Cemiplimab Works in Adult Participants Who Have Cancer With Tumors That Have Spread in Their Body",
-            "leadSponsor": "Regeneron Pharmaceuticals",
-            "identityConfidence": "HIGH",
-            "overallStatus": "RECRUITING",
-            "phases": [
-              "PHASE1",
-              "PHASE2"
-            ],
-            "completionDate": "2030-02-03",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT06413680"
-          },
-          {
-            "nctId": "NCT06230224",
-            "title": "A Trial to Learn How Effective and Safe Odronextamab is Compared to Standard of Care for Adult Participants With Previously Treated Aggressive B-cell Non-Hodgkin Lymphoma",
-            "leadSponsor": "Regeneron Pharmaceuticals",
-            "identityConfidence": "HIGH",
-            "overallStatus": "ACTIVE_NOT_RECRUITING",
-            "phases": [
-              "PHASE3"
-            ],
-            "completionDate": "2029-05-29",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT06230224"
-          },
-          {
-            "nctId": "NCT03233139",
-            "title": "Safety and Pharmacokinetics of Cemiplimab Anti-programmed Death-ligand 1 (Anti-PD-1) and Other Agents in Japanese Adult Patients With Advanced Malignancies",
-            "leadSponsor": "Regeneron Pharmaceuticals",
-            "identityConfidence": "HIGH",
-            "overallStatus": "ACTIVE_NOT_RECRUITING",
-            "phases": [
-              "PHASE1"
-            ],
-            "completionDate": "2027-09-30",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT03233139"
-          },
-          {
-            "nctId": "NCT04206553",
-            "title": "A Study to Evaluate the Efficacy and Safety of Dupilumab in Adult Patients With Bullous Pemphigoid",
+            "nctId": "NCT06454630",
+            "title": "A Trial to Learn How Well REGN7508 Works for Preventing Blood Clots After a Knee Replacement in Adult Participants",
             "leadSponsor": "Regeneron Pharmaceuticals",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
-              "PHASE2",
-              "PHASE3"
-            ],
-            "completionDate": "2025-01-05",
-            "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT04206553"
-          },
-          {
-            "nctId": "NCT05519475",
-            "title": "A Precision Medicine Approach Using Gene Silencing to Treat a Chronic Liver Disease Called Metabolic Dysfunction-Associated Steatohepatitis (MASH) in Adult Participants at Increased Genetic Risk for This Condition",
-            "leadSponsor": "Regeneron Pharmaceuticals",
-            "identityConfidence": "HIGH",
-            "overallStatus": "RECRUITING",
-            "phases": [
               "PHASE2"
             ],
-            "completionDate": "2028-12-07",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT05519475"
-          },
-          {
-            "nctId": "NCT00855920",
-            "title": "Study Utilizing Rilonacept in Gout Exacerbations",
-            "leadSponsor": "Regeneron Pharmaceuticals",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE3"
-            ],
-            "completionDate": "2010-02",
+            "completionDate": "2025-01-21",
             "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT00855920"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT06454630"
           },
           {
-            "nctId": "NCT07863024",
-            "title": "Safety and Efficacy Study in Adults With Advanced Solid Tumors Receiving REGN13089-M404-M2980, an Antibody-drug Conjugate That Targets MET Protein on Tumors",
-            "leadSponsor": "Regeneron Pharmaceuticals",
-            "identityConfidence": "HIGH",
-            "overallStatus": "NOT_YET_RECRUITING",
-            "phases": [
-              "PHASE1",
-              "PHASE2"
-            ],
-            "completionDate": "2031-03-10",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT07863024"
-          },
-          {
-            "nctId": "NCT01197391",
-            "title": "Ascending Dose Study of the Safety and Tolerability of REGN728 in Healthy Volunteers",
+            "nctId": "NCT03438318",
+            "title": "Study Evaluating CMP-001 in Combination With Atezolizumab in Participants With Non-Small Cell Lung Cancer",
             "leadSponsor": "Regeneron Pharmaceuticals",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE1"
             ],
-            "completionDate": "2012-03",
+            "completionDate": "2019-12-11",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT01197391"
-          },
-          {
-            "nctId": "NCT06452771",
-            "title": "A First In Human (FIH) Study to Learn if Different Doses of ALN-ANG3 Are Safe and Well Tolerated in Healthy Adults",
-            "leadSponsor": "Regeneron Pharmaceuticals",
-            "identityConfidence": "HIGH",
-            "overallStatus": "ACTIVE_NOT_RECRUITING",
-            "phases": [
-              "PHASE1"
-            ],
-            "completionDate": "2026-12-04",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT06452771"
-          },
-          {
-            "nctId": "NCT00509795",
-            "title": "Vascular Endothelial Growth Factor VEGF Trap-Eye:Investigation of Efficacy and Safety in Wet Age-Related Macular Degeneration(AMD)",
-            "leadSponsor": "Regeneron Pharmaceuticals",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE3"
-            ],
-            "completionDate": "2011-07",
-            "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT00509795"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT03438318"
           }
         ],
         "source": "ClinicalTrials.gov API v2",
@@ -2258,105 +2241,171 @@
         "queryCompany": "Vertex Pharmaceuticals",
         "apiTotalCount": 294,
         "fetchedStudyCount": 20,
-        "verifiedStudyCountInFetchedPage": 17,
-        "rejectedIdentityCountInFetchedPage": 3,
+        "verifiedStudyCountInFetchedPage": 16,
+        "rejectedIdentityCountInFetchedPage": 4,
         "ambiguousSponsorMatches": [],
         "identityStatus": "VERIFIED",
         "identityConfidence": "HIGH",
-        "activeStudyCountInFetchedPage": 4,
-        "phase3StudyCountInFetchedPage": 4,
-        "riskStatusStudyCountInFetchedPage": 0,
+        "activeStudyCountInFetchedPage": 1,
+        "phase3StudyCountInFetchedPage": 5,
+        "riskStatusStudyCountInFetchedPage": 1,
         "upcomingCompletion180dCountInFetchedPage": 1,
         "studies": [
           {
-            "nctId": "NCT05653323",
-            "title": "A Phase 1 Dose Escalation Study of VX-993 in Healthy Participants",
+            "nctId": "NCT04362761",
+            "title": "A Study Evaluating the Long-Term Safety of Elexacaftor Combination Therapy",
+            "leadSponsor": "Vertex Pharmaceuticals Incorporated",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE3"
+            ],
+            "completionDate": "2022-12-21",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT04362761"
+          },
+          {
+            "nctId": "NCT01467492",
+            "title": "Telaprevir, Peg-IFN-alfa-2a, and RBV in Treatment-Experienced Black/African American and Non-Black/African American Subjects With Genotype 1 Chronic Hepatitis C",
+            "leadSponsor": "Vertex Pharmaceuticals Incorporated",
+            "identityConfidence": "HIGH",
+            "overallStatus": "TERMINATED",
+            "phases": [
+              "PHASE4"
+            ],
+            "completionDate": "2014-05",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01467492"
+          },
+          {
+            "nctId": "NCT02544451",
+            "title": "Rollover Study to Evaluate the Safety and Efficacy of Long-term Treatment With Lumacaftor in Combination With Ivacaftor",
+            "leadSponsor": "Vertex Pharmaceuticals Incorporated",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE3"
+            ],
+            "completionDate": "2020-04",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02544451"
+          },
+          {
+            "nctId": "NCT07349394",
+            "title": "Effect of Vanzacaftor/Tezacaftor/Deutivacaftor (VNZ/TEZ/D-IVA) on the PK of Rosuvastatin in Healthy Participants",
             "leadSponsor": "Vertex Pharmaceuticals Incorporated",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE1"
             ],
-            "completionDate": "2023-09-12",
+            "completionDate": "2026-03-12",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT05653323"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT07349394"
           },
           {
-            "nctId": "NCT00389298",
-            "title": "A Proof-of-concept Study of VCH-759 for the Treatment of Hepatitis C-infection.",
+            "nctId": "NCT06619860",
+            "title": "Evaluation of Efficacy and Safety of VX-993 for Pain Associated With Diabetic Peripheral Neuropathy",
             "leadSponsor": "Vertex Pharmaceuticals Incorporated",
             "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
+            "overallStatus": "RECRUITING",
             "phases": [
-              "PHASE1",
               "PHASE2"
             ],
-            "completionDate": "2007-06",
+            "completionDate": "2027-04-22",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT00389298"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT06619860"
           },
           {
-            "nctId": "NCT00273936",
-            "title": "Trial of AVN-944 in Patients With Advanced Hematologic Malignancies",
+            "nctId": "NCT06529796",
+            "title": "Evaluation of the Pharmacokinetics and Safety of Inaxaplin in Participants With Mild or Moderate Hepatic Impairment",
             "leadSponsor": "Vertex Pharmaceuticals Incorporated",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE1"
+            ],
+            "completionDate": "2024-12-20",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT06529796"
+          },
+          {
+            "nctId": "NCT01561807",
+            "title": "A Study to Investigate VX-787 Given to Adult Volunteers Inoculated With Live Influenza Virus",
+            "leadSponsor": "Vertex Pharmaceuticals Incorporated",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE2"
             ],
             "completionDate": "",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT00273936"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01561807"
           },
           {
-            "nctId": "NCT07813039",
-            "title": "A Phase 1 Relative Bioavailability Study of a VX-581 Tablet Formulation",
+            "nctId": "NCT06861413",
+            "title": "A Phase 1 Study to Evaluate the Relative Bioavailability of a VX-828 Tablet Formulation",
             "leadSponsor": "Vertex Pharmaceuticals Incorporated",
             "identityConfidence": "HIGH",
-            "overallStatus": "ACTIVE_NOT_RECRUITING",
+            "overallStatus": "COMPLETED",
             "phases": [
               "PHASE1"
             ],
-            "completionDate": "2026-10-27",
+            "completionDate": "2025-05-05",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT07813039"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT06861413"
           },
           {
-            "nctId": "NCT04474197",
-            "title": "Evaluation of the Efficacy and Safety of VX-864 in Subjects With the PiZZ Genotype",
+            "nctId": "NCT03911713",
+            "title": "A Phase 2 Study to Evaluate Efficacy and Safety of VX-561 in Subjects Aged 18 Years and Older With Cystic Fibrosis",
             "leadSponsor": "Vertex Pharmaceuticals Incorporated",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE2"
             ],
-            "completionDate": "2021-05-04",
+            "completionDate": "2020-08-20",
             "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT04474197"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT03911713"
           },
           {
-            "nctId": "NCT06176196",
-            "title": "Evaluation of Efficacy and Safety of VX-548 for Painful Lumbosacral Radiculopathy (PLSR)",
+            "nctId": "NCT02516410",
+            "title": "A Study to Evaluate the Efficacy and Safety of VX-661 in Combination With Ivacaftor in Subjects Aged 12 Years and Older With Cystic Fibrosis, Heterozygous for the F508del-CFTR Mutation",
             "leadSponsor": "Vertex Pharmaceuticals Incorporated",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
-              "PHASE2"
+              "PHASE3"
             ],
-            "completionDate": "2024-10-16",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT06176196"
+            "completionDate": "2016-06-07",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02516410"
           },
           {
-            "nctId": "NCT06747572",
-            "title": "Polycystic Kidney Disease 1 (PKD1) Gene Variant Groups in Autosomal Dominant Polycystic Kidney Disease",
+            "nctId": "NCT05882357",
+            "title": "Evaluation of Elexacaftor/Tezacaftor/Ivacaftor (ELX/TEZ/IVA) in Cystic Fibrosis (CF) Participants 12 to Less Than 24 Months of Age",
             "leadSponsor": "Vertex Pharmaceuticals Incorporated",
             "identityConfidence": "HIGH",
-            "overallStatus": "ACTIVE_NOT_RECRUITING",
-            "phases": [],
-            "completionDate": "2026-12-31",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE3"
+            ],
+            "completionDate": "2025-09-04",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT05882357"
+          },
+          {
+            "nctId": "NCT06887959",
+            "title": "A Single-arm Study Evaluating the Effectiveness and Safety of Suzetrigine (SUZ) for Acute Pain After Selected Surgeries",
+            "leadSponsor": "Vertex Pharmaceuticals Incorporated",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE4"
+            ],
+            "completionDate": "2025-11-10",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT06747572"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT06887959"
           },
           {
             "nctId": "NCT06420765",
@@ -2372,119 +2421,43 @@
             "sourceUrl": "https://clinicaltrials.gov/study/NCT06420765"
           },
           {
-            "nctId": "NCT07378865",
-            "title": "Evaluation of the Excretion of Suzetrigine Into Breast Milk in Healthy Lactating Female Participants",
-            "leadSponsor": "Vertex Pharmaceuticals Incorporated",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE1"
-            ],
-            "completionDate": "2026-08-17",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT07378865"
-          },
-          {
-            "nctId": "NCT01754935",
-            "title": "A Magnetic Resonance Imaging Study and Arthroscopic Biopsy Substudy in Subjects With Active Rheumatoid Arthritis Receiving VX-509, an Oral JAK3 Inhibitor",
+            "nctId": "NCT06619847",
+            "title": "A Study Evaluating Efficacy and Safety of VX-993 for Acute Pain After a Bunionectomy",
             "leadSponsor": "Vertex Pharmaceuticals Incorporated",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE2"
             ],
-            "completionDate": "2014-02",
+            "completionDate": "2025-05-27",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT01754935"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT06619847"
           },
           {
-            "nctId": "NCT00916474",
-            "title": "Virology Follow up Study in Subjects Previously Treated With Telaprevir",
-            "leadSponsor": "Vertex Pharmaceuticals Incorporated",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [],
-            "completionDate": "2013-12",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT00916474"
-          },
-          {
-            "nctId": "NCT02660424",
-            "title": "A Study of the Efficacy and Safety of VX-150 in Subjects With Osteoarthritis of the Knee",
+            "nctId": "NCT00088504",
+            "title": "Merimepodib (MMPD) in Triple Combination for the Treatment of Chronic Hepatitis C",
             "leadSponsor": "Vertex Pharmaceuticals Incorporated",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE2"
             ],
-            "completionDate": "2016-09",
+            "completionDate": "2006-10",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT02660424"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT00088504"
           },
           {
-            "nctId": "NCT01048255",
-            "title": "Study of VX-765 in Subjects With Treatment-resistant Partial Epilepsy",
-            "leadSponsor": "Vertex Pharmaceuticals Incorporated",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE2"
-            ],
-            "completionDate": "2010-11",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT01048255"
-          },
-          {
-            "nctId": "NCT04786262",
-            "title": "A Safety, Tolerability, and Efficacy Study of VX-880 and VX-017 in Participants With Type 1 Diabetes",
-            "leadSponsor": "Vertex Pharmaceuticals Incorporated",
-            "identityConfidence": "HIGH",
-            "overallStatus": "RECRUITING",
-            "phases": [
-              "PHASE3"
-            ],
-            "completionDate": "2031-12-31",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT04786262"
-          },
-          {
-            "nctId": "NCT02390219",
-            "title": "Study to Evaluate Lumacaftor and Ivacaftor Combination Therapy in Subjects 12 Years and Older With Advanced Lung Disease",
+            "nctId": "NCT00909532",
+            "title": "Study of Ivacaftor in Cystic Fibrosis Subjects Aged 12 Years and Older With the G551D Mutation",
             "leadSponsor": "Vertex Pharmaceuticals Incorporated",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE3"
             ],
-            "completionDate": "2016-10",
+            "completionDate": "2012-11",
             "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT02390219"
-          },
-          {
-            "nctId": "NCT01117012",
-            "title": "Rollover Study of VX-770 in Cystic Fibrosis Subjects",
-            "leadSponsor": "Vertex Pharmaceuticals Incorporated",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE3"
-            ],
-            "completionDate": "2014-05",
-            "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT01117012"
-          },
-          {
-            "nctId": "NCT06628908",
-            "title": "Evaluation of Efficacy and Safety of Suzetrigine for Pain Associated With Diabetic Peripheral Neuropathy",
-            "leadSponsor": "Vertex Pharmaceuticals Incorporated",
-            "identityConfidence": "HIGH",
-            "overallStatus": "RECRUITING",
-            "phases": [
-              "PHASE3"
-            ],
-            "completionDate": "2027-05-31",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT06628908"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT00909532"
           }
         ],
         "source": "ClinicalTrials.gov API v2",
@@ -2559,177 +2532,23 @@
         "ambiguousSponsorMatches": [],
         "identityStatus": "VERIFIED",
         "identityConfidence": "HIGH",
-        "activeStudyCountInFetchedPage": 2,
-        "phase3StudyCountInFetchedPage": 2,
+        "activeStudyCountInFetchedPage": 1,
+        "phase3StudyCountInFetchedPage": 0,
         "riskStatusStudyCountInFetchedPage": 1,
         "upcomingCompletion180dCountInFetchedPage": 0,
         "studies": [
           {
-            "nctId": "NCT01332890",
-            "title": "Pharmacokinetic Drug Interaction Between Revaprazan and Itopride HCl in Healthy Male Subjects",
-            "leadSponsor": "Yuhan Corporation",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE1"
-            ],
-            "completionDate": "2011-08",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT01332890"
-          },
-          {
-            "nctId": "NCT03823274",
-            "title": "Multi-center, Prospective, Cohort Study to Evaluate the Relationship of Stroke Recurrence and Anti-platelet Resistance in Ischemic Stroke Patients",
-            "leadSponsor": "Yuhan Corporation",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [],
-            "completionDate": "2022-01-03",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT03823274"
-          },
-          {
-            "nctId": "NCT05061524",
-            "title": "A FIH Study of YH35324 in Atopic Healthy Subjects or Subjects with Mild Allergic Diseases",
-            "leadSponsor": "Yuhan Corporation",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE1"
-            ],
-            "completionDate": "2023-01-25",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT05061524"
-          },
-          {
-            "nctId": "NCT02567578",
-            "title": "A Trial to Evaluate the Efficacy and Safety of YH12852 in Patients With Functional Dyspepsia",
-            "leadSponsor": "Yuhan Corporation",
-            "identityConfidence": "HIGH",
-            "overallStatus": "TERMINATED",
-            "phases": [
-              "PHASE2"
-            ],
-            "completionDate": "2017-03-16",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT02567578"
-          },
-          {
-            "nctId": "NCT03474562",
-            "title": "High-Dose Statin Combined With Telmisartan vs Amlodipine on Glucose Metabolism in ASCVD Patients With IFG and Hypertension",
+            "nctId": "NCT06046196",
+            "title": "Clinical Trial to Evaluate the Efficacy and Safety of Sarpogrelate SR in Patients With Chronic Artery Occlusive Disease",
             "leadSponsor": "Yuhan Corporation",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE4"
             ],
-            "completionDate": "2019-06-07",
+            "completionDate": "2023-03-09",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT03474562"
-          },
-          {
-            "nctId": "NCT04846673",
-            "title": "Pregabalin and Alpha-lipoic Acid Combination Versus Each Monotherapy in Patients With Diabetic Peripheral Neuropathy",
-            "leadSponsor": "Yuhan Corporation",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE4"
-            ],
-            "completionDate": "2022-11-30",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT04846673"
-          },
-          {
-            "nctId": "NCT04316065",
-            "title": "Bioequivalence Study Between YHP1906 Tab. 5 mg and YHR1902 Tab. 5 mg",
-            "leadSponsor": "Yuhan Corporation",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE1"
-            ],
-            "completionDate": "2020-04-24",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT04316065"
-          },
-          {
-            "nctId": "NCT05162274",
-            "title": "Clinical Trial to Assess Bioequivalence of Lazertinib Between Two Formulations in Healthy Volunteers.",
-            "leadSponsor": "Yuhan Corporation",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE1"
-            ],
-            "completionDate": "2022-01-14",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT05162274"
-          },
-          {
-            "nctId": "NCT01084499",
-            "title": "Bioequivalence Study of Letrozole 2.5 mg Tablets",
-            "leadSponsor": "Yuhan Corporation",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "NA"
-            ],
-            "completionDate": "2009-05",
-            "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT01084499"
-          },
-          {
-            "nctId": "NCT06625931",
-            "title": "Clinical Trial to Evaluate the Safety and Efficacy of NTCB01-1 in Patients Who Require Parenteral Nutrition",
-            "leadSponsor": "Yuhan Corporation",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE3"
-            ],
-            "completionDate": "2025-03-28",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT06625931"
-          },
-          {
-            "nctId": "NCT01507038",
-            "title": "Safety and Efficacy of YH14617 in Diabetes Mellitus",
-            "leadSponsor": "Yuhan Corporation",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE2"
-            ],
-            "completionDate": "2015-02",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT01507038"
-          },
-          {
-            "nctId": "NCT03446261",
-            "title": "Rosuvastatin/Ezetimibe vs Rosuvastatin in Korean Patients With Type 2 Diabetes Mellitus and Hypercholesterolemia",
-            "leadSponsor": "Yuhan Corporation",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE4"
-            ],
-            "completionDate": "2019-03-05",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT03446261"
-          },
-          {
-            "nctId": "NCT07415551",
-            "title": "Phase 2 Study of Lesigercept in Adult Patients With Chronic Spontaneous Urticaria Who Are Inadequately Controlled by H1-Antihistamines",
-            "leadSponsor": "Yuhan Corporation",
-            "identityConfidence": "HIGH",
-            "overallStatus": "RECRUITING",
-            "phases": [
-              "PHASE2"
-            ],
-            "completionDate": "2027-07-24",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT07415551"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT06046196"
           },
           {
             "nctId": "NCT06293261",
@@ -2743,43 +2562,200 @@
             "sourceUrl": "https://clinicaltrials.gov/study/NCT06293261"
           },
           {
-            "nctId": "NCT06625957",
-            "title": "Clinical Trial to Evaluate the Safety and Efficacy of NTCB02-1 in Patients Who Require Parenteral Nutrition",
-            "leadSponsor": "Yuhan Corporation",
-            "identityConfidence": "HIGH",
-            "overallStatus": "RECRUITING",
-            "phases": [
-              "PHASE3"
-            ],
-            "completionDate": "2025-07-18",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT06625957"
-          },
-          {
-            "nctId": "NCT05960708",
-            "title": "A Single Dose, Phase 1 Study of YH35324 in Patients with Various Allergic Diseases",
+            "nctId": "NCT03556436",
+            "title": "Clinical Trial to Evaluate the Safety and Effects of Ethnicity and Food on Pharmacokinetics of YH25448",
             "leadSponsor": "Yuhan Corporation",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE1"
             ],
-            "completionDate": "2024-09-13",
+            "completionDate": "2018-12-30",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT05960708"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT03556436"
           },
           {
-            "nctId": "NCT02125227",
-            "title": "Phase 1 Clinical Trial to Investigate the Effect on the Pharmacokinetics of YH14755 Compared to Co-administration of Rosuvastatin and Metformin SR in Healthy Volunteers",
+            "nctId": "NCT01424124",
+            "title": "Safety and Efficacy of YHD001 in Asthma",
+            "leadSponsor": "Yuhan Corporation",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE2"
+            ],
+            "completionDate": "2014-01",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01424124"
+          },
+          {
+            "nctId": "NCT05012436",
+            "title": "A Study to Evaluate the Pharmacokinetics and Safety of YHD1119 in Subjects With Renal Impairment and Healthy Subjects",
             "leadSponsor": "Yuhan Corporation",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE1"
             ],
-            "completionDate": "2014-09",
+            "completionDate": "2022-05-10",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT02125227"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT05012436"
+          },
+          {
+            "nctId": "NCT01992601",
+            "title": "A Randomized, Open-label, Multiple-dose, Crossover Study to Investigate the Pharmacokinetic Drug Interaction Between Rosuvastatin and Telmisartan in Healthy Volunteer",
+            "leadSponsor": "Yuhan Corporation",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2013-01",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01992601"
+          },
+          {
+            "nctId": "NCT01526317",
+            "title": "A Phase 1 Clinical Trial to Investigate Pharmacokinetics and Drug Interaction of Crestor and Glucodown OR SR in Healthy Volunteers",
+            "leadSponsor": "Yuhan Corporation",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2012-05",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01526317"
+          },
+          {
+            "nctId": "NCT03597412",
+            "title": "Rosuvastatin/Ezetimibe Versus Rosuvastatin in ASCVD Patients With Type 2 DM",
+            "leadSponsor": "Yuhan Corporation",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE4"
+            ],
+            "completionDate": "2020-08-12",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT03597412"
+          },
+          {
+            "nctId": "NCT06041529",
+            "title": "Study to Evaluate the Efficacy and Safety of TEL/AML/CTD in Elderly Patients With Essential Hypertension",
+            "leadSponsor": "Yuhan Corporation",
+            "identityConfidence": "HIGH",
+            "overallStatus": "ACTIVE_NOT_RECRUITING",
+            "phases": [
+              "PHASE4"
+            ],
+            "completionDate": "2026-02-28",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT06041529"
+          },
+          {
+            "nctId": "NCT03509922",
+            "title": "A Study to Evaluate the Effect of Sarpogrelate on Blood Hyperviscosity",
+            "leadSponsor": "Yuhan Corporation",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE4"
+            ],
+            "completionDate": "2020-03-05",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT03509922"
+          },
+          {
+            "nctId": "NCT01609907",
+            "title": "Pharmacokinetic Drug Interaction Between Rosuvastatin and Valsartan",
+            "leadSponsor": "Yuhan Corporation",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2012-05",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01609907"
+          },
+          {
+            "nctId": "NCT03116516",
+            "title": "Clinical Trial to Compare the Safety and Pharmacokinetics of YHP1604 in Comparison to the Co-administration of Telmisartan/Amlodipine and Rosuvastatin",
+            "leadSponsor": "Yuhan Corporation",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2017-05-26",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT03116516"
+          },
+          {
+            "nctId": "NCT02496910",
+            "title": "PK Study of YH22162 FDC Compared to Combination of Twynsta and Hygroton",
+            "leadSponsor": "Yuhan Corporation",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2015-09",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02496910"
+          },
+          {
+            "nctId": "NCT03334916",
+            "title": "A Clinical Trial to Evaluate the Efficacy and Safety of YMC026 in Respiratory Disease Patients",
+            "leadSponsor": "Yuhan Corporation",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE4"
+            ],
+            "completionDate": "2018-10-30",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT03334916"
+          },
+          {
+            "nctId": "NCT02817347",
+            "title": "A Clinical Trial of YH1177 in Patients With Otitis Media and Otorrhea",
+            "leadSponsor": "Yuhan Corporation",
+            "identityConfidence": "HIGH",
+            "overallStatus": "TERMINATED",
+            "phases": [
+              "PHASE1",
+              "PHASE2"
+            ],
+            "completionDate": "2017-04-13",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02817347"
+          },
+          {
+            "nctId": "NCT01499225",
+            "title": "A Clinical Trial of YH14642 in Patients With Chronic Periodontal Disease",
+            "leadSponsor": "Yuhan Corporation",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE2"
+            ],
+            "completionDate": "",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01499225"
+          },
+          {
+            "nctId": "NCT02233218",
+            "title": "The Pharmacokinetic Drug-drug Interaction and Safety of Telmisartan/Amlodipine and Rosuvastatin in Healthy Male Volunteers",
+            "leadSponsor": "Yuhan Corporation",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2015-01",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02233218"
           }
         ],
         "source": "ClinicalTrials.gov API v2",
@@ -2849,158 +2825,28 @@
         "queryCompany": "Celltrion",
         "apiTotalCount": 101,
         "fetchedStudyCount": 20,
-        "verifiedStudyCountInFetchedPage": 16,
-        "rejectedIdentityCountInFetchedPage": 4,
+        "verifiedStudyCountInFetchedPage": 15,
+        "rejectedIdentityCountInFetchedPage": 5,
         "ambiguousSponsorMatches": [],
         "identityStatus": "VERIFIED",
         "identityConfidence": "HIGH",
-        "activeStudyCountInFetchedPage": 2,
-        "phase3StudyCountInFetchedPage": 9,
-        "riskStatusStudyCountInFetchedPage": 0,
+        "activeStudyCountInFetchedPage": 1,
+        "phase3StudyCountInFetchedPage": 7,
+        "riskStatusStudyCountInFetchedPage": 1,
         "upcomingCompletion180dCountInFetchedPage": 0,
         "studies": [
           {
-            "nctId": "NCT06630559",
-            "title": "A Study to Compare Efficacy and Safety of CT-P55 and Cosentyx in Patients With Moderate to Severe Psoriasis",
-            "leadSponsor": "Celltrion",
-            "identityConfidence": "HIGH",
-            "overallStatus": "ACTIVE_NOT_RECRUITING",
-            "phases": [
-              "PHASE3"
-            ],
-            "completionDate": "2026-10",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT06630559"
-          },
-          {
-            "nctId": "NCT05364164",
-            "title": "A Food Effect Study of CT-L01 After Oral Administration in Healthy Volunteers",
+            "nctId": "NCT03247673",
+            "title": "To Demonstrate Similarity of Pharmacokinetics and Evaluate Safety of CT-P16, EU-Approved Avastin and US-licensed Avastin",
             "leadSponsor": "Celltrion",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE1"
             ],
-            "completionDate": "2022-07-25",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT05364164"
-          },
-          {
-            "nctId": "NCT01220518",
-            "title": "Program evaLuating the Autoimmune Disease iNvEstigational Drug cT-p13 in AS Patients(PLANETAS)",
-            "leadSponsor": "Celltrion",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE1"
-            ],
-            "completionDate": "2012-06",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT01220518"
-          },
-          {
-            "nctId": "NCT03707535",
-            "title": "To Compare the Efficacy, Pharmacokinetics and Safety Between CT-P13 and China Approved Remicade When Co-administered With Methotrexate in Patients With Active Rheumatoid Arthritis",
-            "leadSponsor": "Celltrion",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE3"
-            ],
-            "completionDate": "2021-03-05",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT03707535"
-          },
-          {
-            "nctId": "NCT06939595",
-            "title": "A Study to Compare Effects and Safety of CT-P51 and Keytruda in Patients With Previously Untreated Metastatic Lung Cancer",
-            "leadSponsor": "Celltrion",
-            "identityConfidence": "HIGH",
-            "overallStatus": "ACTIVE_NOT_RECRUITING",
-            "phases": [
-              "PHASE3"
-            ],
-            "completionDate": "2028-07",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT06939595"
-          },
-          {
-            "nctId": "NCT04739306",
-            "title": "Study to Compare Efficacy and Safety of CT-P42 in Comparison With Eylea in Patients With Diabetic Macular Edema",
-            "leadSponsor": "Celltrion",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE3"
-            ],
-            "completionDate": "2023-04-24",
+            "completionDate": "2018-01-17",
             "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT04739306"
-          },
-          {
-            "nctId": "NCT02149121",
-            "title": "PK Similarity Prospective Phase 3 Study in Patients With Rheumatoid Arthritis",
-            "leadSponsor": "Celltrion",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE3"
-            ],
-            "completionDate": "2017-01",
-            "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT02149121"
-          },
-          {
-            "nctId": "NCT05363384",
-            "title": "A Bioequivalence Study of CT-L01 Compared to Co-administration (ALO 25 mg and MET XR 1,000 mg) in Healthy Volunteers",
-            "leadSponsor": "Celltrion",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE1"
-            ],
-            "completionDate": "2022-07-12",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT05363384"
-          },
-          {
-            "nctId": "NCT01084876",
-            "title": "Demonstrate Efficacy and Safety of Metastatic Breast Cancer",
-            "leadSponsor": "Celltrion",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE3"
-            ],
-            "completionDate": "2015-03",
-            "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT01084876"
-          },
-          {
-            "nctId": "NCT03147248",
-            "title": "A Phase I/III Study to Evaluate Efficacy, PK and Safety Between CT-P13 SC and CT-P13 IV in Patients With Active RA",
-            "leadSponsor": "Celltrion",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE3"
-            ],
-            "completionDate": "2019-04-15",
-            "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT03147248"
-          },
-          {
-            "nctId": "NCT06687928",
-            "title": "To Compare the Pharmacokinetics, Safety, and Immunogenicity of Subcutaneous CT-P6 and Herceptin in Healthy Male Subjects (Trastuzumab)",
-            "leadSponsor": "Celltrion",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE1"
-            ],
-            "completionDate": "2025-08-05",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT06687928"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT03247673"
           },
           {
             "nctId": "NCT05385770",
@@ -3016,30 +2862,95 @@
             "sourceUrl": "https://clinicaltrials.gov/study/NCT05385770"
           },
           {
-            "nctId": "NCT07158346",
-            "title": "Phase I Study to Evaluate the Pharmacokinetics and Safety After Co-administration of L03RD1 and L03RD2 or Administration of CT-L03 in Healthy Volunteers",
+            "nctId": "NCT04739306",
+            "title": "Study to Compare Efficacy and Safety of CT-P42 in Comparison With Eylea in Patients With Diabetic Macular Edema",
+            "leadSponsor": "Celltrion",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE3"
+            ],
+            "completionDate": "2023-04-24",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT04739306"
+          },
+          {
+            "nctId": "NCT05906992",
+            "title": "A Study to Compare Efficacy, Pharmacokinetics, Pharmacodynamics and Safety of CT-P53 and Ocrevus in Patients With Relapsing-remitting Multiple Sclerosis",
+            "leadSponsor": "Celltrion",
+            "identityConfidence": "HIGH",
+            "overallStatus": "RECRUITING",
+            "phases": [
+              "PHASE3"
+            ],
+            "completionDate": "2029-01",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT05906992"
+          },
+          {
+            "nctId": "NCT04757376",
+            "title": "A Phase 3 Study to Compare Between CT-P41 and US-licensed Prolia in Postmenopausal Women With Osteoporosis",
+            "leadSponsor": "Celltrion",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE3"
+            ],
+            "completionDate": "2023-11-16",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT04757376"
+          },
+          {
+            "nctId": "NCT01534949",
+            "title": "Provide Initial Evidence of Safety, Pharmacokinetics, Pharmacodynamics, and Efficacy to Support the Pivotal CT-P10 Therapeutic Equivalence Trial",
+            "leadSponsor": "Celltrion",
+            "identityConfidence": "HIGH",
+            "overallStatus": "TERMINATED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2013-02",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01534949"
+          },
+          {
+            "nctId": "NCT02260804",
+            "title": "To Compare Efficacy and Safety Between CT-P10 and Rituxan in Patients With Low Tumour Burden Follicular Lymphoma",
+            "leadSponsor": "Celltrion",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE3"
+            ],
+            "completionDate": "2019-09-04",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02260804"
+          },
+          {
+            "nctId": "NCT04018313",
+            "title": "To Compare the PK and Safety of Omalizumab (CT-P39, EU-approved Xolair, and US-licensed Xolair) in Healthy Subjects",
             "leadSponsor": "Celltrion",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE1"
             ],
-            "completionDate": "2025-10-23",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT07158346"
+            "completionDate": "2021-04-30",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT04018313"
           },
           {
-            "nctId": "NCT05617183",
-            "title": "Compare the Auto-injector and Pre-filled Syringe of CT-P47 in Healthy Subjects",
+            "nctId": "NCT04428814",
+            "title": "Study to Compare PK and Safety of Subcutaneous Injection of Ustekinumab and CT-P43 in Healthy Subjects",
             "leadSponsor": "Celltrion",
             "identityConfidence": "HIGH",
-            "overallStatus": "UNKNOWN",
+            "overallStatus": "COMPLETED",
             "phases": [
               "PHASE1"
             ],
-            "completionDate": "2023-09",
+            "completionDate": "2021-02-24",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT05617183"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT04428814"
           },
           {
             "nctId": "NCT04673786",
@@ -3055,17 +2966,70 @@
             "sourceUrl": "https://clinicaltrials.gov/study/NCT04673786"
           },
           {
-            "nctId": "NCT03918967",
-            "title": "Safety, Tolerability, Pharmacokinetics and Pharmacodynamics of CT-G20 or CT-G11 and Food Effect of CT-G20 in Human Participants",
+            "nctId": "NCT04593641",
+            "title": "This is a Phase 1 Study to Evaluate the Safety,Tolerability and Virology of CT P59 in Patients With Mild Symptoms of Symptoms of Coronavirus Disease (COVID-19)",
             "leadSponsor": "Celltrion",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE1"
             ],
-            "completionDate": "2020-06-06",
+            "completionDate": "2021-04-05",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT04593641"
+          },
+          {
+            "nctId": "NCT07054970",
+            "title": "To Compare the Pharmacokinetics, Safety and Immunogenicity of CT-P55 and Cosentyx in Healthy Subjects",
+            "leadSponsor": "Celltrion",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2024-09-06",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT03918967"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT07054970"
+          },
+          {
+            "nctId": "NCT05363384",
+            "title": "A Bioequivalence Study of CT-L01 Compared to Co-administration (ALO 25 mg and MET XR 1,000 mg) in Healthy Volunteers",
+            "leadSponsor": "Celltrion",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2022-07-12",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT05363384"
+          },
+          {
+            "nctId": "NCT05002244",
+            "title": "A Drug-Drug Interaction Study of CTL0801 and CTL0802 Compared to Coadministration in Healthy Adult Volunteers",
+            "leadSponsor": "Celltrion",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2021-09-13",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT05002244"
+          },
+          {
+            "nctId": "NCT04602000",
+            "title": "A Phase 2/3 Study to Evaluate the Efficacy and Safety of CT-P59 in Patients With Mild to Moderate SARS-CoV-2 Infection",
+            "leadSponsor": "Celltrion",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE2",
+              "PHASE3"
+            ],
+            "completionDate": "2021-10-20",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT04602000"
           }
         ],
         "source": "ClinicalTrials.gov API v2",
@@ -3214,68 +3178,16 @@
         "queryCompany": "Hanmi Pharmaceutical",
         "apiTotalCount": 215,
         "fetchedStudyCount": 20,
-        "verifiedStudyCountInFetchedPage": 14,
-        "rejectedIdentityCountInFetchedPage": 6,
+        "verifiedStudyCountInFetchedPage": 20,
+        "rejectedIdentityCountInFetchedPage": 0,
         "ambiguousSponsorMatches": [],
         "identityStatus": "VERIFIED",
         "identityConfidence": "HIGH",
         "activeStudyCountInFetchedPage": 2,
-        "phase3StudyCountInFetchedPage": 1,
+        "phase3StudyCountInFetchedPage": 2,
         "riskStatusStudyCountInFetchedPage": 0,
         "upcomingCompletion180dCountInFetchedPage": 0,
         "studies": [
-          {
-            "nctId": "NCT01093729",
-            "title": "A Study of HM11260C in Healthy Male Subject",
-            "leadSponsor": "Hanmi Pharmaceutical Company Limited",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE1"
-            ],
-            "completionDate": "2010-10",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT01093729"
-          },
-          {
-            "nctId": "NCT01509196",
-            "title": "A Bioequivalence Study Comparing HIP0901 Capsule With Lipidilsupra Tablet",
-            "leadSponsor": "Hanmi Pharmaceutical Company Limited",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE1"
-            ],
-            "completionDate": "2012-02",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT01509196"
-          },
-          {
-            "nctId": "NCT02057172",
-            "title": "Glycaemic Control of Weekly LAPS-Exendin Versus Placebo in Subjects of Type 2 Diabetes",
-            "leadSponsor": "Hanmi Pharmaceutical Company Limited",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE2"
-            ],
-            "completionDate": "2014-12",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT02057172"
-          },
-          {
-            "nctId": "NCT04505436",
-            "title": "Efocipegtrutide (HM15211) in Adults With Biopsy-Confirmed Nonalcoholic Steatohepatitis (NASH)",
-            "leadSponsor": "Hanmi Pharmaceutical Company Limited",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE2"
-            ],
-            "completionDate": "2026-07-15",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT04505436"
-          },
           {
             "nctId": "NCT03284502",
             "title": "HM95573 in Combination With Either Cobimetinib or Cetuximab in Patients With Locally Advanced or Metastatic Solid Tumors",
@@ -3290,117 +3202,246 @@
             "sourceUrl": "https://clinicaltrials.gov/study/NCT03284502"
           },
           {
-            "nctId": "NCT01638286",
-            "title": "Study to Evaluate a Pharmacokinetic Drug Interaction Between Eperisone Hydrochloride and Aceclofenac in Healthy Male Subjects",
+            "nctId": "NCT04324905",
+            "title": "Study to Compare the Safety, Pharmacokinetics and Pharmacodynamics of HIP1802 to HGP1705 in Healthy Volunteers",
             "leadSponsor": "Hanmi Pharmaceutical Company Limited",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
-            "phases": [],
-            "completionDate": "2013-04",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT01638286"
-          },
-          {
-            "nctId": "NCT05487560",
-            "title": "An Observational Study to Evaluate the Incidence of MACCE According to Time Interval of Taking Medication in Patients With Acute Coronary Syndrome or Cerebral Infarction Who Received DAPT for the Secondary Prevention and Esomezol Cap for the Prevention of Gastrointestinal Bleeding",
-            "leadSponsor": "Hanmi Pharmaceutical Company Limited",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [],
-            "completionDate": "2022-06-22",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT05487560"
-          },
-          {
-            "nctId": "NCT03372850",
-            "title": "Safety, Pharmacokinetics and Pharmacodynamics of the Two Esomeprazole Formulations",
-            "leadSponsor": "Hanmi Pharmaceutical Company Limited",
-            "identityConfidence": "HIGH",
-            "overallStatus": "UNKNOWN",
             "phases": [
               "PHASE1"
             ],
-            "completionDate": "2018-06-15",
+            "completionDate": "2020-10-30",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT03372850"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT04324905"
           },
           {
-            "nctId": "NCT07660796",
-            "title": "A Study to Evaluate Efficacy and Safety of HCP1803-4 in Patients With Essential Hypertension",
+            "nctId": "NCT04252872",
+            "title": "Pharmacokinetics of HCP1401 and Co-administration of HCP0605, HGP1405 in Healthy Male Volunteers",
             "leadSponsor": "Hanmi Pharmaceutical Company Limited",
             "identityConfidence": "HIGH",
-            "overallStatus": "NOT_YET_RECRUITING",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2015-11",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT04252872"
+          },
+          {
+            "nctId": "NCT04764201",
+            "title": "The Pharmacokinetic Characteristics and Safety Between HIP2001 and HGP2001 in Healthy Volunteers",
+            "leadSponsor": "Hanmi Pharmaceutical Company Limited",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2021-03-08",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT04764201"
+          },
+          {
+            "nctId": "NCT01448330",
+            "title": "A Bioequivalence Study Comparing Clopidogrel/Aspirin Combination Tablet With Coadministration of Clopidogrel and Aspirin",
+            "leadSponsor": "Hanmi Pharmaceutical Company Limited",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2011-09",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01448330"
+          },
+          {
+            "nctId": "NCT02545829",
+            "title": "Evaluating the Bioequivalence of HIP1302, HGP1406",
+            "leadSponsor": "Hanmi Pharmaceutical Company Limited",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2015-10",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02545829"
+          },
+          {
+            "nctId": "NCT05422677",
+            "title": "An Observational Study of Tamsulosin in Patients With Benign Prostatic Hyperplasia",
+            "leadSponsor": "Hanmi Pharmaceutical Company Limited",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [],
+            "completionDate": "2021-08-24",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT05422677"
+          },
+          {
+            "nctId": "NCT01746771",
+            "title": "A Phase I-II Study of HM781-36B Combined With Paclitaxel and Trastuzumab in HER-2 Positive Advanced Gastric Cancer",
+            "leadSponsor": "Hanmi Pharmaceutical Company Limited",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1",
+              "PHASE2"
+            ],
+            "completionDate": "2015-08",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01746771"
+          },
+          {
+            "nctId": "NCT03371849",
+            "title": "PK and Safety Study of HCP1102, HGP0813 and HGP1408",
+            "leadSponsor": "Hanmi Pharmaceutical Company Limited",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2017-08-03",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT03371849"
+          },
+          {
+            "nctId": "NCT04654702",
+            "title": "Observational Study to Evaluate Therapeutic Effectiveness and Safety of Monterizine Cap.",
+            "leadSponsor": "Hanmi Pharmaceutical Company Limited",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [],
+            "completionDate": "2020-07-20",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT04654702"
+          },
+          {
+            "nctId": "NCT05191563",
+            "title": "A Study to Compare the Pharmacokinetics, Safety and Tolerability Between Fixed-Dose Combination of HCP1904 and Co-Administration of RLD2001-2 and RLD2006 Tablets in Healthy Subjects.",
+            "leadSponsor": "Hanmi Pharmaceutical Company Limited",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2021-09-12",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT05191563"
+          },
+          {
+            "nctId": "NCT04967014",
+            "title": "Study to Evaluate the Safety and Pharmacodynamic/Pharmacokinetic Characteristics of HIP2101 in Healthy Volunteers",
+            "leadSponsor": "Hanmi Pharmaceutical Company Limited",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2021-06-18",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT04967014"
+          },
+          {
+            "nctId": "NCT01806818",
+            "title": "Comparing Efficacy and Safety Between Eperisone a BID and a TID Regimen in Acute Low Back Pain Patients",
+            "leadSponsor": "Hanmi Pharmaceutical Company Limited",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE2"
+            ],
+            "completionDate": "2013-07",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01806818"
+          },
+          {
+            "nctId": "NCT00973115",
+            "title": "Efficacy and Safety of Morning Versus Evening Intake of Simvast Controlled Release (CR) Tablet in Patients With Hyperlipidemia",
+            "leadSponsor": "Hanmi Pharmaceutical Company Limited",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
             "phases": [
               "PHASE3"
             ],
-            "completionDate": "2027-11-30",
+            "completionDate": "2009-08",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT07660796"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT00973115"
           },
           {
-            "nctId": "NCT01514903",
-            "title": "Pharmacokinetics of Sildenafil Following Administration of an Chewable Tablet of Sildenafil Relative to Viagra® Conventional Oral Tablet in Healthy Volunteers",
+            "nctId": "NCT02026817",
+            "title": "Comparison of PK After Administration of HCP1201 and Co-administration of Metformin SR 750mg and Rosuvastatin 10mg",
             "leadSponsor": "Hanmi Pharmaceutical Company Limited",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE1"
             ],
-            "completionDate": "2011-12",
+            "completionDate": "2014-01",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT01514903"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02026817"
           },
           {
-            "nctId": "NCT03110874",
-            "title": "Clinical Trial on Education Method of Fluterol® Inhalation Inhaler for Asthma Control",
-            "leadSponsor": "Hanmi Pharmaceutical Company Limited",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE4"
-            ],
-            "completionDate": "2017-05-10",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT03110874"
-          },
-          {
-            "nctId": "NCT00998283",
-            "title": "Assess the Safety, Tolerability, and Pharmacokinetic (PK) Characteristics of HM10460A (HNK460) in Healthy Adult Korean Subjects",
-            "leadSponsor": "Hanmi Pharmaceutical Company Limited",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE1"
-            ],
-            "completionDate": "2010-09",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT00998283"
-          },
-          {
-            "nctId": "NCT06724016",
-            "title": "Dose Escalation and Expansion Study of HM16390 Alone or With Pembrolizumab in Advanced or Metastatic Solid Tumors",
+            "nctId": "NCT07527650",
+            "title": "Study to Evaluate HM15275 in Subjects With Type 2 Diabetes Mellitus",
             "leadSponsor": "Hanmi Pharmaceutical Company Limited",
             "identityConfidence": "HIGH",
             "overallStatus": "RECRUITING",
             "phases": [
-              "PHASE1"
+              "PHASE2"
             ],
-            "completionDate": "2031-07",
+            "completionDate": "2027-10",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT06724016"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT07527650"
           },
           {
-            "nctId": "NCT03089112",
-            "title": "Pharmacokinetic Drug Interactions Between HGP1607 and HGP1501",
+            "nctId": "NCT05737082",
+            "title": "A Study to Evaluate the Pharmacokinetics and Safety Between HCP2201 and Co-administration of Each Component in Healty Male Volunteers",
             "leadSponsor": "Hanmi Pharmaceutical Company Limited",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE1"
             ],
-            "completionDate": "2017-06-16",
+            "completionDate": "2023-05-14",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT03089112"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT05737082"
+          },
+          {
+            "nctId": "NCT04788290",
+            "title": "An Observational Study Assessing Effects in Patients With Combination Therapy With Raloxifene/Cholecalciferol",
+            "leadSponsor": "Hanmi Pharmaceutical Company Limited",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [],
+            "completionDate": "2020-07-13",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT04788290"
+          },
+          {
+            "nctId": "NCT04732416",
+            "title": "HM15136 (Efpegerglucagon) Treatment for 8 Weeks in Subjects Aged ≥2 Years With Congenital Hyperinsulinism (CHI)",
+            "leadSponsor": "Hanmi Pharmaceutical Company Limited",
+            "identityConfidence": "HIGH",
+            "overallStatus": "ACTIVE_NOT_RECRUITING",
+            "phases": [
+              "PHASE2"
+            ],
+            "completionDate": "2027-05",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT04732416"
+          },
+          {
+            "nctId": "NCT05024721",
+            "title": "Study to Evaluate the Efficacy and Safety of HIP2101 in Patients With Acute or Chronic Gastritis",
+            "leadSponsor": "Hanmi Pharmaceutical Company Limited",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE3"
+            ],
+            "completionDate": "2022-03-07",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT05024721"
           }
         ],
         "source": "ClinicalTrials.gov API v2",
@@ -3481,17 +3522,17 @@
         "upcomingCompletion180dCountInFetchedPage": 0,
         "studies": [
           {
-            "nctId": "NCT03242239",
-            "title": "A Comparing Study Between ALT02(Trastuzumab Biosimilar) and Herceptin® in Healthy Subjects",
+            "nctId": "NCT03281824",
+            "title": "Clinical Study of ALT-P7 to Determine Safety, Tolerability and Pharmacokinetics in Breast Cancer Patients",
             "leadSponsor": "Alteogen, Inc.",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE1"
             ],
-            "completionDate": "2016-09-30",
+            "completionDate": "2021-01-15",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT03242239"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT03281824"
           },
           {
             "nctId": "NCT04058535",
@@ -3507,19 +3548,6 @@
             "sourceUrl": "https://clinicaltrials.gov/study/NCT04058535"
           },
           {
-            "nctId": "NCT03281824",
-            "title": "Clinical Study of ALT-P7 to Determine Safety, Tolerability and Pharmacokinetics in Breast Cancer Patients",
-            "leadSponsor": "Alteogen, Inc.",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE1"
-            ],
-            "completionDate": "2021-01-15",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT03281824"
-          },
-          {
             "nctId": "NCT05232175",
             "title": "Clinical Study of ALT-BB4 to Determine Tolerance, Safety and Pharmacokinetics in Healthy Volunteer",
             "leadSponsor": "Alteogen, Inc.",
@@ -3531,6 +3559,19 @@
             "completionDate": "2022-08-24",
             "hasResults": true,
             "sourceUrl": "https://clinicaltrials.gov/study/NCT05232175"
+          },
+          {
+            "nctId": "NCT03242239",
+            "title": "A Comparing Study Between ALT02(Trastuzumab Biosimilar) and Herceptin® in Healthy Subjects",
+            "leadSponsor": "Alteogen, Inc.",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2016-09-30",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT03242239"
           }
         ],
         "source": "ClinicalTrials.gov API v2",
@@ -3597,17 +3638,17 @@
         "upcomingCompletion180dCountInFetchedPage": 0,
         "studies": [
           {
-            "nctId": "NCT02882789",
-            "title": "IV Dosage Form of LCB01-0371 Phase I Study in Healthy Male Volunteers",
+            "nctId": "NCT02540460",
+            "title": "Multiple Ascending Dose, Phase 1 Clinical Study of LCB01-0371",
             "leadSponsor": "LigaChem Biosciences, Inc.",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE1"
             ],
-            "completionDate": "2017-07",
+            "completionDate": "2015-01",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT02882789"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02540460"
           },
           {
             "nctId": "NCT06774963",
@@ -3623,17 +3664,69 @@
             "sourceUrl": "https://clinicaltrials.gov/study/NCT06774963"
           },
           {
-            "nctId": "NCT05225558",
-            "title": "A Phase 2a Study, Effect of Vancomycin With vs Without Delpazolid (LCB01-0371) in Patients With MRSA Bacteremia",
+            "nctId": "NCT02529241",
+            "title": "An Open-label, Single Dose, Parallel Design, Phase 1 Clinical Study of LCB01-0371",
             "leadSponsor": "LigaChem Biosciences, Inc.",
             "identityConfidence": "HIGH",
             "overallStatus": "TERMINATED",
             "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2015-12",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02529241"
+          },
+          {
+            "nctId": "NCT02836483",
+            "title": "A Phase II Clinical Study of LCB01-0371 to Evaluate the EBA, Safety and PK",
+            "leadSponsor": "LigaChem Biosciences, Inc.",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
               "PHASE2"
             ],
-            "completionDate": "2024-03-18",
+            "completionDate": "2019-07-01",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02836483"
+          },
+          {
+            "nctId": "NCT01842516",
+            "title": "Multiple Ascending Dose Study for LCB01-0371",
+            "leadSponsor": "LigaChem Biosciences, Inc.",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2013-12",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT01842516"
+          },
+          {
+            "nctId": "NCT04550832",
+            "title": "PanACEA DElpazolid Dose-finding and COmbination DEvelopment (DECODE)",
+            "leadSponsor": "LigaChem Biosciences, Inc.",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE2"
+            ],
+            "completionDate": "2023-09-11",
             "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT05225558"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT04550832"
+          },
+          {
+            "nctId": "NCT02882789",
+            "title": "IV Dosage Form of LCB01-0371 Phase I Study in Healthy Male Volunteers",
+            "leadSponsor": "LigaChem Biosciences, Inc.",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2017-07",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT02882789"
           },
           {
             "nctId": "NCT01554995",
@@ -3649,17 +3742,17 @@
             "sourceUrl": "https://clinicaltrials.gov/study/NCT01554995"
           },
           {
-            "nctId": "NCT02540460",
-            "title": "Multiple Ascending Dose, Phase 1 Clinical Study of LCB01-0371",
+            "nctId": "NCT03492996",
+            "title": "A Mass Balance Study of LCB01-0371 After a Single Oral LCB01-0371 Dose With a [14C]LCB01-0371-microtrace",
             "leadSponsor": "LigaChem Biosciences, Inc.",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "PHASE1"
             ],
-            "completionDate": "2015-01",
+            "completionDate": "2020-09-23",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT02540460"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT03492996"
           },
           {
             "nctId": "NCT04939779",
@@ -3686,32 +3779,6 @@
             "completionDate": "2015-12",
             "hasResults": false,
             "sourceUrl": "https://clinicaltrials.gov/study/NCT02538003"
-          },
-          {
-            "nctId": "NCT03492996",
-            "title": "A Mass Balance Study of LCB01-0371 After a Single Oral LCB01-0371 Dose With a [14C]LCB01-0371-microtrace",
-            "leadSponsor": "LigaChem Biosciences, Inc.",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE1"
-            ],
-            "completionDate": "2020-09-23",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT03492996"
-          },
-          {
-            "nctId": "NCT02529241",
-            "title": "An Open-label, Single Dose, Parallel Design, Phase 1 Clinical Study of LCB01-0371",
-            "leadSponsor": "LigaChem Biosciences, Inc.",
-            "identityConfidence": "HIGH",
-            "overallStatus": "TERMINATED",
-            "phases": [
-              "PHASE1"
-            ],
-            "completionDate": "2015-12",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT02529241"
           },
           {
             "nctId": "NCT06004037",
@@ -3741,45 +3808,6 @@
             "sourceUrl": "https://clinicaltrials.gov/study/NCT07460375"
           },
           {
-            "nctId": "NCT04550832",
-            "title": "PanACEA DElpazolid Dose-finding and COmbination DEvelopment (DECODE)",
-            "leadSponsor": "LigaChem Biosciences, Inc.",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE2"
-            ],
-            "completionDate": "2023-09-11",
-            "hasResults": true,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT04550832"
-          },
-          {
-            "nctId": "NCT02836483",
-            "title": "A Phase II Clinical Study of LCB01-0371 to Evaluate the EBA, Safety and PK",
-            "leadSponsor": "LigaChem Biosciences, Inc.",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE2"
-            ],
-            "completionDate": "2019-07-01",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT02836483"
-          },
-          {
-            "nctId": "NCT01842516",
-            "title": "Multiple Ascending Dose Study for LCB01-0371",
-            "leadSponsor": "LigaChem Biosciences, Inc.",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE1"
-            ],
-            "completionDate": "2013-12",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT01842516"
-          },
-          {
             "nctId": "NCT05941507",
             "title": "A Study to Evaluate TROP2 ADC LCB84 Single Agent and in Combination With an Anti-PD-1 Ab in Advanced Solid Tumors",
             "leadSponsor": "LigaChem Biosciences, Inc.",
@@ -3792,6 +3820,19 @@
             "completionDate": "2027-05",
             "hasResults": false,
             "sourceUrl": "https://clinicaltrials.gov/study/NCT05941507"
+          },
+          {
+            "nctId": "NCT05225558",
+            "title": "A Phase 2a Study, Effect of Vancomycin With vs Without Delpazolid (LCB01-0371) in Patients With MRSA Bacteremia",
+            "leadSponsor": "LigaChem Biosciences, Inc.",
+            "identityConfidence": "HIGH",
+            "overallStatus": "TERMINATED",
+            "phases": [
+              "PHASE2"
+            ],
+            "completionDate": "2024-03-18",
+            "hasResults": true,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT05225558"
           }
         ],
         "source": "ClinicalTrials.gov API v2",
@@ -3885,19 +3926,6 @@
             "sourceUrl": "https://clinicaltrials.gov/study/NCT04762641"
           },
           {
-            "nctId": "NCT05101109",
-            "title": "Study to Evaluate the Safety and Tolerability of ABL501, and to Determine the Maximum Tolerated Dose (MTD) and Recommended Phase 2 Dose (RP2D) of ABL501 in Subjects With Any Progressive, Locally Advanced (Unresectable) or Metastatic Solid Tumors",
-            "leadSponsor": "ABL Bio, Inc.",
-            "identityConfidence": "HIGH",
-            "overallStatus": "COMPLETED",
-            "phases": [
-              "PHASE1"
-            ],
-            "completionDate": "2024-05-14",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT05101109"
-          },
-          {
             "nctId": "NCT06126666",
             "title": "A Study With ABL103 in Subjects With Advanced or Metastatic Solid Tumors",
             "leadSponsor": "ABL Bio, Inc.",
@@ -3909,6 +3937,33 @@
             "completionDate": "2027-11-15",
             "hasResults": false,
             "sourceUrl": "https://clinicaltrials.gov/study/NCT06126666"
+          },
+          {
+            "nctId": "NCT07158918",
+            "title": "ABL103 in Combination With Pembrolizumab, With or Without Taxane in Advanced or Metastatic Solid Tumors",
+            "leadSponsor": "ABL Bio, Inc.",
+            "identityConfidence": "HIGH",
+            "overallStatus": "RECRUITING",
+            "phases": [
+              "PHASE1",
+              "PHASE2"
+            ],
+            "completionDate": "2027-12-02",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT07158918"
+          },
+          {
+            "nctId": "NCT05101109",
+            "title": "Study to Evaluate the Safety and Tolerability of ABL501, and to Determine the Maximum Tolerated Dose (MTD) and Recommended Phase 2 Dose (RP2D) of ABL501 in Subjects With Any Progressive, Locally Advanced (Unresectable) or Metastatic Solid Tumors",
+            "leadSponsor": "ABL Bio, Inc.",
+            "identityConfidence": "HIGH",
+            "overallStatus": "COMPLETED",
+            "phases": [
+              "PHASE1"
+            ],
+            "completionDate": "2024-05-14",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT05101109"
           },
           {
             "nctId": "NCT05756920",
@@ -3935,20 +3990,6 @@
             "completionDate": "2021-03-02",
             "hasResults": false,
             "sourceUrl": "https://clinicaltrials.gov/study/NCT03292783"
-          },
-          {
-            "nctId": "NCT07158918",
-            "title": "ABL103 in Combination With Pembrolizumab, With or Without Taxane in Advanced or Metastatic Solid Tumors",
-            "leadSponsor": "ABL Bio, Inc.",
-            "identityConfidence": "HIGH",
-            "overallStatus": "RECRUITING",
-            "phases": [
-              "PHASE1",
-              "PHASE2"
-            ],
-            "completionDate": "2027-12-02",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT07158918"
           }
         ],
         "source": "ClinicalTrials.gov API v2",
@@ -4042,19 +4083,6 @@
             "sourceUrl": "https://clinicaltrials.gov/study/NCT07620769"
           },
           {
-            "nctId": "NCT07471399",
-            "title": "Safety and Efficacy Assessment for the Temporary Facial Skin Tightening Improvement Effect Using the Monopolar Radiofrequency Device",
-            "leadSponsor": "CLASSYS Inc.",
-            "identityConfidence": "HIGH",
-            "overallStatus": "RECRUITING",
-            "phases": [
-              "NA"
-            ],
-            "completionDate": "2027-03-16",
-            "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT07471399"
-          },
-          {
             "nctId": "NCT07229430",
             "title": "Safety and Effectiveness Evaluation of the High-intensity Focused Ultrasound Device for Lifting Lax Submental and Neck Tissue",
             "leadSponsor": "CLASSYS Inc.",
@@ -4068,17 +4096,17 @@
             "sourceUrl": "https://clinicaltrials.gov/study/NCT07229430"
           },
           {
-            "nctId": "NCT06724510",
-            "title": "Safety and Efficacy Evaluation of High Intensity Focused Ultrasound Device in Eyebrow Lifting",
+            "nctId": "NCT06657365",
+            "title": "Safety and Efficacy Evaluation of the Monopolar Radiofrequency Device for the Improvement of Facial Wrinkles",
             "leadSponsor": "CLASSYS Inc.",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "NA"
             ],
-            "completionDate": "2025-12-18",
+            "completionDate": "2025-07-03",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT06724510"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT06657365"
           },
           {
             "nctId": "NCT06816069",
@@ -4094,17 +4122,30 @@
             "sourceUrl": "https://clinicaltrials.gov/study/NCT06816069"
           },
           {
-            "nctId": "NCT06657365",
-            "title": "Safety and Efficacy Evaluation of the Monopolar Radiofrequency Device for the Improvement of Facial Wrinkles",
+            "nctId": "NCT06724510",
+            "title": "Safety and Efficacy Evaluation of High Intensity Focused Ultrasound Device in Eyebrow Lifting",
             "leadSponsor": "CLASSYS Inc.",
             "identityConfidence": "HIGH",
             "overallStatus": "COMPLETED",
             "phases": [
               "NA"
             ],
-            "completionDate": "2025-07-03",
+            "completionDate": "2025-12-18",
             "hasResults": false,
-            "sourceUrl": "https://clinicaltrials.gov/study/NCT06657365"
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT06724510"
+          },
+          {
+            "nctId": "NCT07471399",
+            "title": "Safety and Efficacy Assessment for the Temporary Facial Skin Tightening Improvement Effect Using the Monopolar Radiofrequency Device",
+            "leadSponsor": "CLASSYS Inc.",
+            "identityConfidence": "HIGH",
+            "overallStatus": "RECRUITING",
+            "phases": [
+              "NA"
+            ],
+            "completionDate": "2027-03-16",
+            "hasResults": false,
+            "sourceUrl": "https://clinicaltrials.gov/study/NCT07471399"
           }
         ],
         "source": "ClinicalTrials.gov API v2",
@@ -4255,14 +4296,14 @@
   ],
   "pointInTimeLedger": {
     "status": "OK",
-    "addedSnapshots": 5,
-    "addedEvents": 1,
-    "snapshotCount": 2389,
-    "eventCount": 8741
+    "addedSnapshots": 13,
+    "addedEvents": 168,
+    "snapshotCount": 2402,
+    "eventCount": 8909
   },
   "validationGate": {
     "status": "RESEARCH_ONLY",
-    "generatedAt": "2026-11-06T12:48:29+00:00",
+    "generatedAt": "2026-11-06T13:58:27+00:00",
     "evaluatedDirectionalEventCount": 0,
     "promotionCount": 0,
     "operationalScoreAdjustmentAllowed": false,
