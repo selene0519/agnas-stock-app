@@ -2,8 +2,8 @@
   "version": "pattern-edge-map-v1",
   "market": "kr",
   "baseline20dPct": {
-    "BULL": 1.981,
-    "SIDE": 1.089,
+    "BULL": 1.935,
+    "SIDE": 1.029,
     "BEAR": 2.333
   },
   "method": "geometric=train/OOS trade-sim qualified; engine=excess over survivorship baseline",
@@ -38,8 +38,8 @@
         "source": "geo_tradesim",
         "tier": "WEAK",
         "qualified": false,
-        "oosN": 126,
-        "oosEvPct": 1.648
+        "oosN": 139,
+        "oosEvPct": 1.166
       },
       "SIDE": {
         "source": "geo_tradesim",
@@ -61,8 +61,8 @@
         "source": "geo_tradesim",
         "tier": "NONE",
         "qualified": false,
-        "oosN": 242,
-        "oosEvPct": -0.234
+        "oosN": 244,
+        "oosEvPct": -0.214
       },
       "SIDE": {
         "source": "geo_tradesim",
@@ -86,8 +86,8 @@
         "source": "geo_tradesim",
         "tier": "WEAK",
         "qualified": false,
-        "oosN": 229,
-        "oosEvPct": 0.197
+        "oosN": 233,
+        "oosEvPct": 0.061
       },
       "SIDE": {
         "source": "geo_tradesim",
@@ -102,8 +102,8 @@
         "source": "geo_tradesim",
         "tier": "WEAK",
         "qualified": false,
-        "oosN": 42,
-        "oosEvPct": 0.779
+        "oosN": 45,
+        "oosEvPct": 0.606
       }
     },
     "FAILED_BREAKDOWN": {
@@ -119,7 +119,7 @@
       "BULL": {
         "source": "engine_excess",
         "tier": "NONE",
-        "excessPct": -0.291,
+        "excessPct": -0.245,
         "n": 180
       }
     },
@@ -127,13 +127,13 @@
       "BULL": {
         "source": "engine_excess",
         "tier": "NONE",
-        "excessPct": 0.719,
-        "n": 10932
+        "excessPct": 0.625,
+        "n": 10997
       },
       "SIDE": {
         "source": "engine_excess",
         "tier": "NONE",
-        "excessPct": 0.611,
+        "excessPct": 0.671,
         "n": 4894
       },
       "BEAR": {
@@ -147,13 +147,13 @@
       "BULL": {
         "source": "engine_excess",
         "tier": "NONE",
-        "excessPct": -0.011,
-        "n": 2607
+        "excessPct": -0.075,
+        "n": 2623
       },
       "SIDE": {
         "source": "engine_excess",
         "tier": "NONE",
-        "excessPct": 0.041,
+        "excessPct": 0.101,
         "n": 1748
       },
       "BEAR": {
@@ -167,33 +167,33 @@
       "BULL": {
         "source": "engine_excess",
         "tier": "NONE",
-        "excessPct": -0.541,
-        "n": 6610
+        "excessPct": -0.675,
+        "n": 6707
       },
       "SIDE": {
         "source": "engine_excess",
         "tier": "NONE",
-        "excessPct": -1.279,
+        "excessPct": -1.219,
         "n": 5930
       },
       "BEAR": {
         "source": "engine_excess",
         "tier": "WEAK",
         "excessPct": 2.187,
-        "n": 11877
+        "n": 11878
       }
     },
     "horizontal_support_rebound": {
       "BULL": {
         "source": "engine_excess",
         "tier": "NONE",
-        "excessPct": 0.119,
-        "n": 3868
+        "excessPct": 0.045,
+        "n": 3904
       },
       "SIDE": {
         "source": "engine_excess",
         "tier": "NONE",
-        "excessPct": 0.391,
+        "excessPct": 0.451,
         "n": 2603
       },
       "BEAR": {
@@ -207,13 +207,13 @@
       "BULL": {
         "source": "engine_excess",
         "tier": "NONE",
-        "excessPct": 0.199,
-        "n": 526
+        "excessPct": -0.075,
+        "n": 533
       },
       "SIDE": {
         "source": "engine_excess",
         "tier": "NONE",
-        "excessPct": -1.359,
+        "excessPct": -1.299,
         "n": 148
       },
       "BEAR": {
@@ -227,13 +227,13 @@
       "BULL": {
         "source": "engine_excess",
         "tier": "WEAK",
-        "excessPct": 1.989,
-        "n": 902
+        "excessPct": 1.945,
+        "n": 906
       },
       "SIDE": {
         "source": "engine_excess",
         "tier": "NONE",
-        "excessPct": -1.419,
+        "excessPct": -1.359,
         "n": 541
       },
       "BEAR": {
@@ -246,14 +246,14 @@
     "range_bottom_rebound": {
       "BULL": {
         "source": "engine_excess",
-        "tier": "WEAK",
-        "excessPct": 1.149,
-        "n": 1063
+        "tier": "NONE",
+        "excessPct": 0.945,
+        "n": 1076
       },
       "SIDE": {
         "source": "engine_excess",
         "tier": "NONE",
-        "excessPct": -2.239,
+        "excessPct": -2.179,
         "n": 1009
       },
       "BEAR": {
@@ -267,13 +267,13 @@
       "BULL": {
         "source": "engine_excess",
         "tier": "WEAK",
-        "excessPct": 3.459,
-        "n": 720
+        "excessPct": 3.305,
+        "n": 724
       },
       "SIDE": {
         "source": "engine_excess",
         "tier": "WEAK",
-        "excessPct": 1.791,
+        "excessPct": 1.851,
         "n": 198
       },
       "BEAR": {
@@ -287,7 +287,7 @@
       "SIDE": {
         "source": "engine_excess",
         "tier": "WEAK",
-        "excessPct": 1.151,
+        "excessPct": 1.211,
         "n": 141
       },
       "BEAR": {
