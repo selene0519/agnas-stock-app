@@ -1,6 +1,6 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-11-06T20:21:50.372534+00:00",
+  "generatedAt": "2026-11-09T02:28:40.300492+00:00",
   "policy": {
     "version": "shadow-meta-v1.2.3",
     "maxTake": 3,
@@ -35,85 +35,14 @@
     "source": "reports/shadow_residual_alpha.json"
   },
   "summary": {
-    "candidates": 2,
+    "candidates": 0,
     "take": 0,
     "wait": 0,
-    "reject": 2,
+    "reject": 0,
     "abstain": true
   },
   "take": [],
-  "decisions": [
-    {
-      "decisionId": "cdd727da42aed4240376a565",
-      "policyVersion": "shadow-meta-v1.2.3",
-      "policyFingerprint": "0bb3379dfc7bec772798",
-      "candidateKey": "edb68146c411c73dcba66ef9",
-      "signalDate": "2026-11-05",
-      "generatedAt": "2026-11-06T15:35:50.738998+00:00",
-      "market": "us",
-      "mode": "conservative",
-      "horizon": "mid",
-      "symbol": "RSP",
-      "name": "RSP",
-      "decision": "REJECT",
-      "reasons": [
-        "DATA_NOT_NORMAL",
-        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN"
-      ],
-      "score": 63.8,
-      "expectedValue": 0.72,
-      "riskRewardRatio": 3.11,
-      "entryPrice": 216.87,
-      "stopPrice": 212.0,
-      "targetPrice": 232.0,
-      "sector": "UNKNOWN",
-      "beta": null,
-      "modelProbabilityDisplayOnly": 35.9,
-      "residualAlphaModelEvidence": "WAIT",
-      "predictedResidualAlphaPct": 22.428312,
-      "residualAlphaLower90Pct": 4.322797,
-      "residualAlphaModelFingerprint": "7f3642213237690bb880",
-      "residualAlphaModelInstanceFingerprint": "a7d9a5ce33daf865e618874b",
-      "residualAlphaPredictionId": "c53b5fdde2791abcbf9579fe80ab",
-      "residualAlphaForwardSealStatus": "UNSEALED",
-      "recommendationSource": "mone_v36_final_recommendations_us_conservative_mid.csv"
-    },
-    {
-      "decisionId": "c2ca6132d80f7d82581ee6dd",
-      "policyVersion": "shadow-meta-v1.2.3",
-      "policyFingerprint": "0bb3379dfc7bec772798",
-      "candidateKey": "14c3287f5e526862365ef674",
-      "signalDate": "2026-11-05",
-      "generatedAt": "2026-11-06T15:35:50.738998+00:00",
-      "market": "us",
-      "mode": "conservative",
-      "horizon": "mid",
-      "symbol": "ABBV",
-      "name": "ABBV",
-      "decision": "REJECT",
-      "reasons": [
-        "DATA_NOT_NORMAL",
-        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN"
-      ],
-      "score": 63.6,
-      "expectedValue": 1.45,
-      "riskRewardRatio": 2.74,
-      "entryPrice": 288.24,
-      "stopPrice": 273.0,
-      "targetPrice": 330.0,
-      "sector": "UNKNOWN",
-      "beta": null,
-      "modelProbabilityDisplayOnly": 35.8,
-      "residualAlphaModelEvidence": "WAIT",
-      "predictedResidualAlphaPct": 20.638768,
-      "residualAlphaLower90Pct": 2.533253,
-      "residualAlphaModelFingerprint": "7f3642213237690bb880",
-      "residualAlphaModelInstanceFingerprint": "a7d9a5ce33daf865e618874b",
-      "residualAlphaPredictionId": "d16fa81f6925547d13f6e653004b",
-      "residualAlphaForwardSealStatus": "UNSEALED",
-      "recommendationSource": "mone_v36_final_recommendations_us_conservative_mid.csv"
-    }
-  ],
+  "decisions": [],
   "cellEvidence": {
     "kr|aggressive|mid": {
       "independentDecisions": 27,
