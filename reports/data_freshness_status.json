@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-11-10T20:47:19.760998+00:00",
+  "generatedAt": "2026-11-11T02:36:13.484686+00:00",
   "overall": "ERROR",
   "criticalFailures": 1,
-  "hardFailures": 0,
+  "hardFailures": 1,
   "maxStaleDays": 3.0,
   "checks": [
     {
@@ -15,30 +15,30 @@
     {
       "name": "kr_ohlcv",
       "status": "OK",
-      "detail": "0.87d, asOf=2026-11-10",
+      "detail": "0.11d, asOf=2026-11-11",
       "critical": true,
-      "ageDays": 0.87
+      "ageDays": 0.11
     },
     {
       "name": "kr_kospi_ohlcv",
       "status": "OK",
-      "detail": "0.87d, asOf=2026-11-10, kr_KOSPI_daily.csv trailing OHLC is valid",
+      "detail": "0.11d, asOf=2026-11-11, kr_KOSPI_daily.csv trailing OHLC is valid",
       "critical": true,
-      "ageDays": 0.87
+      "ageDays": 0.11
     },
     {
       "name": "kr_kosdaq_ohlcv",
       "status": "OK",
-      "detail": "0.87d, asOf=2026-11-10, kr_KOSDAQ_daily.csv trailing OHLC is valid",
+      "detail": "0.11d, asOf=2026-11-11, kr_KOSDAQ_daily.csv trailing OHLC is valid",
       "critical": true,
-      "ageDays": 0.87
+      "ageDays": 0.11
     },
     {
       "name": "kr_recommendations",
       "status": "OK",
-      "detail": "0.19d, asOf=2026-11-10T16:07:23.230072+00:00",
+      "detail": "0.01d, asOf=2026-11-11T02:28:35.715961+00:00",
       "critical": true,
-      "ageDays": 0.19
+      "ageDays": 0.01
     },
     {
       "name": "collector_steps",
@@ -50,70 +50,70 @@
     {
       "name": "collector_partial_failures",
       "status": "WARN",
-      "detail": "kr_close 250건",
+      "detail": "kr_close 7건",
       "critical": false,
       "ageDays": null
     },
     {
       "name": "collector_run",
       "status": "OK",
-      "detail": "0.19d, asOf=2026-11-11T01:10:01+09:00, source=cloud:benchmarks, reportedAt=2026-11-11T01:10:01",
+      "detail": "0.0d, asOf=2026-11-11T11:31:02+09:00, source=cloud:benchmarks, reportedAt=2026-11-11T11:31:02",
       "critical": true,
-      "ageDays": 0.19
+      "ageDays": 0.0
     },
     {
       "name": "local_collector_run",
       "status": "STALE",
-      "detail": "optional local collector 105.55d old; cloud source remains authoritative",
+      "detail": "optional local collector 105.79d old; cloud source remains authoritative",
       "critical": false,
-      "ageDays": 105.55
+      "ageDays": 105.79
     },
     {
       "name": "vtj_journal",
       "status": "OK",
-      "detail": "0.34d, asOf=2026-11-10T21:35:46+09:00",
+      "detail": "0.03d, asOf=2026-11-11T10:57:12+09:00",
       "critical": false,
-      "ageDays": 0.34
+      "ageDays": 0.03
     },
     {
       "name": "live_calibration",
       "status": "OK",
-      "detail": "-0.13d, asOf=2026-11-11",
+      "detail": "0.11d, asOf=2026-11-11",
       "critical": false,
-      "ageDays": -0.13
+      "ageDays": 0.11
     },
     {
       "name": "strategy_win_rates",
       "status": "OK",
-      "detail": "-0.37d, asOf=2026-11-11 05:47:11",
+      "detail": "-0.37d, asOf=2026-11-11 11:36:05",
       "critical": false,
       "ageDays": -0.37
     },
     {
       "name": "prediction_capture",
       "status": "OK",
-      "detail": "4.87d, asOf=2026-11-06",
+      "detail": "0.11d, asOf=2026-11-11",
       "critical": true,
-      "ageDays": 4.87
+      "ageDays": 0.11
     },
     {
       "name": "capture_continuity",
-      "status": "WARN",
-      "detail": "거래일 15일 중 캡처 14일 (기준일 2026-10-20~, 유예 1일) — 결손 1일: 2026-11-09",
+      "status": "ERROR",
+      "detail": "거래일 15일 중 캡처 13일 (기준일 2026-10-21~, 유예 1일) — 결손 2일: 2026-11-09, 2026-11-10 — 캡처가 멈춘 것으로 보임",
       "critical": true,
       "ageDays": null
     },
     {
       "name": "settlement_backlog",
       "status": "OK",
-      "detail": "만기경과 미정산 0건 / 대기중 510건",
+      "detail": "만기경과 미정산 0건 / 대기중 527건",
       "critical": false,
       "ageDays": null
     },
     {
       "name": "clean_window_samples",
       "status": "OK",
-      "detail": "clean window(2026-07-10) 정산표본 2254건 / 전체 정산 2914건 / 원장 3628행",
+      "detail": "clean window(2026-07-10) 정산표본 2254건 / 전체 정산 2914건 / 원장 3645행",
       "critical": false,
       "ageDays": null
     },
