@@ -1,7 +1,9 @@
 ﻿market,sourceType,symbol,name,date,dday,title,badges,badgeText,riskScore,action,source
 kr,일정,,한국은행 기준금리 결정,2026-11-26,14.0,한국은행 기준금리 결정,['매크로 주의'],매크로 주의 D+14,34,근거 확인 후 유지,data/calendar/macro_calendar.csv
 kr,일정,,한국 소비자물가지수 CPI (2026-11),2026-12-03,21.0,한국 소비자물가지수 CPI (2026-11),['매크로 주의'],매크로 주의 D+21,34,근거 확인 후 유지,data/calendar/macro_calendar.csv
-kr,공시,406820,뷰티스킨,20261112,,전환사채(해외전환사채포함)발행후만기전사채취득              (제6회차),['공시 리스크'],공시 리스크,25,신규 진입 기준 강화,data/disclosures/disclosures_kr.csv
+kr,공시,276730,한울앤제주,20261112,,증권발행결과(자율공시)              (일반공모 유상증자),['공시 리스크'],공시 리스크,25,신규 진입 기준 강화,data/disclosures/disclosures_kr.csv
+kr,공시,465770,STX그린로지스,20261112,,소송등의판결ㆍ결정(일정금액이상의청구),['공시 리스크'],공시 리스크,25,신규 진입 기준 강화,data/disclosures/disclosures_kr.csv
+kr,공시,083640,인콘,20261112,,[기재정정]주요사항보고서(전환사채권발행결정),['공시 리스크'],공시 리스크,25,신규 진입 기준 강화,data/disclosures/disclosures_kr.csv
 kr,일정,,한국 소비자물가지수 CPI (2026-06),2026-07-03,-132.0,한국 소비자물가지수 CPI (2026-06),['매크로 주의'],매크로 주의 D-132,24,근거 확인 후 유지,data/calendar/macro_calendar.csv
 kr,일정,,한국은행 기준금리 결정,2026-07-16,-119.0,한국은행 기준금리 결정,['매크로 주의'],매크로 주의 D-119,24,근거 확인 후 유지,data/calendar/macro_calendar.csv
 kr,일정,,한국 소비자물가지수 CPI (2026-07),2026-08-05,-99.0,한국 소비자물가지수 CPI (2026-07),['매크로 주의'],매크로 주의 D-99,24,근거 확인 후 유지,data/calendar/macro_calendar.csv
@@ -11,33 +13,42 @@ kr,일정,,한국 소비자물가지수 CPI (2026-09),2026-10-05,-38.0,한국 �
 kr,일정,,한국은행 기준금리 결정,2026-10-15,-28.0,한국은행 기준금리 결정,['매크로 주의'],매크로 주의 D-28,24,근거 확인 후 유지,data/calendar/macro_calendar.csv
 kr,일정,,한국 소비자물가지수 CPI (2026-10),2026-11-04,-8.0,한국 소비자물가지수 CPI (2026-10),['매크로 주의'],매크로 주의 D-8,24,근거 확인 후 유지,data/calendar/macro_calendar.csv
 kr,뉴스,,종목,2026-11-11T11:39:00Z,,취업자 수 늘어도…청년은 30개월 내리 추락,['매크로 주의'],매크로 주의,20,신규 진입 기준 강화,reports/news_summary_kr.csv
-kr,공시,377460,큐에이드,20261112,,상장적격성실질심사관련주요개선계획(자율공시),['재료 소멸 주의'],재료 소멸 주의,16,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
-kr,공시,024880,케이피에프,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
-kr,공시,036540,SFA반도체,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
-kr,공시,032580,피델릭스,20261112,,[기재정정]분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
-kr,공시,377740,바이오노트,20261112,,연결재무제표기준영업(잠정)실적(공정공시),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
-kr,공시,032300,한국파마,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
-kr,공시,002990,금호건설,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
-kr,공시,032830,삼성생명,20261112,,연결재무제표기준영업(잠정)실적(공정공시),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
-kr,공시,484590,삼양컴텍,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
-kr,공시,008670,신한투자증권,20261112,,증권발행실적보고서,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
-kr,공시,150840,인트로메딕,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
-kr,공시,003470,유안타증권,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
-kr,공시,332370,아이디피,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
-kr,공시,209640,와이제이링크,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
-kr,공시,242040,나무AX,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
-kr,공시,005940,NH투자증권,20261112,,증권발행실적보고서,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
-kr,공시,055490,테이팩스,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
-kr,공시,333620,엔시스,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
-kr,공시,033130,디지틀조선,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
-kr,공시,033100,제룡전기,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
-kr,공시,489480,키움제11호스팩,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
-kr,공시,117670,알파칩스,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
-kr,공시,006800,미래에셋증권,20261112,,증권발행실적보고서,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
+kr,공시,030610,교보증권,20261112,,증권발행실적보고서,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
+kr,공시,264660,씨앤지하이테크,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
+kr,공시,263750,펄어비스,20261112,,연결재무제표기준영업(잠정)실적(공정공시),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
+kr,공시,056190,SFA,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
+kr,공시,170920,엘티씨,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
+kr,공시,003540,대신증권,20261112,,[기재정정]연결재무제표기준영업(잠정)실적(공정공시),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
+kr,공시,047920,HLB제약,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
+kr,공시,000010,신한은행,20261112,,증권발행실적보고서,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
+kr,공시,025620,차AI헬스케어,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
+kr,공시,002450,삼익악기,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
+kr,공시,389500,에스비비테크,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
+kr,공시,011500,한농화성,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
+kr,공시,130740,티피씨글로벌,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
+kr,공시,004690,삼천리,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
+kr,공시,092600,앤씨앤,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
+kr,공시,013570,디와이,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
+kr,공시,222080,SFA넥셀,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
+kr,공시,025880,케이씨피드,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
+kr,공시,018880,한온시스템,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
+kr,공시,012030,DB,20261112,,연결재무제표기준영업(잠정)실적(공정공시),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
+kr,공시,304360,에스바이오메딕스,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
+kr,공시,210540,디와이파워,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
+kr,공시,086820,바이오솔루션,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
+kr,공시,123010,MSDI,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
+kr,공시,054450,텔레칩스,20261112,,연결재무제표기준영업(잠정)실적(공정공시),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
+kr,공시,015760,한국전력공사,20261112,,연결재무제표기준영업(잠정)실적(공정공시),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
+kr,공시,000370,한화손해보험,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
+kr,공시,078890,가온그룹,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
+kr,공시,039490,키움증권,20261112,,증권발행실적보고서,['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
+kr,공시,009830,한화솔루션,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
+kr,공시,462520,조선내화,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
+kr,공시,063080,컴투스홀딩스,20261112,,연결재무제표기준영업(잠정)실적(공정공시),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
+kr,공시,119850,지엔씨에너지,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
+kr,공시,214330,금호에이치티,20261112,,분기보고서 (2026.09),['실적 이벤트'],실적 이벤트,15,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
 kr,일정,,한국 산업생산지수 (2026-11),2026-11-30,18.0,한국 산업생산지수 (2026-11),['이벤트 주의'],이벤트 주의 D+18,12,근거 확인 후 유지,data/calendar/macro_calendar.csv
 kr,일정,,한국 수출입 통계 (2026-12),2026-12-01,19.0,한국 수출입 통계 (2026-12),['이벤트 주의'],이벤트 주의 D+19,12,근거 확인 후 유지,data/calendar/macro_calendar.csv
-kr,공시,200670,휴메딕스,20261112,,현금ㆍ현물배당결정              (분기배당),"['실적 이벤트', '신뢰도 높은 공시']",실적 이벤트 · 신뢰도 높은 공시,7,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
-kr,공시,200670,휴메딕스,20261112,,중간(분기)배당을위한주주명부폐쇄(기준일)결정,"['실적 이벤트', '신뢰도 높은 공시']",실적 이벤트 · 신뢰도 높은 공시,7,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
 kr,일정,,한국 산업생산지수 (2026-06),2026-06-30,-135.0,한국 산업생산지수 (2026-06),['이벤트 주의'],이벤트 주의 D-135,4,근거 확인 후 유지,data/calendar/macro_calendar.csv
 kr,일정,,한국 수출입 통계 (2026-07),2026-07-01,-134.0,한국 수출입 통계 (2026-07),['이벤트 주의'],이벤트 주의 D-134,4,근거 확인 후 유지,data/calendar/macro_calendar.csv
 kr,일정,,한국 산업생산지수 (2026-07),2026-07-31,-104.0,한국 산업생산지수 (2026-07),['이벤트 주의'],이벤트 주의 D-104,4,근거 확인 후 유지,data/calendar/macro_calendar.csv
@@ -68,14 +79,3 @@ kr,일정,009150,009150,2026-07-30,-105.0,009150,['이벤트 주의'],이벤트 
 kr,일정,009540,009540,2026-07-30,-105.0,009540,['이벤트 주의'],이벤트 주의 D-105,4,근거 확인 후 유지,data/calendar/earnings_calendar.csv
 kr,일정,012450,012450,2026-07-30,-105.0,012450,['이벤트 주의'],이벤트 주의 D-105,4,근거 확인 후 유지,data/calendar/earnings_calendar.csv
 kr,일정,028670,028670,2026-07-30,-105.0,028670,['이벤트 주의'],이벤트 주의 D-105,4,근거 확인 후 유지,data/calendar/earnings_calendar.csv
-kr,일정,096770,096770,2026-07-30,-105.0,096770,['이벤트 주의'],이벤트 주의 D-105,4,근거 확인 후 유지,data/calendar/earnings_calendar.csv
-kr,일정,017670,017670,2026-08-05,-99.0,017670,['이벤트 주의'],이벤트 주의 D-99,4,근거 확인 후 유지,data/calendar/earnings_calendar.csv
-kr,일정,041510,041510,2026-08-05,-99.0,041510,['이벤트 주의'],이벤트 주의 D-99,4,근거 확인 후 유지,data/calendar/earnings_calendar.csv
-kr,일정,145020,145020,2026-08-05,-99.0,145020,['이벤트 주의'],이벤트 주의 D-99,4,근거 확인 후 유지,data/calendar/earnings_calendar.csv
-kr,일정,035720,035720,2026-08-06,-98.0,035720,['이벤트 주의'],이벤트 주의 D-98,4,근거 확인 후 유지,data/calendar/earnings_calendar.csv
-kr,일정,042700,042700,2026-08-06,-98.0,042700,['이벤트 주의'],이벤트 주의 D-98,4,근거 확인 후 유지,data/calendar/earnings_calendar.csv
-kr,일정,068270,068270,2026-08-06,-98.0,068270,['이벤트 주의'],이벤트 주의 D-98,4,근거 확인 후 유지,data/calendar/earnings_calendar.csv
-kr,일정,032640,032640,2026-08-07,-97.0,032640,['이벤트 주의'],이벤트 주의 D-97,4,근거 확인 후 유지,data/calendar/earnings_calendar.csv
-kr,공시,046940,우원개발,20261112,,[기재정정]단일판매ㆍ공급계약체결,['신뢰도 높은 공시'],신뢰도 높은 공시,0,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
-kr,공시,004960,한신공영,20261112,,[기재정정]단일판매ㆍ공급계약체결,['신뢰도 높은 공시'],신뢰도 높은 공시,0,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
-kr,공시,334970,프레스티지바이오로직스,20261112,,단일판매ㆍ공급계약체결,['신뢰도 높은 공시'],신뢰도 높은 공시,0,근거 확인 후 유지,data/disclosures/disclosures_kr.csv
