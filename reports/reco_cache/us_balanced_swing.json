@@ -56,7 +56,7 @@
       "opportunityScore": 52.2,
       "entryScore": 80.0,
       "riskScore": 0,
-      "finalRankScore": 36.6,
+      "finalRankScore": 38.3,
       "finalScore": "45.8",
       "upsideScore": 52.2,
       "momentumScore": 50.0,
@@ -68,7 +68,7 @@
       "maConvergence": "False",
       "supplySignal": "NEUTRAL",
       "surgeLabel": "과열 주의",
-      "generatedAt": "2026-11-12T22:07:04.461820+00:00",
+      "generatedAt": "2026-11-12T23:46:32.632488+00:00",
       "overextensionRisk": "15.0",
       "rr": 1.581,
       "chartSignalUsed": false,
@@ -83,17 +83,17 @@
       },
       "resistanceDistancePct": -7.641,
       "chartScoreAdjustment": 0.0,
-      "newsEventTag": "no_news",
-      "disclosureEventTag": "no_disclosure",
+      "newsEventTag": "positive_news",
+      "disclosureEventTag": "neutral_disclosure",
       "recommended": false,
-      "recoGeneratedAt": "2026-11-12T22:07:04.461820+00:00",
+      "recoGeneratedAt": "2026-11-12T23:46:32.632488+00:00",
       "ohlcvLatestDate": "2026-11-12",
       "latestDataDate": "2026-11-12",
       "dataDate": "2026-11-12",
-      "newsCount": 0,
-      "disclosureCount": 0,
+      "newsCount": 20,
+      "disclosureCount": 9,
       "eventContextUsed": false,
-      "eventSummary": "매크로:volatility_risk (출처 최신성 미검증)",
+      "eventSummary": "뉴스:positive_news | 매크로:inflation_risk (출처 최신성 미검증)",
       "eventDataSourceType": "cached",
       "eventScoreAdjustment": 0.0,
       "currentPriceSource": "kis_snapshot",
@@ -118,7 +118,7 @@
       "validatedSampleCount": 1942
     }
   ],
-  "generatedAt": "2026-11-13 07:10:55",
+  "generatedAt": "2026-11-13 08:51:00",
   "walkforwardSummary": {
     "winRate": 3.5,
     "avgReturn": 1.0,
@@ -200,10 +200,10 @@
   },
   "forecastSnapshot": {
     "date": "2026-11-13",
-    "added": 1,
-    "duplicates": 0,
+    "added": 0,
+    "duplicates": 1,
     "method": "HISTORICAL_ANALOG_EMPIRICAL"
   },
   "servedFrom": "precompute",
-  "precomputedAt": "2026-11-13 07:10:55"
+  "precomputedAt": "2026-11-13 08:51:00"
 }
