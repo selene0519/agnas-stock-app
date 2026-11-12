@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-11T21:14:39.599619+00:00",
+  "generatedAt": "2026-11-12T03:51:53.439962+00:00",
   "overall": "ERROR",
   "criticalFailures": 1,
   "hardFailures": 1,
@@ -15,30 +15,30 @@
     {
       "name": "kr_ohlcv",
       "status": "OK",
-      "detail": "0.89d, asOf=2026-11-11",
+      "detail": "0.16d, asOf=2026-11-12",
       "critical": true,
-      "ageDays": 0.89
+      "ageDays": 0.16
     },
     {
       "name": "kr_kospi_ohlcv",
       "status": "OK",
-      "detail": "0.89d, asOf=2026-11-11, kr_KOSPI_daily.csv trailing OHLC is valid",
+      "detail": "0.16d, asOf=2026-11-12, kr_KOSPI_daily.csv trailing OHLC is valid",
       "critical": true,
-      "ageDays": 0.89
+      "ageDays": 0.16
     },
     {
       "name": "kr_kosdaq_ohlcv",
       "status": "OK",
-      "detail": "0.89d, asOf=2026-11-11, kr_KOSDAQ_daily.csv trailing OHLC is valid",
+      "detail": "0.16d, asOf=2026-11-12, kr_KOSDAQ_daily.csv trailing OHLC is valid",
       "critical": true,
-      "ageDays": 0.89
+      "ageDays": 0.16
     },
     {
       "name": "kr_recommendations",
       "status": "OK",
-      "detail": "0.22d, asOf=2026-11-11T15:58:11.735652+00:00",
+      "detail": "0.01d, asOf=2026-11-12T03:42:20.657952+00:00",
       "critical": true,
-      "ageDays": 0.22
+      "ageDays": 0.01
     },
     {
       "name": "collector_steps",
@@ -50,70 +50,70 @@
     {
       "name": "collector_partial_failures",
       "status": "WARN",
-      "detail": "kr_close 250건",
+      "detail": "kr_close 7건",
       "critical": false,
       "ageDays": null
     },
     {
       "name": "collector_run",
       "status": "OK",
-      "detail": "0.22d, asOf=2026-11-12T01:00:58+09:00, source=cloud:benchmarks, reportedAt=2026-11-12T01:00:58",
+      "detail": "0.01d, asOf=2026-11-12T12:44:34+09:00, source=cloud:benchmarks, reportedAt=2026-11-12T12:44:34",
       "critical": true,
-      "ageDays": 0.22
+      "ageDays": 0.01
     },
     {
       "name": "local_collector_run",
       "status": "STALE",
-      "detail": "optional local collector 106.57d old; cloud source remains authoritative",
+      "detail": "optional local collector 106.84d old; cloud source remains authoritative",
       "critical": false,
-      "ageDays": 106.57
+      "ageDays": 106.84
     },
     {
       "name": "vtj_journal",
       "status": "OK",
-      "detail": "0.36d, asOf=2026-11-11T21:35:34+09:00",
+      "detail": "0.03d, asOf=2026-11-12T12:03:13+09:00",
       "critical": false,
-      "ageDays": 0.36
+      "ageDays": 0.03
     },
     {
       "name": "live_calibration",
       "status": "OK",
-      "detail": "-0.11d, asOf=2026-11-12",
+      "detail": "0.16d, asOf=2026-11-12",
       "critical": false,
-      "ageDays": -0.11
+      "ageDays": 0.16
     },
     {
       "name": "strategy_win_rates",
       "status": "OK",
-      "detail": "-0.37d, asOf=2026-11-12 06:14:30",
+      "detail": "-0.37d, asOf=2026-11-12 12:51:43",
       "critical": false,
       "ageDays": -0.37
     },
     {
       "name": "prediction_capture",
       "status": "OK",
-      "detail": "-0.11d, asOf=2026-11-12",
+      "detail": "0.16d, asOf=2026-11-12",
       "critical": true,
-      "ageDays": -0.11
+      "ageDays": 0.16
     },
     {
       "name": "capture_continuity",
       "status": "ERROR",
-      "detail": "거래일 15일 중 캡처 13일 (기준일 2026-10-21~, 유예 1일) — 결손 2일: 2026-11-09, 2026-11-10 — 캡처가 멈춘 것으로 보임",
+      "detail": "거래일 15일 중 캡처 13일 (기준일 2026-10-22~, 유예 1일) — 결손 2일: 2026-11-09, 2026-11-10 — 캡처가 멈춘 것으로 보임",
       "critical": true,
       "ageDays": null
     },
     {
       "name": "settlement_backlog",
       "status": "OK",
-      "detail": "만기경과 미정산 0건 / 대기중 508건",
+      "detail": "만기경과 미정산 0건 / 대기중 515건",
       "critical": false,
       "ageDays": null
     },
     {
       "name": "clean_window_samples",
       "status": "OK",
-      "detail": "clean window(2026-07-10) 정산표본 2289건 / 전체 정산 2949건 / 원장 3663행",
+      "detail": "clean window(2026-07-10) 정산표본 2289건 / 전체 정산 2949건 / 원장 3670행",
       "critical": false,
       "ageDays": null
     },
