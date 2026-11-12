@@ -1,7 +1,7 @@
 {
   "version": "leader-breakout-v1",
   "market": "us",
-  "asOf": "2026-11-11",
+  "asOf": "2026-11-12",
   "status": "US_BACKDROP_UNFAVORABLE",
   "usBackdropFavorable": false,
   "scanned": 133,
@@ -9,6 +9,19 @@
     "note": "leader breakout only holds up on SPY>MA50; deep 2014-2026 train+OOS forward-return, not cost/trade-sim"
   },
   "candidates": [],
-  "heldForUnfavorableBackdrop": [],
+  "heldForUnfavorableBackdrop": [
+    {
+      "symbol": "AMD",
+      "asOf": "2026-11-12",
+      "entry": 585.3,
+      "stop": 402.1,
+      "target": 951.7,
+      "rrRatio": 2.0,
+      "ret60Pct": 25.49,
+      "posRange250": 0.86,
+      "volRatio50": 2.1,
+      "setup": "LEADER_BREAKOUT"
+    }
+  ],
   "note": "Research/paper only. Feed the paper loop for live proof before promotion."
 }
