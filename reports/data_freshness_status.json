@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-12T21:26:10.088654+00:00",
+  "generatedAt": "2026-11-13T03:20:05.380537+00:00",
   "overall": "ERROR",
   "criticalFailures": 1,
   "hardFailures": 1,
@@ -15,30 +15,30 @@
     {
       "name": "kr_ohlcv",
       "status": "OK",
-      "detail": "0.89d, asOf=2026-11-12",
+      "detail": "0.14d, asOf=2026-11-13",
       "critical": true,
-      "ageDays": 0.89
+      "ageDays": 0.14
     },
     {
       "name": "kr_kospi_ohlcv",
       "status": "OK",
-      "detail": "0.89d, asOf=2026-11-12, kr_KOSPI_daily.csv trailing OHLC is valid",
+      "detail": "0.14d, asOf=2026-11-13, kr_KOSPI_daily.csv trailing OHLC is valid",
       "critical": true,
-      "ageDays": 0.89
+      "ageDays": 0.14
     },
     {
       "name": "kr_kosdaq_ohlcv",
       "status": "OK",
-      "detail": "0.89d, asOf=2026-11-12, kr_KOSDAQ_daily.csv trailing OHLC is valid",
+      "detail": "0.14d, asOf=2026-11-13, kr_KOSDAQ_daily.csv trailing OHLC is valid",
       "critical": true,
-      "ageDays": 0.89
+      "ageDays": 0.14
     },
     {
       "name": "kr_recommendations",
       "status": "OK",
-      "detail": "0.2d, asOf=2026-11-12T16:33:47.258482+00:00",
+      "detail": "0.01d, asOf=2026-11-13T03:12:47.110086+00:00",
       "critical": true,
-      "ageDays": 0.2
+      "ageDays": 0.01
     },
     {
       "name": "collector_steps",
@@ -50,70 +50,70 @@
     {
       "name": "collector_partial_failures",
       "status": "WARN",
-      "detail": "kr_close 250건",
+      "detail": "kr_close 7건",
       "critical": false,
       "ageDays": null
     },
     {
       "name": "collector_run",
       "status": "OK",
-      "detail": "0.2d, asOf=2026-11-13T01:35:49+09:00, source=cloud:benchmarks, reportedAt=2026-11-13T01:35:49",
+      "detail": "0.0d, asOf=2026-11-13T12:14:51+09:00, source=cloud:benchmarks, reportedAt=2026-11-13T12:14:51",
       "critical": true,
-      "ageDays": 0.2
+      "ageDays": 0.0
     },
     {
       "name": "local_collector_run",
       "status": "STALE",
-      "detail": "optional local collector 107.57d old; cloud source remains authoritative",
+      "detail": "optional local collector 107.82d old; cloud source remains authoritative",
       "critical": false,
-      "ageDays": 107.57
+      "ageDays": 107.82
     },
     {
       "name": "vtj_journal",
       "status": "OK",
-      "detail": "0.37d, asOf=2026-11-12T21:35:40+09:00",
+      "detail": "0.03d, asOf=2026-11-13T11:38:51+09:00",
       "critical": false,
-      "ageDays": 0.37
+      "ageDays": 0.03
     },
     {
       "name": "live_calibration",
       "status": "OK",
-      "detail": "-0.11d, asOf=2026-11-13",
+      "detail": "0.14d, asOf=2026-11-13",
       "critical": false,
-      "ageDays": -0.11
+      "ageDays": 0.14
     },
     {
       "name": "strategy_win_rates",
       "status": "OK",
-      "detail": "-0.37d, asOf=2026-11-13 06:26:00",
+      "detail": "-0.37d, asOf=2026-11-13 12:19:57",
       "critical": false,
       "ageDays": -0.37
     },
     {
       "name": "prediction_capture",
       "status": "OK",
-      "detail": "-0.11d, asOf=2026-11-13",
+      "detail": "0.14d, asOf=2026-11-13",
       "critical": true,
-      "ageDays": -0.11
+      "ageDays": 0.14
     },
     {
       "name": "capture_continuity",
       "status": "ERROR",
-      "detail": "거래일 15일 중 캡처 13일 (기준일 2026-10-22~, 유예 1일) — 결손 2일: 2026-11-09, 2026-11-10 — 캡처가 멈춘 것으로 보임",
+      "detail": "거래일 15일 중 캡처 13일 (기준일 2026-10-23~, 유예 1일) — 결손 2일: 2026-11-09, 2026-11-10 — 캡처가 멈춘 것으로 보임",
       "critical": true,
       "ageDays": null
     },
     {
       "name": "settlement_backlog",
       "status": "OK",
-      "detail": "만기경과 미정산 0건 / 대기중 483건",
+      "detail": "만기경과 미정산 0건 / 대기중 495건",
       "critical": false,
       "ageDays": null
     },
     {
       "name": "clean_window_samples",
       "status": "OK",
-      "detail": "clean window(2026-07-10) 정산표본 2328건 / 전체 정산 2988건 / 원장 3679행",
+      "detail": "clean window(2026-07-10) 정산표본 2328건 / 전체 정산 2988건 / 원장 3691행",
       "critical": false,
       "ageDays": null
     },
