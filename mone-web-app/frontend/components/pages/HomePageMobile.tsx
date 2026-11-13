@@ -943,7 +943,7 @@ export default function HomePageMobile({
   const todayEntries = useMemo(() => {
     const seen = new Set<string>();
     return allItems
-      .filter((i) => i.decisionBucket === "오늘 진입" && Number(i.expectedValue || 0) > 0)
+      .filter((i) => i.decisionBucket === "오늘 진입" && Number(i.expectedValue || 0) > 0 && !i.isTradeBlocked && !i.reviewOnly && String(i.publicTradeStatus || "").toUpperCase() !== "NO_TRADE")
       .sort((a, b) => Number(b.expectedValue || 0) - Number(a.expectedValue || 0))
       .filter((i) => {
         const key = `${i.symbol}-${i._mode}-${i._horizon}`;
@@ -958,7 +958,7 @@ export default function HomePageMobile({
     const timingOrder: Record<string, number> = { "1~2일 후 진입": 0, "3~5일 후 진입": 1, "눌림 대기": 2, "다음 주 진입": 3 };
     const seen = new Set<string>();
     return allItems
-      .filter((i) => i.decisionBucket === "대기 관찰")
+      .filter((i) => ["대기 관찰", "관찰"].includes(String(i.decisionBucket || "")) && (Boolean(i.observationOnly) || (!i.isTradeBlocked && !i.reviewOnly)))
       .sort((a, b) => {
         const ao = timingOrder[a.timingLabel] ?? 9;
         const bo = timingOrder[b.timingLabel] ?? 9;

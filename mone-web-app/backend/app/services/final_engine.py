@@ -580,6 +580,64 @@ def _apply_final_price_overlay(item: dict[str, Any], overlay: dict[str, Any] | N
     return patched
 
 
+_STALE_REFERENCE_PLAN_GAP_PCT = 15.0
+
+
+def _reconcile_precomputed_price_plan(item: dict[str, Any], overlay: dict[str, Any] | None, market: str) -> dict[str, Any]:
+    """Refresh cache quotes without treating an old entry plan as a live order.
+
+    Recommendation caches are intentionally durable, but a cached entry/stop/target
+    can become nonsensical after a large move. Preserve the original model plan
+    for audit, rebuild *review-only* levels around a fresh quote, and deny
+    execution until a new generator run publishes a current plan.
+    """
+    patched = _apply_final_price_overlay(item, overlay)
+    current = _num(patched.get("currentPrice") or patched.get("current_price"))
+    entry = _num(patched.get("entry") or patched.get("entryPrice"))
+    stop = _num(patched.get("stop") or patched.get("stopPrice"))
+    target = _num(patched.get("target") or patched.get("targetPrice"))
+    if not (current and entry and current > 0 and entry > 0):
+        return patched
+
+    gap_pct = abs(entry - current) / current * 100.0
+    patched["referencePlanGapPct"] = round(gap_pct, 2)
+    if gap_pct <= _STALE_REFERENCE_PLAN_GAP_PCT:
+        patched["referencePlanStatus"] = "CURRENT_PRICE_ALIGNED"
+        return patched
+
+    risk_pct = abs(entry - stop) / entry if stop and 0 < stop < entry else 0.06
+    reward_pct = (target - entry) / entry if target and target > entry else 0.10
+    risk_pct = max(0.012, min(0.18, risk_pct))
+    reward_pct = max(0.025, min(0.35, reward_pct))
+    patched.update({
+        "sourceEntry": entry,
+        "sourceStop": stop,
+        "sourceTarget": target,
+        "sourcePlanPreserved": True,
+        "entry": round(current, 4),
+        "stop": round(current * (1.0 - risk_pct), 4),
+        "target": round(current * (1.0 + reward_pct), 4),
+        "entryPrice": round(current, 4),
+        "stopPrice": round(current * (1.0 - risk_pct), 4),
+        "targetPrice": round(current * (1.0 + reward_pct), 4),
+        "referencePlanStatus": "REBUILT_REVIEW_PLAN",
+        "referencePlanReason": (
+            f"Cached entry differs from the fresh quote by {gap_pct:.1f}%; "
+            "display plan rebuilt for observation and cannot be executed."
+        ),
+        "isTradeBlocked": True,
+        "reviewOnly": True,
+        "observationOnly": True,
+        "tradeBlockStatus": "STALE_REFERENCE_PLAN",
+        "tradeBlockReason": "기준가가 최신 가격과 크게 달라 관찰용 계획으로만 재산출했습니다.",
+        "decisionBucket": "관찰",
+        "entryAllowed": False,
+    })
+    for key, value in (("entryText", patched["entry"]), ("stopText", patched["stop"]), ("targetText", patched["target"])):
+        patched[key] = f"{value:,.2f}" if market == "us" else f"{round(value):,.0f}원"
+    return patched
+
+
 def _to_ts(value: Any) -> pd.Timestamp | None:
     """Parse a date/time value safely. Returns None if parsing fails."""
     text = _as_text(value)
@@ -1622,7 +1680,13 @@ def final_recommendations(market: str = "kr", mode: str = "balanced", horizon: s
     if _pre is not None:
         _result = dict(_pre)
         _items = _result.get("items") or []
-        _result["items"] = _bio.decorate_items(_items[:requested_limit], market)
+        price_overlay_map = _final_price_overlay_map(market)
+        refreshed_items = [
+            _reconcile_precomputed_price_plan(dict(item), price_overlay_map.get(data.normalize_symbol(item.get("symbol"), market)), market)
+            for item in _items[:requested_limit]
+            if isinstance(item, dict)
+        ]
+        _result["items"] = _bio.decorate_items(refreshed_items, market)
         _result["items"].sort(key=lambda row: (bool(row.get("recommended")), (_num(row.get("finalRankScore")) or 0.0)), reverse=True)
         _result["count"] = len(_result["items"])
         _result["servedFrom"] = "precompute"

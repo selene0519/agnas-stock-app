@@ -31,6 +31,64 @@ def test_stale_cache_cannot_be_treated_as_actionable_even_if_global_data_is_norm
     assert result["items"][0]["reviewOnly"] is True
 
 
+def test_precomputed_price_plan_is_rebuilt_as_observation_when_quote_has_moved(monkeypatch) -> None:
+    final_engine._RECO_CACHE.clear()
+    final_engine._RECO_CACHE_TS.clear()
+    monkeypatch.setattr(final_engine, "_load_precomputed", lambda *args: {
+        "status": "OK", "precomputedAt": "2026-11-13T08:00:00+09:00",
+        "items": [{"symbol": "005930", "entry": 100, "stop": 94, "target": 112, "expectedValue": 2.1}],
+    })
+    monkeypatch.setattr(final_engine, "_final_price_overlay_map", lambda market: {"005930": {"currentPrice": 150}})
+    monkeypatch.setattr(final_engine._bio, "decorate_items", lambda items, market: items)
+
+    result = final_engine.final_recommendations("kr", "balanced", "swing", limit=20)
+    item = result["items"][0]
+
+    assert item["sourceEntry"] == 100
+    assert item["entry"] == 150
+    assert item["referencePlanStatus"] == "REBUILT_REVIEW_PLAN"
+    assert item["isTradeBlocked"] is True
+    assert item["observationOnly"] is True
+
+
+def test_empty_publishable_set_exposes_precomputed_rows_only_as_observations(monkeypatch) -> None:
+    from app.engine import mone_v65_api_stabilizer as stabilizer
+
+    monkeypatch.setattr(
+        stabilizer, "_recommendations_payload_cached",
+        lambda *args, **kwargs: {"status": "NO_DATA", "items": [], "count": 0},
+    )
+    monkeypatch.setattr(stabilizer, "_precomputed_cache_rows", lambda *args: [{"symbol": "005930", "entry": 100, "stop": 95, "target": 110, "expectedValue": 1.5}])
+    monkeypatch.setattr(stabilizer, "_quote_index", lambda market: {"005930": {"currentPrice": 100}})
+
+    fallback = stabilizer._precomputed_observation_fallback("kr", "balanced", "swing", 20)
+
+    assert fallback["observationFallback"] is True
+    assert fallback["items"][0]["isTradeBlocked"] is True
+    assert fallback["items"][0]["reviewOnly"] is True
+    assert fallback["items"][0]["observationOnly"] is True
+
+
+def test_observation_fallback_never_records_a_virtual_trade(monkeypatch) -> None:
+    from app.engine import mone_v65_api_stabilizer as stabilizer
+
+    monkeypatch.setattr(
+        stabilizer, "_recommendations_payload_cached",
+        lambda *args, **kwargs: {"status": "NO_DATA", "items": [], "count": 0},
+    )
+    monkeypatch.setattr(stabilizer, "_precomputed_observation_fallback", lambda *args: {
+        "status": "OK", "items": [{"symbol": "005930", "market": "kr", "entry": 100, "stop": 95, "target": 110, "expectedValue": 1.5}],
+        "count": 1, "observationFallback": True,
+    })
+    monkeypatch.setattr(stabilizer, "_record_virtual_ledger", lambda *args: (_ for _ in ()).throw(AssertionError("observation recorded")))
+
+    result = stabilizer._recommendations_payload("kr", "balanced", "swing", 0, 20, False)
+
+    assert result["status"] == "OK"
+    assert result["items"][0]["publicTradeStatus"] == "NO_TRADE"
+    assert result["items"][0]["positionPlan"]["status"] == "NO_POSITION"
+
+
 def test_slim_recommendation_preserves_evidence_but_not_heavy_chart_payload(monkeypatch) -> None:
     monkeypatch.setenv("MONE_DISABLE_PRECOMPUTE", "1")
     script = runpy.run_path(str(ROOT / "scripts/precompute_recommendations.py"))

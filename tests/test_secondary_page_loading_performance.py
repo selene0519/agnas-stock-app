@@ -81,6 +81,7 @@ def test_no_data_payload_does_not_run_expensive_safety_stack(monkeypatch) -> Non
         "_record_virtual_ledger",
         lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("expensive stack ran")),
     )
+    monkeypatch.setattr(stabilizer, "_precomputed_observation_fallback", lambda *args, **kwargs: {"items": [], "count": 0})
 
     result = stabilizer._recommendations_payload("kr", "balanced", "swing", 0, 50, False)
 

@@ -3357,6 +3357,73 @@ def _apply_low_atr_next_open_guard(items: list[dict[str, Any]], market: str) -> 
             item["action"] = result["decisionBucket"]
 
 
+def _precomputed_cache_rows(market: str, mode: str, horizon: str) -> list[dict[str, Any]]:
+    """Read the lightweight generator cache; never invoke live scoring on a page read."""
+    path = _repo_root() / "reports" / "reco_cache" / f"{market}_{mode}_{horizon}.json"
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+        rows = payload.get("items") if isinstance(payload, dict) else None
+        return [row for row in rows if isinstance(row, dict)] if isinstance(rows, list) else []
+    except Exception:
+        return []
+
+
+def _precomputed_observation_fallback(market: str, mode: str, horizon: str, limit: int) -> dict[str, Any]:
+    """Expose fresh-price review candidates when the publishable CSV is empty.
+
+    This is deliberately not a fallback to a buy recommendation: cached candidates
+    are shown only as observations, are excluded from the virtual-trade ledger,
+    and keep an explicit block reason.  It prevents an empty primary screen from
+    hiding all research while preserving the market/performance entry gates.
+    """
+    try:
+        from app.services import final_engine
+    except Exception:
+        return {"items": [], "count": 0}
+    quotes = _quote_index(market)
+    rows: list[dict[str, Any]] = []
+    for raw in _precomputed_cache_rows(market, mode, horizon):
+        symbol = _symbol(raw, market)
+        quote = quotes.get(symbol, {})
+        current = _num(_text(quote, PRICE_KEYS, ""))
+        # A cache row without a current snapshot must not be surfaced as a
+        # supposedly current observation.
+        ev = _num(raw.get("expectedValue"))
+        if not (current and current > 0 and ev is not None and ev > 0):
+            continue
+        row = final_engine._reconcile_precomputed_price_plan(dict(raw), {"currentPrice": current}, market)
+        row.update({
+            "market": _market_norm(market),
+            "symbol": symbol,
+            "mode": mode,
+            "horizon": horizon,
+            "recommended": False,
+            "observationOnly": True,
+            "reviewOnly": True,
+            "isTradeBlocked": True,
+            "entryAllowed": False,
+            "decisionBucket": "관찰",
+            "timingLabel": row.get("timingLabel") or "다음 생성 주기 재확인",
+            "tradeBlockStatus": row.get("tradeBlockStatus") or "PUBLISHABLE_SET_EMPTY",
+            "tradeBlockReason": row.get("tradeBlockReason") or "현재 시장·성과 게이트를 통과한 실행 추천은 없으며, 이 후보는 관찰 전용입니다.",
+            "observationSource": "PRECOMPUTED_RESEARCH_CACHE",
+        })
+        rows.append(row)
+    rows.sort(key=lambda item: (_num(item.get("expectedValue")) or 0.0, _num(item.get("finalRankScore")) or 0.0), reverse=True)
+    return {
+        "status": "OK" if rows else "NO_DATA",
+        "market": _market_norm(market),
+        "mode": mode,
+        "horizon": horizon,
+        "items": rows[:limit],
+        "count": min(len(rows), limit),
+        "observationFallback": True,
+        "observationOnlyCount": min(len(rows), limit),
+        "sourceFiles": ["reports/reco_cache (review-only)"] if rows else [],
+    }
+
+
 def _recommendations_payload(market: str, mode: str, horizon: str, cash: float, limit: int, watch_only: bool, *, record_ledger: bool = True) -> dict[str, Any]:
     normalized_market = _market_norm(market)
     normalized_mode = _mode_norm(mode)
@@ -3364,27 +3431,59 @@ def _recommendations_payload(market: str, mode: str, horizon: str, cash: float, 
     _ver = _reco_file_version(normalized_market, normalized_mode, normalized_horizon)
     payload = json.loads(json.dumps(_recommendations_payload_cached(market, mode, horizon, limit, watch_only, _ver), ensure_ascii=False))
     if not payload.get("items"):
-        # An empty current recommendation set is already fail-closed. Avoid the
-        # expensive data-quality/performance/governor stack, which cannot make
-        # an absent candidate safer and used to add ~13 seconds on BEAR days.
-        payload["status"] = "NO_DATA"
-        payload["reviewOnly"] = True
-        payload["tradeSafety"] = {
-            "status": "NO_DATA",
-            "reviewOnly": True,
-            "isTradeBlocked": True,
-            "reason": "No current recommendation passed the market and EV gates.",
-        }
-        payload["performanceSafety"] = {
-            "status": "NO_DATA",
-            "reviewOnly": True,
-            "isTradeBlocked": True,
-            "reason": "No candidate is available for performance-gate evaluation.",
-        }
+        payload = _precomputed_observation_fallback(normalized_market, normalized_mode, normalized_horizon, limit)
+        if not payload.get("items"):
+            # An empty current recommendation set is fail-closed, but it is not
+            # an application error. Do not manufacture a candidate from it.
+            payload["status"] = "NO_DATA"
+            payload["reviewOnly"] = True
+            payload["tradeSafety"] = {
+                "status": "NO_DATA",
+                "reviewOnly": True,
+                "isTradeBlocked": True,
+                "reason": "No current recommendation passed the market and EV gates.",
+            }
+            payload["performanceSafety"] = {
+                "status": "NO_DATA",
+                "reviewOnly": True,
+                "isTradeBlocked": True,
+                "reason": "No candidate is available for performance-gate evaluation.",
+            }
+            payload["noDataReason"] = "MARKET_OR_EXPECTED_VALUE_GATE"
+            return payload
         payload["noDataReason"] = "MARKET_OR_EXPECTED_VALUE_GATE"
-        return payload
+        payload["marketGateMessage"] = "실행 추천은 없지만, 아래 후보는 최신 가격 기준으로 관찰할 수 있습니다."
+    if payload.get("observationFallback"):
+        # A display-only fallback must remain quick.  It is already denied by
+        # construction, so running pattern scans, virtual-ledger writes and the
+        # full performance/governor stack cannot make it safer; it only makes a
+        # no-entry screen slow.
+        reason = "현재 시장·성과 게이트를 통과한 실행 추천은 없습니다. 관찰 후보는 다음 생성 주기에 다시 검증됩니다."
+        payload.update({
+            "status": "OK",
+            "reviewOnly": True,
+            "entryAllowed": False,
+            "recommendationActionable": False,
+            "tradeSafety": {"status": "BLOCKED", "reviewOnly": True, "isTradeBlocked": True, "reason": reason},
+            "performanceSafety": {"status": "OBSERVATION_ONLY", "reviewOnly": True, "isTradeBlocked": True, "reason": reason},
+            "quantTraderPolicy": {"status": "NO_ACTIONABLE_TRADES", "label": "오늘 실전 매매 후보 없음", "actionableCount": 0,
+                                  "reviewOnlyCount": len(payload.get("items") or []), "blockedCount": len(payload.get("items") or []),
+                                  "basis": "cache-backed observation only; never added to paper or live execution"},
+        })
+        for item in payload.get("items") or []:
+            if not isinstance(item, dict):
+                continue
+            item["publicTradeStatus"] = "NO_TRADE"
+            item["publicTradeLabel"] = "관찰 전용"
+            item["isTradeBlocked"] = True
+            item["reviewOnly"] = True
+            item["entryAllowed"] = False
+            item["positionPlan"] = {"status": "NO_POSITION", "suggestedWeightPct": 0, "suggestedShares": 0}
+            item["tradeBlockReason"] = item.get("tradeBlockReason") or reason
+        from app.services.recommendation_contract import attach_execution_plans
+        return attach_execution_plans(json.loads(json.dumps(payload, ensure_ascii=False)))
     try:
-        if record_ledger:
+        if record_ledger and not payload.get("observationFallback"):
             _record_virtual_ledger(payload.get("items", []), "api/final/recommendations")
     except Exception:
         pass
@@ -5376,6 +5475,14 @@ def _home_summary_payload(market: str, limit_per_cell: int) -> dict[str, Any]:
             try:
                 _ver = _reco_file_version(market, mode, horizon)
                 payload = _recommendations_payload_cached(market, mode, horizon, limit_per_cell, False, _ver)
+                # The home screen must not turn an empty publishable set into an
+                # empty market.  Surface cache-backed observations with their
+                # blocked status, never as entries, so users can still inspect
+                # strong research candidates and why execution is denied.
+                if not payload.get("items"):
+                    observation_payload = _precomputed_observation_fallback(market, mode, horizon, limit_per_cell)
+                    if observation_payload.get("items"):
+                        payload = observation_payload
                 # 마켓 레짐은 balanced_swing 응답에서 우선 획득
                 if not market_regime and payload.get("marketRegime", {}).get("regime"):
                     market_regime = _regime_with_home_aliases(payload["marketRegime"])

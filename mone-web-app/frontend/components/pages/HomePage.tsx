@@ -4393,7 +4393,13 @@ export default function HomePage({
   const watchItems = useMemo(() => {
     const timingOrder: Record<string, number> = { "1~2일 후 진입": 0, "3~5일 후 진입": 1, "눌림 대기": 2, "다음 주 진입": 3 };
     const rows = allItems
-      .filter((i) => ["대기 관찰", "관찰"].includes(i.decisionBucket) && !i.isTradeBlocked && !i.reviewOnly && !todayCandidateSymbols.has(candidateSymbolKey(i)))
+      .filter((i) => {
+        const isObservationFallback = Boolean(i.observationOnly);
+        const isNormalWatch = !i.isTradeBlocked && !i.reviewOnly;
+        return ["대기 관찰", "관찰"].includes(i.decisionBucket)
+          && (isNormalWatch || isObservationFallback)
+          && !todayCandidateSymbols.has(candidateSymbolKey(i));
+      })
       .sort((a, b) => {
         const ao = timingOrder[a.timingLabel] ?? 9;
         const bo = timingOrder[b.timingLabel] ?? 9;
