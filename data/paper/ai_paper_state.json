@@ -18,7 +18,7 @@
   "lastRun": {
     "status": "OK",
     "dryRun": false,
-    "createdAt": "2026-11-13T22:13:35",
+    "createdAt": "2026-11-13T23:18:47",
     "market": "us",
     "markets": {
       "us": {
@@ -51,27 +51,27 @@
           "seed": 5000.0,
           "cash": 4310.18,
           "invested": 689.82,
-          "valuation": 681.92,
-          "portfolioValue": 4992.1,
-          "unrealizedPnl": -7.9,
-          "totalPnl": -7.9,
-          "totalReturnPct": -0.16,
+          "valuation": 681.0,
+          "portfolioValue": 4991.18,
+          "unrealizedPnl": -8.82,
+          "totalPnl": -8.82,
+          "totalReturnPct": -0.18,
           "positionCount": 3,
           "tradeCount": 3
         },
         "liveMetrics": {
           "status": "OK",
           "proofStatus": "RUNNING",
-          "sampleCount": 6,
-          "navPointCount": 7,
-          "totalReturnPct": -0.16,
+          "sampleCount": 7,
+          "navPointCount": 8,
+          "totalReturnPct": -0.18,
           "mddPct": -0.17,
-          "sharpe": -6.74,
-          "winRate": 50.0,
+          "sharpe": -7.12,
+          "winRate": 42.9,
           "avgPeriodReturnPct": -0.02,
-          "cashPct": 86.3,
+          "cashPct": 86.4,
           "peakValue": 4999.32,
-          "currentValue": 4992.1,
+          "currentValue": 4991.18,
           "lastNavDate": "2026-11-13",
           "recentReturnsPct": [
             -0.08,
@@ -79,7 +79,8 @@
             0.05,
             -0.09,
             0.01,
-            0.02
+            0.02,
+            -0.02
           ],
           "equityCurve": [
             {
@@ -116,6 +117,11 @@
               "index": 6,
               "value": 4992.1,
               "returnPct": -0.16
+            },
+            {
+              "index": 7,
+              "value": 4991.18,
+              "returnPct": -0.18
             }
           ]
         },
@@ -137,8 +143,8 @@
         "survival": {
           "state": "ALIVE",
           "seed": 5000.0,
-          "portfolioValue": 4992.1,
-          "survivalPct": 99.84
+          "portfolioValue": 4991.18,
+          "survivalPct": 99.82
         },
         "proofBoard": {
           "status": "OK",
@@ -694,8 +700,8 @@
             "priceSession": "us_premarket",
             "sessionLabel": "미장 장전",
             "priceBasis": "미장 장전 · 프리마켓 업데이트 기준",
-            "nowKst": "2026-11-13T22:13:36.046126+09:00",
-            "nowLocal": "2026-11-13T08:13:36.046126-05:00",
+            "nowKst": "2026-11-13T23:18:47.240902+09:00",
+            "nowLocal": "2026-11-13T09:18:47.240902-05:00",
             "isHoliday": false,
             "isReviewMode": false,
             "isUsDst": false
@@ -722,7 +728,7 @@
         },
         "nav": {
           "date": "2026-11-13",
-          "createdAt": "2026-11-13T22:13:36",
+          "createdAt": "2026-11-13T23:18:47",
           "market": "us",
           "agentId": "ml_rank_balanced_swing",
           "agentLabel": "ML Rank Balanced Swing",
@@ -730,11 +736,11 @@
           "state": "ALIVE",
           "seed": 5000.0,
           "cash": 4310.18,
-          "valuation": 681.92,
-          "portfolioValue": 4992.1,
-          "totalPnl": -7.9,
-          "totalReturnPct": -0.16,
-          "survivalPct": 99.84,
+          "valuation": 681.0,
+          "portfolioValue": 4991.18,
+          "totalPnl": -8.82,
+          "totalReturnPct": -0.18,
+          "survivalPct": 99.82,
           "positionCount": 3,
           "tradeCount": 3,
           "buyCount": 0,
