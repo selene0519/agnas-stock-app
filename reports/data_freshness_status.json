@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-13T20:52:14.635261+00:00",
+  "generatedAt": "2026-11-16T02:52:59.688005+00:00",
   "overall": "ERROR",
   "criticalFailures": 1,
   "hardFailures": 1,
@@ -15,30 +15,30 @@
     {
       "name": "kr_ohlcv",
       "status": "OK",
-      "detail": "0.87d, asOf=2026-11-13",
+      "detail": "0.12d, asOf=2026-11-16",
       "critical": true,
-      "ageDays": 0.87
+      "ageDays": 0.12
     },
     {
       "name": "kr_kospi_ohlcv",
       "status": "OK",
-      "detail": "0.87d, asOf=2026-11-13, kr_KOSPI_daily.csv trailing OHLC is valid",
+      "detail": "0.12d, asOf=2026-11-16, kr_KOSPI_daily.csv trailing OHLC is valid",
       "critical": true,
-      "ageDays": 0.87
+      "ageDays": 0.12
     },
     {
       "name": "kr_kosdaq_ohlcv",
       "status": "OK",
-      "detail": "0.87d, asOf=2026-11-13, kr_KOSDAQ_daily.csv trailing OHLC is valid",
+      "detail": "0.12d, asOf=2026-11-16, kr_KOSDAQ_daily.csv trailing OHLC is valid",
       "critical": true,
-      "ageDays": 0.87
+      "ageDays": 0.12
     },
     {
       "name": "kr_recommendations",
       "status": "OK",
-      "detail": "0.21d, asOf=2026-11-13T15:56:53.593455+00:00",
+      "detail": "0.01d, asOf=2026-11-16T02:45:22.638606+00:00",
       "critical": true,
-      "ageDays": 0.21
+      "ageDays": 0.01
     },
     {
       "name": "collector_steps",
@@ -49,78 +49,78 @@
     },
     {
       "name": "collector_partial_failures",
-      "status": "OK",
-      "detail": "cloud collector reports have zero failed items",
+      "status": "WARN",
+      "detail": "kr_close 7건",
       "critical": false,
       "ageDays": null
     },
     {
       "name": "collector_run",
       "status": "OK",
-      "detail": "0.2d, asOf=2026-11-14T00:58:50+09:00, source=cloud:benchmarks, reportedAt=2026-11-14T00:58:50",
+      "detail": "0.0d, asOf=2026-11-16T11:47:31+09:00, source=cloud:benchmarks, reportedAt=2026-11-16T11:47:31",
       "critical": true,
-      "ageDays": 0.2
+      "ageDays": 0.0
     },
     {
       "name": "local_collector_run",
       "status": "STALE",
-      "detail": "optional local collector 108.55d old; cloud source remains authoritative",
+      "detail": "optional local collector 110.8d old; cloud source remains authoritative",
       "critical": false,
-      "ageDays": 108.55
+      "ageDays": 110.8
     },
     {
       "name": "vtj_journal",
       "status": "OK",
-      "detail": "0.34d, asOf=2026-11-13T21:35:46+09:00",
+      "detail": "0.13d, asOf=2026-11-16T08:45:18+09:00",
       "critical": false,
-      "ageDays": 0.34
+      "ageDays": 0.13
     },
     {
       "name": "live_calibration",
       "status": "OK",
-      "detail": "-0.13d, asOf=2026-11-14",
+      "detail": "0.12d, asOf=2026-11-16",
       "critical": false,
-      "ageDays": -0.13
+      "ageDays": 0.12
     },
     {
       "name": "strategy_win_rates",
       "status": "OK",
-      "detail": "-0.37d, asOf=2026-11-14 05:52:04",
+      "detail": "-0.37d, asOf=2026-11-16 11:52:52",
       "critical": false,
       "ageDays": -0.37
     },
     {
       "name": "prediction_capture",
       "status": "OK",
-      "detail": "0.87d, asOf=2026-11-13",
+      "detail": "0.12d, asOf=2026-11-16",
       "critical": true,
-      "ageDays": 0.87
+      "ageDays": 0.12
     },
     {
       "name": "capture_continuity",
       "status": "ERROR",
-      "detail": "거래일 15일 중 캡처 13일 (기준일 2026-10-23~, 유예 1일) — 결손 2일: 2026-11-09, 2026-11-10 — 캡처가 멈춘 것으로 보임",
+      "detail": "거래일 15일 중 캡처 13일 (기준일 2026-10-26~, 유예 1일) — 결손 2일: 2026-11-09, 2026-11-10 — 캡처가 멈춘 것으로 보임",
       "critical": true,
       "ageDays": null
     },
     {
       "name": "settlement_backlog",
       "status": "OK",
-      "detail": "만기경과 미정산 0건 / 대기중 496건",
+      "detail": "만기경과 미정산 0건 / 대기중 487건",
       "critical": false,
       "ageDays": null
     },
     {
       "name": "clean_window_samples",
       "status": "OK",
-      "detail": "clean window(2026-07-10) 정산표본 2328건 / 전체 정산 2988건 / 원장 3692행",
+      "detail": "clean window(2026-07-10) 정산표본 2353건 / 전체 정산 3013건 / 원장 3710행",
       "critical": false,
       "ageDays": null
     },
     {
       "name": "live_gate_promotion",
       "status": "OK",
-      "detail": "승격 1/15셀 (기준 effN≥30, 최대 32.8, global effN 42.4 승률 13.5%) — 활성: 0-72|SIDE",
+      "detail": "승격 1/15셀 (기준 effN≥30, 최대 31.3, global effN 40.4 승률 13.5%) — 활성: 0-72|SIDE",
       "critical": false,
       "ageDays": null
     }
