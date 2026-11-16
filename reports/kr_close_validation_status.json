@@ -1,31 +1,6 @@
 {
-  "date": "2026-11-16",
-  "created": [
-    {
-      "market": "kr",
-      "mode": "conservative",
-      "horizon": "mid",
-      "file": "mone_v36_final_trade_validation_kr_conservative_mid_20261116.csv",
-      "rows": 6,
-      "normalRows": 4
-    },
-    {
-      "market": "kr",
-      "mode": "balanced",
-      "horizon": "mid",
-      "file": "mone_v36_final_trade_validation_kr_balanced_mid_20261116.csv",
-      "rows": 5,
-      "normalRows": 4
-    },
-    {
-      "market": "kr",
-      "mode": "aggressive",
-      "horizon": "mid",
-      "file": "mone_v36_final_trade_validation_kr_aggressive_mid_20261116.csv",
-      "rows": 12,
-      "normalRows": 8
-    }
-  ],
+  "date": "2026-11-17",
+  "created": [],
   "skipped": [
     {
       "market": "kr",
@@ -43,6 +18,13 @@
     },
     {
       "market": "kr",
+      "mode": "conservative",
+      "horizon": "mid",
+      "rows": 6,
+      "reason": "no_today_ohlcv_or_no_recommendations"
+    },
+    {
+      "market": "kr",
       "mode": "balanced",
       "horizon": "short",
       "rows": 0,
@@ -57,6 +39,13 @@
     },
     {
       "market": "kr",
+      "mode": "balanced",
+      "horizon": "mid",
+      "rows": 5,
+      "reason": "no_today_ohlcv_or_no_recommendations"
+    },
+    {
+      "market": "kr",
       "mode": "aggressive",
       "horizon": "short",
       "rows": 0,
@@ -67,13 +56,20 @@
       "mode": "aggressive",
       "horizon": "swing",
       "rows": 0,
+      "reason": "no_today_ohlcv_or_no_recommendations"
+    },
+    {
+      "market": "kr",
+      "mode": "aggressive",
+      "horizon": "mid",
+      "rows": 12,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
       "market": "us",
       "mode": "conservative",
       "horizon": "short",
-      "rows": 3,
+      "rows": 4,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
@@ -94,7 +90,7 @@
       "market": "us",
       "mode": "balanced",
       "horizon": "short",
-      "rows": 6,
+      "rows": 7,
       "reason": "no_today_ohlcv_or_no_recommendations"
     },
     {
@@ -133,5 +129,5 @@
       "reason": "no_today_ohlcv_or_no_recommendations"
     }
   ],
-  "updatedAt": "2026-11-16T23:20:17"
+  "updatedAt": "2026-11-17T02:38:42"
 }
