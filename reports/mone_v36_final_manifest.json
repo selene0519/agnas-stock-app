@@ -1,6 +1,6 @@
 {
   "version": "v3.6.1-operational-stable",
-  "generatedAt": "2026-11-16 21:43:23",
+  "generatedAt": "2026-11-16 22:58:05",
   "readiness": {
     "status": "OK",
     "version": "v3.6.1-operational-stable",
@@ -14,7 +14,7 @@
         "status": "NORMAL",
         "version": "v3.6.1-operational-stable",
         "market": "kr",
-        "updatedAt": "2026-11-16 21:40:59 KST",
+        "updatedAt": "2026-11-16 22:55:18 KST",
         "readinessScore": 90,
         "readinessLabel": "운영 가능",
         "warnings": [
@@ -55,42 +55,42 @@
             "exists": true,
             "status": "OK",
             "ageHours": 0.01,
-            "updatedAt": "2026-11-16 21:42:15"
+            "updatedAt": "2026-11-16 22:56:44"
           },
           {
             "path": "reports/mone_v36_final_trade_validation_kr_balanced_swing.csv",
             "exists": true,
             "status": "OK",
             "ageHours": 0.01,
-            "updatedAt": "2026-11-16 21:42:15"
+            "updatedAt": "2026-11-16 22:56:44"
           },
           {
             "path": "reports/mone_v36_final_prediction_validation_kr.csv",
             "exists": true,
             "status": "OK",
             "ageHours": 0.01,
-            "updatedAt": "2026-11-16 21:42:08"
+            "updatedAt": "2026-11-16 22:56:36"
           },
           {
             "path": "reports/mone_v36_final_macro_events_kr.csv",
             "exists": true,
             "status": "OK",
             "ageHours": 0.01,
-            "updatedAt": "2026-11-16 21:42:05"
+            "updatedAt": "2026-11-16 22:56:33"
           },
           {
             "path": "reports/mone_v36_final_data_center_kr.csv",
             "exists": true,
             "status": "OK",
             "ageHours": 0.01,
-            "updatedAt": "2026-11-16 21:42:05"
+            "updatedAt": "2026-11-16 22:56:33"
           },
           {
             "path": "predictions.csv",
             "exists": true,
             "status": "OK",
-            "ageHours": 0.07,
-            "updatedAt": "2026-11-16 21:38:40"
+            "ageHours": 0.09,
+            "updatedAt": "2026-11-16 22:52:10"
           }
         ],
         "summary": [
@@ -111,7 +111,7 @@
           },
           {
             "label": "마지막 업데이트",
-            "value": "2026-11-16 21:40:59 KST",
+            "value": "2026-11-16 22:55:18 KST",
             "note": "reports/data 기준"
           },
           {
@@ -143,15 +143,15 @@
               "status": "OK",
               "files": 500,
               "csvFiles": 500,
-              "rows": 52590,
-              "latestUpdatedAt": "2026-11-16 21:38:40",
+              "rows": 57364,
+              "latestUpdatedAt": "2026-11-16 22:52:10",
               "target": "차트·기술분석 > 차트 보기",
               "examples": [
-                "data/market/ohlcv/us_WMT_daily.csv",
-                "data/market/ohlcv/us_V_daily.csv",
-                "data/market/ohlcv/us_VRT_daily.csv",
-                "data/market/ohlcv/us_UNH_daily.csv",
-                "data/market/ohlcv/us_TXN_daily.csv"
+                "data/market/ohlcv/us_XOM_daily.csv",
+                "data/market/ohlcv/us_XLF_daily.csv",
+                "data/market/ohlcv/us_TSM_daily.csv",
+                "data/market/ohlcv/us_TSLA_daily.csv",
+                "data/market/ohlcv/us_TMDX_daily.csv"
               ],
               "message": "표시 가능한 CSV 행이 감지됨"
             },
@@ -162,13 +162,13 @@
               "files": 49,
               "csvFiles": 49,
               "rows": 45,
-              "latestUpdatedAt": "2026-11-16 21:38:40",
+              "latestUpdatedAt": "2026-11-16 22:52:10",
               "target": "장중 체크 / 오늘 매수 검토 / 기업분석",
               "examples": [
-                "reports/v93_flow_cards_kr.csv",
-                "reports/v93_flow_cards_us.csv",
-                "reports/v92_master_investors_kr.csv",
                 "reports/v92_master_investors_us.csv",
+                "reports/v92_master_investors_kr.csv",
+                "reports/v93_flow_cards_us.csv",
+                "reports/v93_flow_cards_kr.csv",
                 "reports/v92_flow_source_diagnosis_us.csv"
               ],
               "message": "표시 가능한 CSV 행이 감지됨"
@@ -180,7 +180,7 @@
               "files": 5,
               "csvFiles": 5,
               "rows": 452,
-              "latestUpdatedAt": "2026-11-16 21:40:59",
+              "latestUpdatedAt": "2026-11-16 22:55:18",
               "target": "장중 체크 / 오늘 매수 검토",
               "examples": [
                 "data/stockapp/intraday_quote_snapshot_us.csv",
@@ -198,7 +198,7 @@
               "files": 4,
               "csvFiles": 4,
               "rows": 10617,
-              "latestUpdatedAt": "2026-11-16 21:38:40",
+              "latestUpdatedAt": "2026-11-16 22:52:10",
               "target": "뉴스·기업분석 > 공시",
               "examples": [
                 "reports/disclosures_kr_history.csv",
@@ -247,7 +247,7 @@
             "evidence": {
               "status": "OK",
               "file": "reports/kis_live_refresh_status.json",
-              "updatedAt": "2026-11-16 21:39:09 KST",
+              "updatedAt": "2026-11-16 22:52:39 KST",
               "ageHours": 0.1,
               "marketStatuses": [
                 "OK"
@@ -269,7 +269,7 @@
         "status": "NORMAL",
         "version": "v3.6.1-operational-stable",
         "market": "us",
-        "updatedAt": "2026-11-16 21:40:59 KST",
+        "updatedAt": "2026-11-16 22:55:18 KST",
         "readinessScore": 75,
         "readinessLabel": "부분 운영 가능",
         "warnings": [
@@ -293,10 +293,10 @@
         "disclosureData": "MISSING",
         "reportData": "OK",
         "premarketData": "OK",
-        "intradayData": "PARTIAL",
+        "intradayData": "OK",
         "closingData": "OK",
-        "activeReportPhase": "us_after_close",
-        "activeReportLabel": "미장 마감 후 · 업데이트 기준",
+        "activeReportPhase": "us_intraday",
+        "activeReportLabel": "미장 장중 · 현재가 기준",
         "activeReportMissingReason": "",
         "companyData": "PARTIAL",
         "companyQuality": {
@@ -310,43 +310,43 @@
             "path": "reports/mone_v36_final_recommendations_us_balanced_swing.csv",
             "exists": true,
             "status": "OK",
-            "ageHours": 0.0,
-            "updatedAt": "2026-11-16 21:42:45"
+            "ageHours": 0.01,
+            "updatedAt": "2026-11-16 22:57:19"
           },
           {
             "path": "reports/mone_v36_final_trade_validation_us_balanced_swing.csv",
             "exists": true,
             "status": "OK",
-            "ageHours": 0.0,
-            "updatedAt": "2026-11-16 21:42:46"
+            "ageHours": 0.01,
+            "updatedAt": "2026-11-16 22:57:19"
           },
           {
             "path": "reports/mone_v36_final_prediction_validation_us.csv",
             "exists": true,
             "status": "OK",
             "ageHours": 0.01,
-            "updatedAt": "2026-11-16 21:42:38"
+            "updatedAt": "2026-11-16 22:57:11"
           },
           {
             "path": "reports/mone_v36_final_macro_events_us.csv",
             "exists": true,
             "status": "OK",
             "ageHours": 0.01,
-            "updatedAt": "2026-11-16 21:42:36"
+            "updatedAt": "2026-11-16 22:57:08"
           },
           {
             "path": "reports/mone_v36_final_data_center_us.csv",
             "exists": true,
             "status": "OK",
             "ageHours": 0.01,
-            "updatedAt": "2026-11-16 21:42:36"
+            "updatedAt": "2026-11-16 22:57:08"
           },
           {
             "path": "predictions.csv",
             "exists": true,
             "status": "OK",
-            "ageHours": 0.07,
-            "updatedAt": "2026-11-16 21:38:40"
+            "ageHours": 0.09,
+            "updatedAt": "2026-11-16 22:52:10"
           }
         ],
         "summary": [
@@ -367,7 +367,7 @@
           },
           {
             "label": "마지막 업데이트",
-            "value": "2026-11-16 21:40:59 KST",
+            "value": "2026-11-16 22:55:18 KST",
             "note": "reports/data 기준"
           },
           {
@@ -383,7 +383,7 @@
           {
             "label": "리포트 데이터",
             "value": "OK",
-            "note": "active=us_after_close · pre=OK · intra=PARTIAL · close=OK"
+            "note": "active=us_intraday · pre=OK · intra=OK · close=OK"
           },
           {
             "label": "기업분석 데이터",
@@ -399,15 +399,15 @@
               "status": "OK",
               "files": 500,
               "csvFiles": 500,
-              "rows": 52590,
-              "latestUpdatedAt": "2026-11-16 21:38:40",
+              "rows": 57364,
+              "latestUpdatedAt": "2026-11-16 22:52:10",
               "target": "차트·기술분석 > 차트 보기",
               "examples": [
-                "data/market/ohlcv/us_WMT_daily.csv",
-                "data/market/ohlcv/us_V_daily.csv",
-                "data/market/ohlcv/us_VRT_daily.csv",
-                "data/market/ohlcv/us_UNH_daily.csv",
-                "data/market/ohlcv/us_TXN_daily.csv"
+                "data/market/ohlcv/us_XOM_daily.csv",
+                "data/market/ohlcv/us_XLF_daily.csv",
+                "data/market/ohlcv/us_TSM_daily.csv",
+                "data/market/ohlcv/us_TSLA_daily.csv",
+                "data/market/ohlcv/us_TMDX_daily.csv"
               ],
               "message": "표시 가능한 CSV 행이 감지됨"
             },
@@ -418,13 +418,13 @@
               "files": 49,
               "csvFiles": 49,
               "rows": 45,
-              "latestUpdatedAt": "2026-11-16 21:38:40",
+              "latestUpdatedAt": "2026-11-16 22:52:10",
               "target": "장중 체크 / 오늘 매수 검토 / 기업분석",
               "examples": [
-                "reports/v93_flow_cards_kr.csv",
-                "reports/v93_flow_cards_us.csv",
-                "reports/v92_master_investors_kr.csv",
                 "reports/v92_master_investors_us.csv",
+                "reports/v92_master_investors_kr.csv",
+                "reports/v93_flow_cards_us.csv",
+                "reports/v93_flow_cards_kr.csv",
                 "reports/v92_flow_source_diagnosis_us.csv"
               ],
               "message": "표시 가능한 CSV 행이 감지됨"
@@ -436,7 +436,7 @@
               "files": 5,
               "csvFiles": 5,
               "rows": 452,
-              "latestUpdatedAt": "2026-11-16 21:40:59",
+              "latestUpdatedAt": "2026-11-16 22:55:18",
               "target": "장중 체크 / 오늘 매수 검토",
               "examples": [
                 "data/stockapp/intraday_quote_snapshot_us.csv",
@@ -454,7 +454,7 @@
               "files": 4,
               "csvFiles": 4,
               "rows": 10617,
-              "latestUpdatedAt": "2026-11-16 21:38:40",
+              "latestUpdatedAt": "2026-11-16 22:52:10",
               "target": "뉴스·기업분석 > 공시",
               "examples": [
                 "reports/disclosures_kr_history.csv",
@@ -503,7 +503,7 @@
             "evidence": {
               "status": "OK",
               "file": "reports/kis_live_refresh_status.json",
-              "updatedAt": "2026-11-16 21:39:09 KST",
+              "updatedAt": "2026-11-16 22:52:39 KST",
               "ageHours": 0.1,
               "marketStatuses": [
                 "OK"
@@ -763,10 +763,10 @@
       "us": 80
     },
     "macroEventCount": {
-      "kr": 136,
+      "kr": 108,
       "us": 1768
     },
-    "generatedAt": "2026-11-16 21:43:23"
+    "generatedAt": "2026-11-16 22:58:05"
   },
   "written": [
     {
