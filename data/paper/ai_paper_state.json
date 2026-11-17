@@ -18,7 +18,7 @@
   "lastRun": {
     "status": "OK",
     "dryRun": false,
-    "createdAt": "2026-11-17T22:09:04",
+    "createdAt": "2026-11-17T23:18:50",
     "market": "us",
     "markets": {
       "us": {
@@ -29,23 +29,7 @@
           "horizon": "swing"
         },
         "generation": 3,
-        "actions": [
-          {
-            "action": "SELL",
-            "reason": "STOP_HIT",
-            "market": "us",
-            "agentId": "ml_rank_balanced_swing",
-            "agentLabel": "ML Rank Balanced Swing",
-            "symbol": "MSFT",
-            "name": "Microsoft",
-            "price": 515.92,
-            "quantity": 0.4292,
-            "result": {
-              "ok": true,
-              "dryRun": false
-            }
-          }
-        ],
+        "actions": [],
         "summary": {
           "agentId": "ml_rank_balanced_swing",
           "agentLabel": "ML Rank Balanced Swing",
@@ -53,37 +37,37 @@
           "seed": 5000.0,
           "cash": 4531.17,
           "invested": 455.4,
-          "valuation": 447.17,
-          "portfolioValue": 4978.34,
-          "unrealizedPnl": -8.23,
-          "totalPnl": -21.66,
-          "totalReturnPct": -0.43,
+          "valuation": 446.75,
+          "portfolioValue": 4977.92,
+          "unrealizedPnl": -8.65,
+          "totalPnl": -22.08,
+          "totalReturnPct": -0.44,
           "positionCount": 2,
           "tradeCount": 4
         },
         "liveMetrics": {
           "status": "OK",
           "proofStatus": "RUNNING",
-          "sampleCount": 10,
-          "navPointCount": 11,
-          "totalReturnPct": -0.43,
-          "mddPct": -0.42,
-          "sharpe": -8.33,
-          "winRate": 30.0,
+          "sampleCount": 11,
+          "navPointCount": 12,
+          "totalReturnPct": -0.44,
+          "mddPct": -0.43,
+          "sharpe": -8.07,
+          "winRate": 27.3,
           "avgPeriodReturnPct": -0.04,
           "cashPct": 91.0,
           "peakValue": 4999.32,
-          "currentValue": 4978.34,
+          "currentValue": 4977.92,
           "lastNavDate": "2026-11-17",
           "recentReturnsPct": [
-            0.05,
             -0.09,
             0.01,
             0.02,
             -0.02,
             -0.01,
             -0.01,
-            -0.23
+            -0.23,
+            -0.01
           ],
           "equityCurve": [
             {
@@ -140,6 +124,11 @@
               "index": 10,
               "value": 4978.34,
               "returnPct": -0.43
+            },
+            {
+              "index": 11,
+              "value": 4977.92,
+              "returnPct": -0.44
             }
           ]
         },
@@ -161,8 +150,8 @@
         "survival": {
           "state": "ALIVE",
           "seed": 5000.0,
-          "portfolioValue": 4978.34,
-          "survivalPct": 99.57
+          "portfolioValue": 4977.92,
+          "survivalPct": 99.56
         },
         "proofBoard": {
           "status": "OK",
@@ -716,8 +705,8 @@
             "priceSession": "us_premarket",
             "sessionLabel": "미장 장전",
             "priceBasis": "미장 장전 · 프리마켓 업데이트 기준",
-            "nowKst": "2026-11-17T22:09:04.545302+09:00",
-            "nowLocal": "2026-11-17T08:09:04.545302-05:00",
+            "nowKst": "2026-11-17T23:18:50.832242+09:00",
+            "nowLocal": "2026-11-17T09:18:50.832242-05:00",
             "isHoliday": false,
             "isReviewMode": false,
             "isUsDst": false
@@ -741,7 +730,7 @@
         },
         "nav": {
           "date": "2026-11-17",
-          "createdAt": "2026-11-17T22:09:04",
+          "createdAt": "2026-11-17T23:18:51",
           "market": "us",
           "agentId": "ml_rank_balanced_swing",
           "agentLabel": "ML Rank Balanced Swing",
@@ -749,15 +738,15 @@
           "state": "ALIVE",
           "seed": 5000.0,
           "cash": 4531.17,
-          "valuation": 447.17,
-          "portfolioValue": 4978.34,
-          "totalPnl": -21.66,
-          "totalReturnPct": -0.43,
-          "survivalPct": 99.57,
+          "valuation": 446.75,
+          "portfolioValue": 4977.92,
+          "totalPnl": -22.08,
+          "totalReturnPct": -0.44,
+          "survivalPct": 99.56,
           "positionCount": 2,
           "tradeCount": 4,
           "buyCount": 0,
-          "sellCount": 1,
+          "sellCount": 0,
           "proofStatus": "RUNNING"
         }
       }
