@@ -489,6 +489,43 @@ def _recommendation_csv_inspect(market: str) -> dict[str, Any]:
     }
 
 
+def _observation_cache_inspect(market: str) -> dict[str, Any]:
+    """Inspect the review-only precomputed cache without promoting it to a trade.
+
+    An empty publishable recommendation CSV can be a legitimate outcome of the
+    market/EV/performance gates.  In that case the app still has a separately
+    governed observation cache.  Treating that state as a collection failure
+    caused false red health alerts even when quotes and OHLCV were current.
+    """
+    normalized = normalize_market(market)
+    path = _repo_path("reports", "reco_cache", f"{normalized}_balanced_swing.json")
+    try:
+        with path.open(encoding="utf-8") as handle:
+            payload = json.load(handle)
+        rows = payload.get("items") if isinstance(payload, dict) else []
+        rows = rows if isinstance(rows, list) else []
+        positive_ev = 0
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            try:
+                positive_ev += int(float(row.get("expectedValue") or 0) > 0)
+            except (TypeError, ValueError):
+                continue
+        file_state = session.evaluate_file_status(path, normalized, required_today=True)
+        fresh = str(file_state.get("status") or "").upper() in {"NORMAL", "OK"}
+        return {
+            "available": bool(rows) and fresh,
+            "status": "FRESH" if bool(rows) and fresh else str(file_state.get("status") or "NO_DATA"),
+            "rowCount": len(rows),
+            "positiveEvCount": positive_ev,
+            "path": str(path),
+            "generatedAt": payload.get("precomputedAt") if isinstance(payload, dict) else None,
+        }
+    except Exception:
+        return {"available": False, "status": "NO_DATA", "rowCount": 0, "positiveEvCount": 0, "path": str(path)}
+
+
 def data_quality(market: str = "kr", mode: str = "quick") -> dict[str, Any]:
     """
     mode="quick" (기본): OHLCV 샘플 30개, final_engine 호출 생략 — 30초 내 응답
@@ -540,6 +577,8 @@ def _data_quality_inner(market: str, mode: str) -> dict[str, Any]:
                            "emptyResult": True, "warnings": [], "role": "recommendation_csv"}
         files.append(rec_csv_inspect)
 
+    observation_cache = _observation_cache_inspect(normalized_market)
+
     # quick 모드: final_engine 호출 생략 — CSV 메타에서 후보 수 추정
     rows: list[dict] = []
     price_status = "NO_DATA"
@@ -588,7 +627,12 @@ def _data_quality_inner(market: str, mode: str) -> dict[str, Any]:
     realtime_files = [f for f in files if f.get("role") in realtime_roles]
     data_files     = [
         f for f in files
-        if f.get("role") not in realtime_roles and f.get("role") not in optional_fallback_roles
+        # Recommendation availability is assessed separately. Including its
+        # deliberate EMPTY_RESULT here makes an otherwise fresh market look
+        # like a source outage.
+        if f.get("role") not in realtime_roles
+        and f.get("role") not in optional_fallback_roles
+        and f.get("role") != "recommendation_csv"
     ]
 
     def _effective_realtime_status(items: list[dict[str, Any]]) -> str:
@@ -603,7 +647,13 @@ def _data_quality_inner(market: str, mode: str) -> dict[str, Any]:
 
     realtime_status = _effective_realtime_status(realtime_files)
     data_status_raw = session.worst_status(f.get("status") for f in data_files)
-    data_status_combined = session.worst_status([data_status_raw, recommendation_status])
+    # A publishable set can intentionally be empty while a fresh observation
+    # cache proves the data pipeline is intact.  Keep the execution gate
+    # explicit below, but do not turn abstention into a false data outage.
+    data_status_combined = session.worst_status(
+        [data_status_raw] if observation_cache.get("available") and recommendation_status == "EMPTY_RESULT"
+        else [data_status_raw, recommendation_status]
+    )
     # quick 모드: final_engine 미호출로 rows=[] — realtime 파일 실제 상태로 price_status 반영
     if quick and realtime_status not in ("NO_DATA", "ERROR"):
         price_status = realtime_status
@@ -805,6 +855,9 @@ def _data_quality_inner(market: str, mode: str) -> dict[str, Any]:
         "message": "시장 휴장일 - 지난 운용 복기 모드" if is_review else "데이터 상태 점검 완료",
         "files": files,
         "candidateCount": candidate_count,
+        "observationCandidateCount": observation_cache.get("positiveEvCount", 0),
+        "observationCacheStatus": observation_cache.get("status"),
+        "observationCacheAvailable": bool(observation_cache.get("available")),
         "updatedAt": datetime.now(session.KST).isoformat(),
         "latestFileModifiedAt": rec_csv_inspect.get("latestFileModifiedAt"),
         "latestDataDate": rec_csv_inspect.get("latestDataDate"),
@@ -816,8 +869,8 @@ def _data_quality_inner(market: str, mode: str) -> dict[str, Any]:
         "mixedMarketCount": mixed_market_count,
         "emptyResult": rec_csv_inspect.get("emptyResult", False),
         "recommendationStatus": rec_csv_inspect.get("status"),
-        "recommendationBasisStatus": rec_csv_inspect.get("basisStatus", ""),
-        "recommendationBasisLabel": rec_csv_inspect.get("basisLabel", ""),
+        "recommendationBasisStatus": rec_csv_inspect.get("basisStatus", "") or ("observation_cache_only" if observation_cache.get("available") and rec_csv_inspect.get("emptyResult") else ""),
+        "recommendationBasisLabel": rec_csv_inspect.get("basisLabel", "") or ("No executable recommendation passed gates; fresh review-only observation cache is available" if observation_cache.get("available") and rec_csv_inspect.get("emptyResult") else ""),
         "rootCauses": root_causes,
         "nextActions": next_actions,
         "summary": " / ".join(summary_parts),
