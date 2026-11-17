@@ -1,6 +1,6 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-11-17T17:38:16.564642+00:00",
+  "generatedAt": "2026-11-17T22:15:21.245848+00:00",
   "policy": {
     "version": "champion-challenger-v1.4.0",
     "champion": "TOP_3_RAW_CANDIDATES",
@@ -31,7 +31,7 @@
   },
   "recording": {
     "appended": 0,
-    "conflicts": 1,
+    "conflicts": 0,
     "skipped": 0,
     "total": 2276
   },
@@ -44,7 +44,7 @@
     "excludedPriorPolicyRows": 140
   },
   "integrity": {
-    "immutableConflicts": 1,
+    "immutableConflicts": 0,
     "timeIntegrityViolations": 0,
     "recordHashViolations": 0,
     "invalidRecordIds": [],
@@ -181,7 +181,6 @@
     "promotionEligible": false,
     "decision": "KEEP_CHALLENGER_SHADOW",
     "blockingReasons": [
-      "IMMUTABLE_DECISION_CONFLICT",
       "LOW_COMPLETE_SIGNAL_DATES",
       "LOW_EVALUATED_CHALLENGER_TRADES",
       "NON_POSITIVE_CHALLENGER_RETURN",
