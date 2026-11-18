@@ -11,7 +11,7 @@
       "status": "NORMAL",
       "version": "v3.6.1-operational-stable",
       "market": "kr",
-      "updatedAt": "2026-11-19 01:41:52 KST",
+      "updatedAt": "2026-11-19 06:47:47 KST",
       "readinessScore": 90,
       "readinessLabel": "운영 가능",
       "warnings": [
@@ -52,42 +52,42 @@
           "exists": true,
           "status": "OK",
           "ageHours": 0.01,
-          "updatedAt": "2026-11-19 01:43:39"
+          "updatedAt": "2026-11-19 06:49:34"
         },
         {
           "path": "reports/mone_v36_final_trade_validation_kr_balanced_swing.csv",
           "exists": true,
           "status": "OK",
           "ageHours": 0.01,
-          "updatedAt": "2026-11-19 01:43:39"
+          "updatedAt": "2026-11-19 06:49:34"
         },
         {
           "path": "reports/mone_v36_final_prediction_validation_kr.csv",
           "exists": true,
           "status": "OK",
           "ageHours": 0.01,
-          "updatedAt": "2026-11-19 01:43:27"
+          "updatedAt": "2026-11-19 06:49:22"
         },
         {
           "path": "reports/mone_v36_final_macro_events_kr.csv",
           "exists": true,
           "status": "OK",
           "ageHours": 0.01,
-          "updatedAt": "2026-11-19 01:43:23"
+          "updatedAt": "2026-11-19 06:49:19"
         },
         {
           "path": "reports/mone_v36_final_data_center_kr.csv",
           "exists": true,
           "status": "OK",
           "ageHours": 0.01,
-          "updatedAt": "2026-11-19 01:43:23"
+          "updatedAt": "2026-11-19 06:49:19"
         },
         {
           "path": "predictions.csv",
           "exists": true,
           "status": "OK",
-          "ageHours": 0.09,
-          "updatedAt": "2026-11-19 01:38:58"
+          "ageHours": 0.1,
+          "updatedAt": "2026-11-19 06:44:00"
         }
       ],
       "summary": [
@@ -108,7 +108,7 @@
         },
         {
           "label": "마지막 업데이트",
-          "value": "2026-11-19 01:41:52 KST",
+          "value": "2026-11-19 06:47:47 KST",
           "note": "reports/data 기준"
         },
         {
@@ -141,7 +141,7 @@
             "files": 500,
             "csvFiles": 500,
             "rows": 57400,
-            "latestUpdatedAt": "2026-11-19 01:38:58",
+            "latestUpdatedAt": "2026-11-19 06:43:59",
             "target": "차트·기술분석 > 차트 보기",
             "examples": [
               "data/market/ohlcv/us_XOM_daily.csv",
@@ -159,7 +159,7 @@
             "files": 49,
             "csvFiles": 49,
             "rows": 45,
-            "latestUpdatedAt": "2026-11-19 01:38:59",
+            "latestUpdatedAt": "2026-11-19 06:44:00",
             "target": "장중 체크 / 오늘 매수 검토 / 기업분석",
             "examples": [
               "reports/v93_flow_cards_us.csv",
@@ -177,7 +177,7 @@
             "files": 5,
             "csvFiles": 5,
             "rows": 452,
-            "latestUpdatedAt": "2026-11-19 01:41:52",
+            "latestUpdatedAt": "2026-11-19 06:47:47",
             "target": "장중 체크 / 오늘 매수 검토",
             "examples": [
               "data/stockapp/intraday_quote_snapshot_us.csv",
@@ -195,7 +195,7 @@
             "files": 4,
             "csvFiles": 4,
             "rows": 10617,
-            "latestUpdatedAt": "2026-11-19 01:38:58",
+            "latestUpdatedAt": "2026-11-19 06:44:00",
             "target": "뉴스·기업분석 > 공시",
             "examples": [
               "reports/disclosures_kr_history.csv",
@@ -244,7 +244,7 @@
           "evidence": {
             "status": "OK",
             "file": "reports/kis_live_refresh_status.json",
-            "updatedAt": "2026-11-19 01:39:35 KST",
+            "updatedAt": "2026-11-19 06:44:42 KST",
             "ageHours": 0.1,
             "marketStatuses": [
               "OK"
@@ -266,7 +266,7 @@
       "status": "NORMAL",
       "version": "v3.6.1-operational-stable",
       "market": "us",
-      "updatedAt": "2026-11-19 01:41:52 KST",
+      "updatedAt": "2026-11-19 06:47:47 KST",
       "readinessScore": 75,
       "readinessLabel": "부분 운영 가능",
       "warnings": [
@@ -290,10 +290,10 @@
       "disclosureData": "MISSING",
       "reportData": "OK",
       "premarketData": "OK",
-      "intradayData": "OK",
+      "intradayData": "PARTIAL",
       "closingData": "OK",
-      "activeReportPhase": "us_intraday",
-      "activeReportLabel": "미장 장중 · 현재가 기준",
+      "activeReportPhase": "us_after_close",
+      "activeReportLabel": "미장 마감 후 · 업데이트 기준",
       "activeReportMissingReason": "",
       "companyData": "PARTIAL",
       "companyQuality": {
@@ -308,42 +308,42 @@
           "exists": true,
           "status": "OK",
           "ageHours": 0.01,
-          "updatedAt": "2026-11-19 01:44:14"
+          "updatedAt": "2026-11-19 06:50:08"
         },
         {
           "path": "reports/mone_v36_final_trade_validation_us_balanced_swing.csv",
           "exists": true,
           "status": "OK",
           "ageHours": 0.01,
-          "updatedAt": "2026-11-19 01:44:14"
+          "updatedAt": "2026-11-19 06:50:08"
         },
         {
           "path": "reports/mone_v36_final_prediction_validation_us.csv",
           "exists": true,
           "status": "OK",
           "ageHours": 0.01,
-          "updatedAt": "2026-11-19 01:44:06"
+          "updatedAt": "2026-11-19 06:50:00"
         },
         {
           "path": "reports/mone_v36_final_macro_events_us.csv",
           "exists": true,
           "status": "OK",
           "ageHours": 0.01,
-          "updatedAt": "2026-11-19 01:44:03"
+          "updatedAt": "2026-11-19 06:49:57"
         },
         {
           "path": "reports/mone_v36_final_data_center_us.csv",
           "exists": true,
           "status": "OK",
           "ageHours": 0.01,
-          "updatedAt": "2026-11-19 01:44:03"
+          "updatedAt": "2026-11-19 06:49:57"
         },
         {
           "path": "predictions.csv",
           "exists": true,
           "status": "OK",
-          "ageHours": 0.1,
-          "updatedAt": "2026-11-19 01:38:58"
+          "ageHours": 0.11,
+          "updatedAt": "2026-11-19 06:44:00"
         }
       ],
       "summary": [
@@ -364,7 +364,7 @@
         },
         {
           "label": "마지막 업데이트",
-          "value": "2026-11-19 01:41:52 KST",
+          "value": "2026-11-19 06:47:47 KST",
           "note": "reports/data 기준"
         },
         {
@@ -380,7 +380,7 @@
         {
           "label": "리포트 데이터",
           "value": "OK",
-          "note": "active=us_intraday · pre=OK · intra=OK · close=OK"
+          "note": "active=us_after_close · pre=OK · intra=PARTIAL · close=OK"
         },
         {
           "label": "기업분석 데이터",
@@ -397,7 +397,7 @@
             "files": 500,
             "csvFiles": 500,
             "rows": 57400,
-            "latestUpdatedAt": "2026-11-19 01:38:58",
+            "latestUpdatedAt": "2026-11-19 06:43:59",
             "target": "차트·기술분석 > 차트 보기",
             "examples": [
               "data/market/ohlcv/us_XOM_daily.csv",
@@ -415,7 +415,7 @@
             "files": 49,
             "csvFiles": 49,
             "rows": 45,
-            "latestUpdatedAt": "2026-11-19 01:38:59",
+            "latestUpdatedAt": "2026-11-19 06:44:00",
             "target": "장중 체크 / 오늘 매수 검토 / 기업분석",
             "examples": [
               "reports/v93_flow_cards_us.csv",
@@ -433,7 +433,7 @@
             "files": 5,
             "csvFiles": 5,
             "rows": 452,
-            "latestUpdatedAt": "2026-11-19 01:41:52",
+            "latestUpdatedAt": "2026-11-19 06:47:47",
             "target": "장중 체크 / 오늘 매수 검토",
             "examples": [
               "data/stockapp/intraday_quote_snapshot_us.csv",
@@ -451,7 +451,7 @@
             "files": 4,
             "csvFiles": 4,
             "rows": 10617,
-            "latestUpdatedAt": "2026-11-19 01:38:58",
+            "latestUpdatedAt": "2026-11-19 06:44:00",
             "target": "뉴스·기업분석 > 공시",
             "examples": [
               "reports/disclosures_kr_history.csv",
@@ -500,7 +500,7 @@
           "evidence": {
             "status": "OK",
             "file": "reports/kis_live_refresh_status.json",
-            "updatedAt": "2026-11-19 01:39:35 KST",
+            "updatedAt": "2026-11-19 06:44:42 KST",
             "ageHours": 0.1,
             "marketStatuses": [
               "OK"
@@ -760,8 +760,8 @@
     "us": 80
   },
   "macroEventCount": {
-    "kr": 70,
+    "kr": 72,
     "us": 1768
   },
-  "generatedAt": "2026-11-19 01:45:21"
+  "generatedAt": "2026-11-19 06:51:15"
 }
