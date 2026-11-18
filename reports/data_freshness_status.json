@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-18T04:26:41.787558+00:00",
+  "generatedAt": "2026-11-18T17:13:17.460800+00:00",
   "overall": "ERROR",
   "criticalFailures": 1,
   "hardFailures": 1,
@@ -15,28 +15,28 @@
     {
       "name": "kr_ohlcv",
       "status": "OK",
-      "detail": "0.19d, asOf=2026-11-18",
+      "detail": "0.72d, asOf=2026-11-18",
       "critical": true,
-      "ageDays": 0.19
+      "ageDays": 0.72
     },
     {
       "name": "kr_kospi_ohlcv",
       "status": "OK",
-      "detail": "0.19d, asOf=2026-11-18, kr_KOSPI_daily.csv trailing OHLC is valid",
+      "detail": "0.72d, asOf=2026-11-18, kr_KOSPI_daily.csv trailing OHLC is valid",
       "critical": true,
-      "ageDays": 0.19
+      "ageDays": 0.72
     },
     {
       "name": "kr_kosdaq_ohlcv",
       "status": "OK",
-      "detail": "0.19d, asOf=2026-11-18, kr_KOSDAQ_daily.csv trailing OHLC is valid",
+      "detail": "0.72d, asOf=2026-11-18, kr_KOSDAQ_daily.csv trailing OHLC is valid",
       "critical": true,
-      "ageDays": 0.19
+      "ageDays": 0.72
     },
     {
       "name": "kr_recommendations",
       "status": "OK",
-      "detail": "0.01d, asOf=2026-11-18T04:17:43.836134+00:00",
+      "detail": "0.01d, asOf=2026-11-18T17:03:30.445534+00:00",
       "critical": true,
       "ageDays": 0.01
     },
@@ -50,51 +50,51 @@
     {
       "name": "collector_partial_failures",
       "status": "WARN",
-      "detail": "kr_close 7건",
+      "detail": "kr_close 250건",
       "critical": false,
       "ageDays": null
     },
     {
       "name": "collector_run",
       "status": "OK",
-      "detail": "0.0d, asOf=2026-11-18T13:20:52+09:00, source=cloud:benchmarks, reportedAt=2026-11-18T13:20:52",
+      "detail": "0.0d, asOf=2026-11-19T02:06:10+09:00, source=cloud:benchmarks, reportedAt=2026-11-19T02:06:10",
       "critical": true,
       "ageDays": 0.0
     },
     {
       "name": "local_collector_run",
       "status": "STALE",
-      "detail": "optional local collector 112.87d old; cloud source remains authoritative",
+      "detail": "optional local collector 113.4d old; cloud source remains authoritative",
       "critical": false,
-      "ageDays": 112.87
+      "ageDays": 113.4
     },
     {
       "name": "vtj_journal",
       "status": "OK",
-      "detail": "0.03d, asOf=2026-11-18T12:43:14+09:00",
-      "critical": false,
-      "ageDays": 0.03
-    },
-    {
-      "name": "live_calibration",
-      "status": "OK",
-      "detail": "0.19d, asOf=2026-11-18",
+      "detail": "0.19d, asOf=2026-11-18T21:35:52+09:00",
       "critical": false,
       "ageDays": 0.19
     },
     {
+      "name": "live_calibration",
+      "status": "OK",
+      "detail": "-0.28d, asOf=2026-11-19",
+      "critical": false,
+      "ageDays": -0.28
+    },
+    {
       "name": "strategy_win_rates",
       "status": "OK",
-      "detail": "-0.37d, asOf=2026-11-18 13:26:32",
+      "detail": "-0.37d, asOf=2026-11-19 02:13:09",
       "critical": false,
       "ageDays": -0.37
     },
     {
       "name": "prediction_capture",
       "status": "OK",
-      "detail": "0.19d, asOf=2026-11-18",
+      "detail": "0.72d, asOf=2026-11-18",
       "critical": true,
-      "ageDays": 0.19
+      "ageDays": 0.72
     },
     {
       "name": "capture_continuity",
@@ -106,21 +106,21 @@
     {
       "name": "settlement_backlog",
       "status": "OK",
-      "detail": "만기경과 미정산 0건 / 대기중 459건",
+      "detail": "만기경과 미정산 0건 / 대기중 434건",
       "critical": false,
       "ageDays": null
     },
     {
       "name": "clean_window_samples",
       "status": "OK",
-      "detail": "clean window(2026-07-10) 정산표본 2413건 / 전체 정산 3073건 / 원장 3745행",
+      "detail": "clean window(2026-07-10) 정산표본 2438건 / 전체 정산 3098건 / 원장 3745행",
       "critical": false,
       "ageDays": null
     },
     {
       "name": "live_gate_promotion",
       "status": "WARN",
-      "detail": "승격 0/15셀 (기준 effN≥30, 최대 29.9, global effN 38.6 승률 13.5%) — 아직 백테스트 소스 사용 중",
+      "detail": "승격 0/15셀 (기준 effN≥30, 최대 29.2, global effN 37.7 승률 13.5%) — 아직 백테스트 소스 사용 중",
       "critical": false,
       "ageDays": null
     }
