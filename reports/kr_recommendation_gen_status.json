@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-11-18T22:13:23.988691+00:00",
+  "generatedAt": "2026-11-18T23:43:23.076754+00:00",
   "source": "ohlcv_quant_scanner",
   "symbols": 942,
   "kisSymbols": 167,
-  "newsSentimentSymbols": 22,
+  "newsSentimentSymbols": 14,
   "financialSymbols": 5,
-  "supplySymbols": 630,
+  "supplySymbols": 742,
   "scanCoverage": {
     "configuredUniverseSymbols": 973,
     "ohlcvEligibleSymbols": 937,
@@ -18,11 +18,11 @@
     "regime": "BEAR",
     "label": "약세장",
     "scoreAdjust": -15.0,
-    "description": "KOSPI 60일 추세 -26.1%, 거래량비 0.86",
+    "description": "KOSPI 60일 추세 -26.1%, 거래량비 2.99",
     "kospiLatest": 5067.0,
     "distToMa20": -6.94,
     "trend60": -26.05,
-    "volRatio": 0.858,
+    "volRatio": 2.987,
     "definition": "trend60+거래량(약추세만)",
     "asOf": "2026-11-18",
     "source": "kr_KOSPI_daily.csv"

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-18T22:17:10.826849+00:00",
+  "generatedAt": "2026-11-18T23:46:22.431936+00:00",
   "asOfDate": "2026-11-18",
   "market": "kr",
   "marketRegime": "BEAR",
@@ -21,7 +21,7 @@
   "featureWeights": {
     "distma20": 0.307,
     "mom5": -0.207,
-    "distma60": -0.185,
+    "distma60": -0.186,
     "mom20": -0.182,
     "bull": 0.123,
     "zscore": 0.085,
@@ -47,7 +47,7 @@
       "entryRef": 88300.0,
       "stop": 84768,
       "target": 95364,
-      "supplySignal": "",
+      "supplySignal": "기관 순매수",
       "rankBucket": "TOP20",
       "actionable": false
     },
@@ -125,7 +125,7 @@
       "entryRef": 21250.0,
       "stop": 20400,
       "target": 22950,
-      "supplySignal": "",
+      "supplySignal": "기관+외국인 순매도",
       "rankBucket": "TOP20",
       "actionable": false
     },
@@ -145,7 +145,7 @@
     {
       "symbol": "079550",
       "name": "LIG넥스원",
-      "modelScore": 0.229,
+      "modelScore": 0.23,
       "close": 349500.0,
       "rsi14": 36.6,
       "entryRef": 349500.0,
@@ -184,7 +184,7 @@
     {
       "symbol": "336260",
       "name": "두산퓨얼셀",
-      "modelScore": 0.193,
+      "modelScore": 0.194,
       "close": 25350.0,
       "rsi14": 41.7,
       "entryRef": 25350.0,
@@ -236,7 +236,7 @@
     {
       "symbol": "087010",
       "name": "펩트론",
-      "modelScore": 0.149,
+      "modelScore": 0.148,
       "close": 85500.0,
       "rsi14": 38.7,
       "entryRef": 85500.0,
@@ -260,19 +260,6 @@
       "actionable": false
     },
     {
-      "symbol": "214450",
-      "name": "파마리서치",
-      "modelScore": 0.134,
-      "close": 271000.0,
-      "rsi14": 75.8,
-      "entryRef": 271000.0,
-      "stop": 260160,
-      "target": 292680,
-      "supplySignal": "",
-      "rankBucket": "TOP20",
-      "actionable": false
-    },
-    {
       "symbol": "042660",
       "name": "한화오션",
       "modelScore": 0.134,
@@ -286,6 +273,19 @@
       "actionable": false
     },
     {
+      "symbol": "214450",
+      "name": "파마리서치",
+      "modelScore": 0.134,
+      "close": 271000.0,
+      "rsi14": 75.8,
+      "entryRef": 271000.0,
+      "stop": 260160,
+      "target": 292680,
+      "supplySignal": "기관+외국인 순매수",
+      "rankBucket": "TOP20",
+      "actionable": false
+    },
+    {
       "symbol": "141080",
       "name": "리가켐바이오",
       "modelScore": 0.13,
@@ -294,7 +294,7 @@
       "entryRef": 54600.0,
       "stop": 52416,
       "target": 58968,
-      "supplySignal": "",
+      "supplySignal": "외국인 순매수",
       "rankBucket": "TOP20",
       "actionable": false
     }
