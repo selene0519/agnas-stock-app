@@ -1,6 +1,6 @@
 {
-  "status": "PARTIAL",
-  "generatedAt": "2026-11-19T16:54:12+00:00",
+  "status": "OK",
+  "generatedAt": "2026-11-19T21:55:33+00:00",
   "asOfDate": "2026-11-20",
   "count": 21,
   "items": [
@@ -4315,13 +4315,52 @@
         "sourceUrl": "https://clinicaltrials.gov/api/v2/studies?query.spons=Classys&pageSize=20&countTotal=true&format=json"
       },
       "pubMed": {
-        "status": "ERROR",
-        "error": "TimeoutError"
+        "status": "OK",
+        "queryCompany": "Classys",
+        "publicationCountRecent5y": 7,
+        "mappingStatus": "AFFILIATION_QUERY_MATCH_UNVERIFIED",
+        "publications": [
+          {
+            "pmid": "41438879",
+            "title": "Efficacy of high-intensity focused ultrasound for treating upper and lower eyelid sagging.",
+            "publicationDate": "2026 Mar",
+            "journal": "JPRAS open",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/41438879/"
+          },
+          {
+            "pmid": "40355620",
+            "title": "Efficacy and Safety of High-Intensity Focused Ultrasound (HIFU) on Reduction of Unwanted Submental Fat in Asian Patients.",
+            "publicationDate": "2025 Jul",
+            "journal": "Aesthetic plastic surgery",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/40355620/"
+          },
+          {
+            "pmid": "40447894",
+            "title": "Correction: Efficacy and Safety of High-Intensity Focused Ultrasound (HIFU) on Reduction of Unwanted Submental Fat in Asian Patients.",
+            "publicationDate": "2025 Jun",
+            "journal": "Aesthetic plastic surgery",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/40447894/"
+          },
+          {
+            "pmid": "39326871",
+            "title": "Noninvasive high-intensity focused ultrasound for skin brightening efficacy using a topical agent containing glutathione and hyaluronic acid.",
+            "publicationDate": "2024 Dec",
+            "journal": "The Journal of dermatological treatment",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/39326871/"
+          },
+          {
+            "pmid": "36478423",
+            "title": "Efficacy and Safety of Cold-Induced Noninvasive Targeted Fat Reduction in Pseudogynecomastia.",
+            "publicationDate": "2022 Dec",
+            "journal": "Annals of dermatology",
+            "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/36478423/"
+          }
+        ],
+        "source": "NCBI PubMed E-utilities",
+        "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/?term=%22Classys%22%5BAffiliation%5D"
       },
-      "status": "PARTIAL",
-      "errors": [
-        "PUBMED_UNAVAILABLE"
-      ]
+      "status": "OK",
+      "errors": []
     },
     {
       "market": "kr",
@@ -4420,14 +4459,14 @@
   ],
   "pointInTimeLedger": {
     "status": "OK",
-    "addedSnapshots": 21,
-    "addedEvents": 2,
-    "snapshotCount": 2865,
-    "eventCount": 10307
+    "addedSnapshots": 1,
+    "addedEvents": 5,
+    "snapshotCount": 2866,
+    "eventCount": 10312
   },
   "validationGate": {
     "status": "RESEARCH_ONLY",
-    "generatedAt": "2026-11-19T16:54:12+00:00",
+    "generatedAt": "2026-11-19T21:55:33+00:00",
     "evaluatedDirectionalEventCount": 0,
     "promotionCount": 0,
     "operationalScoreAdjustmentAllowed": false,
