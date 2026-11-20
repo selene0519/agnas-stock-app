@@ -1,6 +1,6 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-11-20T16:49:37.976484+00:00",
+  "generatedAt": "2026-11-20T22:19:21.228170+00:00",
   "policy": {
     "version": "shadow-meta-v1.2.3",
     "maxTake": 3,
@@ -35,14 +35,50 @@
     "source": "reports/shadow_residual_alpha.json"
   },
   "summary": {
-    "candidates": 0,
+    "candidates": 1,
     "take": 0,
     "wait": 0,
-    "reject": 0,
+    "reject": 1,
     "abstain": true
   },
   "take": [],
-  "decisions": [],
+  "decisions": [
+    {
+      "decisionId": "2ce97995d6e89bf8231f4640",
+      "policyVersion": "shadow-meta-v1.2.3",
+      "policyFingerprint": "0bb3379dfc7bec772798",
+      "candidateKey": "ec6ef294be042dd0f28d1d9e",
+      "signalDate": "2026-11-20",
+      "generatedAt": "2026-11-20T22:10:42.049605+00:00",
+      "market": "us",
+      "mode": "conservative",
+      "horizon": "mid",
+      "symbol": "MCD",
+      "name": "MCD",
+      "decision": "REJECT",
+      "reasons": [
+        "DATA_NOT_NORMAL",
+        "RESIDUAL_ALPHA_MODEL_NOT_PROVEN"
+      ],
+      "score": 63.4,
+      "expectedValue": 1.29,
+      "riskRewardRatio": 2.79,
+      "entryPrice": 273.24,
+      "stopPrice": 259.0,
+      "targetPrice": 313.0,
+      "sector": "UNKNOWN",
+      "beta": null,
+      "modelProbabilityDisplayOnly": 34.7,
+      "residualAlphaModelEvidence": "WAIT",
+      "predictedResidualAlphaPct": 19.687115,
+      "residualAlphaLower90Pct": 1.581599,
+      "residualAlphaModelFingerprint": "7f3642213237690bb880",
+      "residualAlphaModelInstanceFingerprint": "a7d9a5ce33daf865e618874b",
+      "residualAlphaPredictionId": "63995b06d8a2ffa4e6a7ebd978ba",
+      "residualAlphaForwardSealStatus": "UNSEALED",
+      "recommendationSource": "mone_v36_final_recommendations_us_conservative_mid.csv"
+    }
+  ],
   "cellEvidence": {
     "kr|aggressive|mid": {
       "independentDecisions": 27,
@@ -448,21 +484,21 @@
       ]
     },
     "us|balanced|mid": {
-      "independentDecisions": 86,
-      "distinctSignalDates": 18,
-      "winRate": 0.3023,
-      "winRateWilsonLower95": 0.2154,
-      "avgNetPnlPct": -2.5847,
-      "profitFactor": 0.5923,
-      "brierScore": 0.412114,
+      "independentDecisions": 88,
+      "distinctSignalDates": 20,
+      "winRate": 0.2955,
+      "winRateWilsonLower95": 0.2103,
+      "avgNetPnlPct": -2.7733,
+      "profitFactor": 0.5695,
+      "brierScore": 0.410998,
       "probabilityCalibration": [
         {
           "band": "60-70",
-          "samples": 20,
-          "meanPredicted": 0.6883,
-          "actualWinRate": 0.45,
-          "calibrationGap": 0.2383,
-          "wilsonLower95": 0.2582
+          "samples": 22,
+          "meanPredicted": 0.6805,
+          "actualWinRate": 0.4091,
+          "calibrationGap": 0.2714,
+          "wilsonLower95": 0.2326
         },
         {
           "band": "70-80",
