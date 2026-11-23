@@ -1,6 +1,6 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-11-23T19:59:01.874169+00:00",
+  "generatedAt": "2026-11-23T22:11:44.224757+00:00",
   "policy": {
     "version": "shadow-residual-alpha-v1.1.2",
     "label": "POST_SIGNAL_PRE_EVENT_MARKET_MODEL_CAR_BY_HORIZON",
@@ -147,7 +147,7 @@
       "futureGeneratedAtSkipped": 0,
       "immutableConflicts": 0,
       "schemaError": null,
-      "recordMarket": "none",
+      "recordMarket": "all",
       "candidateRowsConsidered": 0
     },
     "settlementJournal": {
@@ -163,35 +163,12 @@
     "integrityBlockingReasons": []
   },
   "summary": {
-    "candidates": 1,
-    "predicted": 1,
-    "positiveLower90": 1,
+    "candidates": 0,
+    "predicted": 0,
+    "positiveLower90": 0,
     "evidenceStatus": "WAIT"
   },
-  "predictions": [
-    {
-      "candidateKey": "ec6ef294be042dd0f28d1d9e",
-      "economicEventKey": "99d27c9d4b179cfc2ae2d9e6",
-      "signalDate": "2026-11-20",
-      "generatedAt": "2026-11-23T19:48:09.323189+00:00",
-      "market": "us",
-      "mode": "conservative",
-      "horizon": "mid",
-      "symbol": "MCD",
-      "modelFingerprint": "7f3642213237690bb880",
-      "trainingDataFingerprint": "850c1bc9693273448ab06c85f50024fc242a6bb62fed79160da633c0af365128",
-      "modelInstanceFingerprint": "a7d9a5ce33daf865e618874b",
-      "trainRows": 501,
-      "trainDates": 25,
-      "status": "PREDICTED",
-      "trainMaxLabelAvailableDate": "2026-08-25",
-      "predictedResidualAlphaPct": 19.714009,
-      "predictionLower90Pct": 1.608493,
-      "baselinePredictionPct": -3.304817,
-      "predictionId": "63995b06d8a2ffa4e6a7ebd978ba",
-      "forwardSealStatus": "UNSEALED"
-    }
-  ],
+  "predictions": [],
   "forwardOosAudit": [],
   "researchOosAudit": [
     {
