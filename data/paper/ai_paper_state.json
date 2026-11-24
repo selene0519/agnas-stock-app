@@ -18,160 +18,177 @@
   "lastRun": {
     "status": "OK",
     "dryRun": false,
-    "createdAt": "2026-11-24T23:27:55",
-    "market": "us",
+    "createdAt": "2026-11-25T08:57:04",
+    "market": "kr",
     "markets": {
-      "us": {
+      "kr": {
         "activeAgent": {
-          "id": "ml_rank_balanced_swing",
-          "label": "ML Rank Balanced Swing",
-          "mode": "balanced",
+          "id": "ml_rank_conservative_swing",
+          "label": "ML Rank Conservative Swing",
+          "mode": "conservative",
           "horizon": "swing"
         },
-        "generation": 3,
-        "actions": [],
+        "generation": 2,
+        "actions": [
+          {
+            "action": "SKIP",
+            "scope": "NEW_ENTRY",
+            "market": "kr",
+            "reason": "QUANT_OPERATING_GATE",
+            "reasonCodes": [
+              "REALIZED_WIN_RATE_BELOW_GATE",
+              "QUANT_EVIDENCE_INTEGRITY_NOT_READY",
+              "QUANT_SHADOW_NOT_APPROVED",
+              "EV_CALIBRATION_NOT_VALIDATED"
+            ],
+            "result": {
+              "ok": false,
+              "dryRun": false
+            }
+          }
+        ],
         "summary": {
-          "agentId": "ml_rank_balanced_swing",
-          "agentLabel": "ML Rank Balanced Swing",
-          "generation": 3,
-          "seed": 5000.0,
-          "cash": 4363.97,
-          "invested": 609.05,
-          "valuation": 602.78,
-          "portfolioValue": 4966.75,
-          "unrealizedPnl": -6.27,
-          "totalPnl": -33.25,
-          "totalReturnPct": -0.67,
-          "positionCount": 3,
-          "tradeCount": 7
+          "agentId": "ml_rank_conservative_swing",
+          "agentLabel": "ML Rank Conservative Swing",
+          "generation": 2,
+          "seed": 5000000.0,
+          "cash": 4992296.6,
+          "invested": 0,
+          "valuation": 0,
+          "portfolioValue": 4992296.6,
+          "unrealizedPnl": 0,
+          "totalPnl": -7703.4,
+          "totalReturnPct": -0.15,
+          "positionCount": 0,
+          "tradeCount": 10
         },
         "liveMetrics": {
           "status": "OK",
           "proofStatus": "RUNNING",
-          "sampleCount": 21,
-          "navPointCount": 22,
-          "totalReturnPct": -0.67,
-          "mddPct": -0.65,
-          "sharpe": -4.23,
-          "winRate": 33.3,
-          "avgPeriodReturnPct": -0.03,
-          "cashPct": 87.9,
-          "peakValue": 4999.32,
-          "currentValue": 4966.75,
-          "lastNavDate": "2026-11-24",
+          "sampleCount": 46,
+          "navPointCount": 47,
+          "totalReturnPct": -0.15,
+          "mddPct": -0.52,
+          "sharpe": -0.74,
+          "winRate": 13.0,
+          "avgPeriodReturnPct": -0.0,
+          "cashPct": 100.0,
+          "peakValue": 5018311.28,
+          "currentValue": 4992296.6,
+          "lastNavDate": "2026-11-25",
           "recentReturnsPct": [
-            0.24,
-            -0.03,
-            -0.39,
             0.0,
-            -0.03,
-            -0.01,
-            0.02,
-            -0.05
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
           ],
           "equityCurve": [
             {
               "index": 0,
-              "value": 4992.1,
-              "returnPct": -0.16
+              "value": 4992296.6,
+              "returnPct": -0.15
             },
             {
               "index": 1,
-              "value": 4991.18,
-              "returnPct": -0.18
+              "value": 4992296.6,
+              "returnPct": -0.15
             },
             {
               "index": 2,
-              "value": 4990.47,
-              "returnPct": -0.19
+              "value": 4992296.6,
+              "returnPct": -0.15
             },
             {
               "index": 3,
-              "value": 4990.06,
-              "returnPct": -0.2
+              "value": 4992296.6,
+              "returnPct": -0.15
             },
             {
               "index": 4,
-              "value": 4978.34,
-              "returnPct": -0.43
+              "value": 4992296.6,
+              "returnPct": -0.15
             },
             {
               "index": 5,
-              "value": 4977.92,
-              "returnPct": -0.44
+              "value": 4992296.6,
+              "returnPct": -0.15
             },
             {
               "index": 6,
-              "value": 4977.69,
-              "returnPct": -0.45
+              "value": 4992296.6,
+              "returnPct": -0.15
             },
             {
               "index": 7,
-              "value": 4979.13,
-              "returnPct": -0.42
+              "value": 4992296.6,
+              "returnPct": -0.15
             },
             {
               "index": 8,
-              "value": 4991.11,
-              "returnPct": -0.18
+              "value": 4992296.6,
+              "returnPct": -0.15
             },
             {
               "index": 9,
-              "value": 4989.84,
-              "returnPct": -0.2
+              "value": 4992296.6,
+              "returnPct": -0.15
             },
             {
               "index": 10,
-              "value": 4970.35,
-              "returnPct": -0.59
+              "value": 4992296.6,
+              "returnPct": -0.15
             },
             {
               "index": 11,
-              "value": 4970.45,
-              "returnPct": -0.59
+              "value": 4992296.6,
+              "returnPct": -0.15
             },
             {
               "index": 12,
-              "value": 4968.81,
-              "returnPct": -0.62
+              "value": 4992296.6,
+              "returnPct": -0.15
             },
             {
               "index": 13,
-              "value": 4968.09,
-              "returnPct": -0.64
+              "value": 4992296.6,
+              "returnPct": -0.15
             },
             {
               "index": 14,
-              "value": 4969.21,
-              "returnPct": -0.62
+              "value": 4992296.6,
+              "returnPct": -0.15
             },
             {
               "index": 15,
-              "value": 4966.75,
-              "returnPct": -0.67
+              "value": 4992296.6,
+              "returnPct": -0.15
             }
           ]
         },
         "realizedTrades": {
-          "closedTradeCount": 2,
-          "winRate": 0.0,
-          "avgNetPnlPct": -6.167,
-          "profitFactor": 0.0,
-          "payoffRatio": 0.0,
+          "closedTradeCount": 5,
+          "winRate": 40.0,
+          "avgNetPnlPct": 0.848,
+          "profitFactor": 0.575,
+          "payoffRatio": 0.863,
           "ratioStatus": "DEFINED",
-          "grossProfit": 0,
-          "grossLoss": 26.98,
+          "grossProfit": 10441.86,
+          "grossLoss": 18145.26,
           "costModel": "buy/sell slippage plus tax-commission",
           "costRates": {
             "buy": 0.001,
-            "sell": 0.002
+            "sell": 0.0031
           }
         },
         "survival": {
           "state": "ALIVE",
-          "seed": 5000.0,
-          "portfolioValue": 4966.75,
-          "survivalPct": 99.33
+          "seed": 5000000.0,
+          "portfolioValue": 4992296.6,
+          "survivalPct": 99.85
         },
         "proofBoard": {
           "status": "OK",
@@ -184,35 +201,35 @@
           "currentRank": 4,
           "profileCount": 9,
           "current": {
-            "agentId": "ml_rank_balanced_swing",
-            "agentLabel": "ML Rank Balanced Swing",
-            "mode": "balanced",
+            "agentId": "ml_rank_conservative_swing",
+            "agentLabel": "ML Rank Conservative Swing",
+            "mode": "conservative",
             "horizon": "swing",
             "strategy": "corrected",
-            "sampleCount": 242,
-            "winRate": 7.9,
-            "avgNetPnlPct": -0.5,
+            "sampleCount": 174,
+            "winRate": 13.2,
+            "avgNetPnlPct": 0.28,
             "positiveWindowRate": 66.7,
             "mddPct": -100.0,
             "mddNormalized": false,
             "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-            "proofScore": 1.4,
+            "proofScore": 12.68,
             "lastWindow": "2026-11-01"
           },
           "leader": {
-            "agentId": "ml_rank_aggressive_mid",
-            "agentLabel": "ML Rank Aggressive Mid",
-            "mode": "aggressive",
+            "agentId": "ml_rank_conservative_mid",
+            "agentLabel": "ML Rank Conservative Mid",
+            "mode": "conservative",
             "horizon": "mid",
             "strategy": "corrected",
-            "sampleCount": 270,
-            "winRate": 17.8,
-            "avgNetPnlPct": 0.01,
-            "positiveWindowRate": 66.7,
+            "sampleCount": 180,
+            "winRate": 16.1,
+            "avgNetPnlPct": 0.48,
+            "positiveWindowRate": 83.3,
             "mddPct": -100.0,
             "mddNormalized": false,
             "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-            "proofScore": 10.99,
+            "proofScore": 20.29,
             "lastWindow": "2026-11-01"
           },
           "bestBaseline": {
@@ -221,48 +238,48 @@
             "mode": "aggressive",
             "horizon": "mid",
             "strategy": "baseline",
-            "sampleCount": 268,
-            "winRate": 20.5,
-            "avgNetPnlPct": 0.17,
-            "positiveWindowRate": 66.7,
+            "sampleCount": 127,
+            "winRate": 18.1,
+            "avgNetPnlPct": 0.58,
+            "positiveWindowRate": 75.0,
             "mddPct": -100.0,
             "mddNormalized": false,
             "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-            "proofScore": 13.89,
+            "proofScore": 20.06,
             "lastWindow": "2026-11-01"
           },
           "beatsBestBaseline": false,
           "rows": [
-            {
-              "agentId": "ml_rank_aggressive_mid",
-              "agentLabel": "ML Rank Aggressive Mid",
-              "mode": "aggressive",
-              "horizon": "mid",
-              "strategy": "corrected",
-              "sampleCount": 270,
-              "winRate": 17.8,
-              "avgNetPnlPct": 0.01,
-              "positiveWindowRate": 66.7,
-              "mddPct": -100.0,
-              "mddNormalized": false,
-              "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-              "proofScore": 10.99,
-              "lastWindow": "2026-11-01"
-            },
             {
               "agentId": "ml_rank_conservative_mid",
               "agentLabel": "ML Rank Conservative Mid",
               "mode": "conservative",
               "horizon": "mid",
               "strategy": "corrected",
-              "sampleCount": 301,
-              "winRate": 18.3,
-              "avgNetPnlPct": -0.02,
-              "positiveWindowRate": 66.7,
+              "sampleCount": 180,
+              "winRate": 16.1,
+              "avgNetPnlPct": 0.48,
+              "positiveWindowRate": 83.3,
               "mddPct": -100.0,
               "mddNormalized": false,
               "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-              "proofScore": 10.82,
+              "proofScore": 20.29,
+              "lastWindow": "2026-11-01"
+            },
+            {
+              "agentId": "ml_rank_aggressive_mid",
+              "agentLabel": "ML Rank Aggressive Mid",
+              "mode": "aggressive",
+              "horizon": "mid",
+              "strategy": "corrected",
+              "sampleCount": 126,
+              "winRate": 17.5,
+              "avgNetPnlPct": 0.61,
+              "positiveWindowRate": 75.0,
+              "mddPct": -100.0,
+              "mddNormalized": false,
+              "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
+              "proofScore": 20.15,
               "lastWindow": "2026-11-01"
             },
             {
@@ -271,30 +288,14 @@
               "mode": "balanced",
               "horizon": "mid",
               "strategy": "corrected",
-              "sampleCount": 280,
-              "winRate": 17.5,
-              "avgNetPnlPct": -0.04,
+              "sampleCount": 142,
+              "winRate": 16.9,
+              "avgNetPnlPct": 0.4,
               "positiveWindowRate": 66.7,
               "mddPct": -100.0,
               "mddNormalized": false,
               "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-              "proofScore": 10.26,
-              "lastWindow": "2026-11-01"
-            },
-            {
-              "agentId": "ml_rank_balanced_swing",
-              "agentLabel": "ML Rank Balanced Swing",
-              "mode": "balanced",
-              "horizon": "swing",
-              "strategy": "corrected",
-              "sampleCount": 242,
-              "winRate": 7.9,
-              "avgNetPnlPct": -0.5,
-              "positiveWindowRate": 66.7,
-              "mddPct": -100.0,
-              "mddNormalized": false,
-              "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-              "proofScore": 1.4,
+              "proofScore": 15.4,
               "lastWindow": "2026-11-01"
             },
             {
@@ -303,14 +304,30 @@
               "mode": "conservative",
               "horizon": "swing",
               "strategy": "corrected",
-              "sampleCount": 275,
-              "winRate": 9.5,
-              "avgNetPnlPct": -0.44,
+              "sampleCount": 174,
+              "winRate": 13.2,
+              "avgNetPnlPct": 0.28,
+              "positiveWindowRate": 66.7,
+              "mddPct": -100.0,
+              "mddNormalized": false,
+              "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
+              "proofScore": 12.68,
+              "lastWindow": "2026-11-01"
+            },
+            {
+              "agentId": "ml_rank_aggressive_swing",
+              "agentLabel": "ML Rank Aggressive Swing",
+              "mode": "aggressive",
+              "horizon": "swing",
+              "strategy": "corrected",
+              "sampleCount": 116,
+              "winRate": 14.7,
+              "avgNetPnlPct": 0.34,
               "positiveWindowRate": 50.0,
               "mddPct": -100.0,
               "mddNormalized": false,
               "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-              "proofScore": -1.49,
+              "proofScore": 9.76,
               "lastWindow": "2026-11-01"
             }
           ],
@@ -321,14 +338,14 @@
               "mode": "aggressive",
               "horizon": "mid",
               "strategy": "baseline",
-              "sampleCount": 268,
-              "winRate": 20.5,
-              "avgNetPnlPct": 0.17,
-              "positiveWindowRate": 66.7,
+              "sampleCount": 127,
+              "winRate": 18.1,
+              "avgNetPnlPct": 0.58,
+              "positiveWindowRate": 75.0,
               "mddPct": -100.0,
               "mddNormalized": false,
               "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-              "proofScore": 13.89,
+              "proofScore": 20.06,
               "lastWindow": "2026-11-01"
             },
             {
@@ -337,14 +354,14 @@
               "mode": "conservative",
               "horizon": "mid",
               "strategy": "baseline",
-              "sampleCount": 300,
-              "winRate": 21.0,
-              "avgNetPnlPct": 0.13,
-              "positiveWindowRate": 66.7,
+              "sampleCount": 183,
+              "winRate": 16.4,
+              "avgNetPnlPct": 0.42,
+              "positiveWindowRate": 83.3,
               "mddPct": -100.0,
               "mddNormalized": false,
               "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-              "proofScore": 13.54,
+              "proofScore": 19.57,
               "lastWindow": "2026-11-01"
             },
             {
@@ -353,25 +370,25 @@
               "mode": "balanced",
               "horizon": "mid",
               "strategy": "baseline",
-              "sampleCount": 279,
-              "winRate": 20.1,
-              "avgNetPnlPct": 0.09,
+              "sampleCount": 143,
+              "winRate": 17.5,
+              "avgNetPnlPct": 0.37,
               "positiveWindowRate": 66.7,
               "mddPct": -100.0,
               "mddNormalized": false,
               "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-              "proofScore": 12.8,
+              "proofScore": 15.25,
               "lastWindow": "2026-11-01"
             }
           ]
         },
         "operatingAuthority": {
-          "market": "us",
-          "operatingState": "ABSTAIN",
+          "market": "kr",
+          "operatingState": "BLOCKED",
           "recommendationActionable": false,
           "entryAllowed": false,
           "paperEntryAllowed": false,
-          "paperResearchEntryAllowed": true,
+          "paperResearchEntryAllowed": false,
           "exitAllowed": true,
           "liveOrderAllowed": false,
           "productScope": {
@@ -397,22 +414,26 @@
             ]
           },
           "candidateCount": 0,
-          "rawCandidateCount": 0,
-          "researchCandidateCount": 3,
+          "rawCandidateCount": 45,
+          "researchCandidateCount": 0,
           "paperResearch": {
             "enabled": true,
-            "entryAllowed": true,
+            "entryAllowed": false,
             "purpose": "forward evidence collection only",
             "promotionAuthority": false,
-            "blockedReasons": []
+            "blockedReasons": [
+              "NO_ELIGIBLE_RESEARCH_CANDIDATE"
+            ]
           },
           "reasonCodes": [
             "REALIZED_WIN_RATE_BELOW_GATE",
+            "QUANT_EVIDENCE_INTEGRITY_NOT_READY",
             "QUANT_SHADOW_NOT_APPROVED",
             "EV_CALIBRATION_NOT_VALIDATED"
           ],
           "reasons": [
             "실현 승률이 운용 기준보다 낮습니다.",
+            "Quant V2 evidence reports are missing, stale, or invalid.",
             "Quant V2 evidence has not approved a new entry.",
             "Expected-value ranking has not passed clean chronological validation."
           ],
@@ -462,27 +483,27 @@
           ],
           "performanceGate": {
             "allowed": false,
-            "market": "us",
-            "strategy": "balanced_swing",
-            "sampleCount": 119,
+            "market": "kr",
+            "strategy": "conservative_swing",
+            "sampleCount": 53,
             "minSamples": 20,
-            "winRate": 0.2941,
+            "winRate": 0.3396,
             "minWinRate": 0.45,
-            "avgReturnPct": -3.0415,
+            "avgReturnPct": -1.1538,
             "reason": "REALIZED_WIN_RATE_BELOW_GATE"
           },
           "evCalibrationGate": {
-            "market": "us",
+            "market": "kr",
             "status": "INSUFFICIENT",
             "operationalEntryAllowed": false,
             "paperResearchAllowed": true,
             "researchSelectionPolicy": "EV_NEUTRAL_STRATIFIED",
             "autoInverseApplied": false,
             "cleanWindowStart": "2026-07-10",
-            "rowSamples": 57,
-            "distinctSignalDates": 11,
-            "trainDateSamples": 7,
-            "holdoutDateSamples": 4,
+            "rowSamples": 34,
+            "distinctSignalDates": 9,
+            "trainDateSamples": 6,
+            "holdoutDateSamples": 3,
             "minimums": {
               "rows": 120,
               "dates": 20,
@@ -490,16 +511,16 @@
               "holdoutDates": 6
             },
             "highMinusLowBootstrapCi95": [
-              -11.268,
-              10.367
+              -17.2659,
+              2.8349
             ],
-            "rowCorrelation": -0.1175,
-            "dateCorrelation": -0.3676,
-            "trainDateCorrelation": -0.5501,
-            "holdoutDateCorrelation": -0.9251,
-            "lowEvQuartileAvgPnlPct": -2.0385,
-            "highEvQuartileAvgPnlPct": -3.3314,
-            "highMinusLowPnlPct": -1.2928
+            "rowCorrelation": -0.1857,
+            "dateCorrelation": 0.4418,
+            "trainDateCorrelation": -0.3734,
+            "holdoutDateCorrelation": 0.9301,
+            "lowEvQuartileAvgPnlPct": 0.348,
+            "highEvQuartileAvgPnlPct": -5.4605,
+            "highMinusLowPnlPct": -5.8086
           },
           "proofBoard": {
             "status": "OK",
@@ -512,35 +533,35 @@
             "currentRank": 4,
             "profileCount": 9,
             "current": {
-              "agentId": "ml_rank_balanced_swing",
-              "agentLabel": "ML Rank Balanced Swing",
-              "mode": "balanced",
+              "agentId": "ml_rank_conservative_swing",
+              "agentLabel": "ML Rank Conservative Swing",
+              "mode": "conservative",
               "horizon": "swing",
               "strategy": "corrected",
-              "sampleCount": 242,
-              "winRate": 7.9,
-              "avgNetPnlPct": -0.5,
+              "sampleCount": 174,
+              "winRate": 13.2,
+              "avgNetPnlPct": 0.28,
               "positiveWindowRate": 66.7,
               "mddPct": -100.0,
               "mddNormalized": false,
               "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-              "proofScore": 1.4,
+              "proofScore": 12.68,
               "lastWindow": "2026-11-01"
             },
             "leader": {
-              "agentId": "ml_rank_aggressive_mid",
-              "agentLabel": "ML Rank Aggressive Mid",
-              "mode": "aggressive",
+              "agentId": "ml_rank_conservative_mid",
+              "agentLabel": "ML Rank Conservative Mid",
+              "mode": "conservative",
               "horizon": "mid",
               "strategy": "corrected",
-              "sampleCount": 270,
-              "winRate": 17.8,
-              "avgNetPnlPct": 0.01,
-              "positiveWindowRate": 66.7,
+              "sampleCount": 180,
+              "winRate": 16.1,
+              "avgNetPnlPct": 0.48,
+              "positiveWindowRate": 83.3,
               "mddPct": -100.0,
               "mddNormalized": false,
               "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-              "proofScore": 10.99,
+              "proofScore": 20.29,
               "lastWindow": "2026-11-01"
             },
             "bestBaseline": {
@@ -549,48 +570,48 @@
               "mode": "aggressive",
               "horizon": "mid",
               "strategy": "baseline",
-              "sampleCount": 268,
-              "winRate": 20.5,
-              "avgNetPnlPct": 0.17,
-              "positiveWindowRate": 66.7,
+              "sampleCount": 127,
+              "winRate": 18.1,
+              "avgNetPnlPct": 0.58,
+              "positiveWindowRate": 75.0,
               "mddPct": -100.0,
               "mddNormalized": false,
               "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-              "proofScore": 13.89,
+              "proofScore": 20.06,
               "lastWindow": "2026-11-01"
             },
             "beatsBestBaseline": false,
             "rows": [
-              {
-                "agentId": "ml_rank_aggressive_mid",
-                "agentLabel": "ML Rank Aggressive Mid",
-                "mode": "aggressive",
-                "horizon": "mid",
-                "strategy": "corrected",
-                "sampleCount": 270,
-                "winRate": 17.8,
-                "avgNetPnlPct": 0.01,
-                "positiveWindowRate": 66.7,
-                "mddPct": -100.0,
-                "mddNormalized": false,
-                "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-                "proofScore": 10.99,
-                "lastWindow": "2026-11-01"
-              },
               {
                 "agentId": "ml_rank_conservative_mid",
                 "agentLabel": "ML Rank Conservative Mid",
                 "mode": "conservative",
                 "horizon": "mid",
                 "strategy": "corrected",
-                "sampleCount": 301,
-                "winRate": 18.3,
-                "avgNetPnlPct": -0.02,
-                "positiveWindowRate": 66.7,
+                "sampleCount": 180,
+                "winRate": 16.1,
+                "avgNetPnlPct": 0.48,
+                "positiveWindowRate": 83.3,
                 "mddPct": -100.0,
                 "mddNormalized": false,
                 "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-                "proofScore": 10.82,
+                "proofScore": 20.29,
+                "lastWindow": "2026-11-01"
+              },
+              {
+                "agentId": "ml_rank_aggressive_mid",
+                "agentLabel": "ML Rank Aggressive Mid",
+                "mode": "aggressive",
+                "horizon": "mid",
+                "strategy": "corrected",
+                "sampleCount": 126,
+                "winRate": 17.5,
+                "avgNetPnlPct": 0.61,
+                "positiveWindowRate": 75.0,
+                "mddPct": -100.0,
+                "mddNormalized": false,
+                "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
+                "proofScore": 20.15,
                 "lastWindow": "2026-11-01"
               },
               {
@@ -599,30 +620,14 @@
                 "mode": "balanced",
                 "horizon": "mid",
                 "strategy": "corrected",
-                "sampleCount": 280,
-                "winRate": 17.5,
-                "avgNetPnlPct": -0.04,
+                "sampleCount": 142,
+                "winRate": 16.9,
+                "avgNetPnlPct": 0.4,
                 "positiveWindowRate": 66.7,
                 "mddPct": -100.0,
                 "mddNormalized": false,
                 "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-                "proofScore": 10.26,
-                "lastWindow": "2026-11-01"
-              },
-              {
-                "agentId": "ml_rank_balanced_swing",
-                "agentLabel": "ML Rank Balanced Swing",
-                "mode": "balanced",
-                "horizon": "swing",
-                "strategy": "corrected",
-                "sampleCount": 242,
-                "winRate": 7.9,
-                "avgNetPnlPct": -0.5,
-                "positiveWindowRate": 66.7,
-                "mddPct": -100.0,
-                "mddNormalized": false,
-                "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-                "proofScore": 1.4,
+                "proofScore": 15.4,
                 "lastWindow": "2026-11-01"
               },
               {
@@ -631,14 +636,30 @@
                 "mode": "conservative",
                 "horizon": "swing",
                 "strategy": "corrected",
-                "sampleCount": 275,
-                "winRate": 9.5,
-                "avgNetPnlPct": -0.44,
+                "sampleCount": 174,
+                "winRate": 13.2,
+                "avgNetPnlPct": 0.28,
+                "positiveWindowRate": 66.7,
+                "mddPct": -100.0,
+                "mddNormalized": false,
+                "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
+                "proofScore": 12.68,
+                "lastWindow": "2026-11-01"
+              },
+              {
+                "agentId": "ml_rank_aggressive_swing",
+                "agentLabel": "ML Rank Aggressive Swing",
+                "mode": "aggressive",
+                "horizon": "swing",
+                "strategy": "corrected",
+                "sampleCount": 116,
+                "winRate": 14.7,
+                "avgNetPnlPct": 0.34,
                 "positiveWindowRate": 50.0,
                 "mddPct": -100.0,
                 "mddNormalized": false,
                 "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-                "proofScore": -1.49,
+                "proofScore": 9.76,
                 "lastWindow": "2026-11-01"
               }
             ],
@@ -649,14 +670,14 @@
                 "mode": "aggressive",
                 "horizon": "mid",
                 "strategy": "baseline",
-                "sampleCount": 268,
-                "winRate": 20.5,
-                "avgNetPnlPct": 0.17,
-                "positiveWindowRate": 66.7,
+                "sampleCount": 127,
+                "winRate": 18.1,
+                "avgNetPnlPct": 0.58,
+                "positiveWindowRate": 75.0,
                 "mddPct": -100.0,
                 "mddNormalized": false,
                 "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-                "proofScore": 13.89,
+                "proofScore": 20.06,
                 "lastWindow": "2026-11-01"
               },
               {
@@ -665,14 +686,14 @@
                 "mode": "conservative",
                 "horizon": "mid",
                 "strategy": "baseline",
-                "sampleCount": 300,
-                "winRate": 21.0,
-                "avgNetPnlPct": 0.13,
-                "positiveWindowRate": 66.7,
+                "sampleCount": 183,
+                "winRate": 16.4,
+                "avgNetPnlPct": 0.42,
+                "positiveWindowRate": 83.3,
                 "mddPct": -100.0,
                 "mddNormalized": false,
                 "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-                "proofScore": 13.54,
+                "proofScore": 19.57,
                 "lastWindow": "2026-11-01"
               },
               {
@@ -681,14 +702,14 @@
                 "mode": "balanced",
                 "horizon": "mid",
                 "strategy": "baseline",
-                "sampleCount": 279,
-                "winRate": 20.1,
-                "avgNetPnlPct": 0.09,
+                "sampleCount": 143,
+                "winRate": 17.5,
+                "avgNetPnlPct": 0.37,
                 "positiveWindowRate": 66.7,
                 "mddPct": -100.0,
                 "mddNormalized": false,
                 "mddEvidenceStatus": "NON_INFORMATIVE_FLOOR_HIT",
-                "proofScore": 12.8,
+                "proofScore": 15.25,
                 "lastWindow": "2026-11-01"
               }
             ]
@@ -721,12 +742,12 @@
             "killSwitch": false
           },
           "priceSession": {
-            "market": "us",
-            "priceSession": "us_premarket",
-            "sessionLabel": "미장 장전",
-            "priceBasis": "미장 장전 · 프리마켓 업데이트 기준",
-            "nowKst": "2026-11-24T23:27:55.559720+09:00",
-            "nowLocal": "2026-11-24T09:27:55.559720-05:00",
+            "market": "kr",
+            "priceSession": "kr_premarket",
+            "sessionLabel": "국장 장전",
+            "priceBasis": "국장 장전 · 전일 OHLCV 종가 기준",
+            "nowKst": "2026-11-25T08:57:04.672428+09:00",
+            "nowLocal": "2026-11-25T08:57:04.672428+09:00",
             "isHoliday": false,
             "isReviewMode": false,
             "isUsDst": false
@@ -736,6 +757,7 @@
             "mode": "SHADOW_ONLY",
             "decision": "ABSTAIN",
             "decisionReasons": [
+              "STALE_EVIDENCE_REPORTS",
               "ALPHA_NOT_PROVEN",
               "RESIDUAL_ALPHA_MODEL_NOT_PROVEN",
               "NO_APPROVED_RISK_EXPOSURE",
@@ -744,27 +766,29 @@
               "WALKFORWARD_NOT_PROMOTION_GRADE"
             ],
             "missingReports": [],
-            "staleReports": [],
+            "staleReports": [
+              "walkForward"
+            ],
             "liveTradingAllowed": false
           }
         },
         "nav": {
-          "date": "2026-11-24",
-          "createdAt": "2026-11-24T23:27:56",
-          "market": "us",
-          "agentId": "ml_rank_balanced_swing",
-          "agentLabel": "ML Rank Balanced Swing",
-          "generation": 3,
+          "date": "2026-11-25",
+          "createdAt": "2026-11-25T08:57:05",
+          "market": "kr",
+          "agentId": "ml_rank_conservative_swing",
+          "agentLabel": "ML Rank Conservative Swing",
+          "generation": 2,
           "state": "ALIVE",
-          "seed": 5000.0,
-          "cash": 4363.97,
-          "valuation": 602.78,
-          "portfolioValue": 4966.75,
-          "totalPnl": -33.25,
-          "totalReturnPct": -0.67,
-          "survivalPct": 99.33,
-          "positionCount": 3,
-          "tradeCount": 7,
+          "seed": 5000000.0,
+          "cash": 4992296.6,
+          "valuation": 0,
+          "portfolioValue": 4992296.6,
+          "totalPnl": -7703.4,
+          "totalReturnPct": -0.15,
+          "survivalPct": 99.85,
+          "positionCount": 0,
+          "tradeCount": 10,
           "buyCount": 0,
           "sellCount": 0,
           "proofStatus": "RUNNING"
