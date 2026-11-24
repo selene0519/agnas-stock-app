@@ -1,6 +1,6 @@
 {
   "status": "SHADOW_ONLY",
-  "generatedAt": "2026-11-23T19:59:02.857191+00:00",
+  "generatedAt": "2026-11-24T01:37:50.083693+00:00",
   "policy": {
     "version": "champion-challenger-v1.4.0",
     "champion": "TOP_3_RAW_CANDIDATES",
@@ -31,7 +31,7 @@
   },
   "recording": {
     "appended": 0,
-    "conflicts": 1,
+    "conflicts": 0,
     "skipped": 0,
     "total": 2277
   },
@@ -44,7 +44,7 @@
     "excludedPriorPolicyRows": 140
   },
   "integrity": {
-    "immutableConflicts": 1,
+    "immutableConflicts": 0,
     "timeIntegrityViolations": 0,
     "recordHashViolations": 0,
     "invalidRecordIds": [],
@@ -86,26 +86,26 @@
     "blockingReasons": []
   },
   "comparison": {
-    "completedSignalDates": 5,
-    "incompleteSignalDates": 65,
+    "completedSignalDates": 7,
+    "incompleteSignalDates": 63,
     "champion": {
-      "completeSignalDates": 5,
-      "selectedEvaluatedTrades": 15,
-      "avgDailyReturnPct": -2.043214,
-      "afterCostExpectancyPct": -2.043214,
-      "avgWinPct": 0.96316,
-      "avgLossPct": 0.798516,
-      "payoffRatio": 1.206187,
-      "totalReturnPct": -9.835644,
-      "profitFactor": 0.086156,
-      "maxDrawdownPct": 9.835644,
+      "completeSignalDates": 7,
+      "selectedEvaluatedTrades": 21,
+      "avgDailyReturnPct": -1.40441,
+      "afterCostExpectancyPct": -1.40441,
+      "avgWinPct": 1.306803,
+      "avgLossPct": 0.76396,
+      "payoffRatio": 1.710565,
+      "totalReturnPct": -9.511561,
+      "profitFactor": 0.285094,
+      "maxDrawdownPct": 9.511561,
       "afterCostExpectancyBootstrapCi95": [
-        -3.010764,
-        -1.117182
+        -2.543424,
+        -0.118427
       ]
     },
     "challenger": {
-      "completeSignalDates": 5,
+      "completeSignalDates": 7,
       "selectedEvaluatedTrades": 0,
       "avgDailyReturnPct": 0.0,
       "afterCostExpectancyPct": 0.0,
@@ -121,15 +121,24 @@
       ]
     },
     "pairedUplift": {
-      "meanPct": 2.043214,
+      "meanPct": 1.40441,
       "bootstrapCi95": [
-        1.117182,
-        3.010764
+        0.118427,
+        2.543424
       ],
       "bootstrapUnit": "SIGNAL_DATE",
       "bootstrapSamples": 10000
     },
     "daily": [
+      {
+        "signalDate": "2026-08-28",
+        "championReturnPct": -1.42404,
+        "challengerReturnPct": 0,
+        "upliftPct": 1.42404,
+        "championTrades": 3,
+        "challengerTrades": 0,
+        "challengerGrossExposurePct": 0.0
+      },
       {
         "signalDate": "2026-08-31",
         "championReturnPct": -1.0351,
@@ -144,6 +153,15 @@
         "championReturnPct": -1.98459,
         "challengerReturnPct": 0,
         "upliftPct": 1.98459,
+        "championTrades": 3,
+        "challengerTrades": 0,
+        "challengerGrossExposurePct": 0.0
+      },
+      {
+        "signalDate": "2026-09-18",
+        "championReturnPct": 1.80924,
+        "challengerReturnPct": 0,
+        "upliftPct": -1.80924,
         "championTrades": 3,
         "challengerTrades": 0,
         "challengerGrossExposurePct": 0.0
@@ -181,7 +199,6 @@
     "promotionEligible": false,
     "decision": "KEEP_CHALLENGER_SHADOW",
     "blockingReasons": [
-      "IMMUTABLE_DECISION_CONFLICT",
       "LOW_COMPLETE_SIGNAL_DATES",
       "LOW_EVALUATED_CHALLENGER_TRADES",
       "NON_POSITIVE_CHALLENGER_RETURN",
