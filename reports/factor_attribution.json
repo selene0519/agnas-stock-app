@@ -1,7 +1,7 @@
 {
-  "updatedAt": "2026-11-25 04:33:23",
-  "totalRows": 4097,
-  "olsSampleSize": 3434,
+  "updatedAt": "2026-11-25 07:10:29",
+  "totalRows": 4098,
+  "olsSampleSize": 3435,
   "byStrategy": {
     "conservative_short": {
       "total": 317,
@@ -59,13 +59,13 @@
       "probAccuracy": -0.318
     },
     "balanced_mid": {
-      "total": 483,
+      "total": 484,
       "wins": 89,
-      "losses": 394,
-      "winRate": 0.1843,
+      "losses": 395,
+      "winRate": 0.1839,
       "avgWinPct": 12.884,
-      "avgLossPct": 7.863,
-      "payoffRatio": 1.639,
+      "avgLossPct": 7.858,
+      "payoffRatio": 1.64,
       "avgProbability": 59.1,
       "probAccuracy": -0.407
     },
@@ -112,17 +112,17 @@
       "payoffRatio": 1.464
     },
     "us": {
-      "total": 2877,
+      "total": 2878,
       "winRate": 0.2318,
       "avgWinPct": 10.117,
-      "avgLossPct": 6.429,
+      "avgLossPct": 6.428,
       "payoffRatio": 1.574
     }
   },
   "byProbBand": {
     "low_50-60": {
-      "count": 1468,
-      "actualWinRate": 0.1274
+      "count": 1469,
+      "actualWinRate": 0.1273
     },
     "mid_60-75": {
       "count": 1409,
@@ -135,16 +135,16 @@
   },
   "regressionFactors": {
     "intercept": {
-      "coefficient": -15.4693,
+      "coefficient": -15.4687,
       "r2": 0.0462
     },
     "rsi": {
-      "coefficient": 0.1174,
+      "coefficient": 0.1172,
       "r2": 0.0462,
       "description": "RSI14 — 높을수록 과매수 (보통 음의 계수)"
     },
     "volumeRatio": {
-      "coefficient": 0.5297,
+      "coefficient": 0.53,
       "r2": 0.0462,
       "description": "거래량비율 — 높을수록 모멘텀 강함 (보통 양의 계수)"
     },
@@ -154,23 +154,23 @@
       "description": "MA20 이격도% — 너무 높으면 리스크 증가"
     },
     "probability": {
-      "coefficient": 11.4632,
+      "coefficient": 11.4732,
       "r2": 0.0462,
       "description": "확률 (0~1) — 모델 신뢰도"
     },
     "momentum5": {
-      "coefficient": -0.0549,
+      "coefficient": -0.0548,
       "r2": 0.0462,
       "description": "5일 모멘텀% — 단기 추세"
     },
     "_winRateRegression": {
       "r2": 0.0469,
-      "sampleSize": 3434,
+      "sampleSize": 3435,
       "factors": {
-        "rsi": 0.0087,
+        "rsi": 0.0086,
         "volumeRatio": 0.0268,
         "distToMa20": -0.0135,
-        "probability": 0.4986,
+        "probability": 0.4994,
         "momentum5": 0.0028
       }
     }
@@ -189,14 +189,14 @@
     },
     "us": {
       "status": "OK",
-      "n": 2522,
-      "r2": 0.0589,
-      "intercept": -16.2838,
-      "rsi": 0.1257,
-      "volumeRatio": 0.8408,
-      "distToMa20": -0.3036,
-      "probability": 12.2001,
-      "momentum5": -0.0824
+      "n": 2523,
+      "r2": 0.059,
+      "intercept": -16.2809,
+      "rsi": 0.1255,
+      "volumeRatio": 0.8414,
+      "distToMa20": -0.3035,
+      "probability": 12.2108,
+      "momentum5": -0.0823
     }
   },
   "insight": [
