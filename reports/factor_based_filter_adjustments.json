@@ -1,11 +1,11 @@
 {
-  "updatedAt": "2026-11-25 08:49:20",
-  "basedOnR2": 0.0462,
-  "olsSamples": 3435,
-  "rsiCoefficient": 0.1172,
-  "vrCoefficient": 0.53,
-  "d20Coefficient": -0.2431,
-  "mom5Coefficient": -0.0548,
+  "updatedAt": "2026-11-25 14:25:39",
+  "basedOnR2": 0.0447,
+  "olsSamples": 3450,
+  "rsiCoefficient": 0.1155,
+  "vrCoefficient": 0.533,
+  "d20Coefficient": -0.2403,
+  "mom5Coefficient": -0.0543,
   "adjustments": {
     "rsi_upper_conservative": 78.0,
     "rsi_upper_balanced": 81.0,
@@ -20,26 +20,15 @@
   },
   "byMarket": {
     "kr": {
-      "status": "APPLIED",
-      "r2": 0.0328,
-      "n": 912,
-      "adjustments": {
-        "rsi_upper_conservative": 78.0,
-        "rsi_upper_balanced": 81.0,
-        "rsi_upper_aggressive": 84.0,
-        "min_vr_conservative": 0.85,
-        "min_vr_balanced": 0.65,
-        "min_vr_aggressive": 0.45,
-        "d20_max_short": 6.0,
-        "d20_max_swing": 8.0,
-        "d20_max_mid": 11.0,
-        "momentum5_insight": "음의 모멘텀이 수익 기여"
-      }
+      "status": "OK",
+      "r2": 0.0247,
+      "n": 913,
+      "adjustments": {}
     },
     "us": {
       "status": "APPLIED",
-      "r2": 0.059,
-      "n": 2523,
+      "r2": 0.0588,
+      "n": 2537,
       "adjustments": {
         "rsi_upper_conservative": 78.0,
         "rsi_upper_balanced": 81.0,
