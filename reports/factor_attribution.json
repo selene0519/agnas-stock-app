@@ -1,7 +1,7 @@
 {
-  "updatedAt": "2026-11-26 13:49:15",
-  "totalRows": 4145,
-  "olsSampleSize": 3482,
+  "updatedAt": "2026-11-26 16:33:32",
+  "totalRows": 4150,
+  "olsSampleSize": 3487,
   "byStrategy": {
     "conservative_short": {
       "total": 317,
@@ -70,15 +70,15 @@
       "probAccuracy": -0.409
     },
     "aggressive_short": {
-      "total": 337,
+      "total": 339,
       "wins": 71,
-      "losses": 266,
-      "winRate": 0.2107,
+      "losses": 268,
+      "winRate": 0.2094,
       "avgWinPct": 5.199,
-      "avgLossPct": 3.696,
-      "payoffRatio": 1.407,
-      "avgProbability": 62.3,
-      "probAccuracy": -0.412
+      "avgLossPct": 3.676,
+      "payoffRatio": 1.414,
+      "avgProbability": 62.2,
+      "probAccuracy": -0.413
     },
     "aggressive_swing": {
       "total": 397,
@@ -92,24 +92,24 @@
       "probAccuracy": -0.407
     },
     "aggressive_mid": {
-      "total": 659,
-      "wins": 97,
-      "losses": 562,
-      "winRate": 0.1472,
-      "avgWinPct": 16.435,
-      "avgLossPct": 8.612,
-      "payoffRatio": 1.908,
+      "total": 662,
+      "wins": 98,
+      "losses": 564,
+      "winRate": 0.148,
+      "avgWinPct": 16.35,
+      "avgLossPct": 8.585,
+      "payoffRatio": 1.905,
       "avgProbability": 60.2,
-      "probAccuracy": -0.455
+      "probAccuracy": -0.454
     }
   },
   "byMarket": {
     "kr": {
-      "total": 1223,
-      "winRate": 0.2469,
-      "avgWinPct": 9.164,
-      "avgLossPct": 6.219,
-      "payoffRatio": 1.474
+      "total": 1228,
+      "winRate": 0.2467,
+      "avgWinPct": 9.161,
+      "avgLossPct": 6.192,
+      "payoffRatio": 1.479
     },
     "us": {
       "total": 2922,
@@ -121,12 +121,12 @@
   },
   "byProbBand": {
     "low_50-60": {
-      "count": 1497,
-      "actualWinRate": 0.1276
+      "count": 1500,
+      "actualWinRate": 0.128
     },
     "mid_60-75": {
-      "count": 1426,
-      "actualWinRate": 0.2791
+      "count": 1428,
+      "actualWinRate": 0.2787
     },
     "high_75+": {
       "count": 1222,
@@ -135,57 +135,57 @@
   },
   "regressionFactors": {
     "intercept": {
-      "coefficient": -15.244,
+      "coefficient": -15.2053,
       "r2": 0.0452
     },
     "rsi": {
-      "coefficient": 0.1165,
+      "coefficient": 0.1159,
       "r2": 0.0452,
       "description": "RSI14 — 높을수록 과매수 (보통 음의 계수)"
     },
     "volumeRatio": {
-      "coefficient": 0.5497,
+      "coefficient": 0.5562,
       "r2": 0.0452,
       "description": "거래량비율 — 높을수록 모멘텀 강함 (보통 양의 계수)"
     },
     "distToMa20": {
-      "coefficient": -0.2405,
+      "coefficient": -0.2416,
       "r2": 0.0452,
       "description": "MA20 이격도% — 너무 높으면 리스크 증가"
     },
     "probability": {
-      "coefficient": 11.1897,
+      "coefficient": 11.186,
       "r2": 0.0452,
       "description": "확률 (0~1) — 모델 신뢰도"
     },
     "momentum5": {
-      "coefficient": -0.0568,
+      "coefficient": -0.0567,
       "r2": 0.0452,
       "description": "5일 모멘텀% — 단기 추세"
     },
     "_winRateRegression": {
-      "r2": 0.0481,
-      "sampleSize": 3482,
+      "r2": 0.0479,
+      "sampleSize": 3487,
       "factors": {
         "rsi": 0.0088,
-        "volumeRatio": 0.0287,
-        "distToMa20": -0.0135,
-        "probability": 0.4906,
-        "momentum5": 0.0025
+        "volumeRatio": 0.0288,
+        "distToMa20": -0.0134,
+        "probability": 0.49,
+        "momentum5": 0.0023
       }
     }
   },
   "regressionByMarket": {
     "kr": {
       "status": "OK",
-      "n": 915,
-      "r2": 0.0227,
-      "intercept": -15.6186,
-      "rsi": 0.1102,
-      "volumeRatio": -0.1212,
-      "distToMa20": -0.1652,
-      "probability": 11.677,
-      "momentum5": -0.0117
+      "n": 920,
+      "r2": 0.0212,
+      "intercept": -14.4415,
+      "rsi": 0.1081,
+      "volumeRatio": -0.1111,
+      "distToMa20": -0.1701,
+      "probability": 10.3571,
+      "momentum5": -0.0068
     },
     "us": {
       "status": "OK",
@@ -203,7 +203,7 @@
     "호라이즌: swing 전략 평균 승률 26.8%로 최고",
     "모드: conservative 전략 평균 payoff 1.66x로 최고",
     "마켓: KR 승률 24.7%로 우위",
-    "회귀분석: intercept 낮을수록 수익률 향상 (β=-15.244)",
+    "회귀분석: intercept 낮을수록 수익률 향상 (β=-15.205)",
     "전체 팩터 설명력 R²=0.046 (0~1, 높을수록 예측력 강함)",
     "Kelly 최대: conservative_short → 포트폴리오 0.0% 권장"
   ]

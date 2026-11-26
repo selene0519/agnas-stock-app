@@ -1,16 +1,16 @@
 {
-  "generatedAt": "2026-11-26T04:46:57.031648+00:00",
+  "generatedAt": "2026-11-26T07:32:58.334180+00:00",
   "market": "kr",
   "marketRegime": "BEAR",
   "marketRegimeLabel": "약세장",
   "regimeDetail": {
-    "asOf": "2026-11-25",
-    "distToMa20": -10.63,
-    "mom5": -7.3,
-    "trend60": -32.04,
-    "volRatio": 0.872,
+    "asOf": "2026-11-26",
+    "distToMa20": -8.25,
+    "mom5": -7.18,
+    "trend60": -29.75,
+    "volRatio": 0.848,
     "definition": "trend60+거래량(약추세만)",
-    "kospi": 4697.51
+    "kospi": 4769.01
   },
   "favorableRegime": false,
   "finalScoreThreshold": 84.0,
@@ -29,7 +29,21 @@
     "winRate": null
   },
   "note": "앱이 지는 이유=전부 거래. 실측상 (+)인 유일 구성(강세장+finalScore≥84)만 실전. 약세/횡보/저점수는 실전 없음(현금 보존). 이게 −1.92%→+0.72%의 차이.",
-  "candidateCount": 0,
+  "candidateCount": 1,
   "actionableCount": 0,
-  "candidates": []
+  "candidates": [
+    {
+      "symbol": "012750",
+      "name": "012750",
+      "finalScore": 72.1,
+      "entry": null,
+      "stop": null,
+      "target": null,
+      "decisionBucket": "오늘 진입",
+      "supplySignal": "INST_BUY",
+      "eventBadges": "기관 순매수",
+      "highConviction": false,
+      "gateReason": "관찰만 — 약세장(실전 게이트 OFF)"
+    }
+  ]
 }
