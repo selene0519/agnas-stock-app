@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-27T04:58:39.763428+00:00",
+  "generatedAt": "2026-11-27T18:08:50.601670+00:00",
   "overall": "ERROR",
   "criticalFailures": 1,
   "hardFailures": 1,
@@ -15,28 +15,28 @@
     {
       "name": "kr_ohlcv",
       "status": "OK",
-      "detail": "0.21d, asOf=2026-11-27",
+      "detail": "0.76d, asOf=2026-11-27",
       "critical": true,
-      "ageDays": 0.21
+      "ageDays": 0.76
     },
     {
       "name": "kr_kospi_ohlcv",
       "status": "OK",
-      "detail": "0.21d, asOf=2026-11-27, kr_KOSPI_daily.csv trailing OHLC is valid",
+      "detail": "0.76d, asOf=2026-11-27, kr_KOSPI_daily.csv trailing OHLC is valid",
       "critical": true,
-      "ageDays": 0.21
+      "ageDays": 0.76
     },
     {
       "name": "kr_kosdaq_ohlcv",
       "status": "OK",
-      "detail": "0.21d, asOf=2026-11-27, kr_KOSDAQ_daily.csv trailing OHLC is valid",
+      "detail": "0.76d, asOf=2026-11-27, kr_KOSDAQ_daily.csv trailing OHLC is valid",
       "critical": true,
-      "ageDays": 0.21
+      "ageDays": 0.76
     },
     {
       "name": "kr_recommendations",
       "status": "OK",
-      "detail": "0.01d, asOf=2026-11-27T04:50:03.767365+00:00",
+      "detail": "0.01d, asOf=2026-11-27T17:58:22.987973+00:00",
       "critical": true,
       "ageDays": 0.01
     },
@@ -49,52 +49,52 @@
     },
     {
       "name": "collector_partial_failures",
-      "status": "WARN",
-      "detail": "kr_close 7건",
+      "status": "OK",
+      "detail": "cloud collector reports have zero failed items",
       "critical": false,
       "ageDays": null
     },
     {
       "name": "collector_run",
       "status": "OK",
-      "detail": "0.0d, asOf=2026-11-27T13:52:09+09:00, source=cloud:benchmarks, reportedAt=2026-11-27T13:52:09",
+      "detail": "0.01d, asOf=2026-11-28T03:00:35+09:00, source=cloud:benchmarks, reportedAt=2026-11-28T03:00:35",
       "critical": true,
-      "ageDays": 0.0
+      "ageDays": 0.01
     },
     {
       "name": "local_collector_run",
       "status": "STALE",
-      "detail": "optional local collector 121.89d old; cloud source remains authoritative",
+      "detail": "optional local collector 122.44d old; cloud source remains authoritative",
       "critical": false,
-      "ageDays": 121.89
+      "ageDays": 122.44
     },
     {
       "name": "vtj_journal",
       "status": "OK",
-      "detail": "0.03d, asOf=2026-11-27T13:17:03+09:00",
+      "detail": "0.23d, asOf=2026-11-27T21:35:40+09:00",
       "critical": false,
-      "ageDays": 0.03
+      "ageDays": 0.23
     },
     {
       "name": "live_calibration",
       "status": "OK",
-      "detail": "0.21d, asOf=2026-11-27",
+      "detail": "-0.24d, asOf=2026-11-28",
       "critical": false,
-      "ageDays": 0.21
+      "ageDays": -0.24
     },
     {
       "name": "strategy_win_rates",
       "status": "OK",
-      "detail": "-0.37d, asOf=2026-11-27 13:58:30",
+      "detail": "-0.37d, asOf=2026-11-28 03:08:41",
       "critical": false,
       "ageDays": -0.37
     },
     {
       "name": "prediction_capture",
       "status": "OK",
-      "detail": "3.21d, asOf=2026-11-24",
+      "detail": "0.76d, asOf=2026-11-27",
       "critical": true,
-      "ageDays": 3.21
+      "ageDays": 0.76
     },
     {
       "name": "capture_continuity",
@@ -106,21 +106,21 @@
     {
       "name": "settlement_backlog",
       "status": "OK",
-      "detail": "만기경과 미정산 0건 / 대기중 266건",
+      "detail": "만기경과 미정산 0건 / 대기중 267건",
       "critical": false,
       "ageDays": null
     },
     {
       "name": "clean_window_samples",
       "status": "OK",
-      "detail": "clean window(2026-07-10) 정산표본 2590건 / 전체 정산 3250건 / 원장 3747행",
+      "detail": "clean window(2026-07-10) 정산표본 2590건 / 전체 정산 3250건 / 원장 3748행",
       "critical": false,
       "ageDays": null
     },
     {
       "name": "live_gate_promotion",
       "status": "OK",
-      "detail": "승격 1/15셀 (기준 effN≥30, 최대 30.8, global effN 38.2 승률 19.2%) — 활성: 0-72|SIDE",
+      "detail": "승격 1/15셀 (기준 effN≥30, 최대 30.1, global effN 37.3 승률 19.2%) — 활성: 0-72|SIDE",
       "critical": false,
       "ageDays": null
     }
