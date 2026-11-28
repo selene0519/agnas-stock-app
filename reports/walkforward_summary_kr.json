@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-11-21T15:39:27.756540+00:00",
+  "generatedAt": "2026-11-28T16:32:12.725019+00:00",
   "market": "kr",
-  "asOf": "2026-11-22",
+  "asOf": "2026-11-29",
   "windowMonths": 3,
   "combos": {
     "kr_conservative_short": {
@@ -9,9 +9,9 @@
       "market": "kr",
       "mode": "conservative",
       "horizon": "short",
-      "asOf": "2026-11-22",
+      "asOf": "2026-11-29",
       "excludedFutureRows": 0,
-      "dataRange": "2011-08-01 ~ 2026-11-20",
+      "dataRange": "2011-08-01 ~ 2026-11-27",
       "windowCount": 61,
       "windows": [
         {
@@ -3823,16 +3823,16 @@
         "universeSource": "OHLCV_glob(market_*_daily.csv)",
         "note": "backtest winRate는 생존편향으로 낙관. 실측 신뢰는 live_calibration 참조."
       },
-      "generatedAt": "2026-11-21T15:32:27.727188+00:00"
+      "generatedAt": "2026-11-28T16:22:04.230571+00:00"
     },
     "kr_conservative_swing": {
       "status": "OK",
       "market": "kr",
       "mode": "conservative",
       "horizon": "swing",
-      "asOf": "2026-11-22",
+      "asOf": "2026-11-29",
       "excludedFutureRows": 0,
-      "dataRange": "2011-08-01 ~ 2026-11-20",
+      "dataRange": "2011-08-01 ~ 2026-11-27",
       "windowCount": 61,
       "windows": [
         {
@@ -7809,16 +7809,16 @@
         "universeSource": "OHLCV_glob(market_*_daily.csv)",
         "note": "backtest winRate는 생존편향으로 낙관. 실측 신뢰는 live_calibration 참조."
       },
-      "generatedAt": "2026-11-21T15:33:33.277877+00:00"
+      "generatedAt": "2026-11-28T16:23:40.562492+00:00"
     },
     "kr_conservative_mid": {
       "status": "OK",
       "market": "kr",
       "mode": "conservative",
       "horizon": "mid",
-      "asOf": "2026-11-22",
+      "asOf": "2026-11-29",
       "excludedFutureRows": 0,
-      "dataRange": "2011-08-01 ~ 2026-11-20",
+      "dataRange": "2011-08-01 ~ 2026-11-27",
       "windowCount": 61,
       "windows": [
         {
@@ -11712,9 +11712,8 @@
             "reasonCounts": {
               "MISS_ENTRY_TOO_LOW": 3,
               "DATA_STALE": 40,
-              "VOLATILITY_TOO_HIGH": 6,
-              "ENTRY_TOO_AGGRESSIVE": 10,
-              "STOP_TOO_TIGHT": 1,
+              "VOLATILITY_TOO_HIGH": 8,
+              "ENTRY_TOO_AGGRESSIVE": 9,
               "GOOD": 3
             },
             "regimeAvgPnl": {
@@ -11742,9 +11741,8 @@
             "reasonCounts": {
               "MISS_ENTRY_TOO_LOW": 4,
               "DATA_STALE": 40,
-              "VOLATILITY_TOO_HIGH": 7,
+              "VOLATILITY_TOO_HIGH": 8,
               "ENTRY_TOO_AGGRESSIVE": 8,
-              "STOP_TOO_TIGHT": 1,
               "GOOD": 3
             },
             "regimeAvgPnl": {
@@ -11777,14 +11775,14 @@
         "mddPct": -100.0,
         "profitLossRatio": 1.639,
         "reasonCounts": {
-          "ENTRY_TOO_AGGRESSIVE": 523,
-          "VOLATILITY_TOO_HIGH": 778,
+          "ENTRY_TOO_AGGRESSIVE": 522,
+          "VOLATILITY_TOO_HIGH": 780,
           "MISS_ENTRY_TOO_LOW": 515,
           "GOOD_SIGNAL_WEAK_EXIT": 147,
           "TARGET_TOO_FAR": 55,
           "GOOD": 166,
           "TARGET_TOO_CLOSE": 119,
-          "STOP_TOO_TIGHT": 30,
+          "STOP_TOO_TIGHT": 29,
           "LOW_LIQUIDITY": 3,
           "DATA_STALE": 42
         }
@@ -11806,13 +11804,13 @@
         "profitLossRatio": 1.727,
         "reasonCounts": {
           "ENTRY_TOO_AGGRESSIVE": 488,
-          "VOLATILITY_TOO_HIGH": 780,
+          "VOLATILITY_TOO_HIGH": 781,
           "MISS_ENTRY_TOO_LOW": 574,
           "GOOD_SIGNAL_WEAK_EXIT": 139,
           "TARGET_TOO_FAR": 52,
           "GOOD": 164,
           "TARGET_TOO_CLOSE": 104,
-          "STOP_TOO_TIGHT": 35,
+          "STOP_TOO_TIGHT": 34,
           "DATA_STALE": 42
         }
       },
@@ -11835,16 +11833,16 @@
         "universeSource": "OHLCV_glob(market_*_daily.csv)",
         "note": "backtest winRate는 생존편향으로 낙관. 실측 신뢰는 live_calibration 참조."
       },
-      "generatedAt": "2026-11-21T15:34:40.020822+00:00"
+      "generatedAt": "2026-11-28T16:25:17.781917+00:00"
     },
     "kr_balanced_short": {
       "status": "OK",
       "market": "kr",
       "mode": "balanced",
       "horizon": "short",
-      "asOf": "2026-11-22",
+      "asOf": "2026-11-29",
       "excludedFutureRows": 0,
-      "dataRange": "2011-08-01 ~ 2026-11-20",
+      "dataRange": "2011-08-01 ~ 2026-11-27",
       "windowCount": 61,
       "windows": [
         {
@@ -14936,16 +14934,16 @@
         "universeSource": "OHLCV_glob(market_*_daily.csv)",
         "note": "backtest winRate는 생존편향으로 낙관. 실측 신뢰는 live_calibration 참조."
       },
-      "generatedAt": "2026-11-21T15:35:31.200816+00:00"
+      "generatedAt": "2026-11-28T16:26:33.076796+00:00"
     },
     "kr_balanced_swing": {
       "status": "OK",
       "market": "kr",
       "mode": "balanced",
       "horizon": "swing",
-      "asOf": "2026-11-22",
+      "asOf": "2026-11-29",
       "excludedFutureRows": 0,
-      "dataRange": "2011-08-01 ~ 2026-11-20",
+      "dataRange": "2011-08-01 ~ 2026-11-27",
       "windowCount": 61,
       "windows": [
         {
@@ -18551,16 +18549,16 @@
         "universeSource": "OHLCV_glob(market_*_daily.csv)",
         "note": "backtest winRate는 생존편향으로 낙관. 실측 신뢰는 live_calibration 참조."
       },
-      "generatedAt": "2026-11-21T15:36:26.845859+00:00"
+      "generatedAt": "2026-11-28T16:27:53.729065+00:00"
     },
     "kr_balanced_mid": {
       "status": "OK",
       "market": "kr",
       "mode": "balanced",
       "horizon": "mid",
-      "asOf": "2026-11-22",
+      "asOf": "2026-11-29",
       "excludedFutureRows": 0,
-      "dataRange": "2011-08-01 ~ 2026-11-20",
+      "dataRange": "2011-08-01 ~ 2026-11-27",
       "windowCount": 61,
       "windows": [
         {
@@ -22528,16 +22526,16 @@
         "universeSource": "OHLCV_glob(market_*_daily.csv)",
         "note": "backtest winRate는 생존편향으로 낙관. 실측 신뢰는 live_calibration 참조."
       },
-      "generatedAt": "2026-11-21T15:37:28.352861+00:00"
+      "generatedAt": "2026-11-28T16:29:22.318033+00:00"
     },
     "kr_aggressive_short": {
       "status": "OK",
       "market": "kr",
       "mode": "aggressive",
       "horizon": "short",
-      "asOf": "2026-11-22",
+      "asOf": "2026-11-29",
       "excludedFutureRows": 0,
-      "dataRange": "2011-08-01 ~ 2026-11-20",
+      "dataRange": "2011-08-01 ~ 2026-11-27",
       "windowCount": 61,
       "windows": [
         {
@@ -25399,16 +25397,16 @@
         "universeSource": "OHLCV_glob(market_*_daily.csv)",
         "note": "backtest winRate는 생존편향으로 낙관. 실측 신뢰는 live_calibration 참조."
       },
-      "generatedAt": "2026-11-21T15:38:04.442293+00:00"
+      "generatedAt": "2026-11-28T16:30:13.463648+00:00"
     },
     "kr_aggressive_swing": {
       "status": "OK",
       "market": "kr",
       "mode": "aggressive",
       "horizon": "swing",
-      "asOf": "2026-11-22",
+      "asOf": "2026-11-29",
       "excludedFutureRows": 0,
-      "dataRange": "2011-08-01 ~ 2026-11-20",
+      "dataRange": "2011-08-01 ~ 2026-11-27",
       "windowCount": 61,
       "windows": [
         {
@@ -28469,16 +28467,16 @@
         "universeSource": "OHLCV_glob(market_*_daily.csv)",
         "note": "backtest winRate는 생존편향으로 낙관. 실측 신뢰는 live_calibration 참조."
       },
-      "generatedAt": "2026-11-21T15:38:44.388148+00:00"
+      "generatedAt": "2026-11-28T16:31:10.340691+00:00"
     },
     "kr_aggressive_mid": {
       "status": "OK",
       "market": "kr",
       "mode": "aggressive",
       "horizon": "mid",
-      "asOf": "2026-11-22",
+      "asOf": "2026-11-29",
       "excludedFutureRows": 0,
-      "dataRange": "2011-08-01 ~ 2026-11-20",
+      "dataRange": "2011-08-01 ~ 2026-11-27",
       "windowCount": 61,
       "windows": [
         {
@@ -31620,7 +31618,7 @@
         "universeSource": "OHLCV_glob(market_*_daily.csv)",
         "note": "backtest winRate는 생존편향으로 낙관. 실측 신뢰는 live_calibration 참조."
       },
-      "generatedAt": "2026-11-21T15:39:27.750005+00:00"
+      "generatedAt": "2026-11-28T16:32:12.715632+00:00"
     }
   }
 }
